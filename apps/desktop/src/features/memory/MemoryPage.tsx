@@ -131,6 +131,12 @@ export function MemoryPage() {
       return
     }
 
+    if (memory.files?.[file]?.remote) {
+      notify({ title: `${file} is kept by the backend`, body: 'There is no file on this computer to open; edit the entries here.', level: 'info', toast: false })
+
+      return
+    }
+
     void window.heraldOS.fs.openPath(memoryPath(hermesHome, file)).catch(err => notify({ title: `Could not open ${file}`, body: errorMessage(err), level: 'error' }))
   }
 

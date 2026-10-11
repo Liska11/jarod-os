@@ -1,12 +1,18 @@
 import type { SessionListRow } from '@herald-os/client'
 import { atom } from 'nanostores'
 import type { DirEntry } from '../../../shared/ipc.ts'
+import { rest } from '../../lib/rest.ts'
 
 /*
  * Hermes memory lives in two plain-text files under `$HERMES_HOME/memories/`: MEMORY.md (what the
  * agent remembers) and USER.md (facts about the user). Entries are separated by a line that is only
  * `§`. This module parses, classifies and caches them, and writes edits back optimistically before
  * re-reading the truth from disk.
+ *
+ * When Herald OS is attached to a backend that keeps its memory elsewhere (the Jarod gateway answers
+ * `/api/status` with `backend: "jarod"`), the same two lists come from `/api/memory/files` and are
+ * written back with `PUT /api/memory/files/{file}`. Everything above that line (parsing, kinds, the
+ * optimistic update, the re-read) is shared; only where the lists are read and written differs.
  */
 
 export type MemoryKind = 'preference' | 'project' | 'person' | 'knowledge'
@@ -50,6 +56,10 @@ export interface MemoryFileState {
   /** The bridge could not hand us the whole file; writing it back would lose data. */
   truncated: boolean
   texts: string[]
+  /** Creation time of each entry (epoch ms) when the backend knows it; the file's modification time otherwise. */
+  dates?: number[]
+  /** The list is kept by the backend (no file on this computer to open). */
+  remote?: boolean
 }
 
 export interface MemoryState {
@@ -230,7 +240,7 @@ export function buildEntries(file: MemoryFileState): MemoryEntry[] {
       title,
       summary,
       kind: classifyKind(text, file.file),
-      date: parseEntryDate(text, file.modifiedAt),
+      date: parseEntryDate(text, file.dates?.[index] ?? file.modifiedAt),
       fileModifiedAt: file.modifiedAt
     }
   })
@@ -272,21 +282,65 @@ async function readMemoryFile(hermesHome: string, file: MemoryFile, listing: rea
   }
 }
 
-/** Re-read both files from disk. Stale loads never overwrite newer ones. */
+// ---------------------------------------------------------------------------------------------
+// A backend that keeps the lists itself (the Jarod gateway).
+// ---------------------------------------------------------------------------------------------
+
+/** What `GET /api/memory/files` answers: both lists, with the time each entry was created when known. */
+export interface RemoteMemoryFiles {
+  files: Record<MemoryFile, { exists?: boolean; modified_at?: number; texts?: string[]; dates?: number[] }>
+}
+
+/** Where the lists live: this computer's `$HERMES_HOME`, or the backend we are attached to. */
+export async function memorySource(): Promise<'disk' | 'gateway'> {
+  try {
+    const status = await rest.get<{ backend?: string }>('/api/status')
+
+    return status?.backend === 'jarod' ? 'gateway' : 'disk'
+  } catch {
+    return 'disk'
+  }
+}
+
+export function fromRemote(data: RemoteMemoryFiles): MemoryFileState[] {
+  return MEMORY_FILES.map(file => {
+    const remote = data.files?.[file]
+    const texts = (remote?.texts ?? []).map(text => text.trim()).filter(Boolean)
+
+    return {
+      file,
+      path: '',
+      exists: Boolean(remote?.exists),
+      modifiedAt: remote?.modified_at ?? 0,
+      truncated: false,
+      texts,
+      remote: true,
+      ...(remote?.dates && remote.dates.length === (remote.texts ?? []).length ? { dates: remote.dates } : {})
+    }
+  })
+}
+
+/** Re-read both files (from disk, or from the backend). Stale loads never overwrite newer ones. */
 export async function loadMemory(hermesHome: string): Promise<void> {
   const mine = ++generation
   $memory.set({ ...$memory.get(), loading: true })
 
   try {
-    let listing: DirEntry[] = []
+    let states: MemoryFileState[]
 
-    try {
-      listing = await window.heraldOS.fs.readDir(memoriesDir(hermesHome))
-    } catch {
-      // No memories folder yet: both files are simply absent.
+    if ((await memorySource()) === 'gateway') {
+      states = fromRemote(await rest.get<RemoteMemoryFiles>('/api/memory/files'))
+    } else {
+      let listing: DirEntry[] = []
+
+      try {
+        listing = await window.heraldOS.fs.readDir(memoriesDir(hermesHome))
+      } catch {
+        // No memories folder yet: both files are simply absent.
+      }
+
+      states = await Promise.all(MEMORY_FILES.map(file => readMemoryFile(hermesHome, file, listing)))
     }
-
-    const states = await Promise.all(MEMORY_FILES.map(file => readMemoryFile(hermesHome, file, listing)))
 
     if (mine !== generation) {
       return
@@ -319,15 +373,19 @@ async function commitFile(hermesHome: string, file: MemoryFile, texts: string[])
   }
 
   try {
-    if (!current?.exists) {
-      try {
-        await window.heraldOS.fs.mkdir(memoriesDir(hermesHome))
-      } catch {
-        // Folder probably exists already; the write below reports real failures.
+    if (current?.remote ?? (await memorySource()) === 'gateway') {
+      await rest.put(`/api/memory/files/${encodeURIComponent(file)}`, { texts })
+    } else {
+      if (!current?.exists) {
+        try {
+          await window.heraldOS.fs.mkdir(memoriesDir(hermesHome))
+        } catch {
+          // Folder probably exists already; the write below reports real failures.
+        }
       }
-    }
 
-    await window.heraldOS.fs.writeText(memoryPath(hermesHome, file), serialize(texts))
+      await window.heraldOS.fs.writeText(memoryPath(hermesHome, file), serialize(texts))
+    }
   } finally {
     await loadMemory(hermesHome)
   }
