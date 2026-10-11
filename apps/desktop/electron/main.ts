@@ -151,7 +151,7 @@ const osControl = panels
           return { ok: false, error: `unknown command ${cmd}` }
       }
     })
-backend.setControl(osControlPath, osControlToken())
+backend.setControl(() => osControl?.endpoint || osControlPath, osControlToken())
 // Serves org.freedesktop.Notifications so other apps' notifications reach the shell.
 const notifications = panels ? new NotificationDaemon(panels) : null
 /** Deliver a ShellCommand to the Hermes window; panels mode queues it until that window has loaded. */
@@ -357,6 +357,8 @@ app.whenReady().then(async () => {
   app.on('browser-window-blur', () => globalShortcut.unregister(fullscreenAccelerator))
   const voicePrefs = readPrefs().voice
   applyVoiceHotkey(voicePrefs.enabled ? voicePrefs.hotkey : '', () => BrowserWindow.getAllWindows())
+  // The backend is told where the control server listens, so wait for it (a port on Windows).
+  await Promise.race([osControl?.ready, new Promise(resolve => setTimeout(resolve, 3000))])
   void backend.start()
 })
 

@@ -1,8 +1,10 @@
 """Client for the Herald OS control socket: the agent's way to run commands in the shell's UI.
 
-The Electron shell (both macOS desktop and Linux panels modes) serves a JSON-lines Unix socket and
-hands the backend its path and a per-launch token through ``HERALD_OS_CONTROL_SOCKET`` and
-``HERALD_OS_CONTROL_TOKEN``. Every request carries the token; replies are single JSON objects.
+The Electron shell (macOS and Windows desktop, Linux panels modes) serves a JSON-lines socket and
+hands the backend its endpoint and a per-launch token through ``HERALD_OS_CONTROL_SOCKET`` and
+``HERALD_OS_CONTROL_TOKEN``. The endpoint is a Unix socket path, or ``tcp://127.0.0.1:<port>`` on
+Windows (loopback only: the token travels in the clear). Every request carries the token; replies
+are single JSON objects.
 
 Requests:
     {"cmd": "ui", "command": "<id>", "args": {...}, "source": "agent"}  -> CommandResult
@@ -14,12 +16,23 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import socket
 from typing import Any
 
-from .util import os_env
+from .util import hermes_home, os_env
 
 DEFAULT_TIMEOUT = 12.0
+# The only TCP endpoint accepted: the shell never listens beyond this machine.
+_TCP_ENDPOINT = re.compile(r"^tcp://127\.0\.0\.1:(\d{1,5})$")
+
+
+def parse_tcp_endpoint(endpoint: str) -> tuple[str, int] | None:
+    """``(host, port)`` for a ``tcp://127.0.0.1:<port>`` endpoint, None for anything else (a socket path)."""
+    match = _TCP_ENDPOINT.match(endpoint.strip())
+    if not match or not 0 < int(match[1]) < 65536:
+        return None
+    return "127.0.0.1", int(match[1])
 
 
 class ShellUnavailable(RuntimeError):
@@ -28,9 +41,8 @@ class ShellUnavailable(RuntimeError):
 
 def shared_endpoint() -> tuple[str, str]:
     """A shell attached to a backend it did not start writes ``herald-os/control.json`` (0600) instead."""
-    home = os.environ.get("HERMES_HOME") or os.path.join(os.path.expanduser("~"), ".hermes")
     try:
-        with open(os.path.join(home, "herald-os", "control.json"), encoding="utf-8") as handle:
+        with open(hermes_home() / "herald-os" / "control.json", encoding="utf-8") as handle:
             data = json.load(handle)
     except (OSError, ValueError):
         return "", ""
@@ -45,7 +57,7 @@ def control_endpoint() -> tuple[str, str]:
         path, token = shared_endpoint()
     if not path or not token:
         raise ShellUnavailable("Herald OS is not running this session (no control socket); UI commands need the shell.")
-    if not os.path.exists(path):
+    if parse_tcp_endpoint(path) is None and not os.path.exists(path):
         raise ShellUnavailable(f"The Herald OS shell is not listening ({path}); is it running?")
     return path, token
 
@@ -54,10 +66,13 @@ def request(payload: dict[str, Any], *, timeout: float = DEFAULT_TIMEOUT) -> dic
     """Send one request and return the parsed reply; raises ``ShellUnavailable`` or ``RuntimeError``."""
     path, token = control_endpoint()
     body = json.dumps({**payload, "token": token}) + "\n"
-    sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    tcp = parse_tcp_endpoint(path)
+    if tcp is None and not hasattr(socket, "AF_UNIX"):
+        raise ShellUnavailable(f"This Python cannot reach the Herald OS control socket {path}.")
+    sock = socket.socket(socket.AF_INET if tcp else socket.AF_UNIX, socket.SOCK_STREAM)
     sock.settimeout(timeout)
     try:
-        sock.connect(path)
+        sock.connect(tcp if tcp else path)
         sock.sendall(body.encode("utf-8"))
         chunks = b""
         while not chunks.endswith(b"\n"):

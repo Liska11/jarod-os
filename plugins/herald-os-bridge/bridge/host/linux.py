@@ -12,7 +12,6 @@ from __future__ import annotations
 import json
 import os
 import platform
-import pwd
 import re
 import shutil
 import signal
@@ -21,6 +20,11 @@ import sys
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Literal, Sequence
+
+try:
+    import pwd
+except ImportError:  # Windows: this adapter is never selected there, but its parsers stay importable.
+    pwd = None  # type: ignore[assignment]
 
 from ..crash import parse_coredumpctl_list
 from ..util import ExecResult, run
@@ -519,6 +523,8 @@ class LinuxHost(HostAdapter):
 
     @staticmethod
     def _username(uid: int) -> str | None:
+        if pwd is None:
+            return None
         try:
             return pwd.getpwuid(uid).pw_name
         except KeyError:

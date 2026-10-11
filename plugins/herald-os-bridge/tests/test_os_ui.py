@@ -27,13 +27,24 @@ CATALOGUE = [
 
 
 class FakeShell:
-    """A JSON-lines Unix socket server answering like the Electron control server."""
+    """A JSON-lines server answering like the Electron control server: a Unix socket (macOS, Linux)
+    or a loopback TCP port announced as ``tcp://127.0.0.1:<port>`` (Windows)."""
 
-    def __init__(self, path: str, token: str):
-        self.path, self.token = path, token
+    def __init__(self, kind: str, token: str):
+        self.kind, self.token = kind, token
         self.requests: list[dict] = []
-        self.server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        self.server.bind(path)
+        self.path = ""
+        if kind == "unix":
+            # AF_UNIX paths are capped at ~104 bytes on macOS; pytest's tmp_path is far longer.
+            self.dir = tempfile.mkdtemp(prefix="hos-", dir="/tmp")
+            self.path = os.path.join(self.dir, "c.sock")
+            self.server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            self.server.bind(self.path)
+            self.endpoint = self.path
+        else:
+            self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.server.bind(("127.0.0.1", 0))
+            self.endpoint = f"tcp://127.0.0.1:{self.server.getsockname()[1]}"
         self.server.listen(4)
         self.thread = threading.Thread(target=self._serve, daemon=True)
         self.thread.start()
@@ -73,26 +84,22 @@ class FakeShell:
 
     def close(self):
         self.server.close()
-        try:
-            os.unlink(self.path)
-        except OSError:
-            pass
+        if self.kind == "unix":
+            shutil.rmtree(self.dir, ignore_errors=True)
 
 
-@pytest.fixture
-def shell(monkeypatch, plugin):
-    # AF_UNIX paths are capped at ~104 bytes on macOS; pytest's tmp_path is far longer.
-    short_dir = tempfile.mkdtemp(prefix="hos-", dir="/tmp")
-    path = os.path.join(short_dir, "c.sock")
-    fake = FakeShell(path, "secret-token")
-    monkeypatch.setenv("HERALD_OS_CONTROL_SOCKET", path)
+@pytest.fixture(params=["unix", "tcp"])
+def shell(request, monkeypatch, plugin):
+    if request.param == "unix" and not hasattr(socket, "AF_UNIX"):
+        pytest.skip("this Python has no AF_UNIX (Windows)")
+    fake = FakeShell(request.param, "secret-token")
+    monkeypatch.setenv("HERALD_OS_CONTROL_SOCKET", fake.endpoint)
     monkeypatch.setenv("HERALD_OS_CONTROL_TOKEN", "secret-token")
     tools = _mod(plugin, "tools")
     tools._UI_CATALOGUE.clear()
     yield fake
     fake.close()
     tools._UI_CATALOGUE.clear()
-    shutil.rmtree(short_dir, ignore_errors=True)
 
 
 @pytest.fixture
@@ -213,3 +220,19 @@ def test_without_shell_the_tool_explains(plugin, monkeypatch):
     monkeypatch.delenv("HERALD_OS_CONTROL_TOKEN", raising=False)
     reply = json.loads(tools.handle_os_ui({"action": "state"}))
     assert reply["success"] is False and "control socket" in reply["error"]
+
+
+def test_tcp_endpoint_is_loopback_only(plugin):
+    ui = _mod(plugin, "ui")
+    assert ui.parse_tcp_endpoint("tcp://127.0.0.1:5150") == ("127.0.0.1", 5150)
+    for bad in ("tcp://0.0.0.0:80", "tcp://example.com:80", "tcp://127.0.0.1:0", "tcp://127.0.0.1:99999", "/run/user/1000/herald-os/control.sock", ""):
+        assert ui.parse_tcp_endpoint(bad) is None
+
+
+def test_shared_endpoint_follows_hermes_home(plugin, isolated_home, monkeypatch):
+    ui = _mod(plugin, "ui")
+    monkeypatch.delenv("HERALD_OS_CONTROL_SOCKET", raising=False)
+    monkeypatch.delenv("HERALD_OS_CONTROL_TOKEN", raising=False)
+    (isolated_home / "herald-os").mkdir()
+    (isolated_home / "herald-os" / "control.json").write_text(json.dumps({"socket": "tcp://127.0.0.1:4242", "token": "t"}), encoding="utf-8")
+    assert ui.control_endpoint() == ("tcp://127.0.0.1:4242", "t")

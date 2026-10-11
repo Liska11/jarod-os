@@ -8,8 +8,9 @@ $HermesHome = if ($env:HERMES_HOME) { $env:HERMES_HOME } else { Join-Path $env:L
 $Py = if ($env:HERALD_OS_PYTHON) { $env:HERALD_OS_PYTHON } else { Join-Path $HermesHome 'hermes-agent/venv/Scripts/python.exe' }
 
 Set-Location (Join-Path $Root 'plugins/herald-os-bridge/tests')
-# The CLI tests sit outside the plugin, so with no arguments both folders run; arguments pick tests.
-$suites = if ($args.Count -eq 0) { @('.', (Join-Path $Root 'linux/tests')) } else { @() }
+# The Linux CLI tests (linux/tests) import POSIX-only modules and do not run here; with no arguments
+# the plugin's own tests run, and arguments (a file, -k) pick tests as in test-bridge.sh.
+$suites = if ($args.Count -eq 0) { @('.') } else { @() }
 
 # Native tools write to stderr; do not let that abort the script.
 $ErrorActionPreference = 'Continue'

@@ -140,24 +140,44 @@ export async function handleUiRequest(request: UiControlRequest, bridge: OsComma
   return { ok: true, result }
 }
 
-/** A JSON-lines Unix socket server: one request object per line in, one reply object per line out. */
+/**
+ * A JSON-lines server: one request object per line in, one reply object per line out. A Unix socket
+ * on macOS and Linux; on Windows (where Node serves only named pipes and Python's AF_UNIX support is
+ * patchy) a loopback TCP port chosen by the system, announced as `tcp://127.0.0.1:<port>`. Every
+ * request carries the per-launch token either way.
+ */
 export class OsControlServer {
   private server: net.Server | null = null
+  private port = 0
+  private markReady: () => void = () => undefined
+  /** Resolves once the server is listening (or has given up), so the backend is not started before the endpoint exists. */
+  readonly ready: Promise<void> = new Promise(resolve => {
+    this.markReady = resolve
+  })
 
   constructor(
-    readonly socketPath: string,
-    private readonly handle: (request: Record<string, unknown>) => Promise<Record<string, unknown>>
+    private readonly socketPath: string,
+    private readonly handle: (request: Record<string, unknown>) => Promise<Record<string, unknown>>,
+    private readonly loopback: boolean = process.platform === 'win32'
   ) {}
 
-  start(): void {
-    try {
-      fs.mkdirSync(path.dirname(this.socketPath), { recursive: true, mode: 0o700 })
-      fs.unlinkSync(this.socketPath)
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
-        log('os-control', `cannot prepare ${this.socketPath}: ${(error as Error).message}`)
+  /** What the backend dials: the socket path, or `tcp://127.0.0.1:<port>` once listening. */
+  get endpoint(): string {
+    return this.loopback ? (this.port ? `tcp://127.0.0.1:${this.port}` : '') : this.socketPath
+  }
 
-        return
+  start(): void {
+    if (!this.loopback) {
+      try {
+        fs.mkdirSync(path.dirname(this.socketPath), { recursive: true, mode: 0o700 })
+        fs.unlinkSync(this.socketPath)
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+          log('os-control', `cannot prepare ${this.socketPath}: ${(error as Error).message}`)
+          this.markReady()
+
+          return
+        }
       }
     }
 
@@ -185,16 +205,35 @@ export class OsControlServer {
       })
       connection.on('error', () => undefined)
     })
-    this.server.on('error', error => log('os-control', `socket error: ${error.message}`))
+    this.server.on('error', error => {
+      log('os-control', `socket error: ${error.message}`)
+      this.markReady()
+    })
+
+    if (this.loopback) {
+      this.server.listen(0, '127.0.0.1', () => {
+        this.port = (this.server?.address() as net.AddressInfo).port
+        log('os-control', `listening on ${this.endpoint}`)
+        this.markReady()
+      })
+
+      return
+    }
+
     this.server.listen(this.socketPath, () => {
       fs.chmodSync(this.socketPath, 0o600)
       log('os-control', `listening on ${this.socketPath}`)
+      this.markReady()
     })
   }
 
   stop(): void {
     this.server?.close()
     this.server = null
+
+    if (this.loopback) {
+      return
+    }
 
     try {
       fs.unlinkSync(this.socketPath)

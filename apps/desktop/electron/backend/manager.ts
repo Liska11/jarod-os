@@ -32,11 +32,12 @@ export class BackendManager {
   private child: ChildProcess | null = null
   private token = ''
   /** Control socket the bridge plugin's `os_ui` tool dials, and the token it must present. */
-  private control: { socketPath: string; token: string } | null = null
+  private control: { endpoint: () => string; token: string } | null = null
   private listeners = new Set<BackendListener>()
 
-  setControl(socketPath: string, token: string): void {
-    this.control = { socketPath, token }
+  /** `endpoint` is a Unix socket path or `tcp://127.0.0.1:<port>`; a function when it is only known once the server listens. */
+  setControl(endpoint: string | (() => string), token: string): void {
+    this.control = { endpoint: typeof endpoint === 'function' ? endpoint : () => endpoint, token }
   }
   private stopping = false
   private startGeneration = 0
@@ -223,7 +224,7 @@ export class BackendManager {
       if (this.control) {
         const file = path.join(heraldOsDataDir(), 'control.json')
         fs.mkdirSync(heraldOsDataDir(), { recursive: true })
-        fs.writeFileSync(file, JSON.stringify({ socket: this.control.socketPath, token: this.control.token }), { mode: 0o600 })
+        fs.writeFileSync(file, JSON.stringify({ socket: this.control.endpoint(), token: this.control.token }), { mode: 0o600 })
         fs.chmodSync(file, 0o600)
       }
 
@@ -270,7 +271,7 @@ export class BackendManager {
       HERMES_PARENT_PID: String(process.pid),
       HERMES_DESKTOP_READY_FILE: readyFile,
       PYTHONUNBUFFERED: '1',
-      ...(this.control ? { HERALD_OS_CONTROL_SOCKET: this.control.socketPath, HERALD_OS_CONTROL_TOKEN: this.control.token } : {})
+      ...(this.control ? { HERALD_OS_CONTROL_SOCKET: this.control.endpoint(), HERALD_OS_CONTROL_TOKEN: this.control.token } : {})
     }
     delete env.ELECTRON_RUN_AS_NODE
 

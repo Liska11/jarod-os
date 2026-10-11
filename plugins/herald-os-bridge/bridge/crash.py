@@ -7,7 +7,6 @@ lines of thread state a raw report carries."""
 from __future__ import annotations
 
 import json
-import signal
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Sequence
@@ -104,9 +103,19 @@ def resolve_mac_report(ref: str, dirs: Sequence[Path] = MAC_REPORT_DIRS) -> Path
     raise ValueError(f"no crash report called {raw}")
 
 
+# coredumpctl reports Linux signal numbers; the host running this may number them differently (Windows).
+_LINUX_SIGNALS = {
+    1: "SIGHUP", 2: "SIGINT", 3: "SIGQUIT", 4: "SIGILL", 5: "SIGTRAP", 6: "SIGABRT", 7: "SIGBUS", 8: "SIGFPE",
+    9: "SIGKILL", 10: "SIGUSR1", 11: "SIGSEGV", 12: "SIGUSR2", 13: "SIGPIPE", 14: "SIGALRM", 15: "SIGTERM",
+    16: "SIGSTKFLT", 17: "SIGCHLD", 18: "SIGCONT", 19: "SIGSTOP", 20: "SIGTSTP", 21: "SIGTTIN", 22: "SIGTTOU",
+    23: "SIGURG", 24: "SIGXCPU", 25: "SIGXFSZ", 26: "SIGVTALRM", 27: "SIGPROF", 28: "SIGWINCH", 29: "SIGIO",
+    30: "SIGPWR", 31: "SIGSYS",
+}
+
+
 def signal_name(number: Any) -> str | None:
     try:
-        return signal.Signals(int(number)).name
+        return _LINUX_SIGNALS.get(int(number))
     except (TypeError, ValueError):
         return None
 
