@@ -230,22 +230,32 @@ existing install. Publishing to the Microsoft Store would **not** be possible wi
 Partner Center reserves for the account, and a package signed by Microsoft. Until then the `.appx` is an unsigned sideload artifact (it needs a certificate whose
 subject is exactly `CN=JarodOS`, see `README-WINDOWS.md`), and the NSIS installer is also unsigned.
 
-The old `%APPDATA%\Herald OS` folder is **not migrated**: it may belong to an installed upstream Herald OS, and moving it would take that app's data.
+The old `%APPDATA%\Herald OS` folder is **not migrated** and not touched (see "Post-rename checks" for what it contains).
 `NOTICE` and `LICENSE` are untouched and ship inside the package (`resources\NOTICE`, `resources\LICENSE`).
 
-**`git grep -i herald`, lines before → after** (the 2 891 lines are classified the same way before and after)
+**`git grep -i herald`, lines before → after** (the 2 891 lines are classified the same way before and after; figures recomputed on commit `47970b9` itself, which
+corrects the first version of this table: the commit holds 2 246 lines, not 2 225, because this section and the next ones are in the same commit and mention the old name)
 
 | Category | Before | After | Why it stays / what changed |
 | --- | ---: | ---: | --- |
 | Attribution and upstream URLs (`NOTICE`, `LICENSE`, any line with `iamlukethedev`) | 30 | 30 | MIT notice and links to the upstream project; not ours to rewrite |
-| History and provenance (`docs/DECISIONS.md`, `jarod-*.md`, this file, `linux/migrations/`, `upstream/`, `scripts/sync-upstream*`, `scripts/migrate-hermes-config.py`, lockfile) | 162 | 162 | They record what happened under the old names |
+| History and provenance (`docs/DECISIONS.md`, `jarod-*.md`, this file, `linux/migrations/`, `upstream/`, `scripts/sync-upstream*`, `scripts/migrate-hermes-config.py`, lockfile) | 162 | 183 | They record what happened under the old names. +21: the sections of this file that describe the rename |
 | Strings written into user files then compared on removal (Omarchy hook, menu line, key binds in `linux/bin/herald-os`, and the Linux test that asserts them) | 39 | 12 | Renaming them would make an existing install impossible to remove cleanly (`== HOOK_DISPATCHER`, `MENU_MARK`). 27 display messages of that file were renamed |
 | Deliberate mentions of the old name (README provenance, legacy install folder recognised by `bridgeLinkPlan`, its test) | in the next row | 5 | See "Script fixes" below |
 | **Displayed name `Herald OS` / `Herald` (renamed)** | **737** | **0** | The point of the commit |
 | Prose in code comments, lone `Herald` | 46 | 49 | Not displayed; left to keep upstream merges small (3 more lines appear because lines that held both a renamed and a lone word moved here) |
 | Checkout folder `Herald-OS` (`~/Herald-OS`, `cd Herald-OS`) | 27 | 27 | A path on disk and in docs, not the product name |
-| Identifiers: `herald-os*`, `herald_os`, `HERALD_OS*`, `heraldOS`/`HeraldOS*`, `herald-*` | 1 850 | 1 940 | Contracts and paths, kept as agreed: `window.heraldOS` IPC, `HERALD_OS_*` environment, plugin `herald_os` / `herald-os-bridge`, data folders under `herald-os`, `SESSION_SOURCE` / `LISTED_SESSION_SOURCES`, theme ids. +90 because lines that had a renamed display word and an identifier now count here |
-| **All lines containing "herald"** | **2 891** | **2 225** | |
+| Identifiers: `herald-os*`, `herald_os`, `HERALD_OS*`, `heraldOS`/`HeraldOS*`, `herald-*` | 1 850 | 1 940 | Contracts and paths, kept as agreed: `window.heraldOS` IPC, `HERALD_OS_*` environment, plugin `herald_os` / `herald-os-bridge`, data folders under `herald-os`, `SESSION_SOURCE` / `LISTED_SESSION_SOURCES`, theme ids. Why +90: see below |
+| **All lines containing "herald"** | **2 891** | **2 246** | |
+
+**Why the identifiers went from 1 850 to 1 940 (+90), measured line by line (before/after matched on file + text with Jarod↔Herald normalised):**
+
+| | Lines | Explanation |
+| --- | ---: | --- |
+| Moved from the "displayed name" row | +102 | Lines that held both a displayed `Herald OS` and an identifier (for example `# Herald OS … herald-os` in `linux/niri/config.kdl`, 15; `README.md`, 10; `docs/LINUX.md`, 7; `linux/bin/herald-os`, 7; …). The classifier tests the display name first, so before the rename they counted there. After it only the identifier remains, unchanged, so they count here. **No identifier was added or changed** |
+| New lines | +2 | Two lines of the provenance paragraph in `README-WINDOWS.md` that name `herald-os-bridge`, `HERALD_OS_*`, `window.heraldOS` on purpose |
+| Identity strings renamed on purpose | −14 | `appId` `dev.iamluke.heraldos`, the AppUserModelId, `HeraldOS-*` artifact names (package.json ×3, CI globs ×2, README-WINDOWS ×3), `CN=HeraldOS`, `HeraldOS.HeraldOS`, `applicationId`, and the WindowsApps sample path in `bridge-staging.test.ts` |
+| Net | +90 | New tests do not contribute (the only test line that mentions the old name, in `bridge-plugin.test.ts`, is in the "deliberate mentions" row), and neither does the launcher commit: it is in the jarod-cordis repository, outside this grep |
 
 Not touched either: `TERM_PROGRAM=HeraldOS` (seen by programs run in the Terminal app), `XDG_CURRENT_DESKTOP=HeraldOS` and the PowerShell `HeraldOS`
 namespaces (internal), the gateway protocol and every JSON contract.
@@ -263,6 +273,7 @@ namespaces (internal), the gateway protocol and every JSON contract.
   history above, and in the jarod-cordis launcher (fixed).
 - On this machine (read only): no scheduled task, no `.lnk` in the Start menu, Desktop or taskbar, no hit in `Run`, `RunOnce`, `App Paths`, `Uninstall` (HKCU, HKLM,
   WOW6432Node), `HKCU\Software\Classes`, `FeatureUsage\AppLaunch`; no appx package; no `Programs\Herald OS` install. `%APPDATA%\Herald OS` exists (left as is).
+  *Correction, see "Post-rename checks": that folder was created by my own test runs of the old executable, not by an upstream install.*
 
 **Verification (Windows 11, this machine)**
 
@@ -275,6 +286,35 @@ namespaces (internal), the gateway protocol and every JSON contract.
 | `npm run dist:win` | builds | builds: `JarodOS-Setup-0.1.0-alpha.1-win-x64.exe`, `JarodOS-0.1.0-alpha.1-win-x64.appx` (unsigned), `win-unpacked\Jarod-OS.exe` |
 | Packaged `Jarod-OS.exe` | | starts, process and window title `Jarod-OS`, connects to a gateway, user data goes to the folder it is given |
 | jarod-cordis `scripts\verify-jarod-os.ps1` | 8/8 | 8/8 |
+
+## Post-rename checks (2026-10-11, evening; Windows 11, this machine)
+
+**1. Bridge end to end, after the rename.** `scripts\verify-windows.ps1`: 6 steps passed, exit code 0 (Hermes runtime found, bridge plugin linked and enabled,
+gateway status, `tools.list` shows the `herald_os` toolset with 13 tools, `system_info` called through Hermes's own registry, audit entry
+`tool=system_info tier=read decision=allowed ok=True`). The identifiers the script relies on (`herald_os`, `herald-os-bridge`, `herald-os\audit.jsonl`) were kept
+on purpose, which is why it needed no change.
+
+**2. Real install, launch and uninstall of `JarodOS-Setup-0.1.0-alpha.1-win-x64.exe`** (rebuilt with the identity cleanup above; run silently with `/S`, per user).
+
+| Step | Result |
+| --- | --- |
+| Install | exit code 0 in 11 s, no administrator prompt. Folder `%LOCALAPPDATA%\Programs\Jarod-OS` (`Jarod-OS.exe`, `Uninstall Jarod-OS.exe`, runtime files). One new per-user uninstall entry "Jarod-OS 0.1.0-alpha.1" with `DisplayIcon` and `UninstallString` pointing into that folder |
+| Shortcuts | `Start Menu\Programs\Jarod-OS.lnk` and `Desktop\Jarod-OS.lnk`, both targeting `…\Programs\Jarod-OS\Jarod-OS.exe` |
+| Launch from the install folder | through the jarod-cordis launcher (`--herald` on the installed exe, throwaway `--data` folder): main process plus gpu, utility and renderer children, window title `Jarod-OS`, gateway ready and connected, Hermes untouched. Closing the window stopped the app and the gateway (0 processes left) |
+| Default data folder | launched on its own (backend address given, so it does not start Hermes): it creates `%APPDATA%\Jarod-OS` |
+| Uninstall | `Uninstall Jarod-OS.exe /currentuser /S`: exit code 0, install folder gone, both shortcuts gone, uninstall entry gone (registry keys identical to before the install) |
+| Left behind | `%APPDATA%\Jarod-OS` (user data), as NSIS does by default (`deleteAppDataOnUninstall` is not set). It was created by this test only (it did not exist before), so I deleted it, together with the throwaway data folder |
+| Neighbours | the existing Jarod-One and JAROD apps, shortcuts and uninstall entries were not touched (they have their own ids) |
+
+Observations, not fixed: the installer and the uninstaller are unsigned (`Get-AuthenticodeSignature`: NotSigned), so SmartScreen will warn. The Add/Remove Programs
+**Publisher** reads "Luke The Dev", taken from the `author` field of `apps/desktop/package.json`; I left it because it is the upstream attribution, but it is what a user
+will see. **Not tested:** the interactive wizard (folder choice, "run after install"), installing the `.appx`, upgrading over an older Jarod-OS, pinning to the taskbar.
+
+**3. `%APPDATA%\Herald OS`** (read only, nothing changed or moved). It exists: created 2026-10-11 03:13, last written 20:28, 1 075 files in 26 folders, 140 MB. It holds
+only Chromium/Electron state (`Cache`, `Code Cache`, `GPUCache`, `Local Storage`, `Session Storage`, `Network`, `blob_storage`, shader caches, `DIPS`, `Local State`,
+`Preferences` with a spell-check language and a device salt, nothing else). `DevToolsActivePort` contains `9344`, the debugging port of my own test scripts. So this
+folder comes from **my** earlier runs of the old `Herald OS.exe` (UI checks before the rename), not from an upstream Herald OS install; no process was using it and no
+install of the old app exists on this machine. My earlier note that it "may belong to an installed upstream Herald OS" was wrong. It is safe to delete; it stays for you to decide.
 
 ## Verification debt: Linux and macOS (not verified)
 
