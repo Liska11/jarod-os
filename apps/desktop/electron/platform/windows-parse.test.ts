@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { rankFiles } from './find.ts'
-import { appIdToFile, appsFolderId, asArray, encodePowerShell, isAppsFolderPath, parseNetshWlan, pickInterface, recentTargets, startAppsToInstalled, toProcessInfo } from './windows-parse.ts'
+import { appIdToFile, appsFolderId, asArray, audioDevices, encodePowerShell, endpointGuid, isAppsFolderPath, parseNetshWlan, pickInterface, recentTargets, startAppsToInstalled, toProcessInfo } from './windows-parse.ts'
 
 const env = { ProgramFiles: 'C:\\Program Files', 'ProgramFiles(x86)': 'C:\\Program Files (x86)', SystemRoot: 'C:\\Windows', LOCALAPPDATA: 'C:\\Users\\Sam\\AppData\\Local' }
 
@@ -110,5 +110,30 @@ describe('rankFiles on Windows paths', () => {
     const ranked = rankFiles('hello.pdf', [file('C:\\Users\\Sam\\proj\\node_modules\\x\\hello.pdf'), file('C:\\Users\\Sam\\Documents\\hello.pdf')], 2)
 
     expect(ranked[0].path).toBe('C:\\Users\\Sam\\Documents\\hello.pdf')
+  })
+})
+
+describe('endpointGuid', () => {
+  it('takes the GUID after the last dot and nothing else', () => {
+    expect(endpointGuid('{0.0.0.00000000}.{011CF933-BA84-4978-ABF9-B52B07CC4CB0}')).toBe('{011cf933-ba84-4978-abf9-b52b07cc4cb0}')
+    expect(endpointGuid('{0.0.1.00000000}.{eb98b82f-b0c1-45a9-899c-a3b65ed9ab26}')).toBe('{eb98b82f-b0c1-45a9-899c-a3b65ed9ab26}')
+    expect(endpointGuid("{0.0.0.00000000}.{x'; Remove-Item C:\ }")).toBeNull()
+    expect(endpointGuid('{not-a-device}')).toBeNull()
+    expect(endpointGuid('')).toBeNull()
+  })
+})
+
+describe('audioDevices', () => {
+  it('puts the default first, clamps the level and names unnamed devices', () => {
+    const devices = audioDevices([
+      { id: 'b', name: 'Casque (Jabra)', level: 40, muted: true, isDefault: false },
+      { id: 'a', name: 'Haut-parleurs (Realtek(R) Audio)', level: 130, muted: false, isDefault: true },
+      { id: 'c', name: ' ', level: -5 },
+      { name: 'no id', level: 10 }
+    ])
+
+    expect(devices.map(device => device.id)).toEqual(['a', 'c', 'b'])
+    expect(devices[0]).toEqual({ id: 'a', name: 'Haut-parleurs (Realtek(R) Audio)', isDefault: true, volume: 100, muted: false })
+    expect(devices[1]).toMatchObject({ name: 'Audio device', volume: 0, isDefault: false })
   })
 })

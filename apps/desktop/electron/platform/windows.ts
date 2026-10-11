@@ -10,7 +10,7 @@ import { run } from './exec.ts'
 import { findCodeEditor } from './editors.ts'
 import { normaliseFileQuery, rankFiles } from './find.ts'
 import { type EditorTarget, HostNotSupported, type HostPlatform } from './types.ts'
-import { appIdToFile, appsFolderId, asArray, encodePowerShell, parseNetshWlan, pickInterface, type ProcessRowJson, recentTargets, startAppsToInstalled, toProcessInfo } from './windows-parse.ts'
+import { appIdToFile, appsFolderId, asArray, type AudioRowJson, audioDevices, encodePowerShell, endpointGuid, parseNetshWlan, pickInterface, type ProcessRowJson, recentTargets, startAppsToInstalled, toProcessInfo } from './windows-parse.ts'
 
 /*
  * The shell's view of a Windows machine: what the System page, the Applications grid, the file
@@ -60,6 +60,124 @@ $rows = @(Get-ChildItem -LiteralPath $dir -Filter *.lnk -ErrorAction SilentlyCon
   [pscustomobject]@{ target = $target; used = [int64]([DateTimeOffset]$_.LastWriteTime).ToUnixTimeMilliseconds() }
 })
 ConvertTo-Json -InputObject $rows -Compress
+`
+
+// The audio endpoints through Core Audio COM (Windows has no volume cmdlet). `Set` takes the endpoint
+// GUID (validated before it is spliced in), a percent and a mute flag; -1 leaves a value alone.
+const AUDIO_TYPES = String.raw`
+Add-Type -TypeDefinition @'
+using System;
+using System.Collections.Generic;
+using System.Runtime.InteropServices;
+namespace HeraldPanel {
+  [Guid("5CDF2C82-841E-4546-9722-0CF74078229A"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+  interface IAudioEndpointVolume {
+    [PreserveSig] int _0(); [PreserveSig] int _1(); [PreserveSig] int _2(); [PreserveSig] int _3();
+    [PreserveSig] int SetMasterVolumeLevelScalar(float level, ref Guid ctx);
+    [PreserveSig] int _5();
+    [PreserveSig] int GetMasterVolumeLevelScalar(out float level);
+    [PreserveSig] int _7(); [PreserveSig] int _8(); [PreserveSig] int _9(); [PreserveSig] int _10();
+    [PreserveSig] int SetMute([MarshalAs(UnmanagedType.Bool)] bool mute, ref Guid ctx);
+    [PreserveSig] int GetMute([MarshalAs(UnmanagedType.Bool)] out bool mute);
+  }
+  [Guid("D666063F-1587-4E43-81F1-B948E807363F"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+  interface IMMDevice {
+    [PreserveSig] int Activate(ref Guid iid, int clsCtx, IntPtr activationParams, [MarshalAs(UnmanagedType.IUnknown)] out object endpoint);
+    [PreserveSig] int OpenPropertyStore(int access, out IntPtr store);
+    [PreserveSig] int GetId([MarshalAs(UnmanagedType.LPWStr)] out string id);
+  }
+  [Guid("0BD7A1BE-7A1A-44DB-8397-CC5392387B5E"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+  interface IMMDeviceCollection {
+    [PreserveSig] int GetCount(out int count);
+    [PreserveSig] int Item(int index, out IMMDevice device);
+  }
+  [Guid("A95664D2-9614-4F35-A746-DE8DB63617E6"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+  interface IMMDeviceEnumerator {
+    [PreserveSig] int EnumAudioEndpoints(int flow, int stateMask, out IMMDeviceCollection devices);
+    [PreserveSig] int GetDefaultAudioEndpoint(int flow, int role, out IMMDevice device);
+  }
+  [ComImport, Guid("BCDE0395-E52F-467C-8E3D-C4579291692E")] class MMDeviceEnumerator { }
+  public static class Panel {
+    static IAudioEndpointVolume Volume(IMMDevice device) {
+      Guid iid = typeof(IAudioEndpointVolume).GUID;
+      object endpoint;
+      if (device.Activate(ref iid, 23, IntPtr.Zero, out endpoint) != 0) return null;
+      return (IAudioEndpointVolume)endpoint;
+    }
+    static string IdOf(IMMDevice device) { string id; device.GetId(out id); return id; }
+    // One "id|level|muted|default" line per active endpoint of the flow (0 playback, 1 capture).
+    public static string[] List(int flow) {
+      var enumerator = (IMMDeviceEnumerator)new MMDeviceEnumerator();
+      string defaultId = "";
+      IMMDevice def;
+      if (enumerator.GetDefaultAudioEndpoint(flow, 1, out def) == 0) defaultId = IdOf(def);
+      IMMDeviceCollection devices;
+      var lines = new List<string>();
+      if (enumerator.EnumAudioEndpoints(flow, 1, out devices) != 0) return lines.ToArray();
+      int count; devices.GetCount(out count);
+      for (int i = 0; i < count; i++) {
+        IMMDevice device;
+        if (devices.Item(i, out device) != 0) continue;
+        var volume = Volume(device);
+        if (volume == null) continue;
+        float level; bool muted;
+        volume.GetMasterVolumeLevelScalar(out level); volume.GetMute(out muted);
+        string id = IdOf(device);
+        lines.Add(id + "|" + ((int)Math.Round(level * 100)).ToString() + "|" + (muted ? "1" : "0") + "|" + (id == defaultId ? "1" : "0"));
+      }
+      return lines.ToArray();
+    }
+    public static bool Set(int flow, string guid, int percent, int mute) {
+      var enumerator = (IMMDeviceEnumerator)new MMDeviceEnumerator();
+      IMMDeviceCollection devices;
+      if (enumerator.EnumAudioEndpoints(flow, 1, out devices) != 0) return false;
+      int count; devices.GetCount(out count);
+      for (int i = 0; i < count; i++) {
+        IMMDevice device;
+        if (devices.Item(i, out device) != 0) continue;
+        if (!IdOf(device).ToLowerInvariant().EndsWith("." + guid)) continue;
+        var volume = Volume(device);
+        if (volume == null) return false;
+        Guid ctx = Guid.Empty;
+        if (percent >= 0) volume.SetMasterVolumeLevelScalar(percent / 100f, ref ctx);
+        if (mute >= 0) volume.SetMute(mute == 1, ref ctx);
+        return true;
+      }
+      return false;
+    }
+  }
+}
+'@
+function DeviceName([string]$flow, [string]$id) {
+  $guid = ($id -split '\.')[-1]
+  $key = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\MMDevices\Audio\$flow\$guid\Properties"
+  try {
+    $p = Get-ItemProperty -LiteralPath $key -ErrorAction Stop
+    $what = [string]$p.'{a45c254e-df1c-4efd-8020-67d146a850e0},2'
+    $adapter = [string]$p.'{b3f8fa53-0004-438e-9003-51a46e139bfc},6'
+    if ($what -and $adapter) { return "$what ($adapter)" }
+    if ($what) { return $what }
+  } catch { }
+  return $guid
+}
+function Rows([int]$flow, [string]$name) {
+  return @([HeraldPanel.Panel]::List($flow) | ForEach-Object {
+    $f = $_ -split '\|'
+    [pscustomobject]@{ id = $f[0]; name = (DeviceName $name $f[0]); level = [int]$f[1]; muted = ($f[2] -eq '1'); isDefault = ($f[3] -eq '1') }
+  })
+}
+`
+
+const AUDIO_STATE = AUDIO_TYPES + String.raw`
+[pscustomobject]@{ outputs = (Rows 0 'Render'); inputs = (Rows 1 'Capture') } | ConvertTo-Json -Compress -Depth 4
+`
+
+/** `guid` is validated by `endpointGuid`; the numbers are integers. */
+const AUDIO_SET = (flow: 0 | 1, guid: string, percent: number, mute: number) =>
+  AUDIO_TYPES +
+  String.raw`
+if (-not [HeraldPanel.Panel]::Set(${flow}, '${guid}', ${percent}, ${mute})) { throw 'That audio device is not available.' }
+'{}'
 `
 
 interface CpuSample {
@@ -373,8 +491,13 @@ export class WindowsPlatform implements HostPlatform {
       }
       case 'bluetooth':
         return { panel, bluetooth: { available: false, powered: false, devices: [] } }
-      case 'audio':
-        return { panel, audio: { available: false, outputs: [], inputs: [] } }
+      case 'audio': {
+        const data = await this.powershell<{ outputs?: AudioRowJson[] | AudioRowJson; inputs?: AudioRowJson[] | AudioRowJson }>(AUDIO_STATE, 30_000)
+        const outputs = audioDevices(asArray(data?.outputs))
+        const inputs = audioDevices(asArray(data?.inputs))
+
+        return { panel, audio: { available: outputs.length + inputs.length > 0, outputs, inputs } }
+      }
       case 'display':
         return { panel, display: { available: false, displays: [] } }
       case 'power': {
@@ -388,6 +511,42 @@ export class WindowsPlatform implements HostPlatform {
   }
 
   async controlAction(action: ControlAction): Promise<void> {
-    throw new HostNotSupported(`changing ${action.panel} from Herald OS on Windows (use Windows Settings)`)
+    if (action.panel === 'audio' && action.action === 'volume') {
+      return this.setVolume(action)
+    }
+
+    const what = action.panel === 'audio' && action.action === 'default' ? 'the default audio device' : action.panel
+    throw new HostNotSupported(`changing ${what} from Herald OS on Windows (use Windows Settings)`)
+  }
+
+  /** Volume and mute of one endpoint; without an id, the default device of that kind. */
+  private async setVolume(action: Extract<ControlAction, { panel: 'audio'; action: 'volume' }>): Promise<void> {
+    const flow = action.kind === 'input' ? 1 : 0
+    let id = action.id
+
+    if (!id) {
+      const state = await this.controlStatus('audio')
+      const devices = state.panel === 'audio' ? (flow === 1 ? state.audio.inputs : state.audio.outputs) : []
+      id = devices.find(device => device.isDefault)?.id ?? devices[0]?.id
+    }
+
+    const guid = id ? endpointGuid(id) : null
+
+    if (!guid) {
+      throw new Error('No audio device to change.')
+    }
+
+    const percent = typeof action.percent === 'number' && Number.isFinite(action.percent) ? Math.max(0, Math.min(100, Math.round(action.percent))) : -1
+    const mute = typeof action.muted === 'boolean' ? (action.muted ? 1 : 0) : -1
+
+    if (percent < 0 && mute < 0) {
+      return
+    }
+
+    const done = await this.powershell<Record<string, never>>(AUDIO_SET(flow, guid, percent, mute), 30_000)
+
+    if (done === null) {
+      throw new Error('Windows did not accept the audio change.')
+    }
   }
 }

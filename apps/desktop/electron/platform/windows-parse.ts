@@ -1,5 +1,5 @@
 import path from 'node:path'
-import type { InstalledApp, ProcessInfo } from '../../shared/ipc.ts'
+import type { AudioDevice, InstalledApp, ProcessInfo } from '../../shared/ipc.ts'
 
 /** Pure helpers of the Windows platform: no Electron, no processes. */
 
@@ -137,4 +137,33 @@ export function recentTargets(rows: { target?: string; used?: number }[], home: 
   }
 
   return out
+}
+
+export interface AudioRowJson {
+  id?: string
+  name?: string
+  level?: number
+  muted?: boolean
+  isDefault?: boolean
+}
+
+/** The GUID at the end of an endpoint id (`{0.0.0.00000000}.{guid}`), lowercase and braced, or null. */
+export function endpointGuid(id: string): string | null {
+  const match = /\.(\{[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\})$/i.exec(id.trim())
+
+  return match ? match[1].toLowerCase() : null
+}
+
+/** Quick-panel audio devices from the COM script's rows: default first, then by name; rows without an id are dropped. */
+export function audioDevices(rows: AudioRowJson[]): AudioDevice[] {
+  return rows
+    .filter(row => typeof row.id === 'string' && row.id.length > 0)
+    .map(row => ({
+      id: row.id as string,
+      name: (row.name ?? '').trim() || 'Audio device',
+      isDefault: Boolean(row.isDefault),
+      volume: Math.max(0, Math.min(100, Math.round(Number(row.level) || 0))),
+      muted: Boolean(row.muted)
+    }))
+    .sort((a, b) => Number(b.isDefault) - Number(a.isDefault) || a.name.localeCompare(b.name))
 }

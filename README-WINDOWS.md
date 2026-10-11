@@ -124,10 +124,11 @@ What is different from macOS and Herald OS Linux, honestly:
   most `Win+` combinations, so Herald OS does not register any; inside the app `Ctrl` does what `Cmd`
   does on macOS (`Ctrl+K` opens the command bar).
 - **Not implemented yet:** screenshots and screen recording from the app (use Win+Shift+S), dictation
-  anywhere (macOS-only), the emoji panel, calendar events, and changing Wi-Fi, Bluetooth, volume or
-  displays from the menu bar's quick panels (they show state; Windows Settings does the changing).
-  The agent can still read and set the volume and dark mode, and read network and Bluetooth state,
-  through the bridge.
+  anywhere (macOS-only), the emoji panel, calendar events, and changing Wi-Fi, Bluetooth, the default
+  audio device or displays from the menu bar's quick panels (they show state; Windows Settings does
+  the changing). The Sound panel lists every active output and input and sets each one's volume and
+  mute. The agent can also read and set the volume and dark mode, and read network and Bluetooth
+  state, through the bridge.
 - **Bridge tools that differ.** Bluetooth shows paired devices but not which one is connected right
   now. Wi-Fi power cannot be switched without administrator rights. Process owners are blank for
   processes Windows does not let you inspect. File search looks in Desktop, Documents, Downloads,

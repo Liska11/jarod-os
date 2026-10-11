@@ -62,6 +62,31 @@ describe.skipIf(process.platform !== 'win32')('WindowsPlatform on Windows', () =
 
   it('refuses to change quick-panel settings and says why', async () => {
     await expect(platform.controlAction({ panel: 'wifi', action: 'scan' })).rejects.toThrow(/Windows Settings/)
+    await expect(platform.controlAction({ panel: 'audio', action: 'default', kind: 'output', id: 'x' })).rejects.toThrow(/Windows Settings/)
     expect((await platform.controlStatus('bluetooth')).panel).toBe('bluetooth')
   })
+
+  it('lists the audio devices and sets a volume to the value it already has', async () => {
+    const state = await platform.controlStatus('audio')
+
+    expect(state.panel).toBe('audio')
+
+    if (state.panel !== 'audio' || state.audio.outputs.length === 0) {
+      return
+    }
+
+    const [output] = state.audio.outputs
+
+    expect(output.isDefault).toBe(true)
+    expect(output.volume).toBeGreaterThanOrEqual(0)
+    expect(output.volume).toBeLessThanOrEqual(100)
+    expect(output.name.length).toBeGreaterThan(0)
+
+    await platform.controlAction({ panel: 'audio', action: 'volume', kind: 'output', id: output.id, percent: output.volume, muted: output.muted })
+
+    const after = await platform.controlStatus('audio')
+
+    expect(after.panel === 'audio' && after.audio.outputs.find(device => device.id === output.id)).toMatchObject({ volume: output.volume, muted: output.muted })
+    await expect(platform.controlAction({ panel: 'audio', action: 'volume', kind: 'output', id: '{not-a-device}', percent: 10 })).rejects.toThrow(/No audio device/)
+  }, 90_000)
 })
