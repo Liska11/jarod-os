@@ -214,7 +214,8 @@
       "identityName": "HeraldOS.HeraldOS",
       "publisher": "CN=HeraldOS",
       "publisherDisplayName": "Herald OS",
-      "displayName": "Herald OS"
+      "displayName": "Herald OS",
+      "backgroundColor": "#07080a"
     }
   }
 }
