@@ -14,7 +14,7 @@
   "scripts": {
     "dev": "concurrently -k -n renderer,electron -c cyan,yellow \"npm:dev:renderer\" \"npm:dev:electron\"",
     "dev:renderer": "vite --host 127.0.0.1 --port 5180 --strictPort",
-    "dev:electron": "wait-on http://127.0.0.1:5180 && node scripts/bundle-electron.mjs --dev && HERALD_OS_DEV_SERVER=http://127.0.0.1:5180 electron .",
+    "dev:electron": "wait-on http://127.0.0.1:5180 && node scripts/bundle-electron.mjs --dev && node scripts/run-electron.mjs --dev-server http://127.0.0.1:5180",
     "build": "vite build && node scripts/bundle-electron.mjs",
     "start": "npm run build && electron .",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.electron.json --noEmit",

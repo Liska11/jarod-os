@@ -34,13 +34,13 @@
     "electron-winstaller": false
   },
   "scripts": {
-    "bootstrap": "bash scripts/bootstrap.sh",
-    "sync-upstream": "bash scripts/sync-upstream.sh",
+    "bootstrap": "node scripts/run.mjs bootstrap",
+    "sync-upstream": "node scripts/run.mjs sync-upstream",
     "dev": "npm run dev --workspace apps/desktop",
     "build": "npm run build --workspace apps/desktop",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
-    "test:bridge": "bash scripts/test-bridge.sh",
+    "test:bridge": "node scripts/run.mjs test-bridge",
     "dist:mac": "npm run dist:mac --workspace apps/desktop"
   }
 }
