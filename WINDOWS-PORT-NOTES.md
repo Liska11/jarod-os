@@ -102,6 +102,12 @@ backslashes only for a Windows path; `OsControlServer` keeps the Unix socket off
 - **macOS.** `dist:mac` and the macOS code paths cannot be built or run on Windows. The macOS-specific
   tests (`darwin.test.ts`, the Darwin parsers) run and pass here. The WSL distribution on this machine
   is broken (its virtual disk is missing), so Linux could not be run either.
+- **A clean Windows 11 in a VM.** Tried with VirtualBox (the only hypervisor this account can drive; Hyper-V
+  answers "permission required"). The existing `jarod` VM had no OS installed and the only Windows 11 image
+  available is a third-party AIO build (Arium), whose setup wizard could not be driven without a mouse
+  (VirtualBox has no mouse command; the keyboard did nothing). The attempt was stopped, nothing was installed,
+  and `jarod`'s settings were put back. Two synthetic clicks meant for the VM landed on a Firefox window
+  instead; no page change was seen. Host-mouse automation was dropped after that.
 - **Windows 10 and non-French Windows.** No such machine here. Locale-dependent output (`netsh wlan`)
   is parsed with fixtures in French, English, German and Italian; Wi-Fi and Bluetooth hardware are
   absent on this machine, so those paths ran against fixtures only.
