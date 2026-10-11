@@ -49,7 +49,7 @@ jobs:
       - name: pytest
         if: runner.os != 'Windows'
         run: HERALD_OS_PYTHON="$(command -v python)" bash scripts/test-bridge.sh
-      - name: pytest (Windows: the plugin's tests; the Linux CLI tests do not apply)
+      - name: "pytest (Windows: the plugin's tests; the Linux CLI tests do not apply)"
         if: runner.os == 'Windows'
         shell: pwsh
         run: |

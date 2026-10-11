@@ -1,0 +1,47 @@
+name: Windows installers
+
+# Builds the NSIS installer and the appx on a Windows runner and keeps them as workflow artifacts.
+# Run it by hand (Actions -> Windows installers -> Run workflow) or push a v* tag. Nothing is published:
+# the files stay attached to the run for a week.
+#
+# Signing is optional. Add the repository secrets CSC_LINK (a base64 .pfx or a URL) and CSC_KEY_PASSWORD
+# and electron-builder signs both packages with that certificate; for the appx, also set
+# build.appx.publisher in apps/desktop/package.json to the certificate's subject. Without them the
+# packages are unsigned (SmartScreen warns on the installer; the appx cannot be installed as is).
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    name: NSIS and appx (x64)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - name: Fetch the pinned Hermes Agent snapshot
+        run: npm run sync-upstream
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - name: Build the installers
+        env:
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+        run: npm run dist:win
+      - uses: actions/upload-artifact@v4
+        with:
+          name: herald-os-windows-x64
+          path: |
+            apps/desktop/release/HeraldOS-*.exe
+            apps/desktop/release/HeraldOS-*.appx
+          if-no-files-found: error
+          retention-days: 7
