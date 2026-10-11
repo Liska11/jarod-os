@@ -66,31 +66,51 @@ backslashes only for a Windows path; `OsControlServer` keeps the Unix socket off
 | Check | Result |
 | --- | --- |
 | Window buttons | `WindowControls` in the menu bar (Windows only): minimize, maximize / restore, close, in the status cluster's style; IPC `windowMinimize` / `windowToggleMaximize` / `windowClose`; `WindowState.maximized`. One real click on "restore" left fullscreen as designed. The other two buttons were not clicked on the real desktop (a media player was in front of the app and a stray click could have hit it); the toggle's decision logic is unit-tested (`window-controls.test.ts`) |
-| Hermes on this machine | Not repairable without changing permissions: `%LOCALAPPDATA%\hermes	ools\*` answers "Access is denied" to this account (also outside my tool sandbox), so the launcher's `python.exe` cannot run. Fixing that means taking ownership / resetting ACLs, which is a security-settings change and was not done; `hermes pm repair` and `hermes update` cannot start without that Python. The official `install.ps1` was read but not run: it prepends its `bin` folder to the user `PATH` |
+| Hermes on this machine | Not repairable without changing permissions: `%LOCALAPPDATA%\hermes\tools\*` answers "Access is denied" to this account (also outside my tool sandbox), so the launcher's `python.exe` cannot run. Fixing that means taking ownership / resetting ACLs, which is a security-settings change and was not done; `hermes pm repair` and `hermes update` cannot start without that Python. The official `install.ps1` was read but not run: it prepends its `bin` folder to the user `PATH` |
 | An active Hermes instead | A second, isolated Hermes 0.21.5 built from the pinned upstream snapshot (`uv venv` + `uv pip install -e .` in a scratch folder, its own `HERMES_HOME`; nothing of the user's changed) |
 | `npm run bootstrap` against it | links the plugin, `plugins.enabled` gets `herald-os-bridge`, the `herald_os` toolset is enabled, `tools.tool_search.enabled: "off"`. Found and fixed: the voice probe's quotes were lost by Windows PowerShell 5.1 |
-| `scriptserify-windows.ps1` (full) | 6 of 6 steps pass: runtime, plugin, gateway status, `tools.list` over the WebSocket (`herald_os`: 13 tools, enabled), tool call through the registry, audit entry |
+| `scripts\verify-windows.ps1` (full) | 6 of 6 steps pass: runtime, plugin, gateway status, `tools.list` over the WebSocket (`herald_os`: 13 tools, enabled), tool call through the registry, audit entry |
 | `npm run dev` with that Hermes | "Hermes is ready"; backend `ready on http://127.0.0.1:<port>`; control server on loopback TCP |
 | UI to bridge to audit | The app attached to a running `hermes serve` (it writes `control.json`); the bridge's `os_ui` tool, called through Hermes's registry, read the real shell's state (153 commands), opened Memory then Overview in the app, and each call left an audit line (`tool=os_ui tier=read decision=allowed ok=true`) |
 | NSIS installer | `/S /D=<dedicated folder>`: installed, Start menu and desktop shortcuts and an uninstall entry created, launched against the isolated Hermes (backend ready), `Uninstall ... /S` removed the folder, the entry and both shortcuts |
-| Hermes's own ripgrep | confirmed: it ships `tools
-ipgrep-15.2.0-win32-x64`; the bridge and the shell now look there too |
+| Hermes's own ripgrep | confirmed: it ships `tools\ripgrep-15.2.0-win32-x64`; the bridge and the shell now look there too |
+
+
+### Third pass (Hermes repaired by its owner, then the improvements list)
+
+| Check | Result |
+| --- | --- |
+| Hermes | The owner ran `hermes pm repair` and `hermes update` from an administrator prompt (v0.21.6) and reset the permissions of `%LOCALAPPDATA%\hermes\tools` with `takeown` and `icacls`. `hermes --version` then answered from a normal terminal |
+| `npm run bootstrap`, `scripts\verify-windows.ps1`, `npm run dev` on that real Hermes | 6 of 6 steps pass (13 `herald_os` tools, audit entry for `system_info`); "Hermes is ready" from the managed install. The owner's gateway process was not touched |
+| Window buttons, real window | Driven over the Chromium debugging protocol with trusted mouse events inside the window (nothing on the desktop): maximize set `maximized` and `IsZoomed`, the button became "Restore"; restore undid it; minimize set `IsIconic` and the window was brought back; close quit the app and its `hermes serve`. The buttons and their group are `no-drag` |
+| `software.local_model` | Fixed: the registry, plugin manifests and menu extensions share one id pattern (`shared/command-id.ts`) that allows `_` |
+| Sound quick panel | Lists the active outputs and inputs (default first, names from the MMDevices registry) and sets volume / mute per endpoint through Core Audio COM. Checked on this machine: three outputs and one input listed, a non-default output moved 60 to 61 and back to 60. Switching the default device stays with Windows Settings |
+| Screenshots and recordings | Whole screen: a valid 3840x2160 PNG from the running app. Recording: a 3.7 s H.264 MP4 through Hermes's ffmpeg, decoded without error, stopped with `q`. Region / window: the Snipping Tool is launched (`SnippingTool.exe` on this build) and its result is read back from the clipboard; checked with a stand-in selection (file saved, previous clipboard image restored), not with a hand-drawn one |
+| appx | Tile images generated from `build/icon.png` by `scripts/make-appx-assets.ps1`; the rebuilt appx carries them and the `#07080a` background. The `.exe`'s embedded icon was checked: it is the Herald OS icon, not Electron's |
+| `open_settings`, `sleep_display` | `open_settings("sound")` started Windows Settings; the display was put to sleep for two seconds and woken. `lock_screen` was **not** called (it would lock the session); only the `LockWorkStation` symbol was resolved |
+| `netsh wlan` in other languages | `parse_wlan` reads the fields by position when a label is unknown; German and Italian samples pass |
+| `npm audit` | 12 findings (2 critical), all in build and dev tooling (`concurrently`, `electron-builder` and its dependencies). `npm audit --omit=dev` reports 0, so nothing in the packaged app. The lockfile was not changed |
+| CI | A step name with an unquoted `:` made `ci.yml` invalid YAML; fixed, and every workflow now parses. `windows-installers.yml` (manual or `v*` tag) builds the installers as artifacts. **Neither has run**: `origin` is `PAVADI234/herald-os`, there is no fork of the owner's, and nothing was pushed |
+| Counts | `npm run typecheck` passes; Vitest 68 files, 348 passed, 2 skipped; pytest 185 passed, 9 skipped |
 
 ### Still not validated, and why
 
-- **appx installation** (needs a signing certificate whose subject matches `CN=HeraldOS`), the tile
-  images (electron-builder's defaults are used; real ones belong in `apps/desktop/build/appx/`), and
-  the executable's embedded icon.
-- **The maximize and close buttons on the real desktop** (see above) and the window's behaviour on
-  Windows 10.
+- **appx installation** (needs a signing certificate whose subject matches `CN=HeraldOS`). Signing in
+  general: no certificate was available.
+- **A region drawn by hand in the Snipping Tool**, and whether Windows 10's Snip & Sketch leaves the
+  clipboard the same way (the code watches for `ScreenClippingHost.exe` and `SnippingTool.exe`).
 - **macOS.** `dist:mac` and the macOS code paths cannot be built or run on Windows. The macOS-specific
   tests (`darwin.test.ts`, the Darwin parsers) run and pass here. The WSL distribution on this machine
   is broken (its virtual disk is missing), so Linux could not be run either.
-- **Windows 10 and non-French Windows.** Locale-dependent output (`netsh wlan`) is parsed with fixtures
-  in French and English; Wi-Fi and Bluetooth hardware are absent on this machine, so those paths ran
-  against fixtures only.
-- **Not exercised on purpose:** `lock_screen`, `sleep_display`, `open_settings`, force-killing real
-  processes, the toast's on-screen appearance.
+- **Windows 10 and non-French Windows.** No such machine here. Locale-dependent output (`netsh wlan`)
+  is parsed with fixtures in French, English, German and Italian; Wi-Fi and Bluetooth hardware are
+  absent on this machine, so those paths ran against fixtures only.
+- **Display brightness and the default audio device** from the quick panels (no laptop panel to test
+  the first; the second needs an undocumented COM interface).
+- **Voice extras** (`openwakeword`, `edge-tts`): not installed. Hermes installs the wake engine on first
+  use, and `edge-tts` sends text to an online Microsoft service, so that is the owner's call.
+- **Not exercised on purpose:** `lock_screen`, force-killing real processes, the toast's on-screen
+  appearance.
 
 ## Assumptions to confirm
 
@@ -108,8 +128,8 @@ ipgrep-15.2.0-win32-x64`; the bridge and the shell now look there too |
 ## Found on the way (not caused by the port)
 
 - `src/commands/software.ts` defines the command id `software.local_model`, which `defineCommands`'
-  own regex rejects (`_`), so command registration logs an error at startup on every platform. Not
-  changed here.
+  own regex rejected (`_`), so the commands of that group after it were never registered, on every
+  platform. Fixed in the third pass (see above).
 - `npm run` re-exports a user-level `allow-scripts` npmrc setting as an environment variable that a
   nested `npm install` rejects; `bootstrap.ps1` clears it for its own call. `bootstrap.sh` has the same
   exposure.

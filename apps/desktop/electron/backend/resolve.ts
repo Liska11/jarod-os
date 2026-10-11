@@ -30,7 +30,7 @@ function checkoutRuntime(root: string, kind: BackendRuntime['kind'], label: stri
 /** Where a GUI app should also look for `hermes`: the usual user bin dirs it does not inherit. */
 export function extraHermesDirs(platform: NodeJS.Platform = process.platform, home: string = os.homedir(), env: NodeJS.ProcessEnv = process.env): string[] {
   if (platform === 'win32') {
-    // install.ps1 puts the launcher in <HERMES_HOME>in and adds it to the user PATH, which an
+    // install.ps1 puts the launcher in <HERMES_HOME>\bin and adds it to the user PATH, which an
     // Explorer-started app only sees after the next sign-in.
     return [path.win32.join(env.HERMES_HOME?.trim() || path.win32.join(env.LOCALAPPDATA ?? path.win32.join(home, 'AppData', 'Local'), 'hermes'), 'bin')]
   }
