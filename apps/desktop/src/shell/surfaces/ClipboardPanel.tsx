@@ -117,7 +117,7 @@ export function ClipboardPanel({ onClose }: { onClose: () => void }) {
         </div>
       ) : entries.length === 0 ? (
         <div className="p-4">
-          <EmptyGlass icon={<IconClipboard />} title="Clipboard history is empty" description={error ?? 'Copies you make on Herald OS Linux are collected by cliphist and listed here.'} />
+          <EmptyGlass icon={<IconClipboard />} title="Clipboard history is empty" description={error ?? 'Copies you make on Jarod-OS Linux are collected by cliphist and listed here.'} />
         </div>
       ) : (
         <>

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Run a command in the Herald OS VM (or open a shell). Finds the VM whichever runner started it:
+# Run a command in the Jarod-OS VM (or open a shell). Finds the VM whichever runner started it:
 # vfkit (NAT address) or QEMU (127.0.0.1:2222). Override with HERALD_VM_HOST / HERALD_VM_PORT.
 #
 #   bash linux/dev/vm-ssh.sh                      # interactive shell

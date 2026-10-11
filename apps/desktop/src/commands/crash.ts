@@ -9,7 +9,7 @@ export const crashCommands: readonly OsCommand[] = [
   {
     id: 'crash.list',
     title: 'Recent crashes',
-    description: 'List the programs that crashed since Herald OS started.',
+    description: 'List the programs that crashed since Jarod-OS started.',
     tier: 'read',
     args: [],
     phrases: ['what crashed', 'show recent crashes', 'list crashes'],
@@ -17,7 +17,7 @@ export const crashCommands: readonly OsCommand[] = [
       const reports = await loadCrashes()
 
       if (reports.length === 0) {
-        return ok('Nothing has crashed since Herald OS started', { spoken: 'Nothing has crashed.' })
+        return ok('Nothing has crashed since Jarod-OS started', { spoken: 'Nothing has crashed.' })
       }
 
       return ok(`${reports.length} crash${reports.length === 1 ? '' : 'es'}: ${[...new Set(reports.map(report => report.app))].slice(0, 5).join(', ')}`, {
@@ -29,7 +29,7 @@ export const crashCommands: readonly OsCommand[] = [
     id: 'crash.diagnose',
     title: 'Diagnose a crash',
     description:
-      'Start a chat where Hermes reads a crash report and explains what went wrong: the newest crash, one named by id, program or pid, or one Herald OS did not see (pass pid or report, with app).',
+      'Start a chat where Hermes reads a crash report and explains what went wrong: the newest crash, one named by id, program or pid, or one Jarod-OS did not see (pass pid or report, with app).',
     tier: 'act',
     args: [
       { name: 'crash', type: 'string', description: 'Crash id, program name or pid' },
@@ -44,7 +44,7 @@ export const crashCommands: readonly OsCommand[] = [
       const when = at ? Date.parse(String(at)) : Number.NaN
       const reports = $crashes.get().length > 0 ? $crashes.get() : await loadCrashes()
       const known = findCrash(reports, crash ? String(crash) : pid !== undefined ? String(pid) : undefined)
-      // A crash from before Herald OS started (`herald-os crash diagnose <pid>`, or Hermes naming a report).
+      // A crash from before Jarod-OS started (`herald-os crash diagnose <pid>`, or Hermes naming a report).
       const named =
         !known && (pid !== undefined || reportPath)
           ? {
@@ -60,7 +60,7 @@ export const crashCommands: readonly OsCommand[] = [
       const report = known ?? named
 
       if (!report) {
-        return fail(crash ? `No recent crash matches "${String(crash)}".` : 'Nothing has crashed since Herald OS started.')
+        return fail(crash ? `No recent crash matches "${String(crash)}".` : 'Nothing has crashed since Jarod-OS started.')
       }
 
       const sessionId = await diagnoseCrash(report)
@@ -83,7 +83,7 @@ export const crashCommands: readonly OsCommand[] = [
       const mute = muted !== false
       await setCrashMuted(name, mute)
 
-      return ok(mute ? `Crashes from ${name} stay quiet now` : `Herald OS offers help again when ${name} crashes`, { highlight: { kind: 'setting', id: 'notifications' } })
+      return ok(mute ? `Crashes from ${name} stay quiet now` : `Jarod-OS offers help again when ${name} crashes`, { highlight: { kind: 'setting', id: 'notifications' } })
     }
   },
   {

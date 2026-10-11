@@ -1,4 +1,4 @@
-"""Client for the Herald OS control socket: the agent's way to run commands in the shell's UI.
+"""Client for the Jarod-OS control socket: the agent's way to run commands in the shell's UI.
 
 The Electron shell (macOS and Windows desktop, Linux panels modes) serves a JSON-lines socket and
 hands the backend its endpoint and a per-launch token through ``HERALD_OS_CONTROL_SOCKET`` and
@@ -56,9 +56,9 @@ def control_endpoint() -> tuple[str, str]:
     if not path or not token:
         path, token = shared_endpoint()
     if not path or not token:
-        raise ShellUnavailable("Herald OS is not running this session (no control socket); UI commands need the shell.")
+        raise ShellUnavailable("Jarod-OS is not running this session (no control socket); UI commands need the shell.")
     if parse_tcp_endpoint(path) is None and not os.path.exists(path):
-        raise ShellUnavailable(f"The Herald OS shell is not listening ({path}); is it running?")
+        raise ShellUnavailable(f"The Jarod-OS shell is not listening ({path}); is it running?")
     return path, token
 
 
@@ -68,7 +68,7 @@ def request(payload: dict[str, Any], *, timeout: float = DEFAULT_TIMEOUT) -> dic
     body = json.dumps({**payload, "token": token}) + "\n"
     tcp = parse_tcp_endpoint(path)
     if tcp is None and not hasattr(socket, "AF_UNIX"):
-        raise ShellUnavailable(f"This Python cannot reach the Herald OS control socket {path}.")
+        raise ShellUnavailable(f"This Python cannot reach the Jarod-OS control socket {path}.")
     sock = socket.socket(socket.AF_INET if tcp else socket.AF_UNIX, socket.SOCK_STREAM)
     sock.settimeout(timeout)
     try:
@@ -81,17 +81,17 @@ def request(payload: dict[str, Any], *, timeout: float = DEFAULT_TIMEOUT) -> dic
                 break
             chunks += part
     except (OSError, socket.timeout) as exc:
-        raise RuntimeError(f"Herald OS did not answer: {exc}") from exc
+        raise RuntimeError(f"Jarod-OS did not answer: {exc}") from exc
     finally:
         sock.close()
     if not chunks.strip():
-        raise RuntimeError("Herald OS returned an empty reply")
+        raise RuntimeError("Jarod-OS returned an empty reply")
     try:
         reply = json.loads(chunks.decode("utf-8"))
     except json.JSONDecodeError as exc:
-        raise RuntimeError(f"Herald OS returned malformed JSON: {exc}") from exc
+        raise RuntimeError(f"Jarod-OS returned malformed JSON: {exc}") from exc
     if not isinstance(reply, dict):
-        raise RuntimeError("Herald OS returned an unexpected reply")
+        raise RuntimeError("Jarod-OS returned an unexpected reply")
     return reply
 
 

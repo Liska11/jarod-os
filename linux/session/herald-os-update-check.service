@@ -1,5 +1,5 @@
 [Unit]
-Description=Herald OS: check for updates
+Description=Jarod-OS: check for updates
 
 [Service]
 Type=oneshot

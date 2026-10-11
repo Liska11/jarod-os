@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# `herald-os reset` on the Herald OS image (as root, through sudo): erase the session user's account
+# `herald-os reset` on the Jarod-OS image (as root, through sudo): erase the session user's account
 # and files and run first-boot setup again. The system image is untouched. Two steps, because a
 # logged-in account cannot be deleted from under its own session:
 #

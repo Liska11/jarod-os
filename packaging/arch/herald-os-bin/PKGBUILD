@@ -1,6 +1,6 @@
 # Maintainer: Luke The Dev <252071647+iamlukethedev@users.noreply.github.com>
 #
-# Herald OS from the release tarball. Not on the AUR yet: build it from the repository with makepkg -si.
+# Jarod-OS from the release tarball. Not on the AUR yet: build it from the repository with makepkg -si.
 # A local tarball builds too: HERALD_OS_TARBALL_URL=file:///path/herald-os-<v>-linux-x64.tar.gz makepkg -si --skipchecksums
 
 pkgname=herald-os-bin
@@ -13,7 +13,7 @@ url='https://github.com/iamlukethedev/Herald-OS'
 license=('MIT')
 depends=('gtk3' 'nss' 'alsa-lib' 'libsecret' 'libnotify' 'python' 'curl' 'wl-clipboard' 'wtype' 'grim' 'slurp')
 optdepends=(
-  'niri: the full Herald OS session (menu bar, dock, tiling)'
+  'niri: the full Jarod-OS session (menu bar, dock, tiling)'
   'greetd: a login screen that starts the session'
   'swaybg: the wallpaper in the session'
   'swaylock: locking the session'

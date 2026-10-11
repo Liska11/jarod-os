@@ -13,7 +13,7 @@ export function CameraBubble() {
     void (async () => {
       try {
         if (!(await window.heraldOS.capture.requestCamera())) {
-          throw new Error('Herald OS is not allowed to use the camera (System Settings > Privacy & Security > Camera).')
+          throw new Error('Jarod-OS is not allowed to use the camera (System Settings > Privacy & Security > Camera).')
         }
 
         stream = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 480 }, height: { ideal: 480 }, facingMode: 'user' }, audio: false })

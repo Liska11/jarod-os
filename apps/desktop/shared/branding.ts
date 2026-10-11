@@ -1,5 +1,5 @@
 /*
- * Branding: a logo and a name for About, and a lock-screen picture (Herald OS Linux). Kept in
+ * Branding: a logo and a name for About, and a lock-screen picture (Jarod-OS Linux). Kept in
  * ~/.config/herald-os/branding/ by main, which copies the images there; pure and tested.
  */
 

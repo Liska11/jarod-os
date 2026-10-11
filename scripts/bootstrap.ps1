@@ -1,4 +1,4 @@
-# One-shot developer bootstrap for Herald OS on Windows (twin of bootstrap.sh). Safe to re-run.
+# One-shot developer bootstrap for Jarod-OS on Windows (twin of bootstrap.sh). Safe to re-run.
 #   1. Fetch the pinned upstream snapshot (types for the gateway wire).
 #   2. Install Node workspaces.
 #   3. Link the system-bridge plugin into the user's Hermes plugins directory (a junction: no
@@ -157,4 +157,4 @@ for n, p in (("openwakeword", "wake word"), ("faster_whisper", "local STT"), ("e
     }
 }
 
-Write-Step 'Done. Start Herald OS with: npm run dev'
+Write-Step 'Done. Start Jarod-OS with: npm run dev'

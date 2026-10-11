@@ -4,7 +4,7 @@ import path from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { bridgeLinkPlan, ensureBridgePlugin } from './bridge-plugin.ts'
 
-const bundled = '/Applications/Herald OS.app/Contents/Resources/herald-os-bridge'
+const bundled = '/Applications/Jarod-OS.app/Contents/Resources/herald-os-bridge'
 
 /** A stand-in for the `hermes` command: node, logging its arguments to `calls` and exiting with `code`. */
 function fakeHermes(calls: string, code = 0): string[] {
@@ -22,9 +22,11 @@ describe('bridgeLinkPlan', () => {
 
   it('moves a link that leads nowhere or into another copy of the app', () => {
     expect(bridgeLinkPlan({ kind: 'link', target: '/Users/sam/old/plugins/herald-os-bridge', exists: false }, bundled)).toBe('replace')
-    const translocated = '/private/var/folders/x/AppTranslocation/1/d/Herald OS.app/Contents/Resources/herald-os-bridge'
+    const translocated = '/private/var/folders/x/AppTranslocation/1/d/Jarod-OS.app/Contents/Resources/herald-os-bridge'
     expect(bridgeLinkPlan({ kind: 'link', target: translocated, exists: true }, bundled)).toBe('replace')
     // Windows: the per-user install folder of an earlier or moved copy.
+    expect(bridgeLinkPlan({ kind: 'link', target: 'C:\\Users\\sam\\AppData\\Local\\Programs\\Jarod-OS\\resources\\herald-os-bridge', exists: true }, bundled)).toBe('replace')
+    // …and the folder the app had before it was renamed (an install of Herald OS, or of this app under its old name).
     expect(bridgeLinkPlan({ kind: 'link', target: 'C:\\Users\\sam\\AppData\\Local\\Programs\\Herald OS\\resources\\herald-os-bridge', exists: true }, bundled)).toBe('replace')
   })
 })
@@ -40,7 +42,7 @@ describe('ensureBridgePlugin', () => {
 
   it("links the app's copy into the Hermes home and enables it once", async () => {
     root = fs.mkdtempSync(path.join(os.tmpdir(), 'bridge-'))
-    const resources = path.join(root, 'Herald OS.app', 'Contents', 'Resources')
+    const resources = path.join(root, 'Jarod-OS.app', 'Contents', 'Resources')
     fs.mkdirSync(path.join(resources, 'herald-os-bridge'), { recursive: true })
     fs.writeFileSync(path.join(resources, 'herald-os-bridge', 'plugin.yaml'), 'name: herald-os-bridge\n')
     process.env.HERMES_HOME = path.join(root, 'hermes')
@@ -64,7 +66,7 @@ describe('ensureBridgePlugin', () => {
 
   it('tries the enabling again on the next start when Hermes failed', async () => {
     root = fs.mkdtempSync(path.join(os.tmpdir(), 'bridge-'))
-    const resources = path.join(root, 'Herald OS.app', 'Contents', 'Resources')
+    const resources = path.join(root, 'Jarod-OS.app', 'Contents', 'Resources')
     fs.mkdirSync(path.join(resources, 'herald-os-bridge'), { recursive: true })
     fs.writeFileSync(path.join(resources, 'herald-os-bridge', 'plugin.yaml'), 'name: herald-os-bridge\n')
     process.env.HERMES_HOME = path.join(root, 'hermes')

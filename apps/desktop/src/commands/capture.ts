@@ -8,7 +8,7 @@ import { $windows, closeWindow, openApp } from '../store/windows.ts'
 
 /* The capture suite: screenshots, recording, the colour picker, QR codes, text, markup, the camera. */
 
-/** A Herald OS Linux tool run through the CLI (it draws its own selection where it needs one). */
+/** A Jarod-OS Linux tool run through the CLI (it draws its own selection where it needs one). */
 async function linuxTool(argv: string[], title: string) {
   const outcome = await runHeraldOs(argv)
 
@@ -76,7 +76,7 @@ export const captureCommands: readonly OsCommand[] = [
     tier: 'act',
     args: [
       { name: 'action', type: 'string', description: 'toggle, start or stop', enum: ['toggle', 'start', 'stop'] },
-      { name: 'region', type: 'boolean', description: 'Select a region to record (Herald OS Linux)' },
+      { name: 'region', type: 'boolean', description: 'Select a region to record (Jarod-OS Linux)' },
       { name: 'audio', type: 'boolean', description: 'Record the microphone too' }
     ],
     phrases: [{ phrase: 'start recording the screen', args: { action: 'start' } }, { phrase: 'stop recording', args: { action: 'stop' } }, { phrase: 'record my screen', args: { action: 'start' } }],
@@ -158,7 +158,7 @@ export const captureCommands: readonly OsCommand[] = [
   {
     id: 'capture.transcode',
     title: 'Convert a recording',
-    description: 'Turn a recording into a GIF, a smaller MP4 or a WebM (Herald OS Linux, with ffmpeg).',
+    description: 'Turn a recording into a GIF, a smaller MP4 or a WebM (Jarod-OS Linux, with ffmpeg).',
     tier: 'act',
     args: [
       { name: 'file', type: 'string', description: 'The recording', required: true },
@@ -169,7 +169,7 @@ export const captureCommands: readonly OsCommand[] = [
   {
     id: 'capture.share',
     title: 'Share a file',
-    description: 'Copy a file to the clipboard and open LocalSend when it is installed (Herald OS Linux).',
+    description: 'Copy a file to the clipboard and open LocalSend when it is installed (Jarod-OS Linux).',
     tier: 'act',
     args: [{ name: 'file', type: 'string', description: 'The file', required: true }],
     run: ({ file }) => linuxTool(['capture', 'share', String(file)], 'Share')

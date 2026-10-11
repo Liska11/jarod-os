@@ -1,6 +1,6 @@
 # Launch checklist
 
-What has to happen, in order, to take Herald OS public. Nothing in this list is automated: every
+What has to happen, in order, to take Jarod-OS public. Nothing in this list is automated: every
 step is a deliberate decision.
 
 ## Before the repository goes public

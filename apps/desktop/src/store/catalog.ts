@@ -7,7 +7,7 @@ import { gatewayRequest } from './gateway.ts'
 import { notify } from './notifications.ts'
 
 /*
- * The install catalog (linux/catalog/*.json): on Herald OS Linux everything in it, on macOS the
+ * The install catalog (linux/catalog/*.json): on Jarod-OS Linux everything in it, on macOS the
  * coding agents and local model apps that install there. Main does the installing; this keeps the
  * listing and which entries are busy.
  */
@@ -70,7 +70,7 @@ export async function runCatalog(id: string, action: 'install' | 'remove'): Prom
 
     if (result.ok) {
       const opened = entry?.method === 'link' && action === 'install'
-      notify({ title: opened ? `${label}: download page open` : `${label} ${action === 'install' ? 'installed' : 'removed'}`, body: opened ? 'Install it from there; Herald OS sees it when it is done.' : result.output.split('\n').pop() || undefined, level: 'success' })
+      notify({ title: opened ? `${label}: download page open` : `${label} ${action === 'install' ? 'installed' : 'removed'}`, body: opened ? 'Install it from there; Jarod-OS sees it when it is done.' : result.output.split('\n').pop() || undefined, level: 'success' })
     } else {
       notify({ title: `Could not ${action} ${label}`, body: result.output || undefined, level: 'error' })
     }

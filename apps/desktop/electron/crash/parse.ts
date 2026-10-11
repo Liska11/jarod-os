@@ -10,7 +10,7 @@ const CRASH_BUG_TYPES = new Set(['309', '109'])
 const NOT_CRASHES = /^(JetsamEvent|Analytics|ExcUserFault|stacks|WakeupsResource|CPUResource|DiskWrites|shutdown_stall)/i
 
 /** Our own processes: a crashed Herald window reloads by itself, and reporting it inside Herald is noise. */
-const OURSELVES = /^(Herald OS|Electron)\b/i
+const OURSELVES = /^(Jarod-OS|Electron)\b/i
 
 interface IpsHeader {
   app_name?: string
@@ -122,7 +122,7 @@ export function parseCoredumpEntry(line: string, uid: number | null): CrashRepor
 
 export interface CrashFilter {
   muted: readonly string[]
-  /** Processes Herald OS runs itself (the Hermes backend), which it restarts on its own. */
+  /** Processes Jarod-OS runs itself (the Hermes backend), which it restarts on its own. */
   ownPids: readonly number[]
   /** When each program last raised a notification, epoch ms. */
   lastNotified: ReadonlyMap<string, number>
@@ -132,7 +132,7 @@ export interface CrashFilter {
 /** A program that keeps crashing gets one offer per this window, not one per crash. */
 export const CRASH_QUIET_MS = 10 * 60_000
 
-/** Herald OS itself or a process it runs (and restarts on its own). */
+/** Jarod-OS itself or a process it runs (and restarts on its own). */
 export function isOwnCrash(report: CrashReport, ownPids: readonly number[]): boolean {
   return OURSELVES.test(report.app) || (report.pid !== undefined && ownPids.includes(report.pid))
 }

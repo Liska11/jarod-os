@@ -54,10 +54,10 @@ async function open(): Promise<void> {
       const granted = await window.heraldOS.voice.requestMicrophone().catch(() => 'unknown' as const)
 
       if (granted === 'denied' || granted === 'restricted') {
-        throw new MicrophoneUnavailableError('denied', 'Microphone access was denied. Allow Herald OS in System Settings > Privacy & Security > Microphone.')
+        throw new MicrophoneUnavailableError('denied', 'Microphone access was denied. Allow Jarod-OS in System Settings > Privacy & Security > Microphone.')
       }
     } else if (permission === 'denied' || permission === 'restricted') {
-      throw new MicrophoneUnavailableError('denied', 'Microphone access is denied. Allow Herald OS in System Settings > Privacy & Security > Microphone.')
+      throw new MicrophoneUnavailableError('denied', 'Microphone access is denied. Allow Jarod-OS in System Settings > Privacy & Security > Microphone.')
     }
 
     if (!navigator.mediaDevices?.getUserMedia) {

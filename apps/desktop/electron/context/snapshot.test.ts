@@ -35,7 +35,7 @@ describe('appNameFromCommand', () => {
     expect(appNameFromCommand('/System/Applications/Preview.app/Contents/MacOS/Preview')).toBe('Preview')
   })
 
-  it('skips helpers, system services, plain binaries and Herald OS itself', () => {
+  it('skips helpers, system services, plain binaries and Jarod-OS itself', () => {
     expect(appNameFromCommand('/Applications/Google Chrome.app/Contents/Frameworks/Google Chrome Framework.framework/Helpers/Google Chrome Helper.app/Contents/MacOS/Google Chrome Helper')).toBeNull()
     expect(appNameFromCommand('/System/Library/CoreServices/Dock.app/Contents/MacOS/Dock')).toBeNull()
     expect(appNameFromCommand('/usr/sbin/cfprefsd')).toBeNull()

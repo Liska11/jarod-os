@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Boot Herald OS Linux with Apple's Virtualization framework via vfkit: GPU-accelerated virtio-gpu
+# Boot Jarod-OS Linux with Apple's Virtualization framework via vfkit: GPU-accelerated virtio-gpu
 # (what niri needs), virtio-fs share, NAT networking, EFI. Same disk lineage as run-qemu.sh (the
 # qcow2 is converted to a raw image on first use; both runners must not use the disk at once).
 #
 #   bash linux/vm/run-vf.sh                 # window on the Mac, SSH via the VM's NAT address
-#   bash linux/vm/run-vf.sh --image herald-os-<v>-aarch64.qcow2   # a built Herald OS image instead
+#   bash linux/vm/run-vf.sh --image herald-os-<v>-aarch64.qcow2   # a built Jarod-OS image instead
 #   bash linux/vm/run-vf.sh stop|status|console|ip|ssh
 #
 # Guest resolution: GUEST_W x GUEST_H (default 2048x1280). vfkit is downloaded to
@@ -28,7 +28,7 @@ MEM="${MEM:-8192}"
 GUEST_W="${GUEST_W:-2048}"
 GUEST_H="${GUEST_H:-1280}"
 KEY="$BUILD/id_hermes"
-# --image: a Herald OS disk from bootc-image-builder; it sets itself up on the first boot (no cloud-init).
+# --image: a Jarod-OS disk from bootc-image-builder; it sets itself up on the first boot (no cloud-init).
 IMAGE=""
 if [[ "${1:-}" == "--image" ]]; then
   IMAGE="$(cd "$(dirname "${2:?--image needs a qcow2}")" && pwd)/$(basename "$2")"

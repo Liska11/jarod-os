@@ -1,4 +1,4 @@
-# Herald OS omakase: web apps, installed as their own windows. Format: Name | URL | icon URL (optional).
+# Jarod-OS omakase: web apps, installed as their own windows. Format: Name | URL | icon URL (optional).
 HEY | https://app.hey.com | https://app.hey.com/apple-touch-icon.png
 Google Calendar | https://calendar.google.com | https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/google-calendar.png
 Google Messages | https://messages.google.com/web | https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/google-messages.png

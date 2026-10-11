@@ -66,10 +66,10 @@ import { openSurface, relayToMain } from '../../store/shell.ts'
 import { openApp, showPage } from '../../store/windows.ts'
 
 /*
- * The Herald OS control menu (Mod+M or Mod+Alt+Space), modelled on Omarchy's: a tree of groups whose leaves
+ * The Jarod-OS control menu (Mod+M or Mod+Alt+Space), modelled on Omarchy's: a tree of groups whose leaves
  * run the `herald-os` CLI, a power action, or a shell navigation. Leaves that need input show an
  * inline form step; destructive power actions show an inline confirm step. Everything degrades to
- * "Available on Herald OS Linux" where the CLI does not exist.
+ * "Available on Jarod-OS Linux" where the CLI does not exist.
  */
 
 interface FormField {
@@ -142,7 +142,7 @@ export async function runPower(action: PowerAction): Promise<string | null> {
   const bridge = window.heraldOS?.shell?.power
   const platform = $env.get()?.platform
 
-  // systemctl / niri / herald-os only exist on Herald OS Linux; elsewhere say so instead of spawning nothing.
+  // systemctl / niri / herald-os only exist on Jarod-OS Linux; elsewhere say so instead of spawning nothing.
   if (typeof bridge !== 'function' || (platform && platform !== 'linux')) {
     return CLI_UNAVAILABLE_MESSAGE
   }
@@ -217,13 +217,13 @@ function buildMenu(actions: { applications: () => void; close: () => void }): Me
     {
       id: 'update',
       label: 'Update',
-      hint: 'Herald OS',
+      hint: 'Jarod-OS',
       icon: IconRefresh,
       children: [
-        { id: 'update-herald-os', label: 'Herald OS', hint: 'The shell, system packages, apps and Hermes', icon: IconRefresh, leaf: { kind: 'cli', argv: ['update'] } },
+        { id: 'update-herald-os', label: 'Jarod-OS', hint: 'The shell, system packages, apps and Hermes', icon: IconRefresh, leaf: { kind: 'cli', argv: ['update'] } },
         { id: 'update-firmware-check', label: 'Firmware', hint: 'Check the BIOS, docks and drives (fwupd)', icon: IconCpu, leaf: { kind: 'cli', argv: ['firmware', 'check'] } },
         { id: 'update-firmware', label: 'Install firmware updates', hint: 'Some finish on the next restart', icon: IconCpu, leaf: { kind: 'cli', argv: ['firmware', 'update'] } },
-        { id: 'update-rollback', label: 'Go back to the previous version', hint: 'The Herald OS image; it applies on restart', icon: IconHistory, leaf: { kind: 'cli', argv: ['rollback'] } }
+        { id: 'update-rollback', label: 'Go back to the previous version', hint: 'The Jarod-OS image; it applies on restart', icon: IconHistory, leaf: { kind: 'cli', argv: ['rollback'] } }
       ]
     },
     {
@@ -692,7 +692,7 @@ export function ControlMenu({ onClose, onApplications, initialItem }: ControlMen
           <HermesAvatar size={22} rounded={6} />
         )}
         <span className="flex min-w-0 items-center gap-1.5 text-[14px] font-semibold">
-          <span className={cn(title.length > 0 && 'text-fg-3')}>Herald OS</span>
+          <span className={cn(title.length > 0 && 'text-fg-3')}>Jarod-OS</span>
           {title.map(label => (
             <span key={label} className="flex items-center gap-1.5">
               <IconChevronRight size={13} className="text-fg-4" />

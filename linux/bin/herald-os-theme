@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Herald OS theme engine.
+"""Jarod-OS theme engine.
 
 One theme definition (linux/themes/<name>/theme.json) recolours the whole system at once: the
 shell (theme + accent preference), niri (borders, backdrop), swaylock, GTK 3/4 apps, the foot
@@ -202,7 +202,7 @@ HERMES_SKIN = "herald-os"
 def render_hermes_skin(theme: dict) -> str:
     """Hermes's own CLI and TUI skin in the theme's colours (the same mapping the shell writes)."""
     c = theme["colors"]
-    label = str(theme.get("label") or theme.get("name") or "Herald OS").replace('"', "'")
+    label = str(theme.get("label") or theme.get("name") or "Jarod-OS").replace('"', "'")
     colors = {
         "banner_border": c["accent"], "banner_title": c["accent_strong"], "banner_accent": c["accent"],
         "banner_dim": c["fg_dim"], "banner_text": c["fg"], "ui_accent": c["accent"], "ui_label": c["accent_strong"],
@@ -214,8 +214,8 @@ def render_hermes_skin(theme: dict) -> str:
         "completion_menu_current_bg": c["surface"], "selection_bg": c["surface"], "shell_dollar": c["accent"],
         "voice_status_bg": c["bg2"],
     }
-    lines = [f'# Written by Herald OS from its "{label}" theme; Herald OS rewrites it when the theme changes.',
-             f"name: {HERMES_SKIN}", f'description: "Herald OS: {label}"', "colors:"]
+    lines = [f'# Written by Jarod-OS from its "{label}" theme; Jarod-OS rewrites it when the theme changes.',
+             f"name: {HERMES_SKIN}", f'description: "Jarod-OS: {label}"', "colors:"]
     lines += [f'  {key}: "{value}"' for key, value in colors.items()]
     return "\n".join(lines) + "\n"
 

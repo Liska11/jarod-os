@@ -1,7 +1,7 @@
 name: Installer test
 
 # Installs a release's x86_64 ISO into a virtual machine (KVM) the way a person would, minus the
-# questions: the ISO's own kickstart (the Herald OS image inside it) plus an unattended disk layout.
+# questions: the ISO's own kickstart (the Jarod-OS image inside it) plus an unattended disk layout.
 # Then it boots the installed system and screenshots it as it comes up, for a look at what it shows.
 
 on:
@@ -89,7 +89,7 @@ jobs:
             echo "--- $minute min"; tail -n 5 boot.log
           done
           echo "quit" | socat - UNIX-CONNECT:monitor.sock >/dev/null || true
-          grep -E 'herald-os|Herald OS|Reached target|Failed' boot.log | tail -n 60 || true
+          grep -E 'herald-os|Jarod-OS|Reached target|Failed' boot.log | tail -n 60 || true
       - uses: actions/upload-artifact@v4
         if: always()
         with:

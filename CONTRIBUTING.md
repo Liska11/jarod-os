@@ -1,11 +1,11 @@
-# Contributing to Herald OS
+# Contributing to Jarod-OS
 
 Thanks for helping. This page covers getting a working setup, the checks a change must pass, and
 the conventions the code follows.
 
 ## Set up
 
-You need macOS 13 or later on Apple Silicon (or Herald OS Linux, see
+You need macOS 13 or later on Apple Silicon (or Jarod-OS Linux, see
 [linux/README.md](linux/README.md)), Node 22.12 or later, and Hermes Agent installed and signed in.
 Then:
 
@@ -25,7 +25,7 @@ The [README](README.md) walks through each step and the usual problems.
 | `apps/desktop` | The shell: Electron main, preload, and the React renderer |
 | `packages/hermes-client` | Typed client for the Hermes gateway (JSON-RPC over WebSocket, REST) |
 | `plugins/herald-os-bridge` | Hermes plugin with the desktop tools, permission tiers and audit log |
-| `linux` | Herald OS Linux: session, compositor config, provisioning, VM tooling |
+| `linux` | Jarod-OS Linux: session, compositor config, provisioning, VM tooling |
 | `scripts` | Bootstrap, upstream sync, bridge tests, secret scan |
 | `upstream` | The pinned Hermes Agent version the shell is built against |
 | `docs` | Architecture, decisions, the bridge, voice, Linux |
@@ -60,7 +60,7 @@ secrets. For UI changes, run the shell and add a screenshot to the pull request.
   reach it.
 - The renderer never touches Node or spawns processes. Native work goes through a `HostPlatform`
   method, an IPC handler and the preload bridge.
-- Herald OS does not patch Hermes Agent. When the shell needs something upstream lacks, use its
+- Jarod-OS does not patch Hermes Agent. When the shell needs something upstream lacks, use its
   public surfaces (gateway, REST, plugins, config) or propose the change upstream.
 - Decisions with lasting consequences get an entry in [docs/DECISIONS.md](docs/DECISIONS.md).
 

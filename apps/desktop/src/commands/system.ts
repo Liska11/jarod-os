@@ -103,7 +103,7 @@ export const systemCommands: readonly OsCommand[] = [
   {
     id: 'web.open',
     title: 'Open a web page',
-    description: 'Open a URL in a window inside Herald OS.',
+    description: 'Open a URL in a window inside Jarod-OS.',
     tier: 'act',
     args: [
       { name: 'url', type: 'string', description: 'URL or domain (https is assumed)', required: true },

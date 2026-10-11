@@ -11,7 +11,7 @@ import { AuditRow } from './AgentsSection.tsx'
 import { errorText, markSaved, SectionTitle, SettingsBlock, SettingsGroup, SettingsRow } from './shared.tsx'
 
 /*
- * Privacy: what "Pick up where you left off" may look at, the raw permission policy the Herald OS
+ * Privacy: what "Pick up where you left off" may look at, the raw permission policy the Jarod-OS
  * bridge plugin enforces, and the audit trail. The textarea is the source of truth; the "Ask
  * before sending" toggle in Hermes & agents edits the same file line by line.
  */
@@ -33,7 +33,7 @@ function ContinuitySettings() {
       <SettingsRow
         icon={<IconBrain />}
         label="Pick up where you left off"
-        description="When you open Herald OS or come back after a break, Hermes reads the names and dates of your recent documents, project folders (with their git state), conversations, open apps and today's calendar, then suggests where to continue. Never file contents, window titles or the screen. Your Hermes model provider writes the suggestions."
+        description="When you open Jarod-OS or come back after a break, Hermes reads the names and dates of your recent documents, project folders (with their git state), conversations, open apps and today's calendar, then suggests where to continue. Never file contents, window titles or the screen. Your Hermes model provider writes the suggestions."
         keywords="continuity resume catch up brain context recent work suggestions welcome back"
       >
         <Toggle checked={continuity.enabled === true} onChange={enabled => void setContinuityEnabled(enabled)} label="Pick up where you left off" />
@@ -41,7 +41,7 @@ function ContinuitySettings() {
       <SettingsRow
         icon={<IconEyeOff />}
         label="Never look at"
-        description="Folders and words Herald OS leaves out. A word hides every file, project, chat or event whose name contains it, such as a client's name."
+        description="Folders and words Jarod-OS leaves out. A word hides every file, project, chat or event whose name contains it, such as a client's name."
         keywords="exclude hide private confidential folders words clients"
         below={
           <div className="flex flex-col gap-2.5">
@@ -92,7 +92,7 @@ function ContinuitySettings() {
           Add folder…
         </GlassButton>
       </SettingsRow>
-      <SettingsRow icon={<IconTrash />} label="Forget suggestions" description="Clear the threads Hermes found. Herald OS keeps nothing else from a catch-up." keywords="clear delete reset threads">
+      <SettingsRow icon={<IconTrash />} label="Forget suggestions" description="Clear the threads Hermes found. Jarod-OS keeps nothing else from a catch-up." keywords="clear delete reset threads">
         <GlassButton size="sm" variant="ghost" disabled={!continuity.threads?.length} onClick={() => void forgetThreads()}>
           Forget
         </GlassButton>

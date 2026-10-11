@@ -70,7 +70,7 @@ export const controlCommands: readonly OsCommand[] = [
   {
     id: 'wifi.connect',
     title: 'Join a Wi-Fi network',
-    description: 'Connect to a Wi-Fi network by name (Herald OS Linux); a password is needed the first time for a secured network.',
+    description: 'Connect to a Wi-Fi network by name (Jarod-OS Linux); a password is needed the first time for a secured network.',
     tier: 'mutate',
     args: [
       { name: 'network', type: 'string', description: 'Network name', required: true },
@@ -102,7 +102,7 @@ export const controlCommands: readonly OsCommand[] = [
   {
     id: 'wifi.power',
     title: 'Wi-Fi on or off',
-    description: 'Turn Wi-Fi on or off (Herald OS Linux).',
+    description: 'Turn Wi-Fi on or off (Jarod-OS Linux).',
     tier: 'mutate',
     args: [{ name: 'enabled', type: 'boolean', description: 'true for on', required: true }],
     phrases: [
@@ -137,7 +137,7 @@ export const controlCommands: readonly OsCommand[] = [
   {
     id: 'bluetooth.power',
     title: 'Bluetooth on or off',
-    description: 'Turn Bluetooth on or off (Herald OS Linux).',
+    description: 'Turn Bluetooth on or off (Jarod-OS Linux).',
     tier: 'mutate',
     args: [{ name: 'enabled', type: 'boolean', description: 'true for on', required: true }],
     phrases: [
@@ -217,7 +217,7 @@ export const controlCommands: readonly OsCommand[] = [
   {
     id: 'display.brightness',
     title: 'Set the brightness',
-    description: "Set the built-in screen's brightness (1-100, Herald OS Linux).",
+    description: "Set the built-in screen's brightness (1-100, Jarod-OS Linux).",
     tier: 'act',
     args: [{ name: 'percent', type: 'number', description: '1 to 100', required: true }],
     phrases: ['set the brightness to {percent}', 'brightness {percent}'],
@@ -230,7 +230,7 @@ export const controlCommands: readonly OsCommand[] = [
   {
     id: 'display.scale',
     title: 'Set the display scale',
-    description: 'Make everything on a display bigger or smaller (scale 1 to 3, e.g. 1.25; Herald OS Linux).',
+    description: 'Make everything on a display bigger or smaller (scale 1 to 3, e.g. 1.25; Jarod-OS Linux).',
     tier: 'mutate',
     args: [
       { name: 'scale', type: 'number', description: '1 to 3', required: true },
@@ -259,7 +259,7 @@ export const controlCommands: readonly OsCommand[] = [
   {
     id: 'power.profile',
     title: 'Set the power mode',
-    description: 'Choose performance, balanced or power-saver (Herald OS Linux, with power-profiles-daemon).',
+    description: 'Choose performance, balanced or power-saver (Jarod-OS Linux, with power-profiles-daemon).',
     tier: 'act',
     args: [{ name: 'profile', type: 'string', description: 'performance, balanced or power-saver', required: true, enum: ['performance', 'balanced', 'power-saver'] }],
     phrases: [{ phrase: 'save power', args: { profile: 'power-saver' } }, { phrase: 'performance mode', args: { profile: 'performance' } }, { phrase: 'balanced power mode', args: { profile: 'balanced' } }],

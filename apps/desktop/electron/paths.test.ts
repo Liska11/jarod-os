@@ -2,7 +2,7 @@ import { pathToFileURL } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { isShellPage } from './paths.ts'
 
-const index = '/Applications/Herald OS.app/Contents/Resources/app.asar/dist/renderer/index.html'
+const index = '/Applications/Jarod-OS.app/Contents/Resources/app.asar/dist/renderer/index.html'
 const page = pathToFileURL(index).href
 
 describe('isShellPage', () => {

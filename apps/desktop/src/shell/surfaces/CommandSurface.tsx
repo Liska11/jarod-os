@@ -28,7 +28,7 @@ export interface AskState {
 /**
  * Panels mode: one transparent overlay window (680 wide) niri centres over everything. The inbound
  * command picks what it shows: ask (about the focused window), the command palette, the launcher,
- * the Herald OS menu, power actions, clipboard history or emoji. Escape (or losing focus) closes it.
+ * the Jarod-OS menu, power actions, clipboard history or emoji. Escape (or losing focus) closes it.
  */
 export function CommandSurface() {
   const [mode, setMode] = useState<Mode | null>(null)

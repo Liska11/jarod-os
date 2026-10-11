@@ -9,7 +9,7 @@ import { rest } from '../../lib/rest.ts'
  * `§`. This module parses, classifies and caches them, and writes edits back optimistically before
  * re-reading the truth from disk.
  *
- * When Herald OS is attached to a backend that keeps its memory elsewhere (the Jarod gateway answers
+ * When Jarod-OS is attached to a backend that keeps its memory elsewhere (the Jarod gateway answers
  * `/api/status` with `backend: "jarod"`), the same two lists come from `/api/memory/files` and are
  * written back with `PUT /api/memory/files/{file}`. Everything above that line (parsing, kinds, the
  * optimistic update, the re-read) is shared; only where the lists are read and written differs.

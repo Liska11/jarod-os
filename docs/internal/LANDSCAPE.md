@@ -1,6 +1,6 @@
 # Landscape: AI-native operating environments (September 2026)
 
-What else exists, what each does well, and which ideas are worth carrying into Herald OS. Kept
+What else exists, what each does well, and which ideas are worth carrying into Jarod-OS. Kept
 short and opinionated; revisit quarterly.
 
 ## Projects
@@ -18,13 +18,13 @@ short and opinionated; revisit quarterly.
 | [Sai](https://github.com/GodlyDonuts/sai) | Voice-first, screenshot-driven macOS control, one verified action at a time | Experimental | Verify-after-each-action loop and cycle detection for GUI automation |
 | [AIOS](https://github.com/agiresearch/AIOS) | Academic "agent kernel": scheduling, memory, tool management for agents | Research | Vocabulary for resource scheduling across agents |
 | ChatGPT Work (OpenAI) | Desktop app mode that uses local files/apps/browser with permission; cloud continuation | Shipping | Local-or-cloud execution toggle per task; task-shaped (deliverable) framing |
-| Siri AI / App Intents (Apple, macOS 27) | System assistant acting inside apps via developer-declared intents | Shipping later 2026 | Structured per-app actions; Herald OS can call Shortcuts/App Intents as a bridge target |
+| Siri AI / App Intents (Apple, macOS 27) | System assistant acting inside apps via developer-declared intents | Shipping later 2026 | Structured per-app actions; Jarod-OS can call Shortcuts/App Intents as a bridge target |
 
-Hermes Desktop itself already ships a HUD overlay, pet, Starmap and Command Center; Herald OS
+Hermes Desktop itself already ships a HUD overlay, pet, Starmap and Command Center; Jarod-OS
 deliberately does not copy those (different product), but their existence means the runtime has the
 hooks (events, RPCs) to build equivalents when wanted.
 
-## What Herald OS already has that most of these lack
+## What Jarod-OS already has that most of these lack
 
 - A real, mature agent runtime underneath (memory, skills self-improvement, cron, subagents, 20
   messaging platforms) instead of a bespoke agent.
@@ -54,7 +54,7 @@ Ranked by value to the "Hermes is the OS" thesis divided by cost, given the curr
    `computer_use`/browser tools, show a persistent banner with the current action and a big
    Interrupt button; never let GUI automation run without visible presence. Small UI, high trust.
 6. **The OS as an editable surface + tailoring skill** (Omarchy). A `herald-os-tailor` skill that
-   teaches the agent how to change Herald OS itself: prefs, policy file, surfaces order, accent,
+   teaches the agent how to change Jarod-OS itself: prefs, policy file, surfaces order, accent,
    default cwd, keybindings. Small (docs + skill).
 7. **Opt-in environment bundles** (vinOS). `herald os bundle dev` installs a curated set (VS Code,
    Homebrew packages, dotfiles) through the bridge with one approval; ties into "start my
@@ -70,7 +70,7 @@ Ranked by value to the "Hermes is the OS" thesis divided by cost, given the curr
     `computer_use`; propose there.
 11. **Keychain-backed secrets** (OpenPawz). Hermes keeps secrets in `.env`; the shell could offer
     to move them into the macOS Keychain via the runtime's vault hooks. Medium; upstream-facing.
-12. **Always-alive presence** (Naia). Herald OS already runs the cron ticker; add a menu-bar
+12. **Always-alive presence** (Naia). Jarod-OS already runs the cron ticker; add a menu-bar
     companion so Hermes keeps receiving and acting when the fullscreen shell is closed. Medium.
 
 ## Not adopting

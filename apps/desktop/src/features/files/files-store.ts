@@ -778,7 +778,7 @@ export function openItem(item: FileItem): void {
     return
   }
 
-  // PDFs, images, text and media open inside Herald OS; other types go to the app that owns them.
+  // PDFs, images, text and media open inside Jarod-OS; other types go to the app that owns them.
   if (isViewable(item.path)) {
     openFileWindow(item.path).catch(error => notify({ title: `Could not open "${item.name}"`, body: messageOf(error), level: 'error' }))
 

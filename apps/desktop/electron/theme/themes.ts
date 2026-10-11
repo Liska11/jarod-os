@@ -13,7 +13,7 @@ export function userThemesDir(): string {
   return path.join(os.homedir(), '.config', 'herald-os', 'themes')
 }
 
-/** Theme folders shipped with Herald OS, first match wins (the same order as linux/bin/herald-os-theme). */
+/** Theme folders shipped with Jarod-OS, first match wins (the same order as linux/bin/herald-os-theme). */
 function builtinThemeDirs(): string[] {
   const candidates = [
     process.env.HERALD_OS_THEMES,

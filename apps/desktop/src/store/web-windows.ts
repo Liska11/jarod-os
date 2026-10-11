@@ -8,7 +8,7 @@ import { $applicationsOpen, $commandBarOpen } from './surface.ts'
 import { $windows, type Bounds, closeWindow, focusWindow, openApp, retitleWindow } from './windows.ts'
 
 /*
- * Web pages inside Herald OS. A web window is a native view main layers over the shell
+ * Web pages inside Jarod-OS. A web window is a native view main layers over the shell
  * (`window.heraldOS.web`), framed by a floating `web` Hermes window whose content rect it follows.
  * The shell never sends the user to the system browser for something it can host itself; the
  * provider sign-in is the first such page. Panels mode has no desktop window to layer over, so
@@ -113,10 +113,10 @@ function bind(): void {
   })
 }
 
-/** Open an http(s) page in a Herald OS window; resolves with the web window id. */
+/** Open an http(s) page in a Jarod-OS window; resolves with the web window id. */
 export async function openWebWindow(url: string, options: OpenWebWindowOptions = {}): Promise<string> {
   if (!isWebUrl(url)) {
-    throw new Error('Only http(s) pages can open in a Herald OS window.')
+    throw new Error('Only http(s) pages can open in a Jarod-OS window.')
   }
 
   bind()
@@ -128,7 +128,7 @@ export async function openWebWindow(url: string, options: OpenWebWindowOptions =
   return id
 }
 
-/** Show a local file (PDF, image, text, media) in a Herald OS window; resolves with the view id. */
+/** Show a local file (PDF, image, text, media) in a Jarod-OS window; resolves with the view id. */
 export async function openFileWindow(filePath: string, options: OpenWebWindowOptions = {}): Promise<string> {
   bind()
   const title = options.title ?? filePath.split('/').pop() ?? filePath

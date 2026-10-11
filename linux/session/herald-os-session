@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Runs inside the compositor. Publishes the Wayland environment to systemd/D-Bus (so portals and
-# PipeWire find the display), then keeps the Herald OS shell running: a crash restarts it, a clean
+# PipeWire find the display), then keeps the Jarod-OS shell running: a crash restarts it, a clean
 # exit ends the session (greetd starts a fresh one).
 set -u
 
@@ -59,7 +59,7 @@ if [[ "$HERALD_OS_SHELL_MODE" == "panels" ]]; then
 fi
 
 # The shell is a source checkout run through its Electron (the dev VM), or a packaged build: the
-# release tarball in /opt/herald-os (Arch) or /usr/share/herald-os/app on the Herald OS image.
+# release tarball in /opt/herald-os (Arch) or /usr/share/herald-os/app on the Jarod-OS image.
 APP="${HERALD_OS_APP:-}"
 if [[ -z "$APP" ]]; then
   for candidate in "$HOME/Herald-OS/apps/desktop" /opt/herald-os /usr/share/herald-os/app; do
@@ -110,9 +110,9 @@ fi
 
 if (( ${#RUN[@]} == 0 )); then
   # Nothing to run yet: show a plain message instead of a black screen and wait for a build.
-  echo "Herald OS shell not built at $APP. Push the repo from the Mac (linux/dev/push.sh)." >&2
+  echo "Jarod-OS shell not built at $APP. Push the repo from the Mac (linux/dev/push.sh)." >&2
   if command -v foot >/dev/null 2>&1; then
-    exec foot -e bash -c 'echo "Herald OS shell is not built yet. Run linux/dev/push.sh from the Mac."; exec bash'
+    exec foot -e bash -c 'echo "Jarod-OS shell is not built yet. Run linux/dev/push.sh from the Mac."; exec bash'
   fi
   sleep 30
   exit 1

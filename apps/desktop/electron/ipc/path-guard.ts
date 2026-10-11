@@ -45,7 +45,7 @@ export function scratchRoots(platform: NodeJS.Platform = process.platform): stri
 /** Throws unless `file` may be edited directly: inside home or a scratch folder, and not protected. */
 export function assertWritablePath(file: string, home: string = os.homedir(), platform: NodeJS.Platform = process.platform, env: NodeJS.ProcessEnv = process.env): string {
   if (!isBelow(home, file, platform) && !scratchRoots(platform).some(root => isBelow(root, file, platform))) {
-    throw new Error('Herald OS only edits files inside your home folder')
+    throw new Error('Jarod-OS only edits files inside your home folder')
   }
 
   if (protectedRoots(home, platform, env).some(root => isBelow(root, file, platform, true))) {

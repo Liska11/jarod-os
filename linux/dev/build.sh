@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build the Herald OS shell inside the Linux VM (run as the session user).
+# Build the Jarod-OS shell inside the Linux VM (run as the session user).
 # Fetches the upstream snapshot, installs Node workspaces, links + enables the bridge plugin
 # (scripts/bootstrap.sh), compiles the shell, and fixes Electron's sandbox helper permissions.
 #
@@ -52,7 +52,7 @@ if [[ -d "$REPO/linux/session" ]] && command -v sudo >/dev/null; then
   systemctl --user enable herald-os-update-check.timer 2>/dev/null || true
   mkdir -p "$HOME/.config/niri" "$HOME/.config/swaylock"
   # niri reloads config.kdl as soon as it changes, so every file it includes must already exist.
-  [[ -f "$HOME/.config/niri/outputs.kdl" ]] || echo "// Written by the Herald OS Display panel." >"$HOME/.config/niri/outputs.kdl"
+  [[ -f "$HOME/.config/niri/outputs.kdl" ]] || echo "// Written by the Jarod-OS Display panel." >"$HOME/.config/niri/outputs.kdl"
   sudo install -D -m 0644 "$REPO/linux/niri/config.kdl" /usr/local/share/herald-os-linux/niri/config.kdl
   # config.kdl is rendered from the template with the chosen keymap (herald-os keymap herald|omarchy).
   herald-os keymap apply || install -m 0644 "$REPO/linux/niri/config.kdl" "$HOME/.config/niri/config.kdl"

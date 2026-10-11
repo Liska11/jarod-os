@@ -3,7 +3,7 @@ import path from 'node:path'
 import type { CatalogEntryView, CatalogGroupView } from '../../shared/ipc.ts'
 
 /*
- * The install catalog's JSON (linux/catalog/*.json). On Herald OS Linux the `herald-os catalog`
+ * The install catalog's JSON (linux/catalog/*.json). On Jarod-OS Linux the `herald-os catalog`
  * CLI owns installing; on macOS the main process installs the entries that have a macOS method
  * (npm, Homebrew, a download page). These helpers are pure so both paths share them.
  */

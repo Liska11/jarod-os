@@ -579,7 +579,7 @@ export class LinuxPlatform implements HostPlatform {
         return saved
       }
     } catch {
-      // Not set up through Herald OS's setup.
+      // Not set up through Jarod-OS's setup.
     }
 
     const result = await run('getent', ['passwd', os.userInfo().username], 3000)
@@ -807,7 +807,7 @@ export class LinuxPlatform implements HostPlatform {
         return
       }
       case 'terminal':
-        // Herald OS ships its own terminal; there is no portable "the" terminal on Linux to hand off to.
+        // Jarod-OS ships its own terminal; there is no portable "the" terminal on Linux to hand off to.
         throw new HostNotSupported('external terminal')
     }
   }

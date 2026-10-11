@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Herald OS install catalog: the software the control menu, Settings, Hermes and `herald-os install <id>` offer.
+"""Jarod-OS install catalog: the software the control menu, Settings, Hermes and `herald-os install <id>` offer.
 
   herald-os-catalog list [--json] [--group <id>]
   herald-os-catalog install <id> [--ram <GB>] [--cpus <n>] [--disk <GB>]
@@ -118,7 +118,7 @@ def pkg_command(action: str, names: list[str], manager: str | None = None) -> li
             raise CatalogError("AUR packages need an AUR helper (yay or paru)")
         # AUR helpers build as the user and call sudo themselves.
         return [helper, "--noconfirm", *(["--needed", "-S"] if action == "install" else ["-Rns"]), *names]
-    raise CatalogError("this system has no package manager Herald OS can use; try the Flatpak instead" if is_image() else "no dnf or pacman here")
+    raise CatalogError("this system has no package manager Jarod-OS can use; try the Flatpak instead" if is_image() else "no dnf or pacman here")
 
 
 def pkg_available(name: str, manager: str | None = None) -> bool:

@@ -1,4 +1,4 @@
-"""Regenerate the Herald OS icons from the master mark. Needs Pillow; the .icns step needs macOS.
+"""Regenerate the Jarod-OS icons from the master mark. Needs Pillow; the .icns step needs macOS.
 
     python3 scripts/make-icons.py
 

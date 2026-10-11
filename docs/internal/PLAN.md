@@ -1,4 +1,4 @@
-# Herald OS Alpha 0.1 Implementation Plan
+# Jarod-OS Alpha 0.1 Implementation Plan
 
 Working copy of the plan that drives Alpha 0.1. `DECISIONS.md` holds the rationale.
 
@@ -22,7 +22,7 @@ Working copy of the plan that drives Alpha 0.1. `DECISIONS.md` holds the rationa
 - "What's using all my disk space?"
 - "Kill the process running on port 3000."
 - "Find the screenshots I took yesterday."
-- "Open my Herald project in VS Code." / "Open this repository in my editor."
+- "Open my Jarod project in VS Code." / "Open this repository in my editor."
 - "Create a folder for this project."
 - "Organize these files." (dry-run plan first, then confirm)
 - "Start my development environment."

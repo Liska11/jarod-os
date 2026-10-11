@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Herald OS command center.
+"""Jarod-OS command center.
 
 Everything hotkeys and menus do is available here, so people and agents drive the system the same
 way. Shell-facing commands are relayed to the running shell over its control socket; system chores
@@ -23,7 +23,7 @@ call the tools directly.
   System        lock | suspend | power | wm <niri action...> | state | debug | commands [--json]
                 panel wifi|bluetooth|audio|display|power|clock: the menu bar's quick panels
                 toggle nightlight|dnd|idle|screensaver [on|off] | screensaver | idle show|set ...
-                os <command.id> [json args]: run any Herald OS command (the same ones Hermes uses)
+                os <command.id> [json args]: run any Jarod-OS command (the same ones Hermes uses)
 """
 
 from __future__ import annotations
@@ -56,7 +56,7 @@ COMMANDS: dict[str, str] = {
     "ask": "Ask Hermes about the focused window, or about the given text",
     "command": "Open the Hermes command bar",
     "applications": "Open the application launcher",
-    "menu": "Open the Herald OS control menu; `menu check` reads your own entries in ~/.config/herald-os/menu.json",
+    "menu": "Open the Jarod-OS control menu; `menu check` reads your own entries in ~/.config/herald-os/menu.json",
     "page": "Show a Hermes page: overview hermes missions memory files automations connections settings",
     "open": "Open a Hermes window: terminal system chat-popout",
     "launch": "Launch an installed application by name or desktop id",
@@ -64,7 +64,7 @@ COMMANDS: dict[str, str] = {
     "remove": "remove <catalog-id> | remove app <name> | remove webapp <name>",
     "catalog": "catalog list [--json] [--group <id>] | catalog install|remove|status <id>: AI tools, languages, editors, terminals, games, Windows, media, services, web apps",
     "windows": "windows start|stop|status|connect|remove [--purge]: the Windows VM (herald-os install windows)",
-    "update": "Update Herald OS, Hermes Agent and system packages (--check only reports)",
+    "update": "Update Jarod-OS, Hermes Agent and system packages (--check only reports)",
     "theme": "theme list | theme set <name> | theme current | theme new <image> [name] | theme install <git-url>",
     "font": "font list | font set <family> [--mono]: the interface font, or the code and terminal font",
     "wallpaper": "Set the wallpaper image (path), or `wallpaper default`",
@@ -83,7 +83,7 @@ COMMANDS: dict[str, str] = {
     "crash": "crash list | crash diagnose [pid|name] (Hermes explains it) | crash mute <name> [off]",
     "event": "event <name> [key=value ...]: report an event so hooks and event automations run (login, after-update, …)",
     "hook": "hook list | hook install <event> <script> | hook dir: scripts that run when something happens",
-    "os": "Run a Herald OS command: os <command.id> [json args], e.g. os page.open '{\"name\": \"missions\"}'",
+    "os": "Run a Jarod-OS command: os <command.id> [json args], e.g. os page.open '{\"name\": \"missions\"}'",
     "voice": "Talk to Hermes: voice [toggle|start|stop|mute] (default toggle)",
     "dictate": "Start or finish dictation: what you say is typed into the focused app",
     "emoji": "Emoji picker; the pick is typed into the focused app",
@@ -98,12 +98,12 @@ COMMANDS: dict[str, str] = {
     "webapp-open": "Internal: open a web app window: webapp-open <url> <name>",
     "update-available": "Internal: tell the menu bar how many updates are pending",
     "channel": "Show or set the update channel: channel [stable|edge] (on the image, the image tag it follows)",
-    "rollback": "The Herald OS image: go back to the previous version on the next start (it stays in the boot menu)",
+    "rollback": "The Jarod-OS image: go back to the previous version on the next start (it stays in the boot menu)",
     "firmware": "firmware [check|update]: device firmware through fwupd (the BIOS, the dock, the SSD)",
     "reset": "reset: erase this computer's account, apps and files and start setup again (asks to confirm)",
     "omakase": "Install the curated software set (omakase install | omakase list)",
     "wm": "A window-manager action: wm <niri action> [args] (on Hyprland the same names, or a dispatcher)",
-    "omarchy": "omarchy install | remove | status: run Herald OS inside Omarchy (theme hook, menu entry, keys)",
+    "omarchy": "omarchy install | remove | status: run Jarod-OS inside Omarchy (theme hook, menu entry, keys)",
     "setup": "setup [--yes]: once per user after installing (Hermes Agent and the bridge plugin) | setup fingerprint | setup fido2",
     "state": "Dump the shell's window-manager state",
     "debug": "Print diagnostics for bug reports",
@@ -134,7 +134,7 @@ def relay(cmd: str, args: list[str], extra: dict | None = None, *, quiet: bool =
     if not SOCKET.exists():
         if quiet:
             return {"ok": False, "error": "shell not running"}
-        die(f"the Herald OS shell is not running (no {SOCKET})", 3)
+        die(f"the Jarod-OS shell is not running (no {SOCKET})", 3)
     payload = {"cmd": cmd, "args": args, **(extra or {})}
     try:
         with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
@@ -350,7 +350,7 @@ def install_webapp(name: str, url: str, icon_url: str | None = None) -> int:
     desktop.write_text(
         "[Desktop Entry]\n"
         f"Name={name}\n"
-        f"Comment=Herald OS web app for {host}\n"
+        f"Comment=Jarod-OS web app for {host}\n"
         f"Exec=herald-os webapp-open {shell_quote(url)} {shell_quote(name)}\n"
         f"Icon={icon_path}\n"
         "Type=Application\n"
@@ -1145,7 +1145,7 @@ def debug() -> int:
         except Exception:  # noqa: BLE001
             print(f"{label:<14} unavailable")
 
-    print("Herald OS debug")
+    print("Jarod-OS debug")
     line("os", ["sh", "-c", ". /etc/os-release && echo $PRETTY_NAME"])
     line("kernel", ["uname", "-r"])
     line("niri", ["niri", "--version"])
@@ -1220,7 +1220,7 @@ def keymap_cmd(args: list[str]) -> int:
         die("keymap show | herald | omarchy | apply", 2)
     template = next((path for path in NIRI_TEMPLATES if path.is_file()), None)
     if not template:
-        die("the niri template is missing; reinstall Herald OS or run herald-os-build")
+        die("the niri template is missing; reinstall Jarod-OS or run herald-os-build")
     target = HOME / ".config" / "niri" / "config.kdl"
     target.parent.mkdir(parents=True, exist_ok=True)
     rendered = render_keymap(template.read_text(), current_keymap())
@@ -1257,10 +1257,10 @@ def setup(args: list[str]) -> int:
     assume_yes = "--yes" in args or "-y" in args
     bridge = next((d for d in BRIDGE_DIRS if (d / "plugin.yaml").exists()), None)
     if not bridge:
-        die("the herald-os-bridge plugin is missing; reinstall Herald OS", 1)
+        die("the herald-os-bridge plugin is missing; reinstall Jarod-OS", 1)
     hermes = hermes_command()
     if not hermes:
-        print(f"Hermes Agent is not installed. Herald OS runs on it; the installer is {HERMES_INSTALLER}")
+        print(f"Hermes Agent is not installed. Jarod-OS runs on it; the installer is {HERMES_INSTALLER}")
         if not assume_yes and not (sys.stdin.isatty() and input("Install Hermes Agent now? [Y/n] ").strip().lower() in ("", "y", "yes")):
             die("run `herald-os setup` again once Hermes is installed", 1)
         code = subprocess.call(["bash", "-c", f"curl -fsSL {HERMES_INSTALLER} | bash"])
@@ -1273,7 +1273,7 @@ def setup(args: list[str]) -> int:
     if link.is_symlink():
         link.unlink()
     elif link.exists():
-        die(f"{link} exists and is not a link Herald OS made; move it aside and run setup again", 1)
+        die(f"{link} exists and is not a link Jarod-OS made; move it aside and run setup again", 1)
     link.symlink_to(bridge)
     print(f"==> bridge plugin: {link} -> {bridge}")
     # User plugins are opt-in and a saved toolset list is authoritative, so both are recorded. Plugin
@@ -1282,8 +1282,8 @@ def setup(args: list[str]) -> int:
         subprocess.run([*hermes, *step], stdin=subprocess.DEVNULL, capture_output=True, check=False)
     print("==> Hermes can now use the system (files, apps, settings), asking before anything that changes it")
     if is_omarchy():
-        print("Omarchy: `herald-os omarchy install` adds Herald OS to its menu, theme and keys.")
-    print("Start the full session from your login screen (Herald OS), or run herald-os-app inside your desktop.")
+        print("Omarchy: `herald-os omarchy install` adds Jarod-OS to its menu, theme and keys.")
+    print("Start the full session from your login screen (Jarod-OS), or run herald-os-app inside your desktop.")
     return 0
 
 
@@ -1366,7 +1366,7 @@ def pam_enable(file: Path, line: str) -> bool:
 
 
 def is_image() -> bool:
-    """The Herald OS image (bootc): updates replace the whole system and can be undone."""
+    """The Jarod-OS image (bootc): updates replace the whole system and can be undone."""
     return Path("/run/ostree-booted").exists()
 
 
@@ -1386,10 +1386,10 @@ def image_switch(channel: str) -> int:
 
 def rollback() -> int:
     if not is_image():
-        die("rollback is for the Herald OS image; on this system, use your package manager's history", 2)
+        die("rollback is for the Jarod-OS image; on this system, use your package manager's history", 2)
     code = subprocess.call(["sudo", "bootc", "rollback"])
     if code == 0:
-        notify("Rollback ready", "Restart to use the previous version of Herald OS; this one stays in the boot menu.")
+        notify("Rollback ready", "Restart to use the previous version of Jarod-OS; this one stays in the boot menu.")
     return code
 
 
@@ -1422,12 +1422,12 @@ RESET_HELPER = Path("/usr/libexec/herald-os/reset-helper")
 
 def reset(args: list[str]) -> int:
     if not RESET_HELPER.exists():
-        die("reset is for the Herald OS image", 2)
+        die("reset is for the Jarod-OS image", 2)
     if not sys.stdin.isatty():
         die("reset needs a terminal: it asks you to confirm and for your password", 2)
     user = os.environ.get("USER", "")
     print(f"This erases {user}'s files, apps and settings on this computer, then restarts into setup.")
-    print("Herald OS itself stays. Back up anything you want to keep first.")
+    print("Jarod-OS itself stays. Back up anything you want to keep first.")
     if input("Type ERASE to continue: ").strip() != "ERASE":
         print("Nothing was changed.")
         return 1
@@ -1435,7 +1435,7 @@ def reset(args: list[str]) -> int:
 
 
 # ---------------------------------------------------------------------------------------------
-# Omarchy: Herald OS as an app inside it (herald-os-app), wearing Omarchy's theme, in its menu, on
+# Omarchy: Jarod-OS as an app inside it (herald-os-app), wearing Omarchy's theme, in its menu, on
 # its own keys. Herald never overwrites a file Omarchy or the person owns: it adds one marked line
 # to theirs, or prints what to add. Omarchy 4 (Lua Hyprland config, its menu JSONC, state under
 # ~/.local/state) and Omarchy 3 (hyprland.conf, ~/.config/omarchy/current) are both handled.
@@ -1602,7 +1602,7 @@ def omarchy_install() -> int:
     notes: list[str] = []
     APPS_DIR.mkdir(parents=True, exist_ok=True)
     APP_DESKTOP.write_text(
-        "[Desktop Entry]\nName=Herald OS\nComment=The AI-native desktop, as an app\nExec=herald-os-app\n"
+        "[Desktop Entry]\nName=Jarod-OS\nComment=The AI-native desktop, as an app\nExec=herald-os-app\n"
         "Icon=herald-os\nType=Application\nCategories=System;Utility;\nTerminal=false\nStartupWMClass=herald-os\n"
     )
     # Theme hook: Omarchy runs theme-set.d itself on 4; on 3 a small dispatcher does.
@@ -1645,7 +1645,7 @@ def omarchy_install() -> int:
         keys = "Applications"
         notes.append(f"No Hyprland config in {HYPR_DIR}; Herald's keys were not added.")
     relay("theme-omarchy", [], quiet=True)
-    print(f"Herald OS is set up inside Omarchy: open it from the Omarchy menu, Applications or {keys}.")
+    print(f"Jarod-OS is set up inside Omarchy: open it from the Omarchy menu, Applications or {keys}.")
     for note in notes:
         print(note)
     return 0
@@ -1660,14 +1660,14 @@ def omarchy_remove() -> int:
     if OMARCHY_MENU.exists():
         text = OMARCHY_MENU.read_text(errors="replace")
         if text.startswith("// Added by Herald OS"):
-            # An earlier Herald OS wrote this whole file.
+            # An earlier Jarod-OS wrote this whole file.
             OMARCHY_MENU.unlink()
         elif MENU_LINE.strip() in text or MENU_MARK.strip() in text:
             OMARCHY_MENU.write_text(menu_without_herald(text))
     for config, line in ((HYPR_DIR / "hyprland.conf", HYPR_SOURCE), (HYPR_DIR / "hyprland.lua", HYPR_REQUIRE)):
         if config.exists() and line in config.read_text(errors="replace"):
             config.write_text(without_line(config.read_text(errors="replace"), line))
-    print("Herald OS is out of Omarchy's theme hook, menu and keys.")
+    print("Jarod-OS is out of Omarchy's theme hook, menu and keys.")
     return 0
 
 
@@ -1887,7 +1887,7 @@ def main(argv: list[str]) -> int:
             # Omarchy's theme-set hook: Herald's colours follow Omarchy's theme.
             reply = relay("theme-omarchy", [], quiet=True)
             if not reply.get("ok"):
-                die(reply.get("error") or "the Herald OS shell is not running", 1)
+                die(reply.get("error") or "the Jarod-OS shell is not running", 1)
             print(reply.get("theme", ""))
             return 0
         if omarchy_app_mode() and sub in ("list", "current", "set"):

@@ -41,7 +41,7 @@ async function imagePixels(imagePath: string): Promise<Uint8ClampedArray> {
   const dataUrl = await window.heraldOS.theme.sample(imagePath)
 
   if (!dataUrl) {
-    throw new Error(`${imagePath.split('/').pop() || imagePath} is not an image Herald OS can read (PNG or JPEG).`)
+    throw new Error(`${imagePath.split('/').pop() || imagePath} is not an image Jarod-OS can read (PNG or JPEG).`)
   }
 
   const image = new Image()
@@ -90,7 +90,7 @@ export async function installThemes(url: string): Promise<string[]> {
 
 let lastSkinSignature = ''
 
-/** Hermes's skin changed (or the gateway reconnected): restyle Herald OS when the person asked for that. */
+/** Hermes's skin changed (or the gateway reconnected): restyle Jarod-OS when the person asked for that. */
 async function followSkin(skin: { name?: string; colors?: Record<string, string> } | null | undefined): Promise<void> {
   if (!skin || !$prefs.get().followHermesSkin || !skin.name || skin.name === HERALD_SKIN) {
     return

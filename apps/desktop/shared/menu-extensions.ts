@@ -1,6 +1,6 @@
 /*
  * ~/.config/herald-os/menu.json: the person's own control-menu entries. Each runs a `herald-os`
- * command, a program, a Herald OS command or opens a web address. Parsed by main (which runs the
+ * command, a program, a Jarod-OS command or opens a web address. Parsed by main (which runs the
  * programs) and shown by the control menu; pure and tested.
  */
 
@@ -114,7 +114,7 @@ export function parseMenuExtensions(value: unknown): MenuExtensions {
       action = isCommandId(command) ? { kind: 'command', command, args } : null
 
       if (!action) {
-        errors.push(`"${label}": "command" is a Herald OS command id, like "page.open"`)
+        errors.push(`"${label}": "command" is a Jarod-OS command id, like "page.open"`)
       }
     }
 

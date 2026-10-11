@@ -8,7 +8,7 @@ metadata:
 
 # Diagnose a crash
 
-Herald OS offers this when a program on the computer crashes and the person chooses "Ask Hermes".
+Jarod-OS offers this when a program on the computer crashes and the person chooses "Ask Hermes".
 The opening message says which program crashed, when, and where its report is. Your job: find out
 what happened from the evidence, explain it in plain words, and say what to do next.
 

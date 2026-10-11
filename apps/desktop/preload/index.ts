@@ -146,7 +146,7 @@ const api = {
     onReturned: (listener: (event: ContextReturn) => void): Unsubscribe => subscribe(IPC.contextReturned, listener)
   },
   crash: {
-    /** Programs that crashed since Herald OS started, newest first. */
+    /** Programs that crashed since Jarod-OS started, newest first. */
     recent: (): Promise<CrashReport[]> => ipcRenderer.invoke(IPC.crashRecent)
   },
   theme: {
@@ -205,7 +205,7 @@ const api = {
     onChanged: (listener: (branding: BrandingView) => void): Unsubscribe => subscribe(IPC.brandingChanged, listener)
   },
   setup: {
-    /** First-boot setup on the Herald OS image: due or not, the account, the name so far. */
+    /** First-boot setup on the Jarod-OS image: due or not, the account, the name so far. */
     state: (): Promise<SetupState> => ipcRenderer.invoke(IPC.setupState),
     name: (name: string): Promise<SetupResult> => ipcRenderer.invoke(IPC.setupName, name),
     password: (password: string): Promise<SetupResult> => ipcRenderer.invoke(IPC.setupPassword, password),
@@ -217,7 +217,7 @@ const api = {
     type: (text: string, options: { submit?: boolean; delayMs?: number } = {}): Promise<{ typed: boolean; copied: boolean }> => ipcRenderer.invoke(IPC.dictationType, text, options)
   },
   events: {
-    /** Events Herald OS saw lately (login, wake, crash, low battery, …), newest first. */
+    /** Events Jarod-OS saw lately (login, wake, crash, low battery, …), newest first. */
     recent: (): Promise<HeraldEvent[]> => ipcRenderer.invoke(IPC.eventsRecent)
   },
   switches: {

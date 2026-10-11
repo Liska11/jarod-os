@@ -44,7 +44,7 @@ const whenText = (job: CronJob) => {
 export function AutomationsPage() {
   const jobs = useBackendData(cronApi.list)
   const targets = useBackendData(cronApi.deliveryTargets)
-  // Event rules live in Herald OS's preferences; re-render when they change.
+  // Event rules live in Jarod-OS's preferences; re-render when they change.
   useStore($prefs)
 
   useEffect(() => onGatewayEvent('cron.changed', () => jobs.reload()), [jobs.reload])

@@ -4,7 +4,7 @@ import { relayToMain } from '../store/shell.ts'
 /** Exit code main returns when the `herald-os` CLI does not exist on this platform (macOS, desktop mode). */
 export const CLI_UNAVAILABLE_CODE = 127
 
-export const CLI_UNAVAILABLE_MESSAGE = 'Available on Herald OS Linux'
+export const CLI_UNAVAILABLE_MESSAGE = 'Available on Jarod-OS Linux'
 
 export interface CliOutcome {
   ok: boolean

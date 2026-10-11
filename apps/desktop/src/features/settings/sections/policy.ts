@@ -1,5 +1,5 @@
 /*
- * Careful line-level edits of the Herald OS bridge policy (YAML text owned by Electron's
+ * Careful line-level edits of the Jarod-OS bridge policy (YAML text owned by Electron's
  * `bridge.readPolicy/writePolicy`). We never re-serialise the document: comments and unknown
  * keys survive, only the `tiers:` values we were asked to change move.
  */

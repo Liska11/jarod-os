@@ -1,6 +1,6 @@
 # Security policy
 
-Herald OS lets an AI agent operate your computer, so security reports matter. Thank you for taking
+Jarod-OS lets an AI agent operate your computer, so security reports matter. Thank you for taking
 the time to send one.
 
 ## Reporting a vulnerability
@@ -13,14 +13,14 @@ contact, without details.
 A useful report says what an attacker controls (a web page, a file, a model response, another
 local user), what they gain, and how to reproduce it. Expect a first reply within a week.
 
-Herald OS is pre-1.0. Only the latest `main` is supported, and fixes land there.
+Jarod-OS is pre-1.0. Only the latest `main` is supported, and fixes land there.
 
 Vulnerabilities in Hermes Agent itself (the `hermes` runtime, its tools, providers, or gateway)
 belong upstream: [NousResearch/hermes-agent](https://github.com/NousResearch/hermes-agent).
 
 ## Security model
 
-These are the guarantees Herald OS aims for. Breaking one of them is a vulnerability.
+These are the guarantees Jarod-OS aims for. Breaking one of them is a vulnerability.
 
 - **Desktop tools are gated.** The agent's desktop tools come from the `herald-os-bridge` plugin,
   and each has a tier. `read` and `act` tools run immediately and are logged; `mutate` tools need

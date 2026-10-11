@@ -1,4 +1,4 @@
-# Herald OS Linux: the system packages, for the bootc image and the development VM. One per line.
+# Jarod-OS Linux: the system packages, for the bootc image and the development VM. One per line.
 # Session.
 niri
 cage

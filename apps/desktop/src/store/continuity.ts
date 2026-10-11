@@ -99,7 +99,7 @@ async function catchUp(awayMs?: number): Promise<ContinuityThread[]> {
       const parsed = parseThreads(answer.text, request.refs)
 
       if (!parsed) {
-        throw new Error('Hermes answered in a form Herald OS could not read. Try again.')
+        throw new Error('Hermes answered in a form Jarod-OS could not read. Try again.')
       }
 
       threads = parsed

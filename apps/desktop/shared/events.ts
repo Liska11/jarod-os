@@ -1,7 +1,7 @@
 /*
  * Things that happen on this computer that people's own hook scripts and Hermes automations can
  * react to. Main emits them (electron/events/), hooks run from ~/.config/herald-os/hooks/<name>.d/,
- * and an automation is a paused Hermes cron job Herald OS fires when its event happens.
+ * and an automation is a paused Hermes cron job Jarod-OS fires when its event happens.
  */
 
 export type HeraldEventName = 'login' | 'wake' | 'sleep' | 'lock' | 'unlock' | 'returned' | 'battery-low' | 'network-change' | 'theme-set' | 'crash' | 'after-update'
@@ -14,7 +14,7 @@ export interface HeraldEvent {
   detail: Record<string, string>
 }
 
-/** "When this happens, run that automation": the cron job stays paused and Herald OS fires it. */
+/** "When this happens, run that automation": the cron job stays paused and Jarod-OS fires it. */
 export interface EventAutomation {
   event: HeraldEventName
   jobId: string
@@ -42,7 +42,7 @@ export const HERALD_EVENTS: readonly EventInfo[] = [
   { name: 'network-change', label: 'When the network changes', details: ['online', 'wifi'], automation: true },
   { name: 'crash', label: 'When a program crashes', details: ['app', 'pid', 'reason'], automation: true },
   { name: 'theme-set', label: 'When the theme changes', details: ['theme'], automation: true },
-  { name: 'after-update', label: 'After Herald OS updates', details: [], automation: true },
+  { name: 'after-update', label: 'After Jarod-OS updates', details: [], automation: true },
   { name: 'lock', label: 'When I lock the screen', details: [], automation: false },
   { name: 'sleep', label: 'When the computer goes to sleep', details: [], automation: false }
 ]

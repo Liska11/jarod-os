@@ -211,7 +211,7 @@ def test_unavailable_off_linux(plugin, monkeypatch):
     monkeypatch.setattr(tools, "host", lambda: types.SimpleNamespace(platform="darwin"))
     monkeypatch.setattr(tools, "run", lambda *a, **k: pytest.fail("must not run herald-os on macOS"))
     result = json.loads(tools.system_os_handler({"action": "theme_list"}))
-    assert not result["success"] and "only available on Herald OS Linux" in result["error"]
+    assert not result["success"] and "only available on Jarod-OS Linux" in result["error"]
 
 
 def test_cli_failure_surfaces_stderr_then_stdout(plugin, linux):

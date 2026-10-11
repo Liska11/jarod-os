@@ -22,7 +22,7 @@ const switchCommand = (id: string, name: SwitchName, description: string, on: st
 export const switchCommands: readonly OsCommand[] = [
   switchCommand('dnd.set', 'doNotDisturb', 'Do not disturb: notifications collect in the bell without popping up, sounding or being read aloud.', ['turn on do not disturb', "don't disturb me", 'focus mode on'], ['turn off do not disturb', 'focus mode off']),
   switchCommand('awake.set', 'stayAwake', 'Keep the computer awake: the screens stay on and nothing locks or sleeps on its own.', ['stay awake', 'keep the screen on', "don't let the computer sleep"], ['let the computer sleep', 'stop staying awake']),
-  switchCommand('nightlight.set', 'nightLight', 'Night light (Herald OS Linux): warmer colours that are easier on the eyes in the evening.', ['turn on night light', 'make the screen warmer'], ['turn off night light']),
+  switchCommand('nightlight.set', 'nightLight', 'Night light (Jarod-OS Linux): warmer colours that are easier on the eyes in the evening.', ['turn on night light', 'make the screen warmer'], ['turn off night light']),
   switchCommand('screensaver.set', 'screensaver', 'The screensaver after a few idle minutes: the living wallpaper and a large clock.', ['turn on the screensaver'], ['turn off the screensaver']),
   {
     id: 'switches.status',
@@ -41,7 +41,7 @@ export const switchCommands: readonly OsCommand[] = [
   {
     id: 'idle.set',
     title: 'When to lock and sleep',
-    description: 'Herald OS Linux: minutes without input before locking (lock), turning the screens off (screenOff) and sleeping (suspend; 0 = never).',
+    description: 'Jarod-OS Linux: minutes without input before locking (lock), turning the screens off (screenOff) and sleeping (suspend; 0 = never).',
     tier: 'mutate',
     args: [
       { name: 'lock', type: 'number', description: 'Minutes before locking' },

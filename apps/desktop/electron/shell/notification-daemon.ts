@@ -64,7 +64,7 @@ class NotificationsInterface extends dbus.interface.Interface {
   }
 
   GetServerInformation(): [string, string, string, string] {
-    return ['Herald OS', 'Herald OS', '0.1', '1.2']
+    return ['Jarod-OS', 'Jarod-OS', '0.1', '1.2']
   }
 
   Notify(
@@ -143,7 +143,7 @@ function pairActions(actions: string[]): Array<[string, string]> {
 
 /**
  * A freedesktop notification server living in the Electron main process, so notifications from
- * other Linux applications (browsers, GTK apps, `notify-send`) land in the Herald OS shell instead
+ * other Linux applications (browsers, GTK apps, `notify-send`) land in the Jarod-OS shell instead
  * of a separate daemon. Only one server may own the bus name; when another daemon already does, this
  * one logs and stays idle.
  */

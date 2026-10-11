@@ -206,3 +206,80 @@ security audit; driving `hermes auth` through a pty (A) is dropped. Done in `jar
 
 Step 3 finding recorded, not fixed (shell behaviour): the picker only changes the model while a conversation is open
 ("Open a session first" otherwise). The gateway is not involved.
+
+## Rename Herald OS → Jarod-OS (2026-10-11)
+
+Earlier sections of this file keep the old names (`Herald OS.exe`, `HeraldOS-Setup…`, `CN=HeraldOS`): they describe what was built then.
+
+**Scope.** Text shown to the user, docs and script messages: the product name `Herald OS` became `Jarod-OS` (762 lines, 222 files); a lone `Herald`
+became `Jarod` in docs and in non-comment lines of the interface (49 occurrences). Done by one script and applied in one commit.
+
+**Identity chosen (final, distinct from upstream `dev.iamluke.heraldos`)**
+
+| What | Value |
+| --- | --- |
+| `productName`, `executableName`, window titles, `app.setName` | `Jarod-OS` (so `win-unpacked\Jarod-OS.exe`, install folder `Programs\Jarod-OS`, user data `%APPDATA%\Jarod-OS`) |
+| electron-builder `appId` and Windows AppUserModelId | `one.jarod.os` (the Jarod app is `one.jarod.desktop`) |
+| MSIX / appx | `applicationId` `JarodOS`, `identityName` `JarodOS.JarodOS`, `publisher` `CN=JarodOS`, display names `Jarod-OS` |
+| Installer files | `JarodOS-Setup-<v>-win-x64.exe`, `JarodOS-<v>-win-x64.appx` (CI upload globs updated) |
+| Launcher default (jarod-cordis `launch.ts`, commit `9e90e35e`) | `…\win-unpacked\Jarod-OS.exe` |
+
+The old `%APPDATA%\Herald OS` folder is **not migrated**: it may belong to an installed upstream Herald OS, and moving it would take that app's data.
+`NOTICE` and `LICENSE` are untouched and ship inside the package (`resources\NOTICE`, `resources\LICENSE`).
+
+**`git grep -i herald`, lines before → after** (the 2 891 lines are classified the same way before and after)
+
+| Category | Before | After | Why it stays / what changed |
+| --- | ---: | ---: | --- |
+| Attribution and upstream URLs (`NOTICE`, `LICENSE`, any line with `iamlukethedev`) | 30 | 30 | MIT notice and links to the upstream project; not ours to rewrite |
+| History and provenance (`docs/DECISIONS.md`, `jarod-*.md`, this file, `linux/migrations/`, `upstream/`, `scripts/sync-upstream*`, `scripts/migrate-hermes-config.py`, lockfile) | 162 | 162 | They record what happened under the old names |
+| Strings written into user files then compared on removal (Omarchy hook, menu line, key binds in `linux/bin/herald-os`, and the Linux test that asserts them) | 39 | 12 | Renaming them would make an existing install impossible to remove cleanly (`== HOOK_DISPATCHER`, `MENU_MARK`). 27 display messages of that file were renamed |
+| Deliberate mentions of the old name (README provenance, legacy install folder recognised by `bridgeLinkPlan`, its test) | in the next row | 5 | See "Script fixes" below |
+| **Displayed name `Herald OS` / `Herald` (renamed)** | **737** | **0** | The point of the commit |
+| Prose in code comments, lone `Herald` | 46 | 49 | Not displayed; left to keep upstream merges small (3 more lines appear because lines that held both a renamed and a lone word moved here) |
+| Checkout folder `Herald-OS` (`~/Herald-OS`, `cd Herald-OS`) | 27 | 27 | A path on disk and in docs, not the product name |
+| Identifiers: `herald-os*`, `herald_os`, `HERALD_OS*`, `heraldOS`/`HeraldOS*`, `herald-*` | 1 850 | 1 940 | Contracts and paths, kept as agreed: `window.heraldOS` IPC, `HERALD_OS_*` environment, plugin `herald_os` / `herald-os-bridge`, data folders under `herald-os`, `SESSION_SOURCE` / `LISTED_SESSION_SOURCES`, theme ids. +90 because lines that had a renamed display word and an identifier now count here |
+| **All lines containing "herald"** | **2 891** | **2 225** | |
+
+Not touched either: `TERM_PROGRAM=HeraldOS` (seen by programs run in the Terminal app), `XDG_CURRENT_DESKTOP=HeraldOS` and the PowerShell `HeraldOS`
+namespaces (internal), the gateway protocol and every JSON contract.
+
+**Script fixes the rename needed (the scripts were corrected, not the rename)**
+
+- `bridgeLinkPlan` (`electron/backend/bridge-plugin.ts`): a Hermes plugin link that points into another copy of the app is replaced by this app's copy. The match
+  on the Windows install folder now accepts `Jarod-OS` and the former `Herald OS`, with a test for each.
+- `linux/bin/herald-os`: the Omarchy strings above were put back to their original text, and their test with them.
+
+**Does anything reference `Herald OS.exe` by name?** Checked before the rename.
+
+- In the code: nothing creates a scheduled task, a shortcut, a Run key or a protocol handler (`schtasks`, `.lnk` writers, `setLoginItemSettings`, `reg add`,
+  `setAsDefaultProtocolClient`: no match; the Windows platform code only *reads* Start-menu shortcuts). `Herald OS.exe` appeared only in `README-WINDOWS.md`, in the
+  history above, and in the jarod-cordis launcher (fixed).
+- On this machine (read only): no scheduled task, no `.lnk` in the Start menu, Desktop or taskbar, no hit in `Run`, `RunOnce`, `App Paths`, `Uninstall` (HKCU, HKLM,
+  WOW6432Node), `HKCU\Software\Classes`, `FeatureUsage\AppLaunch`; no appx package; no `Programs\Herald OS` install. `%APPDATA%\Herald OS` exists (left as is).
+
+**Verification (Windows 11, this machine)**
+
+| Check | Before | After |
+| --- | --- | --- |
+| `npm run typecheck` | passes | passes |
+| `npm test` (Vitest) | 69 files, 358 passed, 2 skipped | 69 files, 358 passed, 2 skipped |
+| `npm run test:bridge` (pytest) | 185 passed, 9 skipped | 185 passed, 9 skipped |
+| Lint | not available: the repository has no lint script or configuration | |
+| `npm run dist:win` | builds | builds: `JarodOS-Setup-0.1.0-alpha.1-win-x64.exe`, `JarodOS-0.1.0-alpha.1-win-x64.appx` (unsigned), `win-unpacked\Jarod-OS.exe` |
+| Packaged `Jarod-OS.exe` | | starts, process and window title `Jarod-OS`, connects to a gateway, user data goes to the folder it is given |
+| jarod-cordis `scripts\verify-jarod-os.ps1` | 8/8 | 8/8 |
+
+## Verification debt: Linux and macOS (not verified)
+
+The renamed text and the new identity were applied to the Linux and macOS files too, but **none of it was run**. This machine is Windows only: the WSL
+distribution is broken, macOS cannot be built here, and the Linux suite does not even import on Windows (`linux/tests/test_cli.py` fails at collection on
+`os.getuid`, before and after the rename). To do before any release, in CI or on a Linux and a macOS machine:
+
+1. `npm run dist:linux` and `npm run dist:mac` (the `executableName` and `artifactName` now apply there too: `Jarod-OS.app`, `JarodOS-<v>-mac-arm64.dmg`;
+   `.github/workflows/release.yml` looks for `Jarod-OS.app`). Linux keeps its own `executableName` `herald-os`.
+2. `pytest linux/tests` on Linux, and the `image`, `installer-test` and `release` workflows (their log greps and titles were renamed).
+3. On a real Omarchy install: `herald-os omarchy install` then `remove`, to confirm the strings kept for compatibility still match what was written before.
+4. The `windows-latest` job with the new `JarodOS-*` artifact globs, and the unsigned appx install (needs a certificate whose subject is `CN=JarodOS`).
+5. `README.md` still links to the upstream releases and CI badges (lines with `iamlukethedev` are protected); it says so. Change them once this derivative is published.
+6. `dist:win` leaves the earlier `HeraldOS-*` files in `apps/desktop/release` (git-ignored build output); delete them by hand if wanted.

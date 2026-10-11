@@ -265,7 +265,7 @@ export class BackendManager {
       TERMINAL_CWD: osEnv('DEFAULT_CWD') || os.homedir(),
       HERMES_DASHBOARD_SESSION_TOKEN: this.token,
       // The loopback token exemption, in-process cron ticker and orphan reaping upstream key on
-      // this flag; Herald OS spawns and owns the backend exactly the way Desktop does.
+      // this flag; Jarod-OS spawns and owns the backend exactly the way Desktop does.
       HERMES_DESKTOP: '1',
       HERALD_OS: '1',
       HERMES_PARENT_PID: String(process.pid),

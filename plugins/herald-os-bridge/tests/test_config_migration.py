@@ -1,4 +1,4 @@
-"""scripts/migrate-hermes-config.py: pre-rename Hermes OS settings carry over to Herald OS."""
+"""scripts/migrate-hermes-config.py: pre-rename Hermes OS settings carry over to Jarod-OS."""
 
 from __future__ import annotations
 

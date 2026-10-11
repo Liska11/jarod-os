@@ -302,7 +302,7 @@ AUTO_EDITORS = ("Visual Studio Code", "Cursor", "Zed")
 
 SYSTEM_OPEN_SCHEMA = _schema(
     "system_open",
-    "Open things for the user. Inside Herald OS, target=url opens the page in a Herald OS window, target=path opens files in the Herald OS viewer (PDFs, images, text, media) or shows them in Files, and target=reveal shows the item in the Files page; pass app=... only when the user names a Mac app to use. target=app launches an application by name ('Open Safari'); target=url opens a URL (optionally in a specific browser); target=path opens a file or folder with its default app or a named app; target=reveal shows a file in Finder; target=editor opens a folder/file in a code editor (editor=auto, the default, picks the first installed of VS Code, Cursor and Zed; pass vscode|cursor|xcode|zed|terminal when the user names one), e.g. 'open this repo in my editor'; target=settings opens a System Settings pane (pane=privacy_and_security, wifi, bluetooth, sound, displays, notifications, screen_recording, accessibility_privacy, automation, ...). Runs immediately; every call is audited.",
+    "Open things for the user. Inside Jarod-OS, target=url opens the page in a Jarod-OS window, target=path opens files in the Jarod-OS viewer (PDFs, images, text, media) or shows them in Files, and target=reveal shows the item in the Files page; pass app=... only when the user names a Mac app to use. target=app launches an application by name ('Open Safari'); target=url opens a URL (optionally in a specific browser); target=path opens a file or folder with its default app or a named app; target=reveal shows a file in Finder; target=editor opens a folder/file in a code editor (editor=auto, the default, picks the first installed of VS Code, Cursor and Zed; pass vscode|cursor|xcode|zed|terminal when the user names one), e.g. 'open this repo in my editor'; target=settings opens a System Settings pane (pane=privacy_and_security, wifi, bluetooth, sound, displays, notifications, screen_recording, accessibility_privacy, automation, ...). Runs immediately; every call is audited.",
     {
         "target": _enum("app", "url", "path", "reveal", "editor", "settings"),
         "app": _desc(_STR, "Application name (for target=app, or the app to open a url/path with)."),
@@ -317,7 +317,7 @@ SYSTEM_OPEN_SCHEMA = _schema(
 
 
 def _open_in_shell(target: str, args: dict[str, Any]) -> str | None:
-    """Inside Herald OS, pages, files and folders open in the OS itself, not in macOS apps.
+    """Inside Jarod-OS, pages, files and folders open in the OS itself, not in macOS apps.
 
     Returns the tool result, or ``None`` when the shell is not running (or the request is one only
     the host can serve: a named app, an editor, System Settings), so the caller falls back to the host.
@@ -625,7 +625,7 @@ def handle_system_network(args: dict[str, Any], **_: Any) -> str:
 SYSTEM_CONTROL_SCHEMA = _schema(
     "system_control",
     "Read or change device settings. Reads: audio (output/input/alert volume, mute), appearance (dark mode, displays). Actions: set_volume (percent and/or muted), set_dark_mode (enabled), notify (title, body: a system notification), open_settings (pane, e.g. privacy_and_security, screen_recording, wifi, bluetooth, sound, displays, notifications), sleep_display, lock_screen, set_wifi (enabled). "
-    "Herald OS Linux also has: wifi_networks (networks in range), wifi_connect (ssid, password for a new secured network), bluetooth_power (enabled), bluetooth_connect / bluetooth_disconnect (device: a name), audio_devices (outputs and inputs), set_audio_output (device: part of its name, e.g. headphones, HDMI), set_brightness (percent), power_profile (read the power mode), set_power_profile (profile: performance, balanced or power-saver). "
+    "Jarod-OS Linux also has: wifi_networks (networks in range), wifi_connect (ssid, password for a new secured network), bluetooth_power (enabled), bluetooth_connect / bluetooth_disconnect (device: a name), audio_devices (outputs and inputs), set_audio_output (device: part of its name, e.g. headphones, HDMI), set_brightness (percent), power_profile (read the power mode), set_power_profile (profile: performance, balanced or power-saver). "
     "Actions run immediately and are audited; set_wifi, wifi_connect and bluetooth_power ask first.",
     {
         "action": _enum(
@@ -766,7 +766,7 @@ def handle_system_logs(args: dict[str, Any], **_: Any) -> str:
 
 SYSTEM_OS_SCHEMA = _schema(
     "system_os",
-    "Herald OS Linux's control surface: the same `herald-os` commands the user's hotkeys and menu run. "
+    "Jarod-OS Linux's control surface: the same `herald-os` commands the user's hotkeys and menu run. "
     "Software: install_app (name: a dnf package or Flatpak id), install_webapp (name, url, icon_url?: pins a website as an app), remove_app, remove_webapp. "
     "The install catalog (curated, works on Fedora, Arch and the image): catalog_list (JSON of groups: AI coding agents and local models, languages through mise, editors, terminals, games, the Windows VM, media, services, web apps; each entry says installed / available / why not), "
     "catalog_install (id), catalog_remove (id). Prefer the catalog over install_app when the software is in it. "
@@ -774,10 +774,10 @@ SYSTEM_OS_SCHEMA = _schema(
     "Turning a plugin on is the user's call after reading what it asks for: point them to Settings > Plugins. "
     "Reminders: reminder (duration like 20m or 1h30m, message), reminders_list, reminders_clear. "
     "notice (kind=time|battery|weather) shows a status notice. screenshot captures the screen and hands it to Hermes; ocr reads the text on screen. "
-    "lock locks the session; suspend puts the computer to sleep. Themes: theme_list, theme_set (name), theme_current. update updates Herald OS. "
+    "lock locks the session; suspend puts the computer to sleep. Themes: theme_list, theme_set (name), theme_current. update updates Jarod-OS. "
     "Hermes shell: show_page (page: overview, hermes, missions, memory, files, automations, connections, settings), open_window (window=terminal|system|chat-popout), launch (name: an installed app), notify (title, body?). "
     "Spaces: focus_workspace (name), close_focused_window. install/remove/update and suspend ask the user to confirm. "
-    "Only available on Herald OS Linux; on macOS this tool is unavailable (use system_open / system_control instead).",
+    "Only available on Jarod-OS Linux; on macOS this tool is unavailable (use system_open / system_control instead).",
     {
         "action": _enum(
             "install_app", "install_webapp", "remove_app", "remove_webapp",
@@ -947,7 +947,7 @@ def plan_system_os(args: dict[str, Any]) -> tuple[list[str], str]:
     if action == "theme_current":
         return ["theme", "current"], "show the current theme"
     if action == "update":
-        return ["update"], "update Herald OS"
+        return ["update"], "update Jarod-OS"
     if action == "show_page":
         page = _os_arg(args, "page")
         return ["page", page], f"show the {page} page"
@@ -973,7 +973,7 @@ def plan_system_os(args: dict[str, Any]) -> tuple[list[str], str]:
 
 def system_os_handler(args: dict[str, Any], **_: Any) -> str:
     if host().platform != "linux":
-        return fail("system_os is only available on Herald OS Linux")
+        return fail("system_os is only available on Jarod-OS Linux")
     action = str(args.get("action") or "")
     try:
         cli_args, summary = plan_system_os(args)
@@ -986,7 +986,7 @@ def system_os_handler(args: dict[str, Any], **_: Any) -> str:
     def execute() -> dict[str, Any]:
         result = run(argv, timeout=timeout)
         if result.code == 127:
-            raise HostNotSupported("The herald-os command is not installed (it ships with Herald OS Linux as /usr/local/bin/herald-os).")
+            raise HostNotSupported("The herald-os command is not installed (it ships with Jarod-OS Linux as /usr/local/bin/herald-os).")
         if not result.ok:
             raise RuntimeError(result.stderr.strip() or result.stdout.strip() or f"herald-os exited {result.code}")
         if action == "catalog_list":
@@ -1000,18 +1000,18 @@ handle_system_os = system_os_handler
 
 
 # ---------------------------------------------------------------------------------------------
-# os_ui: drive the Herald OS shell (both macOS and Linux) through its command registry
+# os_ui: drive the Jarod-OS shell (both macOS and Linux) through its command registry
 # ---------------------------------------------------------------------------------------------
 
 OS_UI_SCHEMA = _schema(
     "os_ui",
-    "Operate the Herald OS user interface the user is looking at: open pages (missions, memory, files, automations, connections, settings) and apps (terminal, system), focus/close windows, show or add memories, list/run/pause automations, start missions, open web pages inside the OS, change appearance and voice settings. "
+    "Operate the Jarod-OS user interface the user is looking at: open pages (missions, memory, files, automations, connections, settings) and apps (terminal, system), focus/close windows, show or add memories, list/run/pause automations, start missions, open web pages inside the OS, change appearance and voice settings. "
     "Use action=list once to see every command with its arguments, then action=run with command=<id> and args. action=state tells you which page and windows are on screen. "
-    "Prefer this over describing where things are: when the user asks to open, show, add, find or change something in Herald OS, do it and then say what you did. "
+    "Prefer this over describing where things are: when the user asks to open, show, add, find or change something in Jarod-OS, do it and then say what you did. "
     "After using other tools whose result lives on a page (memory, cronjob, files), run page.open so the user sees it. Destructive commands (forget, delete, trash) ask the user for approval. "
     "When the user asks you to build, create or make something new (a website, app, landing page, store, game), do not write it yourself in a scratch or temporary folder: run command=build.start with args={\"goal\": \"<what they asked for>\"}. It creates a project folder, starts a session that builds it there and opens the Studio so they watch it happen; then just tell them it has started. "
-    "Changing Herald OS itself is different: for widgets, themes, fonts, the menu bar, control-menu entries, branding or keybindings, first read skill_view name=\"herald-os-bridge:herald-os-tailor\", which has the formats. "
-    "A Herald OS widget is a folder in ~/.config/herald-os/plugins/<id> with a manifest.json; it is not a Hermes Desktop plugin or a build.start project, and the user turns it on in Settings > Plugins. "
+    "Changing Jarod-OS itself is different: for widgets, themes, fonts, the menu bar, control-menu entries, branding or keybindings, first read skill_view name=\"herald-os-bridge:herald-os-tailor\", which has the formats. "
+    "A Jarod-OS widget is a folder in ~/.config/herald-os/plugins/<id> with a manifest.json; it is not a Hermes Desktop plugin or a build.start project, and the user turns it on in Settings > Plugins. "
     "How to act as this computer's operating environment: skill_view name=\"herald-os-bridge:herald-os\".",
     {
         "action": {"type": "string", "enum": ["run", "list", "state"], "description": "run a command, list the catalogue, or read the screen state"},

@@ -516,7 +516,7 @@ export class WindowsPlatform implements HostPlatform {
     }
 
     const what = action.panel === 'audio' && action.action === 'default' ? 'the default audio device' : action.panel
-    throw new HostNotSupported(`changing ${what} from Herald OS on Windows (use Windows Settings)`)
+    throw new HostNotSupported(`changing ${what} from Jarod-OS on Windows (use Windows Settings)`)
   }
 
   /** Volume and mute of one endpoint; without an id, the default device of that kind. */

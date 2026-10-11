@@ -496,7 +496,7 @@ class DarwinHost(HostAdapter):
     def set_dark_mode(self, enabled: bool) -> None:
         result = run(["osascript", "-e", f'tell application "System Events" to tell appearance preferences to set dark mode to {"true" if enabled else "false"}'], timeout=15)
         if not result.ok:
-            raise RuntimeError(result.stderr.strip() or "could not change appearance (grant Automation permission to Herald OS for System Events)")
+            raise RuntimeError(result.stderr.strip() or "could not change appearance (grant Automation permission to Jarod-OS for System Events)")
 
     def open_settings(self, pane: str) -> str:
         key = pane.strip().lower().replace(" ", "_").replace("&", "and")

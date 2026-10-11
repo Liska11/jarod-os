@@ -34,9 +34,9 @@ export class CrashWatcher {
   constructor(
     /** Hand a crash worth offering help with to the Hermes window. */
     private readonly deliver: (report: CrashReport) => void,
-    /** Processes Herald OS restarts on its own (the Hermes backend). */
+    /** Processes Jarod-OS restarts on its own (the Hermes backend). */
     private readonly ownPids: () => number[],
-    /** Every crash that is not Herald OS's own, muted or not (hooks and automations react to these). */
+    /** Every crash that is not Jarod-OS's own, muted or not (hooks and automations react to these). */
     private readonly onCrash?: (report: CrashReport) => void
   ) {}
 

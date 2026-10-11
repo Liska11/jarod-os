@@ -28,7 +28,7 @@ function run(command: string, args: string[], input?: string, timeout = 60_000):
 export function registerServiceIpc(): void {
   ipcMain.handle(IPC.shellHeraldOs, async (_event, args: string[]): Promise<HeraldOsResult> => {
     if (process.platform !== 'linux') {
-      return { code: 127, stdout: '', stderr: 'herald-os CLI is only available on Herald OS Linux' }
+      return { code: 127, stdout: '', stderr: 'herald-os CLI is only available on Jarod-OS Linux' }
     }
 
     if (!Array.isArray(args) || args.some(a => typeof a !== 'string')) {

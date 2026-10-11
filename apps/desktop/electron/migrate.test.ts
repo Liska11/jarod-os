@@ -20,7 +20,7 @@ function read(rel: string): string | null {
 }
 
 function locations() {
-  return { hermesHome: path.join(root, '.hermes'), appData: path.join(root, 'appData'), userData: path.join(root, 'appData', 'Herald OS') }
+  return { hermesHome: path.join(root, '.hermes'), appData: path.join(root, 'appData'), userData: path.join(root, 'appData', 'Jarod-OS') }
 }
 
 beforeEach(() => {
@@ -45,9 +45,9 @@ describe('migrateLegacyData', () => {
     expect(read('.hermes/herald-os/prefs.json')).toBe('{"theme":"ice"}')
     expect(read('.hermes/herald-os/permissions.yaml')).toBe('tiers: {}')
     expect(fs.existsSync(path.join(root, '.hermes/hermes-os'))).toBe(false)
-    expect(read('appData/Herald OS/Local Storage/leveldb/000003.log')).toBe('ls')
-    expect(read('appData/Herald OS/Partitions/herald-web/Cookies')).toBe('cookies')
-    expect(read('appData/Herald OS/Partitions/herald-preview/Cookies')).toBe('preview')
+    expect(read('appData/Jarod-OS/Local Storage/leveldb/000003.log')).toBe('ls')
+    expect(read('appData/Jarod-OS/Partitions/herald-web/Cookies')).toBe('cookies')
+    expect(read('appData/Jarod-OS/Partitions/herald-preview/Cookies')).toBe('preview')
   })
 
   it('merges into a folder another process already created, keeping its files', () => {
@@ -64,21 +64,21 @@ describe('migrateLegacyData', () => {
 
   it('moves the profile into the empty folder Electron creates when asked for userData', () => {
     write('appData/Hermes OS/Local Storage/leveldb/000003.log', 'ls')
-    fs.mkdirSync(path.join(root, 'appData/Herald OS'), { recursive: true })
+    fs.mkdirSync(path.join(root, 'appData/Jarod-OS'), { recursive: true })
 
     migrateLegacyData(locations())
 
-    expect(read('appData/Herald OS/Local Storage/leveldb/000003.log')).toBe('ls')
+    expect(read('appData/Jarod-OS/Local Storage/leveldb/000003.log')).toBe('ls')
     expect(fs.existsSync(path.join(root, 'appData/Hermes OS'))).toBe(false)
   })
 
   it('never replaces an existing profile', () => {
     write('appData/Hermes OS/Preferences', 'old')
-    write('appData/Herald OS/Preferences', 'new')
+    write('appData/Jarod-OS/Preferences', 'new')
 
     migrateLegacyData(locations())
 
-    expect(read('appData/Herald OS/Preferences')).toBe('new')
+    expect(read('appData/Jarod-OS/Preferences')).toBe('new')
     expect(read('appData/Hermes OS/Preferences')).toBe('old')
   })
 

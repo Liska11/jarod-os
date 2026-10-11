@@ -48,7 +48,7 @@ import { registerServiceIpc } from './shell/services.ts'
 import { WallpaperService } from './shell/wallpaper.ts'
 import { appIconPath, createMainWindow } from './window.ts'
 
-app.setName('Herald OS')
+app.setName('Jarod-OS')
 // Widget plugins load from herald-plugin://<id>/ (registered before the app is ready, as Electron requires).
 protocol.registerSchemesAsPrivileged([{ scheme: 'herald-plugin', privileges: { standard: true, secure: true, supportFetchAPI: true } }])
 
@@ -91,7 +91,7 @@ const switches = new SwitchService({
 // Linux without the panels session: Herald as an app inside Hyprland or Omarchy, or the cage kiosk.
 // The `herald-os` CLI (and so the compositor's hotkeys) reaches the one window through the same socket.
 const appHost = !panels && process.platform === 'linux' ? new DesktopHost(() => mainWindow, createCompositor(detectCompositor())) : null
-// macOS: Cmd+Ctrl+E opens the emoji picker over any app (Herald OS Linux binds it in niri).
+// macOS: Cmd+Ctrl+E opens the emoji picker over any app (Jarod-OS Linux binds it in niri).
 const emojiPanel = !panels && process.platform === 'darwin' ? new EmojiPanel(() => mainWindow) : null
 const shellHost: ShellHost | null = panels ?? appHost
 const control = shellHost
@@ -349,7 +349,7 @@ function createWindow(): void {
 }
 
 app.whenReady().then(async () => {
-  log('main', `Herald OS ${app.getVersion()} starting (dev=${isDev}, mode=${mode}, HERMES_HOME=${hermesHome()})`)
+  log('main', `Jarod-OS ${app.getVersion()} starting (dev=${isDev}, mode=${mode}, HERMES_HOME=${hermesHome()})`)
   // A packaged app carries its icon in the bundle; `electron .` would show Electron's.
   const icon = isDev ? appIconPath() : undefined
 
@@ -359,7 +359,7 @@ app.whenReady().then(async () => {
 
   // Windows groups the taskbar button, jump list and toast notifications under this id.
   if (process.platform === 'win32') {
-    app.setAppUserModelId('dev.iamluke.heraldos')
+    app.setAppUserModelId('one.jarod.os')
   }
 
   registerCoreIpc()

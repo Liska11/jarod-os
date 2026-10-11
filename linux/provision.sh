@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Turn a stock Fedora Cloud install into the Herald OS Linux development VM. Runs as root, idempotent.
+# Turn a stock Fedora Cloud install into the Jarod-OS Linux development VM. Runs as root, idempotent.
 # Invoked by cloud-init on first boot (see linux/vm/make-seed.sh); safe to re-run by hand:
 #
 #   sudo bash /usr/local/share/herald-os-linux/provision.sh
@@ -20,7 +20,7 @@ mkdir -p "$STATE_DIR"
 exec > >(tee -a "$LOG") 2>&1
 # cloud-init prints its own final message either way, so a failure has to say so here.
 trap 'echo "==> Provisioning FAILED at line $LINENO. Full log: $LOG"' ERR
-echo "==> Herald OS Linux provisioner $(date -Is) (payload $PAYLOAD)"
+echo "==> Jarod-OS Linux provisioner $(date -Is) (payload $PAYLOAD)"
 
 step() { echo; echo "--- $*"; }
 
@@ -40,7 +40,7 @@ for f in build.sh sync.sh restart-shell.sh shot.sh; do
 done
 
 # ---------------------------------------------------------------------------------------------
-step "Herald OS shell"
+step "Jarod-OS shell"
 REPO="$HERMES_UID_HOME/Herald-OS"
 if mountpoint -q /mnt/herald-os 2>/dev/null; then
   echo "shared folder mounted at /mnt/herald-os; syncing and building"
@@ -55,4 +55,4 @@ fi
 bash "$PAYLOAD/image/firstboot.sh" apps
 
 date -Is >"$STATE_DIR/provisioned"
-echo "==> Provisioning complete. greetd will start Herald OS on the next boot (or: systemctl start greetd)."
+echo "==> Provisioning complete. greetd will start Jarod-OS on the next boot (or: systemctl start greetd)."

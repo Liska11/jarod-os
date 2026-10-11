@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Try Herald OS on an Apple Silicon Mac in one command: fetch the ready-made VM disk from the latest
+# Try Jarod-OS on an Apple Silicon Mac in one command: fetch the ready-made VM disk from the latest
 # release (or use one you have), and boot it with Apple's Virtualization framework (run-vf.sh). The
 # first boot sets itself up (a few minutes, Hermes Agent included), then logs straight in.
 #
@@ -13,7 +13,7 @@ mkdir -p "$BUILD"
 
 disk="${1:-}"
 if [[ -z "$disk" ]]; then
-  echo "==> Finding the latest Herald OS VM disk"
+  echo "==> Finding the latest Jarod-OS VM disk"
   # The disk is over GitHub's 2 GiB limit for one file, so it may come in parts (.part0, .part1, …).
   urls="$(curl -fsSL https://api.github.com/repos/iamlukethedev/Herald-OS/releases/latest |
     grep -E -o '"browser_download_url": *"[^"]*-aarch64\.qcow2\.zst(\.part[0-9]+)?"' | sed 's/.*"\(https[^"]*\)"/\1/' | sort)"

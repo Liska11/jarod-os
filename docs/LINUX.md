@@ -1,11 +1,11 @@
-# Herald OS Linux
+# Jarod-OS Linux
 
-Herald OS as a whole operating system: a Fedora base, greetd signing you in, niri arranging the
-windows, the Herald shell drawing the menu bar, dock and system menus, and Hermes Agent underneath.
+Jarod-OS as a whole operating system: a Fedora base, greetd signing you in, niri arranging the
+windows, the Jarod shell drawing the menu bar, dock and system menus, and Hermes Agent underneath.
 Today it runs in a virtual machine on your Mac; nothing on the Mac changes.
 
 ```
-kernel + systemd  ->  greetd (autologin: hermes)  ->  niri  ->  Herald OS shell  ->  hermes serve
+kernel + systemd  ->  greetd (autologin: hermes)  ->  niri  ->  Jarod-OS shell  ->  hermes serve
                                                                       |                    |
                                                           HostPlatform (linux.ts)   herald-os-bridge (LinuxHost)
                                                                       \__________  ps ss nmcli wpctl gio journalctl plocate
@@ -19,10 +19,10 @@ bash linux/vm/download-image.sh         # Fedora Cloud Base aarch64 qcow2 (~500 
 bash linux/vm/make-seed.sh              # cloud-init seed + SSH key (linux/vm/build/)
 bash linux/vm/run-qemu.sh               # boots; first boot provisions (30-45 min, mostly downloads)
 bash linux/vm/run-qemu.sh console       # watch it; wait for "==> Provisioning complete"
-bash linux/dev/push.sh                  # push the repo, build the shell, start Herald OS
+bash linux/dev/push.sh                  # push the repo, build the shell, start Jarod-OS
 ```
 
-A QEMU window appears on the Mac. After provisioning and the first push, the VM starts Herald OS
+A QEMU window appears on the Mac. After provisioning and the first push, the VM starts Jarod-OS
 with no login prompt, and every later boot goes straight to it. `bash linux/vm/run-qemu.sh
 stop|status|reset` manage it.
 
@@ -35,7 +35,7 @@ enabling it at launch makes the guest adopt the initial window size).
 
 ### Signing Hermes in
 
-Hermes in the VM starts signed out. Sign it in from the card Herald OS shows (a short code you
+Hermes in the VM starts signed out. Sign it in from the card Jarod-OS shows (a short code you
 confirm on any device), or from a shell in the VM:
 
 ```bash
@@ -96,7 +96,7 @@ hermes config set model.default <model>  # a Portal model id, as in the Mac's co
 | `/etc/greetd/config.toml` | Logs `hermes` in on VT1 and runs `herald-os-compositor`. Respawns when it exits. |
 | `herald-os-compositor` | Sets `XDG_*`, picks `WLR_RENDERER=pixman` when there is no GPU render node, sources `~/.config/herald-os/session.env`, then starts niri with the managed config. Without hardware GL (QEMU and Apple Virtualization without virgl) niri runs windowed inside `cage` (`herald-os-niri-nested`). `HERALD_OS_COMPOSITOR=cage` runs the Stage 1 kiosk instead. |
 | `herald-os-session` | Publishes `WAYLAND_DISPLAY` to systemd/D-Bus, starts PipeWire + portals and the session services below, runs Electron on Wayland (Ozone) as panels: the menu bar, dock and Hermes window are separate windows niri places. Restarts the shell on a crash (5 per minute), exits on a clean quit. |
-| `herald-os.desktop` | `wayland-sessions` entry so a normal greeter can also start Herald OS. |
+| `herald-os.desktop` | `wayland-sessions` entry so a normal greeter can also start Jarod-OS. |
 
 The Hermes backend is still spawned by the shell (`electron/backend/manager.ts`), the same as on
 macOS. A systemd unit comes with the Stage 2 broker.
@@ -149,7 +149,7 @@ Dictation (`Mod+Ctrl+X`, `herald-os dictate`) records until a pause, transcribes
 speech-to-text and types the words into the focused app with `wtype`; the emoji picker
 (`Mod+Ctrl+E`) types its pick the same way. `herald-os keymap omarchy` renders
 `~/.config/niri/config.kdl` from the template in `/usr/local/share/herald-os-linux/niri/` with
-Omarchy's `Super+C/X/V` copy, cut and paste; `herald-os keymap herald` restores Herald's keys.
+Omarchy's `Super+C/X/V` copy, cut and paste; `herald-os keymap herald` restores Jarod's keys.
 
 ## Themes, omakase, updates
 
@@ -173,7 +173,7 @@ Omarchy's `Super+C/X/V` copy, cut and paste; `herald-os keymap herald` restores 
   --lock <image> --name <text>` copies the images into `~/.config/herald-os/branding/`; About
   shows the logo and name, and `herald-os lock` passes the picture to swaylock (`--image`,
   `--scaling fill`). Your own keys go in `~/.config/niri/local.kdl`, included last, where a bind
-  replaces Herald's bind for the same key.
+  replaces Jarod's bind for the same key.
 - **The install catalog** (`linux/catalog/*.json`, run by `herald-os-catalog`) is everything else
   worth one click: coding agents (Claude Code, Codex, OpenCode, Gemini CLI, Copilot CLI through npm
   in `~/.local`), Ollama and LM Studio with "Use with Hermes", languages through mise, editors,
@@ -193,14 +193,14 @@ Omarchy's `Super+C/X/V` copy, cut and paste; `herald-os keymap herald` restores 
   stable|edge`; both track `main` until releases exist), runs one-shot `linux/migrations/*.sh`
   (tracked in `/var/lib/herald-os/migrations`), upgrades the system (dnf on Fedora, pacman and the
   AUR helper on Arch; on Omarchy it leaves the system to `omarchy-update`, which Omarchy requires;
-  the Herald OS image updates as a whole with `bootc upgrade`) and Flatpaks, updates Hermes Agent,
+  the Jarod-OS image updates as a whole with `bootc upgrade`) and Flatpaks, updates Hermes Agent,
   rebuilds the shell and restarts it. A daily user timer runs `herald-os update
   --check`, which lights the menu-bar indicator when anything is pending. A repo pushed from a Mac
   (no `.git`) skips the shell step; use `linux/dev/push.sh` there.
 
-## The Herald OS image (Fedora bootc)
+## The Jarod-OS image (Fedora bootc)
 
-Herald OS ships as a bootable container image (ADR-018), built in two halves that the development
+Jarod-OS ships as a bootable container image (ADR-018), built in two halves that the development
 VM's provisioner also runs, so the VM and the image cannot drift apart:
 
 - **`linux/image/packages.sh`, at image build:** the packages in `linux/image/packages.txt` (and the
@@ -262,11 +262,11 @@ its apps and saved networks on the next restart and runs setup again; the system
 
 ## Arch Linux (and Omarchy)
 
-Fedora stays the base Herald OS builds and tests on (ADR-017); Arch gets a package.
+Fedora stays the base Jarod-OS builds and tests on (ADR-017); Arch gets a package.
 `packaging/arch/herald-os-bin` packages the release tarball and `packaging/arch/herald-os-git` builds
 from source; both lay out the same files: the app in `/opt/herald-os`, the CLIs and session scripts
 in `/usr/bin`, shared data in `/usr/share/herald-os`, the session for the login screen in
-`/usr/share/wayland-sessions/herald-os.desktop`, and Herald OS as an app in the application menu.
+`/usr/share/wayland-sessions/herald-os.desktop`, and Jarod-OS as an app in the application menu.
 Neither is on the AUR yet; build them from the repository:
 
 ```bash
@@ -284,7 +284,7 @@ an Arch container, lints it with namcap, installs it and runs the CLIs.
 
 ## Inside Hyprland and Omarchy (app mode)
 
-Herald OS also runs as an app inside another compositor: `herald-os-app` starts the single-window
+Jarod-OS also runs as an app inside another compositor: `herald-os-app` starts the single-window
 shell (fullscreen, as on macOS) and leaves the compositor's bar, keys and window rules alone. The
 shell finds the compositor from `NIRI_SOCKET` or `HYPRLAND_INSTANCE_SIGNATURE`; on Hyprland it mirrors
 windows through `hyprctl -j` and the event socket, so "ask about this window" works, and `herald-os
@@ -299,14 +299,14 @@ again. It handles Omarchy 4 (the package in `/usr/share/omarchy`, a Lua Hyprland
 
 - **Theme:** a hook in `~/.config/omarchy/hooks/theme-set.d/` runs `herald-os theme omarchy` when the
   Omarchy theme changes (Omarchy 4 runs that folder itself; on Omarchy 3 a small `theme-set` hook
-  does), and Herald takes the theme's colours from its `colors.toml` (or `alacritty.toml`) and its
-  background as the wallpaper. Herald's `theme list`, `set` and `current` hand off to Omarchy there.
-- **Menu:** on Omarchy 4, a "Herald OS" row on the Omarchy menu, from
-  `~/.config/omarchy/extensions/omarchy-menu.jsonc`. On Omarchy 3, Herald is in Applications.
-- **Keys:** on Omarchy 4, `Super+Alt+H` opens Herald OS and `Super+Alt+` A (ask about this window),
+  does), and Jarod takes the theme's colours from its `colors.toml` (or `alacritty.toml`) and its
+  background as the wallpaper. Jarod's `theme list`, `set` and `current` hand off to Omarchy there.
+- **Menu:** on Omarchy 4, a "Jarod-OS" row on the Omarchy menu, from
+  `~/.config/omarchy/extensions/omarchy-menu.jsonc`. On Omarchy 3, Jarod is in Applications.
+- **Keys:** on Omarchy 4, `Super+Alt+H` opens Jarod-OS and `Super+Alt+` A (ask about this window),
   C (command bar), V (voice), X (dictate), E (emoji) and M (Missions) do the rest, from
   `~/.config/hypr/herald-os.lua`, none of them taken by Omarchy. On Omarchy 3, the same keys come one
-  after `Super+Alt+H` (Return opens Herald OS), from `~/.config/hypr/herald-os.conf`.
+  after `Super+Alt+H` (Return opens Jarod-OS), from `~/.config/hypr/herald-os.conf`.
 - **Sign-in:** `herald-os setup fingerprint` and `setup fido2` run Omarchy's own
   `omarchy-setup-security-fingerprint` and `omarchy-setup-security-fido2`.
 - **Updates and installs:** `herald-os update` leaves the system to `omarchy-update` and catalog
@@ -320,12 +320,12 @@ This has been tested under Hyprland 0.56 with Omarchy 4's own config, theme scri
 Omarchy install on real hardware. Reports are welcome.
 
 **Sharing a Hermes home.** Omarchy's Hermes Desktop owns `~/.hermes` and runs its own backend and
-messaging gateway. A second backend from Herald is safe (Hermes takes a lock for every cron tick and
+messaging gateway. A second backend from Jarod is safe (Hermes takes a lock for every cron tick and
 keeps one gateway per home), and Settings > Network says when another app's gateway is running. To
-not run a second backend at all, start Herald with `HERALD_OS_BACKEND_URL=http://127.0.0.1:<port>`
-and the backend's token in `HERALD_OS_BACKEND_TOKEN` (or `~/.config/herald-os/backend-token`); Herald
+not run a second backend at all, start Jarod with `HERALD_OS_BACKEND_URL=http://127.0.0.1:<port>`
+and the backend's token in `HERALD_OS_BACKEND_TOKEN` (or `~/.config/herald-os/backend-token`); Jarod
 then attaches to it and writes `~/.hermes/herald-os/control.json` (mode 0600) so the bridge plugin
-can still drive Herald's UI.
+can still drive Jarod's UI.
 
 ## Known limits
 

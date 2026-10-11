@@ -1,4 +1,4 @@
-# greetd: log the session user straight into Herald OS on VT 1. No greeter UI.
+# greetd: log the session user straight into Jarod-OS on VT 1. No greeter UI.
 # Installed to /etc/greetd/config.toml by linux/provision.sh (which rewrites `user`).
 
 [terminal]

@@ -1,6 +1,6 @@
 # linux/
 
-Everything needed to run Herald OS as the whole desktop of a Fedora machine (Stage 1: a VM on
+Everything needed to run Jarod-OS as the whole desktop of a Fedora machine (Stage 1: a VM on
 your Mac). Full guide: [docs/LINUX.md](../docs/LINUX.md).
 
 ```
@@ -24,5 +24,5 @@ linux/
 bash linux/vm/download-image.sh && bash linux/vm/make-seed.sh && bash linux/vm/run-qemu.sh
 bash linux/vm/run-qemu.sh console            # first boot provisions (30-45 min, mostly downloads)
 bash linux/dev/push.sh --with-hermes-config  # build the shell in the VM, copy model config (not OAuth logins)
-bash linux/dev/push.sh ssh                   # then: hermes setup (or sign in from the card in Herald OS)
+bash linux/dev/push.sh ssh                   # then: hermes setup (or sign in from the card in Jarod-OS)
 ```

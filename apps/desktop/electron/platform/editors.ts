@@ -13,5 +13,5 @@ export function findCodeEditor(apps: readonly InstalledApp[]): InstalledApp {
     }
   }
 
-  throw new Error(`No code editor is installed (Herald OS looks for ${CODE_EDITORS.join(', ')})`)
+  throw new Error(`No code editor is installed (Jarod-OS looks for ${CODE_EDITORS.join(', ')})`)
 }

@@ -1,5 +1,5 @@
 [Unit]
-Description=Herald OS: first-boot setup (the session user, the home folder, Hermes Agent)
+Description=Jarod-OS: first-boot setup (the session user, the home folder, Hermes Agent)
 # Once per machine; `herald-os reset` removes the stamp to run it again.
 ConditionPathExists=!/var/lib/herald-os/firstboot-done
 Wants=network-online.target

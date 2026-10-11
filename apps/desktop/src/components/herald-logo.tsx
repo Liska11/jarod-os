@@ -4,5 +4,5 @@ import { cn } from '../lib/cn.ts'
 
 /** The Herald winged H, shared with the Herald mobile app. White on transparency; sized by height. */
 export function HeraldLogo({ height = 14, className }: { height?: number; className?: string }) {
-  return <img src={heraldMarkUrl} alt="Herald OS" height={height} style={{ height, width: 'auto' }} draggable={false} className={cn('shrink-0 select-none', className)} />
+  return <img src={heraldMarkUrl} alt="Jarod-OS" height={height} style={{ height, width: 'auto' }} draggable={false} className={cn('shrink-0 select-none', className)} />
 }

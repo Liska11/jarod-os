@@ -1,6 +1,6 @@
 name: herald-os-bridge
 version: 0.1.0
-description: "Herald OS system bridge: lets Hermes act on this computer through explicit, permission-tiered tools (system info, processes, Spotlight search, apps, open, kill, files, and the herald-os control surface on Herald OS Linux). Every action is audited; mutating and destructive actions go through the standard approval gate."
+description: "Jarod-OS system bridge: lets Hermes act on this computer through explicit, permission-tiered tools (system info, processes, Spotlight search, apps, open, kill, files, and the herald-os control surface on Jarod-OS Linux). Every action is audited; mutating and destructive actions go through the standard approval gate."
 author: Luke The Dev
 kind: standalone
 requires_hermes: ">=0.21"

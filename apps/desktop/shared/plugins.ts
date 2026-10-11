@@ -188,7 +188,7 @@ export function describePermissions(manifest: PluginManifest): string[] {
 
   for (const permission of manifest.permissions) {
     if (permission.startsWith('run:')) {
-      lines.push(`Run the Herald OS command ${permission.slice(4)} (changes still ask you first)`)
+      lines.push(`Run the Jarod-OS command ${permission.slice(4)} (changes still ask you first)`)
     }
   }
 

@@ -37,7 +37,7 @@ type Phase = { kind: 'idle' } | { kind: 'starting' } | { kind: 'code'; login: De
 /**
  * The OS-level sign-in for Hermes's model provider. Shown when the active provider has no usable
  * credentials (boot check or a failed turn). Runs the runtime's device-code flow: show the code,
- * open the portal in a Herald OS web window beside the card, poll until approved; the runtime
+ * open the portal in a Jarod-OS web window beside the card, poll until approved; the runtime
  * persists the credentials itself. The portal never opens in the system browser.
  */
 export function HermesLoginCard() {
@@ -91,7 +91,7 @@ export function HermesLoginCard() {
     }
   }
 
-  /** Show the portal inside Herald OS: raise the existing window, or open one beside the card. */
+  /** Show the portal inside Jarod-OS: raise the existing window, or open one beside the card. */
   const openSignInPage = async (url: string) => {
     if (webRef.current && $webWindows.get()[webRef.current]) {
       focusWebWindow(webRef.current)
@@ -235,7 +235,7 @@ export function HermesLoginCard() {
                 <IconKey />
                 Sign in with {target.name}
               </GlassButton>
-              <p className="mt-2 text-center text-[11.5px] text-fg-3">Opens {target.name} right here in Herald OS with a one-time code. Nothing to type in a terminal.</p>
+              <p className="mt-2 text-center text-[11.5px] text-fg-3">Opens {target.name} right here in Jarod-OS with a one-time code. Nothing to type in a terminal.</p>
             </>
           ) : phase.kind === 'starting' ? (
             <div className="flex h-11 items-center justify-center text-[12.5px] text-fg-2">Requesting a sign-in code…</div>
@@ -303,7 +303,7 @@ function CodePanel({
         {copied ? <IconCheck size={18} className="text-ok" /> : <IconCopy size={18} className="text-fg-3" />}
       </button>
       <div className="flex items-center justify-center gap-2">
-        <GlassButton size="sm" onClick={onOpenPage} aria-label={beside ? 'Show the sign-in page' : 'Open the sign-in page in Herald OS'}>
+        <GlassButton size="sm" onClick={onOpenPage} aria-label={beside ? 'Show the sign-in page' : 'Open the sign-in page in Jarod-OS'}>
           <IconWorld />
           {beside ? 'Show sign-in page' : 'Open sign-in page'}
         </GlassButton>

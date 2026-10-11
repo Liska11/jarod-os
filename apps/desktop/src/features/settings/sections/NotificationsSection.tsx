@@ -24,7 +24,7 @@ const ROWS: { key: NotifyKey; label: string; description: string; icon: React.Re
   { key: 'toolCompletions', label: 'Tool completions', description: 'A toast when a long-running tool finishes in a session you are not looking at.', icon: <IconChecklist />, keywords: 'toast finished' },
   { key: 'approvals', label: 'Approvals', description: 'Tell me when Hermes is waiting for a decision.', icon: <IconShieldCheck />, keywords: 'permission request waiting' },
   { key: 'taskUpdates', label: 'Task updates', description: 'Scheduled tasks that ran, failed or changed.', icon: <IconBellRinging />, keywords: 'cron automations' },
-  { key: 'nativeWhenUnfocused', label: 'Native notifications when unfocused', description: 'Use system notifications while Herald OS is in the background.', icon: <IconDeviceDesktop />, keywords: 'macos system background' }
+  { key: 'nativeWhenUnfocused', label: 'Native notifications when unfocused', description: 'Use system notifications while Jarod-OS is in the background.', icon: <IconDeviceDesktop />, keywords: 'macos system background' }
 ]
 
 export function NotificationsSection() {
@@ -43,7 +43,7 @@ export function NotificationsSection() {
 
   return (
     <>
-      <SectionTitle title="Notifications" subtitle="These are Herald OS shell preferences. They shape what the shell surfaces; Hermes itself keeps working either way." />
+      <SectionTitle title="Notifications" subtitle="These are Jarod-OS shell preferences. They shape what the shell surfaces; Hermes itself keeps working either way." />
 
       <SettingsGroup title="Alerts">
         {ROWS.map(row => (

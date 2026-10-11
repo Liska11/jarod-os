@@ -1,4 +1,4 @@
-// Herald OS boot splash. Deep-blue field, the Herald mark fading in, a progress bar on a faint track
+// Jarod-OS boot splash. Deep-blue field, the Herald mark fading in, a progress bar on a faint track
 // for the boot sequence, and plain password prompts for encrypted disks.
 
 Window.SetBackgroundTopColor(0.016, 0.067, 0.247);

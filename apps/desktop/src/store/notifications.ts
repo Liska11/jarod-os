@@ -14,7 +14,7 @@ export interface DesktopNotificationRef {
   actions: Array<[string, string]>
 }
 
-/** A button on one of Herald OS's own notifications: an OS command, so it survives being saved. */
+/** A button on one of Jarod-OS's own notifications: an OS command, so it survives being saved. */
 export interface NotificationAction {
   label: string
   command: string

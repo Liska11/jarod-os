@@ -115,7 +115,7 @@ export function MenuBarStatus({ onSearch, onBell, bellActive }: { onSearch: () =
 
 /**
  * Minimize, maximize / restore and close for the frameless window. Only Windows needs them: macOS
- * has its own and Herald OS Linux is the whole session. The same quiet buttons as the status cluster;
+ * has its own and Jarod-OS Linux is the whole session. The same quiet buttons as the status cluster;
  * close turns red on hover like the system's.
  */
 export function WindowControls() {
@@ -250,8 +250,8 @@ export function MenuBar() {
     <header className="drag-region absolute inset-x-0 top-0 z-(--z-menubar) flex h-(--menubar-h) items-center justify-between px-3 text-[12.5px] text-fg select-none" style={{ background: 'linear-gradient(180deg, var(--menubar-from, rgba(3,10,40,.55)), var(--menubar-to, rgba(3,10,40,.15)))' }}>
       <div className="flex items-center gap-2.5 pl-[74px]">
         <HeraldLogo height={12} />
-        <span className="font-semibold">Herald OS</span>
-        {title !== 'Herald OS' && (
+        <span className="font-semibold">Jarod-OS</span>
+        {title !== 'Jarod-OS' && (
           <>
             <span className="text-fg-4">·</span>
             <span className="text-fg-2">{title}</span>

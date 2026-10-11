@@ -6,7 +6,7 @@ export interface LegacyLocations {
   hermesHome: string
   /** Electron's `appData` (`~/Library/Application Support`, `~/.config`). */
   appData: string
-  /** Electron's `userData` for Herald OS. */
+  /** Electron's `userData` for Jarod-OS. */
   userData: string
 }
 

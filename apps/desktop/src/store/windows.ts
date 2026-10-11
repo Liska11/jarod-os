@@ -35,7 +35,7 @@ export const $page = atom<PageId>('overview')
 /** Menu-bar title: the focused window's title. */
 export const $focusedTitle = computed([$windows, $focusedWindowId, $page], (windows, id, page) => {
   if (!id || !windows[id]) {
-    return 'Herald OS'
+    return 'Jarod-OS'
   }
 
   return id === MAIN_WINDOW_ID ? appById(page).name : windows[id].title

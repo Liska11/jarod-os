@@ -5,7 +5,7 @@ result). Remaining from the original list: nothing; follow-ups are noted at the 
 
 Six changes, in three phases, each verified in the Linux VM and committed before the next. The
 thread through all of them: Hermes owns every window, every hotkey and every system chore, so a
-user never leaves Herald OS to do something.
+user never leaves Jarod-OS to do something.
 
 Compositor: **niri** (Fedora official repos; Hyprland has no Fedora aarch64 packages). Scrollable
 tiling, JSON IPC + event stream, window rules, `layout.struts`, named workspaces, fractional output

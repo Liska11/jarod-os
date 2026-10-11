@@ -25,7 +25,7 @@ export function MenuBarSurface() {
     <header className="flex h-full w-full items-center justify-between px-3 text-[12.5px] text-fg select-none" style={{ background: 'linear-gradient(180deg, var(--menubar-from, rgba(3,10,40,.72)), var(--menubar-to, rgba(3,10,40,.42)))' }}>
       <div className="flex min-w-0 items-center gap-2.5">
         <HeraldLogo height={12} />
-        <span className="font-semibold">Herald OS</span>
+        <span className="font-semibold">Jarod-OS</span>
         {title && (
           <>
             <span className="text-fg-4">·</span>
@@ -54,7 +54,7 @@ function openNotifications(): void {
 const UPDATE_KEY = 'herald-os.update-available'
 
 interface UpdateAvailable {
-  /** What is pending, e.g. "Herald OS, 192 packages, 3 apps". */
+  /** What is pending, e.g. "Jarod-OS, 192 packages, 3 apps". */
   summary: string
   checkedAt: number
 }

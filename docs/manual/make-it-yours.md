@@ -3,23 +3,23 @@
 ## Themes
 
 A theme recolours everything at once: the shell, the in-shell terminal, the wallpaper's colours,
-Hermes's own command-line skin and, on Herald OS Linux, the window borders, GTK apps, the lock
+Hermes's own command-line skin and, on Jarod-OS Linux, the window borders, GTK apps, the lock
 screen and the rescue terminal. Settings > Appearance shows every theme as a card; click one. Or say
 "switch to the Paper theme".
 
-Herald OS ships twelve: Ocean (the default), Graphite, Ice, Violet, Ember, Forest, Dusk, Onyx (true
+Jarod-OS ships twelve: Ocean (the default), Graphite, Ice, Violet, Ember, Forest, Dusk, Onyx (true
 black), Rose, Lagoon, and two light ones, Paper and Cloud.
 
 - **From an image.** "Make a theme from an image" in Settings, or "make a theme from my
   wallpaper", takes the colours of a photo or artwork, builds a complete theme from them and uses
-  the image as the wallpaper. On Herald OS Linux, `herald-os theme new <image> [name]` does the same.
+  the image as the wallpaper. On Jarod-OS Linux, `herald-os theme new <image> [name]` does the same.
 - **From a description.** Ask Hermes: "make me a theme that feels like a foggy forest morning". It
   writes the theme file and switches to it.
 - **From someone else.** Paste the https address of a theme repository into "Install themes from
   git" (or `herald-os theme install <url>`). Only colours and images are kept, so a theme can never
   run code on your machine.
 - **Follow Hermes.** With "Follow Hermes skins" on, changing Hermes's skin with `/skin` in a chat
-  restyles Herald OS too.
+  restyles Jarod-OS too.
 
 ### Writing a theme by hand
 
@@ -54,22 +54,22 @@ To share a theme, put its folder (or several, one per theme) in a git repository
 ## Fonts
 
 Settings > Appearance > Fonts sets the interface font and the code font (the terminal and code
-views); leave a field empty for the default. "Use the font Inter" works too. On Herald OS Linux,
+views); leave a field empty for the default. "Use the font Inter" works too. On Jarod-OS Linux,
 `herald-os font list` shows what is installed and `herald-os font set <family> [--mono]` sets it.
 
 ## Widgets
 
-Widgets are small pages Herald OS shows in the menu bar, on the Overview or in a window of their
+Widgets are small pages Jarod-OS shows in the menu bar, on the Overview or in a window of their
 own: a CPU meter, the weather, a countdown to Friday. Each one is sealed off from the rest of the
 system and can do only what you allowed when you turned it on.
 
 - **Ask Hermes for one.** "Make me a widget that shows the weather in the menu bar". Settings >
   Plugins > Make a widget starts the sentence for you. Hermes writes it into your plugins folder,
   and you turn it on.
-- **Install one.** Paste a git address into Settings > Plugins > From git (on Herald OS Linux,
+- **Install one.** Paste a git address into Settings > Plugins > From git (on Jarod-OS Linux,
   `herald-os plugin add <url>`). It arrives turned off.
-- **Turn it on.** Flip its switch in Settings > Plugins. Herald OS lists what it will be able to do
-  (see system stats, show notifications, keep its own settings, run a named Herald OS command,
+- **Turn it on.** Flip its switch in Settings > Plugins. Jarod-OS lists what it will be able to do
+  (see system stats, show notifications, keep its own settings, run a named Jarod-OS command,
   connect to a named website) and turns it on only when you agree. If an update asks for more, it
   turns itself off until you agree again.
 - **Open one in a window.** Widgets that can live in a window have an Open button in Settings >
@@ -99,7 +99,7 @@ A widget is a folder, `~/.config/herald-os/plugins/<id>/`, with a `manifest.json
 - `placement` is where it may sit: `menubar` (a strip 24 pixels tall and `size.width` wide, up to
   240), `overview` (a card `size.height` tall) and `panel` (its own window).
 - `permissions` are `stats` (CPU, memory, disks, battery), `notify`, `storage` (its own small
-  settings store) and `run:<command>` for each Herald OS command it may run, such as
+  settings store) and `run:<command>` for each Jarod-OS command it may run, such as
   `run:page.open`. A command that changes something still asks you each time.
 - `hosts` are the websites it may fetch from, over HTTPS. It can reach nothing else.
 
@@ -116,8 +116,8 @@ The page loads `<script src="herald-plugin://sdk/widget.js"></script>`, then its
   `--herald-urgent`), and `herald.onTheme(colors => …)` when they change.
 
 While a widget is on, saving any of its files reloads it. It keeps up to 256 KB in its store and
-cannot see your files, other apps or the rest of Herald OS. To share it, put the folder in a git
-repository. On Herald OS Linux, `herald-os plugin list`, `enable`, `disable`, `update` and `remove`
+cannot see your files, other apps or the rest of Jarod-OS. To share it, put the folder in a git
+repository. On Jarod-OS Linux, `herald-os plugin list`, `enable`, `disable`, `update` and `remove`
 manage widgets from the terminal; `enable` shows the same list and asks you first.
 
 ## The menu bar
@@ -128,7 +128,7 @@ dictation and switches that are on always show, so you can tell when the screen 
 the microphone is typing for you. The same page sets the clock: 12 or 24 hours (or your region's
 choice), seconds, and a short, long or no date.
 
-Or ask: "hide the Bluetooth icon", "use a 24-hour clock", "put the clock first". On Herald OS
+Or ask: "hide the Bluetooth icon", "use a 24-hour clock", "put the clock first". On Jarod-OS
 Linux, `herald-os bar` does the same:
 
 ```sh
@@ -141,9 +141,9 @@ herald-os bar reset
 
 ## Your own menu entries
 
-The control menu (`Super+M` on Herald OS Linux) takes entries of your own from
+The control menu (`Super+M` on Jarod-OS Linux) takes entries of your own from
 `~/.config/herald-os/menu.json`. Each entry has a label and one thing to do: a `herald-os`
-command, a program to start, a web address, or a Herald OS command.
+command, a program to start, a web address, or a Jarod-OS command.
 
 ```json
 {
@@ -170,9 +170,9 @@ is wrong. Hermes can write the file for you: "add my backup script to the menu".
 ## Branding
 
 Settings > About > Branding puts your own logo (PNG, JPEG, WebP or SVG) at the top of About, with
-a name under it such as your company. On Herald OS Linux it also sets the picture behind the
+a name under it such as your company. On Jarod-OS Linux it also sets the picture behind the
 password on the lock screen (PNG or JPEG). The images are copied, so the originals can move.
-On Herald OS Linux, `herald-os branding` does the same:
+On Jarod-OS Linux, `herald-os branding` does the same:
 
 ```sh
 herald-os branding set --logo ~/Pictures/acme.svg --name "Acme Corp"
@@ -182,7 +182,7 @@ herald-os branding reset lock              # or logo, name, all
 
 ## Keyboard shortcuts
 
-On Herald OS Linux, your own binds go in `~/.config/niri/local.kdl`, which Herald OS never
+On Jarod-OS Linux, your own binds go in `~/.config/niri/local.kdl`, which Jarod-OS never
 overwrites. niri reloads it as soon as you save:
 
 ```kdl
@@ -194,24 +194,24 @@ binds {
 
 Check a bind is free in the hotkey overlay (`Super+K`) first.
 
-To change one of Herald OS's own keys, bind the same key in `local.kdl`. It is read last, and a
+To change one of Jarod-OS's own keys, bind the same key in `local.kdl`. It is read last, and a
 later bind replaces an earlier one. To switch a key off, bind it to nothing, for example
 `Mod+Q { spawn "true"; }` so `Super+Q` no longer closes windows. Bind each key only once inside
 `local.kdl` itself, because niri refuses a file that binds the same key twice;
 `niri validate -c ~/.config/niri/config.kdl` checks it.
 
-Running Herald OS as an app inside Omarchy, its keys live in `~/.config/hypr/herald-os.lua` on
+Running Jarod-OS as an app inside Omarchy, its keys live in `~/.config/hypr/herald-os.lua` on
 Omarchy 4 (`herald-os.conf` on Omarchy 3), which `herald-os omarchy install` rewrites. Change them in
 your own Hyprland config instead. On Omarchy 4, below the `require("hypr.herald-os")` line at the end
-of `~/.config/hypr/hyprland.lua`, so it runs after Herald's: `hl.unbind("SUPER + ALT + H")`, then an
-`o.bind("SUPER + H", "Herald OS", "herald-os-app")` of your own. On Omarchy 3,
+of `~/.config/hypr/hyprland.lua`, so it runs after Jarod's: `hl.unbind("SUPER + ALT + H")`, then an
+`o.bind("SUPER + H", "Jarod-OS", "herald-os-app")` of your own. On Omarchy 3,
 `unbind = SUPER ALT, H`, then a `bind = …` line.
 
 ## When something happens
 
-Herald OS notices these moments: you log in, the computer wakes, you unlock the screen, you come
+Jarod-OS notices these moments: you log in, the computer wakes, you unlock the screen, you come
 back after a break, the battery runs low, the network changes, a program crashes, the theme
-changes, and Herald OS finishes an update (plus locking the screen and going to sleep, for scripts).
+changes, and Jarod-OS finishes an update (plus locking the screen and going to sleep, for scripts).
 
 ### Automations
 
@@ -236,5 +236,5 @@ skipped, and a hook gets two minutes.
 brightnessctl set 30%
 ```
 
-On Herald OS Linux, `herald-os hook list` shows your hooks, `herald-os hook install <event>
+On Jarod-OS Linux, `herald-os hook list` shows your hooks, `herald-os hook install <event>
 <script>` copies one in, and `herald-os event <name>` sets one off to test it.

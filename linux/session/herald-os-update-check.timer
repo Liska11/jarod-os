@@ -1,5 +1,5 @@
 [Unit]
-Description=Herald OS: daily check for updates (menu bar indicator)
+Description=Jarod-OS: daily check for updates (menu bar indicator)
 
 [Timer]
 OnBootSec=10min

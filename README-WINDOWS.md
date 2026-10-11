@@ -1,8 +1,12 @@
-# Herald OS on Windows (alpha)
+# Jarod-OS on Windows (alpha)
 
-Herald OS runs on Windows 10 and 11 as an **application**: the same window as on macOS, fullscreen
+Jarod-OS is derived from Herald OS by Luke The Dev (MIT; see [NOTICE](NOTICE)). Only the name shown to the
+user, the executable and the installer identity changed; internal identifiers (`herald-os-bridge`, `HERALD_OS_*`,
+`window.heraldOS`, data folders under `herald-os`) keep their upstream names.
+
+Jarod-OS runs on Windows 10 and 11 as an **application**: the same window as on macOS, fullscreen
 by default, with Hermes Agent installed natively (no WSL). It does not replace the Windows
-desktop the way Herald OS Linux replaces the session.
+desktop the way Jarod-OS Linux replaces the session.
 
 What you get is the shell (Overview, Missions, Memory, Hermes, Files, Terminal, System, Settings...),
 the agent, and the system bridge: Hermes can list processes, search your files, open apps and
@@ -35,12 +39,12 @@ hermes setup      # pick a model provider, if you have not yet
 ```
 
 Hermes keeps its data in `%LOCALAPPDATA%\hermes` (that is `HERMES_HOME`), its code in
-`%LOCALAPPDATA%\hermes\hermes-agent` and the `hermes` launcher in `%LOCALAPPDATA%\hermes\bin`. Herald
+`%LOCALAPPDATA%\hermes\hermes-agent` and the `hermes` launcher in `%LOCALAPPDATA%\hermes\bin`. Jarod
 OS follows the same place, so the plugin link, the settings and the audit log
 (`%LOCALAPPDATA%\hermes\herald-os\audit.jsonl`) all sit next to Hermes's own files. If you set the
 `HERMES_HOME` environment variable, both use that instead.
 
-## 2. Run Herald OS from source
+## 2. Run Jarod-OS from source
 
 ```powershell
 git clone https://github.com/PAVADI234/herald-os
@@ -90,15 +94,15 @@ This builds the app and runs electron-builder for x64. In `apps\desktop\release`
 
 | File | What it is |
 | --- | --- |
-| `HeraldOS-Setup-<version>-win-x64.exe` | NSIS installer. Per user (no administrator rights), lets you choose the folder, adds Start menu and desktop shortcuts and an uninstaller. |
-| `HeraldOS-<version>-win-x64.appx` | The same app as a Windows app package (the format MSIX packages use; electron-builder calls the target `appx`). **Unsigned.** |
-| `win-unpacked\` | The unpacked app, runnable as is: `win-unpacked\Herald OS.exe`. |
+| `JarodOS-Setup-<version>-win-x64.exe` | NSIS installer. Per user (no administrator rights), lets you choose the folder, adds Start menu and desktop shortcuts and an uninstaller. |
+| `JarodOS-<version>-win-x64.appx` | The same app as a Windows app package (the format MSIX packages use; electron-builder calls the target `appx`). **Unsigned.** |
+| `win-unpacked\` | The unpacked app, runnable as is: `win-unpacked\Jarod-OS.exe`. |
 
 Things to know:
 
 - **Both packages are unsigned.** Windows SmartScreen warns about the installer ("More info", then
   "Run anyway"). An appx can only be installed once it is signed with a certificate whose subject
-  matches `build.appx.publisher` in `apps\desktop\package.json` (it is `CN=HeraldOS` now): set
+  matches `build.appx.publisher` in `apps\desktop\package.json` (it is `CN=JarodOS` now): set
   `CSC_LINK` and `CSC_KEY_PASSWORD` for electron-builder, change `publisher` to your certificate's
   subject, and for the Store use the identity values the Partner Center gives you.
 - electron-builder prints "Cannot create symbolic link" while unpacking `winCodeSign`. Those are macOS
@@ -108,12 +112,12 @@ Things to know:
 - The appx installs under `C:\Program Files\WindowsApps`, which other processes (Hermes's Python)
   cannot read, so the app copies the bridge plugin to `%HERMES_HOME%\herald-os\bridge-plugin` and
   links that. The NSIS install links the plugin from its own `resources` folder.
-- A packaged Herald OS links and enables the bridge plugin itself at first start, the way
+- A packaged Jarod-OS links and enables the bridge plugin itself at first start, the way
   `npm run bootstrap` does for a checkout.
 
 ## Limitations
 
-What is different from macOS and Herald OS Linux, honestly:
+What is different from macOS and Jarod-OS Linux, honestly:
 
 - **Application mode only.** No Windows session replacement, no tiling, no panels mode.
 - **Fullscreen by default.** Like on macOS the window is frameless and starts fullscreen. The menu
@@ -121,7 +125,7 @@ What is different from macOS and Herald OS Linux, honestly:
   toggles fullscreen and "Launch fullscreen" in Settings -> General turns the default off. Drag the
   menu bar to move the window when it is not fullscreen.
 - **Global hotkeys.** The voice hotkey is configurable and defaults to `Alt+Space`. Windows reserves
-  most `Win+` combinations, so Herald OS does not register any; inside the app `Ctrl` does what `Cmd`
+  most `Win+` combinations, so Jarod-OS does not register any; inside the app `Ctrl` does what `Cmd`
   does on macOS (`Ctrl+K` opens the command bar).
 - **Screenshots and recordings.** A whole-screen screenshot is taken by the app (primary display, saved
   in `Pictures\Screenshots`); a region or a window opens Windows's Snipping Tool, and what you select is
@@ -150,13 +154,13 @@ What is different from macOS and Herald OS Linux, honestly:
 ## Troubleshooting
 
 - **"hermes is not recognized."** Open a new terminal after installing, or check that
-  `%LOCALAPPDATA%\hermes\bin` is on your user `PATH`. Herald OS also looks there by itself.
+  `%LOCALAPPDATA%\hermes\bin` is on your user `PATH`. Jarod-OS also looks there by itself.
 - **Hermes starts but `hermes serve` fails with `No module named 'pydantic_core...'`** (or another
   missing module), or `hermes` exits silently with code 1. A Hermes update was interrupted and left
-  the environment half-done. Run `hermes pm repair`, then `hermes update`, and start Herald OS again.
+  the environment half-done. Run `hermes pm repair`, then `hermes update`, and start Jarod-OS again.
   If those cannot run either because `%LOCALAPPDATA%\hermes\tools\...` answers "Access is denied" (an
   update run as administrator can leave folders whose permissions exclude your account), reset that
-  folder's permissions from an **administrator PowerShell** and start Herald OS again:
+  folder's permissions from an **administrator PowerShell** and start Jarod-OS again:
 
   ```powershell
   takeown /f "$env:LOCALAPPDATA\hermes\tools" /r /d o
@@ -167,7 +171,7 @@ What is different from macOS and Herald OS Linux, honestly:
   Re-running the Hermes installer works too.
 - **`WinError 5` / "Access is denied" from Hermes's Python.** An executable under `WindowsApps` was
   started from another process. Use the NSIS install or the checkout, not an appx, for the bridge, or
-  let Herald OS stage the plugin as described above.
+  let Jarod-OS stage the plugin as described above.
 - **`npm run bootstrap` stops with `EALLOWSCRIPTS`.** Your user `.npmrc` has an `allow-scripts` line
   that `npm run` passes down. The Windows bootstrap clears it for its own `npm install`; if you run
   `npm install` by hand inside `npm run`, unset `npm_config_allow_scripts` first.

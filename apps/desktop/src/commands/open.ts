@@ -5,7 +5,7 @@ import { resolveAppId } from './navigation.ts'
 /*
  * "Open X" is the most common utterance and X can be a page, a Hermes app, the app launcher, a
  * file, a folder, a web address or an installed application. This command routes to the right one,
- * in that order, and everything it opens stays inside Herald OS except native Mac apps.
+ * in that order, and everything it opens stays inside Jarod-OS except native Mac apps.
  */
 
 const LAUNCHER_WORDS = new Set(['apps', 'applications', 'my apps', 'all apps', 'all my apps', 'app launcher', 'launcher', 'the launcher', 'app list'])
@@ -16,7 +16,7 @@ export const openCommands: readonly OsCommand[] = [
   {
     id: 'open.any',
     title: 'Open',
-    description: 'Open a page, Hermes app, the app launcher, a file, a folder, a web page (inside Herald OS) or an installed application by name.',
+    description: 'Open a page, Hermes app, the app launcher, a file, a folder, a web page (inside Jarod-OS) or an installed application by name.',
     tier: 'act',
     args: [{ name: 'name', type: 'string', description: 'What to open', required: true }],
     phrases: ['open {name}', 'show {name}', 'go to {name}', 'take me to {name}', 'show me {name}', 'launch {name}', 'bring up {name}', 'pull up {name}'],

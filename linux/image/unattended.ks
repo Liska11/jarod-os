@@ -1,4 +1,4 @@
-# An unattended Herald OS install: boot the installer ISO with inst.ks=<url of this file>.
+# An unattended Jarod-OS install: boot the installer ISO with inst.ks=<url of this file>.
 # It wipes the first disk and encrypts it; change the passphrase (or remove --passphrase to be asked).
 text
 lang en_US.UTF-8

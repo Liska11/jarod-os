@@ -17,7 +17,7 @@ export function appIconPath(): string | undefined {
 
 export function createMainWindow(prefs: HeraldOSPrefs): BrowserWindow {
   const { workAreaSize } = screen.getPrimaryDisplay()
-  // Herald OS Linux: the shell is the whole session (cage hands it the only output). Kiosk mode
+  // Jarod-OS Linux: the shell is the whole session (cage hands it the only output). Kiosk mode
   // removes every escape hatch a window manager would normally offer.
   const kiosk = osEnv('KIOSK') === '1'
   const darwin = process.platform === 'darwin'
@@ -29,7 +29,7 @@ export function createMainWindow(prefs: HeraldOSPrefs): BrowserWindow {
     show: false,
     frame: false,
     titleBarStyle: 'hidden',
-    // Herald OS is its own environment: launch fullscreen on its own Space. `simpleFullscreen`
+    // Jarod-OS is its own environment: launch fullscreen on its own Space. `simpleFullscreen`
     // keeps the menu bar hidden without the macOS fullscreen animation on every toggle.
     // HERALD_OS_WINDOWED=1 is a developer escape hatch for automated runs and screenshots.
     fullscreen: kiosk || (prefs.fullscreenOnLaunch && !osEnv('WINDOWED')),

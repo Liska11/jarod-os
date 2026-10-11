@@ -123,7 +123,7 @@ export function Dock() {
 
     for (const pin of pinnedFor(platform)) {
       if (pin.label === 'Files') {
-        // Files is always Herald OS's own page; borrow the host file manager's icon when it has one.
+        // Files is always Jarod-OS's own page; borrow the host file manager's icon when it has one.
         list.push({ id: 'files', label: 'Files', render: () => <NativeIcon src={iconFor(findApp(pin.names)?.path)} fallback="files" />, onClick: () => showPage('files') })
 
         continue

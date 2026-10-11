@@ -208,7 +208,7 @@ export function renderOutputs(displays: readonly DisplayInfo[]): string {
     return `output "${display.name}" {\n${lines.join('\n')}\n}`
   })
 
-  return `// Written by the Herald OS Display panel. Put your own output settings in local.kdl.\n${blocks.join('\n')}\n`
+  return `// Written by the Jarod-OS Display panel. Put your own output settings in local.kdl.\n${blocks.join('\n')}\n`
 }
 
 // ---- Commands -----------------------------------------------------------------------------------

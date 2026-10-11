@@ -1,8 +1,8 @@
-// Herald OS: niri compositor configuration.
+// Jarod-OS: niri compositor configuration.
 // The template `herald-os keymap apply` renders into ~/.config/niri/config.kdl (managed; edits are
 // overwritten; `herald-os keymap omarchy` rewrites Super+C, X and V as copy, cut and paste).
 // Put machine-specific settings (output scale, extra binds) in ~/.config/niri/local.kdl, which
-// is included at the end and never touched by Herald OS.
+// is included at the end and never touched by Jarod-OS.
 //
 // Reference: /usr/share/doc/niri/default-config.kdl and the niri wiki.
 
@@ -23,7 +23,7 @@ input {
     warp-mouse-to-focus
 }
 
-// Every window is a client of Herald OS: no client-side decorations, Hermes draws the frame.
+// Every window is a client of Jarod-OS: no client-side decorations, Hermes draws the frame.
 prefer-no-csd
 
 // The shell owns the wallpaper (swaybg with a rendered frame); this shows until it is up.
@@ -90,7 +90,7 @@ cursor {
     hide-when-typing
 }
 
-// Spaces. The Herald OS shell mirrors these in the menu bar and sidebar.
+// Spaces. The Jarod-OS shell mirrors these in the menu bar and sidebar.
 workspace "personal"
 workspace "work"
 workspace "ideas"
@@ -114,7 +114,7 @@ environment {
     // No DISPLAY: there is no XWayland here yet; a set DISPLAY makes Chromium try X11 and hang.
 }
 
-// The Herald OS shell (menu bar, dock, main window) and its wallpaper.
+// The Jarod-OS shell (menu bar, dock, main window) and its wallpaper.
 spawn-at-startup "herald-os-session"
 
 // ---------------------------------------------------------------------------------------------
@@ -122,7 +122,7 @@ spawn-at-startup "herald-os-session"
 
 // Menu bar: full width, top, never focused on open, no frame.
 window-rule {
-    match app-id=r#"^(herald-os|Herald OS)$"# title="^Herald OS · Menu Bar$"
+    match app-id=r#"^(herald-os|Jarod-OS)$"# title="^Jarod-OS · Menu Bar$"
     open-floating true
     open-focused false
     default-floating-position x=0 y=0 relative-to="top"
@@ -135,7 +135,7 @@ window-rule {
 
 // Dock: bottom centre, no frame; the shell slides it in and out.
 window-rule {
-    match app-id=r#"^(herald-os|Herald OS)$"# title="^Herald OS · Dock$"
+    match app-id=r#"^(herald-os|Jarod-OS)$"# title="^Jarod-OS · Dock$"
     open-floating true
     open-focused false
     default-floating-position x=0 y=0 relative-to="bottom"
@@ -148,7 +148,7 @@ window-rule {
 
 // Command bar / launcher / ask: centred overlay, focused, no frame.
 window-rule {
-    match app-id=r#"^(herald-os|Herald OS)$"# title="^Herald OS · Command$"
+    match app-id=r#"^(herald-os|Jarod-OS)$"# title="^Jarod-OS · Command$"
     open-floating true
     open-focused true
     default-floating-position x=0 y=96 relative-to="top"
@@ -161,7 +161,7 @@ window-rule {
 
 // Quick panels (Wi-Fi, Bluetooth, sound, displays, power, calendar): under the menu bar, top right.
 window-rule {
-    match app-id=r#"^(herald-os|Herald OS)$"# title="^Herald OS · Panel$"
+    match app-id=r#"^(herald-os|Jarod-OS)$"# title="^Jarod-OS · Panel$"
     open-floating true
     open-focused true
     default-floating-position x=10 y=36 relative-to="top-right"
@@ -174,7 +174,7 @@ window-rule {
 
 // Camera bubble: a round floating window in the bottom-right corner, never taking focus.
 window-rule {
-    match app-id=r#"^(herald-os|Herald OS)$"# title="^Herald OS · Camera$"
+    match app-id=r#"^(herald-os|Jarod-OS)$"# title="^Jarod-OS · Camera$"
     open-floating true
     open-focused false
     default-floating-position x=24 y=24 relative-to="bottom-right"
@@ -186,7 +186,7 @@ window-rule {
 
 // Screensaver: fullscreen over everything until the next key or pointer move.
 window-rule {
-    match app-id=r#"^(herald-os|Herald OS)$"# title="^Herald OS · Screensaver$"
+    match app-id=r#"^(herald-os|Jarod-OS)$"# title="^Jarod-OS · Screensaver$"
     open-fullscreen true
     open-focused true
     border { off; }
@@ -196,7 +196,7 @@ window-rule {
 
 // Wallpaper renderer: an offscreen helper that must never be shown.
 window-rule {
-    match app-id=r#"^(herald-os|Herald OS)$"# title="^Herald OS · Wallpaper$"
+    match app-id=r#"^(herald-os|Jarod-OS)$"# title="^Jarod-OS · Wallpaper$"
     open-floating true
     open-focused false
     opacity 0.0
@@ -208,33 +208,33 @@ window-rule {
 
 // The Hermes window and its floating apps: rounded glass tiles.
 window-rule {
-    match app-id=r#"^(herald-os|Herald OS)$"#
+    match app-id=r#"^(herald-os|Jarod-OS)$"#
     geometry-corner-radius 14
     clip-to-geometry true
 }
 // The Hermes window shares the screen with one app by default (its pages adapt to a half column).
 window-rule {
-    match app-id=r#"^(herald-os|Herald OS)$"# title="^Herald OS$"
+    match app-id=r#"^(herald-os|Jarod-OS)$"# title="^Jarod-OS$"
     default-column-width { proportion 0.5; }
 }
 window-rule {
-    match app-id=r#"^(herald-os|Herald OS)$"# title="^Herald OS · System$"
+    match app-id=r#"^(herald-os|Jarod-OS)$"# title="^Jarod-OS · System$"
     default-column-width { proportion 0.5; }
 }
 // The Studio and its site preview side by side fill the screen while Hermes builds.
 window-rule {
-    match app-id=r#"^(herald-os|Herald OS)$"# title="^Herald OS · Studio$"
+    match app-id=r#"^(herald-os|Jarod-OS)$"# title="^Jarod-OS · Studio$"
     default-column-width { proportion 0.6; }
 }
 window-rule {
-    match app-id=r#"^(herald-os|Herald OS)$"# title="^Preview$"
+    match app-id=r#"^(herald-os|Jarod-OS)$"# title="^Preview$"
     default-column-width { proportion 0.4; }
 }
 
 // Foreign apps get the same rounding and open as tiles even when they remember being maximized
 // or fullscreen elsewhere (apps that genuinely need fullscreen can still ask for it later).
 window-rule {
-    exclude app-id=r#"^(herald-os|Herald OS)$"#
+    exclude app-id=r#"^(herald-os|Jarod-OS)$"#
     geometry-corner-radius 12
     clip-to-geometry true
     open-maximized false
@@ -254,9 +254,9 @@ binds {
     Mod+Space hotkey-overlay-title="Ask Hermes about this window" repeat=false { spawn "herald-os" "ask"; }
     Mod+Shift+Space hotkey-overlay-title="Hermes command bar" repeat=false { spawn "herald-os" "command"; }
     Mod+A hotkey-overlay-title="Applications" repeat=false { spawn "herald-os" "applications"; }
-    Mod+Alt+Space hotkey-overlay-title="Herald OS menu" repeat=false { spawn "herald-os" "menu"; }
+    Mod+Alt+Space hotkey-overlay-title="Jarod-OS menu" repeat=false { spawn "herald-os" "menu"; }
     // Nested niri (a VM without GPU acceleration) uses Alt as Mod, where Mod+Alt+Space is just Mod+Space.
-    Mod+M hotkey-overlay-title="Herald OS menu" repeat=false { spawn "herald-os" "menu"; }
+    Mod+M hotkey-overlay-title="Jarod-OS menu" repeat=false { spawn "herald-os" "menu"; }
     Mod+V hotkey-overlay-title="Talk to Hermes" repeat=false { spawn "herald-os" "voice"; }
     Mod+K hotkey-overlay-title="Show these hotkeys" { show-hotkey-overlay; }
 
@@ -312,7 +312,7 @@ binds {
 
     Mod+Ctrl+L hotkey-overlay-title="Lock" { spawn "herald-os" "lock"; }
     Mod+Escape hotkey-overlay-title="Power menu" { spawn "herald-os" "power"; }
-    Mod+Shift+Escape hotkey-overlay-title="Quit Herald OS session" { quit; }
+    Mod+Shift+Escape hotkey-overlay-title="Quit Jarod-OS session" { quit; }
 
     Print hotkey-overlay-title="Screenshot (select)" { spawn "herald-os" "capture" "screenshot" "region"; }
     Mod+Print hotkey-overlay-title="Screenshot window" { spawn "herald-os" "capture" "screenshot" "window"; }

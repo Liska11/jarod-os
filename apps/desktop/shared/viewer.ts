@@ -1,4 +1,4 @@
-// File types the Herald OS viewer can show inside the OS (Chromium renders them natively: its PDF
+// File types the Jarod-OS viewer can show inside the OS (Chromium renders them natively: its PDF
 // viewer, images, plain text and media). Anything else is shown in Files instead of leaving the OS.
 
 export const VIEWABLE_EXTENSIONS: ReadonlySet<string> = new Set([

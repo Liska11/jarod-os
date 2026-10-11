@@ -1,4 +1,4 @@
-# End-to-end check of Herald OS on Windows:
+# End-to-end check of Jarod-OS on Windows:
 #   Hermes reachable -> bridge plugin enabled -> gateway answers (hermes serve + JSON-RPC over the
 #   WebSocket lists the herald_os tools) -> a bridge tool is called the way the agent calls it
 #   (Hermes's own tool registry, with the plugin loaded by Hermes) -> an audit entry exists.

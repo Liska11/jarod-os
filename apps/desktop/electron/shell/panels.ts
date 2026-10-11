@@ -41,7 +41,7 @@ interface SurfaceWindowOptions {
  * state to every renderer.
  */
 export class PanelShell implements ShellHost {
-  /** The Herald OS session runs on niri: its window rules place these windows. */
+  /** The Jarod-OS session runs on niri: its window rules place these windows. */
   readonly wm: Compositor = new NiriClient()
   private readonly windows = new Map<ShellSurface, BrowserWindow>()
   private readonly pending = new Map<ShellSurface, ShellCommand[]>()

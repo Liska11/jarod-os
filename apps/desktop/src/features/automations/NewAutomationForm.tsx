@@ -104,7 +104,7 @@ export function NewAutomationForm({ targets, creating, onCreate, onCancel }: { t
                 ))}
               </SelectInput>
               {matcher && <TextInput aria-label={matcher.label} value={matchValue} onChange={e => setMatchValue(e.target.value)} placeholder={matcher.placeholder} />}
-              <Hint>Hermes runs it each time this happens on this computer while Herald OS is open.</Hint>
+              <Hint>Hermes runs it each time this happens on this computer while Jarod-OS is open.</Hint>
             </>
           )}
         </div>

@@ -21,7 +21,7 @@ const MISSIONS_SHOWN = 3
 
 const PLAN_MY_DAY_PROMPT = "Plan my day. Look at today's calendar events and my open tasks and missions, then propose a realistic schedule with priorities, time blocks and anything I should prepare for. Keep it short and actionable."
 /** Left for the person to finish; the herald-os-tailor skill tells Hermes how to make it. */
-const MAKE_THEME_DRAFT = 'Make me a Herald OS theme that feels like '
+const MAKE_THEME_DRAFT = 'Make me a Jarod-OS theme that feels like '
 
 /** Home of the main window: greeting, prompt, what is in motion and what needs the user. */
 export function OverviewPage() {

@@ -260,7 +260,7 @@ export interface ProjectActivity {
 }
 
 /**
- * What Herald OS can see of the user's recent work, for "Pick up where you left off": documents,
+ * What Jarod-OS can see of the user's recent work, for "Pick up where you left off": documents,
  * project folders and running apps, minus everything the user excluded. Never window titles or
  * screen contents.
  */
@@ -400,7 +400,7 @@ export interface CatalogGroupView {
 }
 
 export interface SetupState {
-  /** The Herald OS image has not been set up by its owner yet. */
+  /** The Jarod-OS image has not been set up by its owner yet. */
   needed: boolean
   user: string
   /** The name Herald greets with (blank until setup asks). */
@@ -448,7 +448,7 @@ export interface VoicePrefs {
   announceNotifications: boolean
   /** Show Hermes's own tool results on screen (memory, automations, files) even outside a voice conversation. */
   followHermes: boolean
-  /** Set once Herald OS has tuned local speech recognition (model + vocabulary), so a later user choice is never overwritten. */
+  /** Set once Jarod-OS has tuned local speech recognition (model + vocabulary), so a later user choice is never overwritten. */
   sttTuned: boolean
   /** Live engine: close the paid session after this many idle seconds. */
   liveIdleSeconds: number
@@ -463,7 +463,7 @@ export type MicPermission = 'granted' | 'denied' | 'not-determined' | 'restricte
 /** Keyboard modifiers for `EditAction` key presses (Electron accelerator names). */
 export type KeyModifier = 'shift' | 'control' | 'alt' | 'meta'
 
-/** Text and editing actions performed on whatever is focused in a Herald OS window. */
+/** Text and editing actions performed on whatever is focused in a Jarod-OS window. */
 export type EditAction =
   | { kind: 'insert'; text: string }
   | { kind: 'key'; key: string; modifiers?: KeyModifier[] }
@@ -495,7 +495,7 @@ export interface HeraldOSPrefs {
   /** Colours of a theme without a hand-tuned preset; the shell derives its whole palette from them. */
   themeColors?: ThemeColors
   themeScheme?: ColorScheme
-  /** Restyle Herald OS when Hermes's skin changes (`/skin` in a chat). */
+  /** Restyle Jarod-OS when Hermes's skin changes (`/skin` in a chat). */
   followHermesSkin?: boolean
   /** Font families for the interface and for code, tried before the built-in stacks. */
   fonts?: { ui?: string; mono?: string }
@@ -509,11 +509,11 @@ export interface HeraldOSPrefs {
   doNotDisturb?: boolean
   /** The drawn wallpaper and a clock after this many idle minutes. */
   screensaver?: { enabled: boolean; afterMinutes: number }
-  /** Herald OS Linux: minutes of inactivity before locking, turning the screens off and suspending (0 = never). */
+  /** Jarod-OS Linux: minutes of inactivity before locking, turning the screens off and suspending (0 = never). */
   idle?: IdleTimings
-  /** Herald OS Linux: Herald's keys, or Omarchy-style Super+C, X and V for copy, cut and paste everywhere. */
+  /** Jarod-OS Linux: Herald's keys, or Omarchy-style Super+C, X and V for copy, cut and paste everywhere. */
   keymap?: 'herald' | 'omarchy'
-  /** Herald OS Linux: the terminal Super+Return opens: Herald's own, or a catalog terminal (ghostty, alacritty, kitty, foot). */
+  /** Jarod-OS Linux: the terminal Super+Return opens: Herald's own, or a catalog terminal (ghostty, alacritty, kitty, foot). */
   defaultTerminal?: string
   /** Absolute path or file:// URL of a custom wallpaper image. */
   wallpaper?: string
@@ -538,7 +538,7 @@ export interface HeraldOSPrefs {
 
 export type ScreenshotMode = 'region' | 'window' | 'screen'
 
-/** macOS capture tools (Herald OS Linux runs its own through the CLI). */
+/** macOS capture tools (Jarod-OS Linux runs its own through the CLI). */
 export type CaptureTool = 'colour' | 'qr' | 'text'
 
 export interface CaptureToolResult {
@@ -567,7 +567,7 @@ export interface IdleTimings {
 export type SwitchName = 'nightLight' | 'doNotDisturb' | 'stayAwake' | 'screensaver'
 
 export interface SwitchState {
-  /** Warmer colours: wlsunset on Herald OS Linux; null where Herald OS cannot switch it (macOS has Night Shift). */
+  /** Warmer colours: wlsunset on Jarod-OS Linux; null where Jarod-OS cannot switch it (macOS has Night Shift). */
   nightLight: boolean | null
   doNotDisturb: boolean
   /** The screens stay on and nothing locks or sleeps on its own. */
@@ -757,12 +757,12 @@ export const IPC = {
   /** Main tells the windows the user is back after sleep, a lock or a long idle stretch. */
   contextReturned: 'herald-os:context:returned',
 
-  /** The crashes seen since Herald OS started, newest first (offers arrive as a `crash` ShellCommand). */
+  /** The crashes seen since Jarod-OS started, newest first (offers arrive as a `crash` ShellCommand). */
   crashRecent: 'herald-os:crash:recent',
 
   /** Installed themes (built in and the user's own). */
   themeList: 'herald-os:theme:list',
-  /** Apply a theme everywhere: the shell, Hermes's skin and, on Herald OS Linux, the whole session. */
+  /** Apply a theme everywhere: the shell, Hermes's skin and, on Jarod-OS Linux, the whole session. */
   themeApply: 'herald-os:theme:apply',
   /** Save a theme the shell made (from an image) into the user's theme folder. */
   themeSave: 'herald-os:theme:save',
@@ -812,7 +812,7 @@ export const IPC = {
   /** main → renderer: the plugin list changed (installed, enabled, files saved). */
   pluginsChanged: 'herald-os:plugins:changed',
 
-  /** First-boot setup on the Herald OS image: whether it is due, the name, the password, done. */
+  /** First-boot setup on the Jarod-OS image: whether it is due, the name, the password, done. */
   setupState: 'herald-os:setup:state',
   setupName: 'herald-os:setup:name',
   setupPassword: 'herald-os:setup:password',
@@ -855,7 +855,7 @@ export const IPC = {
 
   shellOpenExternal: 'herald-os:shell:open-external',
 
-  // Embedded web views: http(s) pages rendered inside a Herald OS window, never the system browser.
+  // Embedded web views: http(s) pages rendered inside a Jarod-OS window, never the system browser.
   /** Perform an `EditAction` in this window (or in one of its web views). */
   editAction: 'herald-os:edit:action',
   webOpen: 'herald-os:web:open',

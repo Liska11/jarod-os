@@ -36,7 +36,7 @@ export async function selectHermesSkin(backend: BackendManager): Promise<void> {
 /** Dress Hermes in a theme that was just applied (best effort: the theme stands either way). */
 export function syncHermesSkin(spec: ThemeSpec, backend: BackendManager): void {
   writeHermesSkin(spec)
-  selectHermesSkin(backend).catch(error => log('theme', `could not select the Herald skin: ${(error as Error).message}`))
+  selectHermesSkin(backend).catch(error => log('theme', `could not select the Jarod skin: ${(error as Error).message}`))
 }
 
 /** Apply an installed theme everywhere it reaches. */
@@ -47,7 +47,7 @@ export async function applyTheme(name: string, deps: ThemeIpcDeps): Promise<Hera
     throw new Error(`No theme called "${name}"`)
   }
 
-  // Herald OS Linux: the engine recolours the session (niri, GTK, the lock screen, the terminal).
+  // Jarod-OS Linux: the engine recolours the session (niri, GTK, the lock screen, the terminal).
   if (deps.panels && process.platform === 'linux') {
     const result = await run('herald-os-theme', ['set', found.spec.name], 30_000)
 

@@ -1,6 +1,6 @@
 # Working notes
 
-Plans and research written while building Herald OS. They record intent at the time and are not
+Plans and research written while building Jarod-OS. They record intent at the time and are not
 kept up to date; the documents one level up describe how things work today.
 
 - [ROADMAP.md](ROADMAP.md): what is planned after the current alpha.

@@ -1,15 +1,15 @@
 ---
 name: herald-os-tailor
-description: Change Herald OS itself - make and switch themes, fonts and the wallpaper, widgets, the menu bar, control-menu entries, branding, keybindings, settings, routines and hooks
+description: Change Jarod-OS itself - make and switch themes, fonts and the wallpaper, widgets, the menu bar, control-menu entries, branding, keybindings, settings, routines and hooks
 metadata:
   hermes:
     tags: [herald-os, customise, themes, settings, linux, macos]
 ---
 
-# Tailor Herald OS
+# Tailor Jarod-OS
 
-Herald OS is meant to be shaped by the person using it, and by you on their behalf. Use this when
-they ask to change how Herald OS looks or behaves: "make me a calm green theme", "use a bigger
+Jarod-OS is meant to be shaped by the person using it, and by you on their behalf. Use this when
+they ask to change how Jarod-OS looks or behaves: "make me a calm green theme", "use a bigger
 font", "add a shortcut for Obsidian", "do this every time I log in".
 
 Ground rules:
@@ -22,7 +22,7 @@ Ground rules:
 
 ## Themes
 
-A theme recolours everything at once: the shell, your own CLI skin and, on Herald OS Linux, the
+A theme recolours everything at once: the shell, your own CLI skin and, on Jarod-OS Linux, the
 compositor, GTK apps, the lock screen and the terminal.
 
 - `os_ui action=run command=theme.list`, then `theme.set args={"theme": "<name>"}`.
@@ -55,7 +55,7 @@ compositor, GTK apps, the lock screen and the terminal.
   `bg`, dark `fg`, and `"gtk": {"color_scheme": "default", "theme": "Adwaita"}`. `bg2` and
   `surface` are a few steps from `bg` toward the accent (dark) or toward white (light). A
   `"terminal"` block (`background`, `foreground`, `cursor`, a 16-colour `palette`) is optional;
-  the shell derives one when it is missing. `"wallpaper"` is `"default"` (the drawn Herald
+  the shell derives one when it is missing. `"wallpaper"` is `"default"` (the drawn Jarod
   wallpaper, tinted to the theme) or an image file inside the theme's folder.
 - Someone shared a theme repository: `theme.install args={"url": "https://…"}`. Only colours and
   images are kept.
@@ -94,7 +94,7 @@ or in its own window. Make one when they want something to glance at: "a strip w
    - `placement`: any of `menubar`, `overview`, `panel`. `size.width` is its menu-bar width (up
      to 240), `size.height` its Overview card height.
    - `permissions`: only what it needs. `stats` (CPU, memory, disks, battery), `notify`,
-     `storage` (its own small key-value store) and `run:<command.id>` for each Herald OS command
+     `storage` (its own small key-value store) and `run:<command.id>` for each Jarod-OS command
      it runs, such as `run:page.open`. Commands that change things still ask the person.
    - `hosts`: the HTTPS hosts it fetches from. Nothing else is reachable, and the API must allow
      cross-origin requests (most public JSON APIs do).
@@ -118,7 +118,7 @@ or in its own window. Make one when they want something to glance at: "a strip w
 4. The SDK in `widget.js`:
    - `await herald.stats()` gives `{ cpuPercent, memoryUsed, memoryTotal, disks, battery, uptimeSeconds }`.
    - `herald.notify(title, body)`, `herald.storage.get(key)` and `herald.storage.set(key, value)`.
-   - `herald.run('page.open', { name: 'missions' })` runs a Herald OS command it was granted.
+   - `herald.run('page.open', { name: 'missions' })` runs a Jarod-OS command it was granted.
    - `herald.placement` is where it sits (`menubar`, `overview` or `panel`), also set as
      `data-placement` on `<html>` for CSS.
    - The theme arrives as CSS variables: `--herald-bg`, `--herald-surface`, `--herald-fg`,
@@ -159,7 +159,7 @@ Write it with `write_file`, keeping any entries already there:
 
 - Each entry has a `label` and exactly one action: `herald-os` (a `herald-os` command as a list of
   words), `exec` (a program and its arguments, as a list; `~/` is the home folder; no shell, so no
-  pipes), `url` (http or https) or `command` (a Herald OS command id and its `args`).
+  pipes), `url` (http or https) or `command` (a Jarod-OS command id and its `args`).
 - `group` puts it in an existing group (`install`, `remove`, `update`, `style`, `trigger`,
   `capture`, `toggle`, `system`, `hermes`); otherwise it sits under "Yours". `icon` is one of star,
   app, terminal, world, bolt, folder, notes, music, camera, code, calendar, mail, chat, heart,
@@ -173,8 +173,8 @@ Write it with `write_file`, keeping any entries already there:
   Settings > About; `"name": "Acme Corp"` adds a line under it. The image is copied, so the
   original can move.
 - `branding.set args={"lock": "<image path>"}` (PNG or JPEG) is the picture behind the password
-  ring on the Herald OS Linux lock screen.
-- `branding.reset` (or `what=logo`, `lock`, `name`) goes back to the Herald logo and the theme's
+  ring on the Jarod-OS Linux lock screen.
+- `branding.reset` (or `what=logo`, `lock`, `name`) goes back to the Jarod logo and the theme's
   lock screen.
 
 ## Settings
@@ -184,11 +184,11 @@ The shell's settings are commands: `accent.set`, `dock.autoHide`, `motion.reduce
 `os_ui action=list` for the full list with arguments, and `settings.open section=<id>` to show the
 person the result.
 
-## Keybindings (Herald OS Linux)
+## Keybindings (Jarod-OS Linux)
 
 The compositor is niri. Its managed config (`~/.config/niri/config.kdl`) is rewritten on update;
 the person's own settings go in `~/.config/niri/local.kdl`, which is included last and never
-touched by Herald OS. Add binds there:
+touched by Jarod-OS. Add binds there:
 
 ```kdl
 binds {
@@ -199,19 +199,19 @@ binds {
 
 niri reloads the file as soon as it is saved. Check it with
 `niri validate -c ~/.config/niri/config.kdl` in the terminal, and read the hotkey overlay
-(`Mod+K`) before reusing a key: Herald OS already binds many `Mod+…` combinations. Any
+(`Mod+K`) before reusing a key: Jarod-OS already binds many `Mod+…` combinations. Any
 `herald-os` command can be a bind (`spawn "herald-os" "theme" "set" "herald-dusk"`).
 
-To change one of Herald OS's own keys, bind the same key in `local.kdl`: it is included last, and
+To change one of Jarod-OS's own keys, bind the same key in `local.kdl`: it is included last, and
 niri lets a later bind replace an earlier one. To switch a key off, bind it to nothing:
 `Mod+Q { spawn "true"; }`. Only bind a key once inside `local.kdl` itself; niri refuses a file that
 binds the same key twice.
 
-Inside Omarchy (Herald OS as an app on Hyprland), Herald's keys are in
+Inside Omarchy (Jarod-OS as an app on Hyprland), Jarod's keys are in
 `~/.config/hypr/herald-os.lua` on Omarchy 4 (`herald-os.conf` on Omarchy 3), which
 `herald-os omarchy install` rewrites. Change them in the person's own Hyprland config instead: on
 Omarchy 4, below the `require("hypr.herald-os")` line at the end of `~/.config/hypr/hyprland.lua`
-(it has to run after Herald's), `hl.unbind("SUPER + ALT + H")` and then their own
+(it has to run after Jarod's), `hl.unbind("SUPER + ALT + H")` and then their own
 `o.bind("KEYS", "description", "command")`; on Omarchy 3, `unbind = SUPER ALT, H` and then their
 own `bind = …` line. Check the result with `hyprctl configerrors` after `hyprctl reload`.
 

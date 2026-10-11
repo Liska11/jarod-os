@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Update Herald OS: the shell (repo + rebuild), one-shot migrations, system packages (dnf on Fedora,
+# Update Jarod-OS: the shell (repo + rebuild), one-shot migrations, system packages (dnf on Fedora,
 # pacman and the AUR helper on Arch, Omarchy's own updater on Omarchy, the whole image with bootc on
-# the Herald OS image), Flatpaks and Hermes Agent. `--check` only reports and records whether
+# the Jarod-OS image), Flatpaks and Hermes Agent. `--check` only reports and records whether
 # anything is pending (the menu bar shows a dot). Channels (~/.config/herald-os/channel): stable (default) or edge; both track the repo's main
 # branch until releases are cut, and are recorded so that switching later is a one-line change.
 #
@@ -103,7 +103,7 @@ update_system() {
       else
         # Omarchy's updater asks questions; from the menu it belongs in Omarchy's own flow.
         echo "Omarchy updates the system itself: run omarchy-update (or Update in Omarchy's menu)."
-        notify "System updates go through Omarchy" "Run Update from Omarchy's menu; Herald OS updated its own parts."
+        notify "System updates go through Omarchy" "Run Update from Omarchy's menu; Jarod-OS updated its own parts."
       fi
       ;;
     image)
@@ -172,9 +172,9 @@ plural() { [[ $1 -eq 1 ]] && echo "$1 $2" || echo "$1 ${2}s"; }
 
 if [[ $CHECK -eq 1 ]]; then
   total=$((pending_repo + pending_pkgs + pending_flatpaks))
-  # What the menu bar shows, e.g. "Herald OS, 192 packages, 3 apps".
+  # What the menu bar shows, e.g. "Jarod-OS, 192 packages, 3 apps".
   parts=()
-  [[ $pending_repo -gt 0 ]] && parts+=("Herald OS")
+  [[ $pending_repo -gt 0 ]] && parts+=("Jarod-OS")
   [[ $pending_pkgs -gt 0 ]] && parts+=("$(plural "$pending_pkgs" package)")
   [[ $pending_flatpaks -gt 0 ]] && parts+=("$(plural "$pending_flatpaks" app)")
   summary="up to date"
@@ -190,8 +190,8 @@ if [[ $CHECK -eq 1 ]]; then
 fi
 
 # ---------------------------------------------------------------------------------------------
-echo "==> Herald OS update ($CHANNEL)"
-notify "Updating Herald OS" "This can take a few minutes."
+echo "==> Jarod-OS update ($CHANNEL)"
+notify "Updating Jarod-OS" "This can take a few minutes."
 
 if [[ -n "$repo_remote" && $pending_repo -gt 0 ]]; then
   echo "==> shell: pulling $repo_remote"
@@ -225,7 +225,7 @@ fi
 printf '{"channel":"%s","checkedAt":"%s","pending":0,"shell":0,"packages":0,"flatpaks":0}\n' "$CHANNEL" "$(date -Is)" >"$STATE/update-available.json"
 report 0 "up to date"
 
-# Hooks in ~/.config/herald-os/hooks/after-update.d/ and "after Herald OS updates" automations.
+# Hooks in ~/.config/herald-os/hooks/after-update.d/ and "after Jarod-OS updates" automations.
 if command -v herald-os >/dev/null; then
   herald-os event after-update "problems=${failed[*]:-none}" >/dev/null 2>&1 || true
 fi
@@ -235,7 +235,7 @@ if [[ ${#failed[@]} -gt 0 ]]; then
   echo "failed: ${failed[*]}" >&2
   exit 1
 fi
-notify "Herald OS is up to date" "Restart the shell to use the new build."
+notify "Jarod-OS is up to date" "Restart the shell to use the new build."
 if [[ $pending_repo -gt 0 ]]; then
   herald-os-restart-shell >/dev/null 2>&1 || true
 fi

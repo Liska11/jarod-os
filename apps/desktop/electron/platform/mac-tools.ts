@@ -4,7 +4,7 @@ import path from 'node:path'
 import { run } from './exec.ts'
 
 /*
- * macOS halves of the capture tools Herald OS Linux runs through its CLI: the colour picker (the
+ * macOS halves of the capture tools Jarod-OS Linux runs through its CLI: the colour picker (the
  * system eyedropper), and reading text or a QR code in an image (the Vision framework). All three
  * are small JavaScript-for-Automation scripts, so nothing extra is installed.
  */

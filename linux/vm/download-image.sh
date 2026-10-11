@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Download the Fedora Cloud Base (Generic) aarch64 qcow2 that Herald OS Linux boots from.
+# Download the Fedora Cloud Base (Generic) aarch64 qcow2 that Jarod-OS Linux boots from.
 # Idempotent: skips when the image is already present. Resumes partial downloads.
 #
 #   FEDORA_VERSION=44 bash linux/vm/download-image.sh

@@ -1,4 +1,4 @@
-# Herald OS omakase: Fedora packages every install gets. One per line; # comments.
+# Jarod-OS omakase: Fedora packages every install gets. One per line; # comments.
 # Browsers, files, text.
 firefox
 nautilus
@@ -12,7 +12,7 @@ papers
 gnome-calculator
 gnome-calendar
 vlc
-# Developer tools (the terminal is Herald OS's own).
+# Developer tools (the terminal is Jarod-OS's own).
 git
 gh
 ripgrep

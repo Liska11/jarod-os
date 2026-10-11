@@ -1,4 +1,4 @@
-name: Herald OS image
+name: Jarod-OS image
 
 # The Fedora bootc image (ADR-018) per architecture on matching runners, pushed to the repository's
 # GHCR package, joined into one multi-arch tag; then the installer ISO
@@ -163,5 +163,5 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --draft --title "Herald OS $GITHUB_REF_NAME" --notes "Draft written by the release workflow."
+          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --draft --title "Jarod-OS $GITHUB_REF_NAME" --notes "Draft written by the release workflow."
           gh release upload "$GITHUB_REF_NAME" "$DISK"* --clobber

@@ -113,7 +113,7 @@ export const navigationCommands: readonly OsCommand[] = [
   {
     id: 'page.open',
     title: 'Open a page or app',
-    description: 'Show a Herald OS page (overview, hermes, missions, memory, files, automations, connections, settings) or open an app (terminal, system).',
+    description: 'Show a Jarod-OS page (overview, hermes, missions, memory, files, automations, connections, settings) or open an app (terminal, system).',
     tier: 'read',
     args: [{ name: 'name', type: 'string', description: 'Page or app name', required: true }],
     phrases: ['open the {name} page', 'switch to {name}', 'go to the {name} page'],

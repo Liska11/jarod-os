@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Herald OS Linux, the system half: packages, services, the session and the boot splash. No session
+# Jarod-OS Linux, the system half: packages, services, the session and the boot splash. No session
 # user exists yet; everything that lives in a home folder is firstboot.sh's. Runs as root.
 #
 #   packages.sh --image <shell.tar.gz>   building the bootc image (linux/image/Containerfile): the
@@ -48,7 +48,7 @@ if [[ "${HERALD_OS_OMAKASE:-1}" == "1" ]]; then
 fi
 
 # ---------------------------------------------------------------------------------------------
-step "The Herald OS session and CLIs ($BIN)"
+step "The Jarod-OS session and CLIs ($BIN)"
 install -d "$BIN"
 install -m 0755 "$LINUX"/session/herald-os-compositor "$LINUX"/session/herald-os-session "$LINUX"/session/herald-os-niri-nested "$BIN/"
 install -m 0755 "$LINUX"/bin/herald-os* "$BIN/"

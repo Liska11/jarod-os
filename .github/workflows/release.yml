@@ -1,6 +1,6 @@
 name: Release
 
-# Builds what Herald OS ships. A tag (v0.2.0) attaches the builds to a draft GitHub release; a manual
+# Builds what Jarod-OS ships. A tag (v0.2.0) attaches the builds to a draft GitHub release; a manual
 # run only uploads them as workflow artifacts. Nothing here makes the repository or a release public.
 
 on:
@@ -59,7 +59,7 @@ jobs:
       - name: Verify the signature and the notarization ticket
         if: steps.signing.outputs.signed == 'true'
         run: |
-          app="$(find apps/desktop/release -maxdepth 3 -name 'Herald OS.app' -print -quit)"
+          app="$(find apps/desktop/release -maxdepth 3 -name 'Jarod-OS.app' -print -quit)"
           codesign --verify --deep --strict --verbose=2 "$app"
           xcrun stapler validate "$app"
           spctl --assess --type execute --verbose "$app"
@@ -76,7 +76,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           files=(apps/desktop/release/*.dmg apps/desktop/release/*.zip)
-          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --draft --title "Herald OS $GITHUB_REF_NAME" --notes "Draft written by the release workflow."
+          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --draft --title "Jarod-OS $GITHUB_REF_NAME" --notes "Draft written by the release workflow."
           gh release upload "$GITHUB_REF_NAME" "${files[@]}" --clobber
 
   linux:
@@ -126,5 +126,5 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --draft --title "Herald OS $GITHUB_REF_NAME" --notes "Draft written by the release workflow."
+          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --draft --title "Jarod-OS $GITHUB_REF_NAME" --notes "Draft written by the release workflow."
           gh release upload "$GITHUB_REF_NAME" apps/desktop/release/herald-os-*-linux-*.tar.gz apps/desktop/release/herald-os-*-linux-*.tar.gz.sha256 --clobber

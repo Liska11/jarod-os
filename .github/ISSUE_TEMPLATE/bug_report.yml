@@ -1,5 +1,5 @@
 name: Bug report
-description: Something in Herald OS does not work as it should.
+description: Something in Jarod-OS does not work as it should.
 labels: [bug]
 body:
   - type: markdown
@@ -32,8 +32,8 @@ body:
       options:
         - macOS (npm run dev)
         - macOS (built app)
-        - Herald OS Linux (niri)
-        - Herald OS Linux (cage)
+        - Jarod-OS Linux (niri)
+        - Jarod-OS Linux (cage)
         - Other
     validations:
       required: true
@@ -41,7 +41,7 @@ body:
     id: versions
     attributes:
       label: Versions
-      description: macOS or distro version, `node --version`, `hermes --version`, and the Herald OS commit (`git rev-parse --short HEAD`).
+      description: macOS or distro version, `node --version`, `hermes --version`, and the Jarod-OS commit (`git rev-parse --short HEAD`).
     validations:
       required: true
   - type: textarea

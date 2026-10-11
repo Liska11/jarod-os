@@ -4,7 +4,7 @@ import { NiriClient } from './niri.ts'
 
 /**
  * What the shell needs from the compositor it runs in: a mirror of windows and workspaces, the
- * focused window (context for "ask about this window") and actions. niri runs the Herald OS session;
+ * focused window (context for "ask about this window") and actions. niri runs the Jarod-OS session;
  * Hyprland is where Herald runs as an app (Omarchy).
  */
 export interface Compositor {

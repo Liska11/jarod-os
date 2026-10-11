@@ -1,4 +1,4 @@
-/** Only http(s) pages may open in a Herald OS web window (main enforces the same rule). */
+/** Only http(s) pages may open in a Jarod-OS web window (main enforces the same rule). */
 export const isWebUrl = (url: string): boolean => /^https?:\/\/\S+$/i.test(url)
 
 export interface WebUrlParts {

@@ -3,7 +3,7 @@ import { parseVisionOutput } from './mac-tools.ts'
 
 describe('parseVisionOutput', () => {
   it('keeps the lines Vision read, trimmed, without blanks', () => {
-    expect(parseVisionOutput('["Hello from Herald OS", "  Order 4471 ", ""]\n')).toEqual(['Hello from Herald OS', 'Order 4471'])
+    expect(parseVisionOutput('["Hello from Jarod-OS", "  Order 4471 ", ""]\n')).toEqual(['Hello from Jarod-OS', 'Order 4471'])
   })
 
   it('treats anything else as nothing found', () => {

@@ -11,7 +11,7 @@
 #
 # OAuth providers (Nous Portal, Codex, Copilot) use rotating refresh tokens: whichever machine
 # refreshes second is logged out. Copying auth.json therefore works only until the next refresh and
-# can log the Mac out. Prefer signing the VM in on its own (Herald OS's sign-in card, or `hermes
+# can log the Mac out. Prefer signing the VM in on its own (Jarod-OS's sign-in card, or `hermes
 # setup` over SSH), or sharing the Mac's login through `hermes proxy` (docs/LINUX.md).
 set -euo pipefail
 

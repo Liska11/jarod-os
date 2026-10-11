@@ -2,7 +2,7 @@
   "name": "herald-os",
   "version": "0.1.0-alpha.1",
   "private": true,
-  "description": "Herald OS: an agent-native operating system built on Hermes Agent.",
+  "description": "Jarod-OS: an agent-native operating system built on Hermes Agent.",
   "license": "MIT",
   "author": "Luke The Dev",
   "homepage": "https://github.com/iamlukethedev/Herald-OS",

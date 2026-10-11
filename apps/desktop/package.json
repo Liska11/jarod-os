@@ -1,9 +1,9 @@
 {
   "name": "@herald-os/desktop",
-  "productName": "Herald OS",
+  "productName": "Jarod-OS",
   "version": "0.1.0-alpha.1",
   "private": true,
-  "description": "The Herald OS shell: menu bar, dock, windows and apps for an agent-native operating system.",
+  "description": "The Jarod-OS shell: menu bar, dock, windows and apps for an agent-native operating system.",
   "author": "Luke The Dev",
   "license": "MIT",
   "type": "module",
@@ -58,10 +58,10 @@
     "wait-on": "9.1.0"
   },
   "build": {
-    "appId": "dev.iamluke.heraldos",
-    "productName": "Herald OS",
-    "executableName": "Herald OS",
-    "artifactName": "HeraldOS-${version}-${os}-${arch}.${ext}",
+    "appId": "one.jarod.os",
+    "productName": "Jarod-OS",
+    "executableName": "Jarod-OS",
+    "artifactName": "JarodOS-${version}-${os}-${arch}.${ext}",
     "directories": {
       "output": "release"
     },
@@ -117,9 +117,9 @@
         }
       ],
       "extendInfo": {
-        "NSAppleEventsUsageDescription": "Herald OS controls applications on your behalf when you ask it to.",
-        "NSMicrophoneUsageDescription": "Herald OS uses the microphone for voice input.",
-        "NSCameraUsageDescription": "Herald OS shows your camera in a bubble while you record the screen, when you turn it on."
+        "NSAppleEventsUsageDescription": "Jarod-OS controls applications on your behalf when you ask it to.",
+        "NSMicrophoneUsageDescription": "Jarod-OS uses the microphone for voice input.",
+        "NSCameraUsageDescription": "Jarod-OS shows your camera in a bubble while you record the screen, when you turn it on."
       }
     },
     "dmg": {
@@ -164,7 +164,7 @@
       ],
       "desktop": {
         "entry": {
-          "Name": "Herald OS",
+          "Name": "Jarod-OS",
           "Comment": "Agent-native desktop powered by Hermes Agent",
           "Categories": "System;"
         }
@@ -172,7 +172,7 @@
     },
     "win": {
       "icon": "build/icon.png",
-      "artifactName": "HeraldOS-${version}-win-${arch}.${ext}",
+      "artifactName": "JarodOS-${version}-win-${arch}.${ext}",
       "target": [
         {
           "target": "nsis",
@@ -206,15 +206,15 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "Herald OS",
-      "artifactName": "HeraldOS-Setup-${version}-win-${arch}.${ext}"
+      "shortcutName": "Jarod-OS",
+      "artifactName": "JarodOS-Setup-${version}-win-${arch}.${ext}"
     },
     "appx": {
-      "applicationId": "HeraldOS",
-      "identityName": "HeraldOS.HeraldOS",
-      "publisher": "CN=HeraldOS",
-      "publisherDisplayName": "Herald OS",
-      "displayName": "Herald OS",
+      "applicationId": "JarodOS",
+      "identityName": "JarodOS.JarodOS",
+      "publisher": "CN=JarodOS",
+      "publisherDisplayName": "Jarod-OS",
+      "displayName": "Jarod-OS",
       "backgroundColor": "#07080a"
     }
   }

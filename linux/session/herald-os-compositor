@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Entry point greetd runs as the session user: start the compositor with the Herald OS shell.
+# Entry point greetd runs as the session user: start the compositor with the Jarod-OS shell.
 #
 #   HERALD_OS_COMPOSITOR=niri (default)  niri manages every window; the shell runs as panels.
 #   HERALD_OS_COMPOSITOR=cage            Stage 1 kiosk: the shell is the only client.
@@ -48,7 +48,7 @@ export HERALD_OS_SHELL_MODE=panels
 mkdir -p "$HOME/.config/niri"
 if [[ ! -f "$HOME/.config/niri/local.kdl" ]]; then
   {
-    echo "// Machine-specific niri overrides. Herald OS never overwrites this file."
+    echo "// Machine-specific niri overrides. Jarod-OS never overwrites this file."
     if [[ -n "${HERALD_OS_SCALE:-}" ]]; then
       for status in /sys/class/drm/card*-*/status; do
         [[ "$(cat "$status" 2>/dev/null)" == "connected" ]] || continue
@@ -67,7 +67,7 @@ if [[ ! -f "$HOME/.config/niri/theme.kdl" ]] && command -v herald-os-theme >/dev
 fi
 [[ -f "$HOME/.config/niri/theme.kdl" ]] || echo "// theme pending" >"$HOME/.config/niri/theme.kdl"
 # The Display panel writes outputs.kdl; the managed config includes it, so it must exist.
-[[ -f "$HOME/.config/niri/outputs.kdl" ]] || echo "// Written by the Herald OS Display panel." >"$HOME/.config/niri/outputs.kdl"
+[[ -f "$HOME/.config/niri/outputs.kdl" ]] || echo "// Written by the Jarod-OS Display panel." >"$HOME/.config/niri/outputs.kdl"
 
 # The shell scales through the compositor under niri; do not also zoom the page.
 unset HERALD_OS_ZOOM

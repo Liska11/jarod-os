@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# One-shot developer bootstrap for Herald OS (macOS and Linux). Safe to re-run after every pull.
+# One-shot developer bootstrap for Jarod-OS (macOS and Linux). Safe to re-run after every pull.
 #   1. Fetch the pinned upstream snapshot (types for the gateway wire).
 #   2. Install Node workspaces.
 #   3. Link the system-bridge plugin into the user's Hermes plugins directory.
@@ -116,4 +116,4 @@ PY
   fi
 fi
 
-echo "==> Done. Start Herald OS with: npm run dev"
+echo "==> Done. Start Jarod-OS with: npm run dev"

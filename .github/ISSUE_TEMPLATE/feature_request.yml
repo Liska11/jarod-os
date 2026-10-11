@@ -1,5 +1,5 @@
 name: Feature request
-description: Suggest something Herald OS should do.
+description: Suggest something Jarod-OS should do.
 labels: [enhancement]
 body:
   - type: textarea

@@ -1,6 +1,6 @@
 # Maintainer: Luke The Dev <252071647+iamlukethedev@users.noreply.github.com>
 #
-# Herald OS built from the main branch. Not on the AUR yet: build it from the repository with makepkg -si.
+# Jarod-OS built from the main branch. Not on the AUR yet: build it from the repository with makepkg -si.
 
 pkgname=herald-os-git
 pkgver=0.1.0alpha.1.r0.g0000000
@@ -12,7 +12,7 @@ license=('MIT')
 depends=('gtk3' 'nss' 'alsa-lib' 'libsecret' 'libnotify' 'python' 'curl' 'wl-clipboard' 'wtype' 'grim' 'slurp')
 makedepends=('git' 'nodejs' 'npm' 'python' 'base-devel')
 optdepends=(
-  'niri: the full Herald OS session (menu bar, dock, tiling)'
+  'niri: the full Jarod-OS session (menu bar, dock, tiling)'
   'greetd: a login screen that starts the session'
   'swaybg: the wallpaper in the session'
   'swaylock: locking the session'

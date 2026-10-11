@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Herald OS Linux, the per-machine half: the session user and everything in a home folder. Runs as
+# Jarod-OS Linux, the per-machine half: the session user and everything in a home folder. Runs as
 # root and is safe to re-run. The shell's first-boot setup then lets the person choose a name and a
 # password, join Wi-Fi and sign in to Hermes.
 #
@@ -26,7 +26,7 @@ for candidate in /usr/share/herald-os /usr/local/share/herald-os-linux "$(cd "$(
     break
   fi
 done
-[[ -n "$SHARE" ]] || { echo "firstboot: the Herald OS files are missing (run packages.sh first)" >&2; exit 1; }
+[[ -n "$SHARE" ]] || { echo "firstboot: the Jarod-OS files are missing (run packages.sh first)" >&2; exit 1; }
 
 system_phase() {
   step "The session user ($HERMES_USER)"

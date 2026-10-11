@@ -82,7 +82,7 @@ export function AccessibilitySection() {
 
   return (
     <>
-      <SectionTitle title="Accessibility" subtitle="Make Herald OS easier to read and calmer to watch." />
+      <SectionTitle title="Accessibility" subtitle="Make Jarod-OS easier to read and calmer to watch." />
 
       <SettingsGroup title="Vision">
         <SettingsRow icon={<IconTextSize />} label="Text size" description="Scales the whole interface." keywords="font zoom bigger smaller">

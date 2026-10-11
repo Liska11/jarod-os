@@ -16,7 +16,7 @@ import { FileThumb, IconTile, Shimmer } from './shared.tsx'
 
 const SHOWN = 4
 
-/** Open inside Herald OS: folders in Files, PDFs/images/text/media in the viewer, the rest in their app. */
+/** Open inside Jarod-OS: folders in Files, PDFs/images/text/media in the viewer, the rest in their app. */
 function openRecent(file: RecentFile): void {
   if (file.kind === 'directory') {
     showPage('files')

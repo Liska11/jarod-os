@@ -19,11 +19,11 @@ export function renderIdleConf(prefs: Pick<HeraldOSPrefs, 'idle' | 'screensaver'
   const seconds = (minutes: number) => Math.max(0, Math.round(minutes * 60))
   const screensaver = prefs.screensaver?.enabled ? seconds(prefs.screensaver.afterMinutes || SCREENSAVER_DEFAULT_MINUTES) : 0
 
-  return ['# Written by Herald OS from Settings; seconds of inactivity, 0 for never.', `screensaver=${screensaver}`, `lock=${seconds(idle.lockAfter)}`, `screen_off=${seconds(idle.screenOffAfter)}`, `suspend=${seconds(idle.suspendAfter)}`, ''].join('\n')
+  return ['# Written by Jarod-OS from Settings; seconds of inactivity, 0 for never.', `screensaver=${screensaver}`, `lock=${seconds(idle.lockAfter)}`, `screen_off=${seconds(idle.screenOffAfter)}`, `suspend=${seconds(idle.suspendAfter)}`, ''].join('\n')
 }
 
 /**
- * The quick switches. In the Herald OS Linux session the `herald-os` CLI owns the system side
+ * The quick switches. In the Jarod-OS Linux session the `herald-os` CLI owns the system side
  * (wlsunset for night light, the swayidle unit for staying awake), so the menu bar, the hotkeys and
  * a terminal all agree; elsewhere staying awake is Electron's power-save blocker, which macOS and
  * the D-Bus idle inhibitor (hypridle on Omarchy) honour. Do not disturb and the screensaver are the
@@ -35,7 +35,7 @@ export class SwitchService {
 
   constructor(
     private readonly options: {
-      /** The Herald OS Linux session (niri, the herald-os CLI). */
+      /** The Jarod-OS Linux session (niri, the herald-os CLI). */
       session: boolean
       getWindows: () => BrowserWindow[]
       /** Preferences changed here (do not disturb, the screensaver): every window follows. */
@@ -52,7 +52,7 @@ export class SwitchService {
     if (this.options.session) {
       this.writeIdleConf(readPrefs())
     } else {
-      // The session's swayidle runs the screensaver on Herald OS Linux; elsewhere the shell watches.
+      // The session's swayidle runs the screensaver on Jarod-OS Linux; elsewhere the shell watches.
       setInterval(() => this.checkIdle(), IDLE_POLL_MS).unref()
     }
   }

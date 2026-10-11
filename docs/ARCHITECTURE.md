@@ -1,7 +1,7 @@
-# Herald OS Architecture
+# Jarod-OS Architecture
 
-Herald OS is an agent-native operating system: it makes Hermes Agent the primary interface between
-the user and the computer. Herald OS Linux is the whole system (Fedora underneath, the Herald shell
+Jarod-OS is an agent-native operating system: it makes Hermes Agent the primary interface between
+the user and the computer. Jarod-OS Linux is the whole system (Fedora underneath, the Jarod shell
 as the session); on macOS the same shell runs fullscreen over the macOS desktop. It is a separate
 product from Hermes Desktop: it consumes the upstream Hermes runtime unchanged and grows its own
 shell on top.
@@ -45,7 +45,7 @@ flowchart LR
 Both seams (`HostPlatform` in Electron main, `HostAdapter` in the bridge plugin) are implemented per
 host. The renderer and the agent see identical tool names and return shapes on every platform.
 
-| | macOS | Linux (Herald OS Linux) | Windows |
+| | macOS | Linux (Jarod-OS Linux) | Windows |
 | --- | --- | --- | --- |
 | Shell runs as | fullscreen over the macOS desktop | the whole session: `greetd` -> `niri` -> shell (`cage` as a fallback) | an application: the same window as on macOS (F11 toggles fullscreen); not a session |
 | `HostPlatform` | `platform/darwin.ts` (`plutil`, `sips`, `qlmanage`, `mdfind`, EventKit JXA) | `platform/linux.ts` (`/proc`, `.desktop` entries, icon themes, `nmcli`, `recently-used.xbel`, GNOME thumbnail cache) | `platform/windows.ts` (`Win32_Process`, `Get-StartApps` + `shell:AppsFolder`, the Recent folder, ripgrep, shell thumbnails) |
@@ -73,11 +73,11 @@ Setup, session model and dev loop for Linux: `docs/LINUX.md`.
 ## Wire contract
 
 The wire is declared in Python (`tui_gateway/contracts`) and generated into
-`apps/shared/src/gateway-contract.generated.ts` upstream. Herald OS re-exports that file through
+`apps/shared/src/gateway-contract.generated.ts` upstream. Jarod-OS re-exports that file through
 `packages/hermes-client`, so a field the backend stops sending fails `tsc` here instead of drifting.
 
 Sessions are created with `source: "herald_os"`. Upstream only folds Desktop-only GUI tools into
-sessions whose source is `desktop`, so a Herald OS session never receives tools whose client half
+sessions whose source is `desktop`, so a Jarod-OS session never receives tools whose client half
 lives in Hermes Desktop.
 
 Server-to-client requests the shell answers: `approval`, `clarify`, `sudo`, `secret`. Anything else
@@ -162,9 +162,9 @@ See [`SYSTEM-BRIDGE.md`](SYSTEM-BRIDGE.md).
 ## Upstream compatibility
 
 - The Python runtime is never forked: it is whatever `hermes update` installs.
-- Only `apps/shared/src` is compiled into Herald OS, from a pinned snapshot
+- Only `apps/shared/src` is compiled into Jarod-OS, from a pinned snapshot
   (`upstream/UPSTREAM.lock`, fetched by `scripts/sync-upstream.sh`).
 - The plugin uses only public plugin APIs (`register`, `ctx.register_tool`, `ctx.register_skill`,
   `tools.approval.request_tool_approval`).
-- Anything Herald OS needs from core that does not exist yet (for example a generic plugin
+- Anything Jarod-OS needs from core that does not exist yet (for example a generic plugin
   server-request hook for client-side execution) is proposed upstream rather than patched locally.

@@ -156,14 +156,14 @@ describe('parseThreads', () => {
 })
 
 describe('findThread', () => {
-  const threads = ['Herald OS launch', 'Ember & Oak website', 'Tax return'].map(title => ({ id: threadId(title), title, summary: 'x', stopped: '', items: [] }))
+  const threads = ['Jarod-OS launch', 'Ember & Oak website', 'Tax return'].map(title => ({ id: threadId(title), title, summary: 'x', stopped: '', items: [] }))
 
   it('finds by title words or position, and defaults to the first', () => {
     expect(findThread(threads, 'ember')?.title).toBe('Ember & Oak website')
     expect(findThread(threads, 'the coffee website')?.title).toBe('Ember & Oak website')
     expect(findThread(threads, 'second one')?.title).toBe('Ember & Oak website')
     expect(findThread(threads, 'last')?.title).toBe('Tax return')
-    expect(findThread(threads, '')?.title).toBe('Herald OS launch')
+    expect(findThread(threads, '')?.title).toBe('Jarod-OS launch')
     expect(findThread(threads, 'garden')).toBeNull()
   })
 })

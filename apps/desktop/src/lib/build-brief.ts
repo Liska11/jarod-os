@@ -35,7 +35,7 @@ export function buildBrief(goal: string, folder: string): string {
   return [
     `Build this: ${goal}`,
     '',
-    `Work in the current working directory, ${folder}, a new empty project folder. The user is watching you build in the Herald OS Studio (file tree, the file you are writing, your terminal commands, and a live preview), often by voice.`,
+    `Work in the current working directory, ${folder}, a new empty project folder. The user is watching you build in the Jarod-OS Studio (file tree, the file you are writing, your terminal commands, and a live preview), often by voice.`,
     '',
     '- Start with a short todo list (todo tool), then work through it.',
     '- Write files with write_file and change them with patch, not shell heredocs or echo, so each file appears in the Studio as you write it.',

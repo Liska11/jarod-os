@@ -129,7 +129,7 @@ export function DockSurface() {
 
     for (const pin of pinnedFor(platform)) {
       if (pin.label === 'Files') {
-        // Files is always Herald OS's own page, in Herald's own tile: a running file manager gets an entry
+        // Files is always Jarod-OS's own page, in Herald's own tile: a running file manager gets an entry
         // of its own here, and a borrowed icon would make the two look like the same app.
         list.push({ id: 'files', label: 'Files', render: () => <AppTile id="files" size={44} />, onClick: () => showPage('files') })
 

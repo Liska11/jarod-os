@@ -1,10 +1,10 @@
 post_install() {
-  echo '==> Herald OS is installed. Once per user, run:  herald-os setup'
+  echo '==> Jarod-OS is installed. Once per user, run:  herald-os setup'
   echo '    (it installs Hermes Agent if needed and links the bridge plugin that lets it use the system).'
-  echo '    Then pick "Herald OS" on the login screen, or run herald-os-app inside your desktop.'
+  echo '    Then pick "Jarod-OS" on the login screen, or run herald-os-app inside your desktop.'
   echo '    On Omarchy, `herald-os omarchy install` adds it to the menu, the theme and the keys.'
 }
 
 post_upgrade() {
-  echo '==> Herald OS updated. Restart it (or log out and back in) to use the new version.'
+  echo '==> Jarod-OS updated. Restart it (or log out and back in) to use the new version.'
 }

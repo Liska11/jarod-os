@@ -15,7 +15,7 @@ Borrowed from the field (see `LANDSCAPE.md` for the source of each):
 - Whole-environment themes driven by Hermes skins; agent-authored themes (Omarchy).
 - Agent Task Manager: per-session resources, tokens, approvals, stop (OpenNeo).
 - Live "Hermes is acting" banner with Interrupt during GUI automation (SomaOS).
-- `herald-os-tailor` skill so Hermes can reconfigure Herald OS itself (Omarchy).
+- `herald-os-tailor` skill so Hermes can reconfigure Jarod-OS itself (Omarchy).
 - `system_shortcut` tool over macOS Shortcuts / App Intents (Apple).
 
 Also planned:
@@ -35,7 +35,7 @@ Also planned:
   Windows Search or Everything as a faster file index.
 - Signed and notarized macOS builds; auto-update channel.
 
-## Herald OS Linux
+## Jarod-OS Linux
 
 No custom kernel at any stage. See `docs/LINUX.md` and ADR-012.
 
@@ -63,15 +63,15 @@ Apple Silicon M3 and later stay VM-only until Asahi covers them.
 
 ## Arch and Omarchy (ADR-017)
 
-Fedora stays the base of Herald OS Linux; Arch gets a package. One Linux release tarball per
+Fedora stays the base of Jarod-OS Linux; Arch gets a package. One Linux release tarball per
 architecture feeds both the Fedora images and `packaging/arch/` (`herald-os-bin`, `herald-os-git`).
-On Arch, Herald OS runs as its own session on niri or in app mode inside Hyprland, where it follows
+On Arch, Jarod-OS runs as its own session on niri or in app mode inside Hyprland, where it follows
 the Omarchy theme and defers updates to `omarchy update`. The AUR package is published only when the
 repository goes public.
 
 ## Omarchy parity (October 2026)
 
-What Omarchy has that Herald OS lacked, in the order it is being built:
+What Omarchy has that Jarod-OS lacked, in the order it is being built:
 
 1. Agent features on both platforms: crash help, "make it yours" themes and the tailoring skill,
    asking about a screen region, a usage view, event-triggered automations and hooks, a notarized

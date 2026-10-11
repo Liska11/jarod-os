@@ -54,7 +54,7 @@ export function Toasts() {
   )
 }
 
-/** Buttons on Herald OS's own notifications: each runs its OS command, then the notification goes. */
+/** Buttons on Jarod-OS's own notifications: each runs its OS command, then the notification goes. */
 export function CommandActions({ item, className }: { item: HermesNotification; className?: string }) {
   const actions = item.actions ?? []
 

@@ -31,7 +31,7 @@ import { $panelStates, loadPanel, PANEL_TITLES, panelAction } from '../../store/
 
 /*
  * The menu bar's quick panels: Wi-Fi, Bluetooth, sound, displays, battery and power, and the
- * calendar. On Herald OS Linux they change things; on macOS they only show what Control Center
+ * calendar. On Jarod-OS Linux they change things; on macOS they only show what Control Center
  * would, plus the volume.
  */
 

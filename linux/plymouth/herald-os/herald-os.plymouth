@@ -1,6 +1,6 @@
 [Plymouth Theme]
-Name=Herald OS
-Description=Herald OS boot splash: the Hermes mark on a deep-blue field with a soft pulse.
+Name=Jarod-OS
+Description=Jarod-OS boot splash: the Hermes mark on a deep-blue field with a soft pulse.
 ModuleName=script
 
 [script]

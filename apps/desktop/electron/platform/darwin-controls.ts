@@ -4,7 +4,7 @@ import { HostNotSupported } from './types.ts'
 
 /*
  * The quick panels on macOS are mostly for looking: macOS's own Control Center changes Wi-Fi,
- * Bluetooth and displays, and Herald OS does not take that over. Volume is the exception.
+ * Bluetooth and displays, and Jarod-OS does not take that over. Volume is the exception.
  */
 
 type SpDeviceList = Record<string, { device_address?: string; device_minorType?: string; device_batteryLevelMain?: string }>[]
@@ -128,5 +128,5 @@ export async function darwinControlAction(action: ControlAction): Promise<void> 
     return
   }
 
-  throw new HostNotSupported(`changing ${action.panel} from Herald OS on macOS (use Control Center)`)
+  throw new HostNotSupported(`changing ${action.panel} from Jarod-OS on macOS (use Control Center)`)
 }

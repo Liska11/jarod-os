@@ -1,13 +1,13 @@
 # Hotkeys
 
-On Herald OS Linux the system key is `Super` (the Windows or Command key); in the virtual machine on
+On Jarod-OS Linux the system key is `Super` (the Windows or Command key); in the virtual machine on
 a Mac it is `Alt` instead, because macOS keeps `Command` for itself. `Super+K` shows every Linux
-shortcut on screen. Herald's own pages also answer to `Ctrl` on Linux, so `Ctrl+K` and `Ctrl+1`
+shortcut on screen. Jarod's own pages also answer to `Ctrl` on Linux, so `Ctrl+K` and `Ctrl+1`
 work everywhere.
 
-## Hermes and Herald OS
+## Hermes and Jarod-OS
 
-| Action | macOS | Herald OS Linux |
+| Action | macOS | Jarod-OS Linux |
 | --- | --- | --- |
 | Command bar | `Cmd+K` | `Super+Shift+Space` or `Ctrl+K` |
 | All applications | `Cmd+Shift+A` | `Super+A` |
@@ -17,7 +17,7 @@ work everywhere.
 | Ask about part of the screen | `Cmd+Shift+S` | `Super+Shift+S` |
 | Ask about the focused window | | `Super+Space` |
 | Screenshot of the whole screen, to Hermes | | `Super+Ctrl+Shift+S` |
-| Herald OS menu: apps, themes, updates | | `Super+M` or `Super+Alt+Space` |
+| Jarod-OS menu: apps, themes, updates | | `Super+M` or `Super+Alt+Space` |
 | Show these hotkeys | | `Super+K` |
 | Overview, Hermes, Missions, Memory, Files, Automations, Connections | `Cmd+1` ... `Cmd+7` | `Ctrl+1` ... `Ctrl+7` |
 | Settings | `Cmd+,` | `Super+,` |
@@ -32,7 +32,7 @@ work everywhere.
 | Lock, power menu | | `Super+Ctrl+L`, `Super+Escape` |
 | Leave or enter fullscreen, quit | `Cmd+Ctrl+F`, `Cmd+Q` | `Super+Shift+Escape` quits the session |
 
-## Windows (Herald OS Linux)
+## Windows (Jarod-OS Linux)
 
 | Action | Keys |
 | --- | --- |
@@ -47,7 +47,7 @@ work everywhere.
 | Spaces: Personal, Work, Ideas | `Super+1`, `Super+2`, `Super+3` (with `Shift` to move the window there) |
 | Previous window | `Super+Tab` |
 
-## Quick panels and switches (Herald OS Linux)
+## Quick panels and switches (Jarod-OS Linux)
 
 | Action | Keys |
 | --- | --- |
@@ -56,7 +56,7 @@ work everywhere.
 | Night light, stay awake, do not disturb | `Super+Ctrl+N`, `Super+Ctrl+I`, `Super+Ctrl+,` |
 | Turn the screens off | `Super+Shift+P` |
 
-## Capture (Herald OS Linux)
+## Capture (Jarod-OS Linux)
 
 | Action | Keys |
 | --- | --- |
@@ -66,7 +66,7 @@ work everywhere.
 | Pick a colour from the screen | `Super+Ctrl+Print` |
 | Ask Hermes about part of the screen | `Super+Shift+S` |
 
-## Omarchy keys (Herald OS Linux)
+## Omarchy keys (Jarod-OS Linux)
 
 Coming from Omarchy? Settings > General > Keymap, or `herald-os keymap omarchy`, makes `Super+C`,
 `Super+X` and `Super+V` copy, cut and paste in every app, terminals included. Talking to Hermes
@@ -75,7 +75,7 @@ back.
 
 ## Your own shortcuts
 
-On Herald OS Linux, add binds to `~/.config/niri/local.kdl`, which Herald OS never overwrites; any
-`herald-os` command can be a bind, and binding a key Herald OS already uses replaces it.
+On Jarod-OS Linux, add binds to `~/.config/niri/local.kdl`, which Jarod-OS never overwrites; any
+`herald-os` command can be a bind, and binding a key Jarod-OS already uses replaces it.
 [Make it yours](make-it-yours.md#keyboard-shortcuts) has examples, including switching a key off,
 and Hermes can write them for you: "add a shortcut that opens Obsidian".

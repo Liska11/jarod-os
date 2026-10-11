@@ -23,7 +23,7 @@ export function AboutSection() {
       <AboutIdentity />
 
       <SettingsGroup title="Versions">
-        <SettingsRow icon={<IconInfoCircle />} label="Herald OS" description={env?.isDev ? 'Development build.' : 'Agent-native operating system.'} keywords="version build shell">
+        <SettingsRow icon={<IconInfoCircle />} label="Jarod-OS" description={env?.isDev ? 'Development build.' : 'Agent-native operating system.'} keywords="version build shell">
           <Pill tone="accent">{env?.version ?? '—'}</Pill>
         </SettingsRow>
         <SettingsRow icon={<IconServer />} label="Hermes runtime" description={<span className="selectable">{backend.runtime?.label ?? 'Not resolved yet.'}</span>} keywords="hermes agent version runtime">
@@ -35,7 +35,7 @@ export function AboutSection() {
       <BrandingSettings />
 
       <SettingsGroup title="Maintenance">
-        <SettingsRow icon={<IconDownload />} label="Check for updates" description="Herald OS runs whatever Hermes is installed. Run “hermes update” in Terminal, then restart Hermes from Network." keywords="upgrade update hermes update terminal">
+        <SettingsRow icon={<IconDownload />} label="Check for updates" description="Jarod-OS runs whatever Hermes is installed. Run “hermes update” in Terminal, then restart Hermes from Network." keywords="upgrade update hermes update terminal">
           <GlassButton size="sm" onClick={() => openApp('terminal')} aria-label="Open Terminal">
             Open Terminal
           </GlassButton>

@@ -407,7 +407,7 @@ let bound = false
 
 let tuningStt = false
 
-/** Once per install: switch local transcription to the accurate model and teach it Herald OS words. */
+/** Once per install: switch local transcription to the accurate model and teach it Jarod-OS words. */
 async function tuneLocalStt(): Promise<void> {
   const voice = $prefs.get().voice
 

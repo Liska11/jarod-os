@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Screenshot the Herald OS session.
+# Screenshot the Jarod-OS session.
 #   Inside the VM:  herald-os-shot [out.png]         (grim via wlr-screencopy; works over SSH)
 #   On the Mac:     bash linux/dev/shot.sh [out.png] (runs it in the VM and copies the file back)
 set -euo pipefail

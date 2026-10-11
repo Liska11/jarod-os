@@ -6,7 +6,7 @@ Tiers:
   mutate       asks first; "session" / "always" answers are honoured (mkdir, move, rename)
   destructive  always asks; the rule key is unique per call so "always" cannot persist
 
-Confirmation goes through upstream's ``tools.approval.request_tool_approval`` so Herald OS renders the
+Confirmation goes through upstream's ``tools.approval.request_tool_approval`` so Jarod-OS renders the
 same approval card for a bridge action as for a shell command, and the operator's global approval
 settings (yolo, ``approvals.mode``, smart approval) apply uniformly.
 """
@@ -92,7 +92,7 @@ def builtin_protected(platform: str = sys.platform) -> tuple[str, ...]:
     return BUILTIN_PROTECTED
 
 
-DEFAULT_POLICY_TEXT = """# Herald OS system bridge policy. See docs/SYSTEM-BRIDGE.md.
+DEFAULT_POLICY_TEXT = """# Jarod-OS system bridge policy. See docs/SYSTEM-BRIDGE.md.
 version: 1
 tiers:
   read: allow
@@ -231,7 +231,7 @@ def authorize(tool: str, tier: Tier, action: str, summary: str, *, paths: Iterab
             return Decision(False, "protected", f"{path} is inside the protected location {root}; the system bridge never touches it.")
     mode = policy.mode(tier)
     if mode == "deny":
-        return Decision(False, "policy_denied", f"The Herald OS permission policy denies {tier.value} actions ({tool}).")
+        return Decision(False, "policy_denied", f"The Jarod-OS permission policy denies {tier.value} actions ({tool}).")
     if mode == "allow":
         return Decision(True, "allowed")
     if tier is Tier.DESTRUCTIVE:

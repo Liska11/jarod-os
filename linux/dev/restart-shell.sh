@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Restart the running Herald OS shell. herald-os-session treats a non-zero exit as a crash and
+# Restart the running Jarod-OS shell. herald-os-session treats a non-zero exit as a crash and
 # relaunches Electron with the freshly built code; if no session is running, start greetd.
 set -u
 

@@ -7,7 +7,7 @@ import { log } from '../log.ts'
 import { hermesHome, heraldOsDataDir } from '../paths.ts'
 
 /*
- * A packaged Herald OS carries the herald-os-bridge plugin in its resources. Hermes loads user
+ * A packaged Jarod-OS carries the herald-os-bridge plugin in its resources. Hermes loads user
  * plugins from ~/.hermes/plugins, and only enabled ones, so before Hermes starts the app links its
  * copy there and turns it and its tools on: what `npm run bootstrap` does for a checkout and
  * `herald-os setup` for the Linux packages.
@@ -27,7 +27,7 @@ export function bridgeLinkPlan(entry: PluginEntry, bundled: string): 'create' | 
   }
 
   // A link that leads nowhere, or into another copy of the app (moved, updated, run from the DMG).
-  const anotherApp = /\.app\/Contents\/Resources\/herald-os-bridge\/?$/.test(entry.target) || entry.target.startsWith('/opt/herald-os/') || /[\\/]Herald OS[\\/]resources[\\/]herald-os-bridge[\\/]?$/i.test(entry.target) || /[\\/]WindowsApps[\\/]/i.test(entry.target)
+  const anotherApp = /\.app\/Contents\/Resources\/herald-os-bridge\/?$/.test(entry.target) || entry.target.startsWith('/opt/herald-os/') || /[\\/](Jarod-OS|Herald OS)[\\/]resources[\\/]herald-os-bridge[\\/]?$/i.test(entry.target) || /[\\/]WindowsApps[\\/]/i.test(entry.target)
 
   return !entry.exists || anotherApp ? 'replace' : 'keep'
 }

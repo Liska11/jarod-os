@@ -7,7 +7,7 @@ import { log } from '../log.ts'
 import { loadPty } from './terminal.ts'
 
 /*
- * First-boot setup on the Herald OS image: the image's first boot made the account (no password)
+ * First-boot setup on the Jarod-OS image: the image's first boot made the account (no password)
  * and installed Hermes; the person names it, sets a password, joins Wi-Fi and signs in to Hermes.
  * Nothing here needs root: `passwd` changes the person's own password (the current one is empty on
  * a new account), and the name Herald greets with lives in ~/.config/herald-os/name.

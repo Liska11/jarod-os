@@ -12,7 +12,7 @@ const HEIGHT = 470
 
 /**
  * macOS: the emoji picker over whatever app you are typing in. It is a non-activating panel, so that
- * app keeps focus and the pick is pasted into it (as dictation types); inside Herald OS, the picker
+ * app keeps focus and the pick is pasted into it (as dictation types); inside Jarod-OS, the picker
  * in the Herald window opens instead.
  */
 export class EmojiPanel {
@@ -25,7 +25,7 @@ export class EmojiPanel {
     ipcMain.handle(IPC.shellClose, () => this.hide())
 
     if (!globalShortcut.register(ACCELERATOR, () => this.toggle())) {
-      log('emoji', `${ACCELERATOR} is taken by another app; the picker still opens inside Herald OS`)
+      log('emoji', `${ACCELERATOR} is taken by another app; the picker still opens inside Jarod-OS`)
     }
   }
 
@@ -82,7 +82,7 @@ export class EmojiPanel {
       maximizable: false,
       fullscreenable: false,
       skipTaskbar: true,
-      // An NSPanel that does not activate Herald OS: the app underneath stays the one typed into.
+      // An NSPanel that does not activate Jarod-OS: the app underneath stays the one typed into.
       type: 'panel',
       alwaysOnTop: true,
       webPreferences: {

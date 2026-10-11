@@ -481,7 +481,7 @@ export function hermesSkinColors(colors: ThemeColors): Record<string, string> {
 }
 
 export function hermesSkinYaml(label: string, colors: ThemeColors): string {
-  const lines = [`# Written by Herald OS from its "${label.replace(/"/g, "'")}" theme; Herald OS rewrites it when the theme changes.`, `name: ${HERALD_SKIN}`, `description: "Herald OS: ${label.replace(/"/g, "'")}"`, 'colors:']
+  const lines = [`# Written by Jarod-OS from its "${label.replace(/"/g, "'")}" theme; Jarod-OS rewrites it when the theme changes.`, `name: ${HERALD_SKIN}`, `description: "Jarod-OS: ${label.replace(/"/g, "'")}"`, 'colors:']
 
   for (const [key, value] of Object.entries(hermesSkinColors(colors))) {
     lines.push(`  ${key}: "${value}"`)

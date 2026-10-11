@@ -11,5 +11,5 @@ Run these from the repository root; the common ones have npm aliases.
 | `verify-windows.ps1` | | Windows end-to-end check: Hermes reachable, bridge plugin enabled, gateway lists the `herald_os` tools, one bridge tool called through Hermes's registry, its audit entry written |
 | `make-appx-assets.ps1` | | Regenerates the Windows app package (appx) tile images in `apps/desktop/build/appx` from `build/icon.png`; replace them with hand-made art when there is some |
 | `check-secrets.sh` | | Scans the working tree and the whole git history for committed credentials with gitleaks |
-| `migrate-hermes-config.py` | | Renames the plugin, toolset and saved approvals in `~/.hermes/config.yaml` from Hermes OS to Herald OS (bootstrap runs it) |
-| `make-icons.py` | | Regenerates the app, favicon and boot-splash icons from the master Herald mark (needs Pillow; macOS for the `.icns`) |
+| `migrate-hermes-config.py` | | Renames the plugin, toolset and saved approvals in `~/.hermes/config.yaml` from Hermes OS to Jarod-OS (bootstrap runs it) |
+| `make-icons.py` | | Regenerates the app, favicon and boot-splash icons from the master Jarod mark (needs Pillow; macOS for the `.icns`) |

@@ -14,7 +14,7 @@ describe('shortcutLabel', () => {
     expect(shortcutLabel('A', { shift: true })).toBe('⌘⇧A')
   })
 
-  it('names Ctrl on Herald OS Linux, which has no Command key', () => {
+  it('names Ctrl on Jarod-OS Linux, which has no Command key', () => {
     onPlatform('linux')
 
     expect(shortcutLabel('K')).toBe('Ctrl+K')

@@ -1,15 +1,15 @@
-# The Herald OS manual
+# The Jarod-OS manual
 
-Herald OS is an operating system built around an AI agent, Hermes. You talk or type to it, and it
+Jarod-OS is an operating system built around an AI agent, Hermes. You talk or type to it, and it
 works across the whole machine: it opens apps, finds and organises files, keeps an eye on what is
 running, remembers what matters to you, runs routines, and builds software while you watch. Anything
 that changes something asks first.
 
-This manual is for using Herald OS day to day. The [README](../../README.md) covers installing it;
+This manual is for using Jarod-OS day to day. The [README](../../README.md) covers installing it;
 [docs/ARCHITECTURE.md](../ARCHITECTURE.md) covers how it is built.
 
 - [Coming from macOS](coming-from-macos.md): where your habits go.
-- [Hotkeys](hotkeys.md): every shortcut on macOS and on Herald OS Linux.
+- [Hotkeys](hotkeys.md): every shortcut on macOS and on Jarod-OS Linux.
 - [Make it yours](make-it-yours.md): themes, fonts, widgets, the menu bar, your own menu entries,
   branding, keyboard shortcuts, and hooks and automations that run when something happens.
 - [Troubleshooting](troubleshooting.md): when something does not work.
@@ -17,7 +17,7 @@ This manual is for using Herald OS day to day. The [README](../../README.md) cov
 
 ## The first five minutes
 
-1. **Say hello.** Press `Cmd+K` on a Mac or `Super+Shift+Space` on Herald OS Linux and type what
+1. **Say hello.** Press `Cmd+K` on a Mac or `Super+Shift+Space` on Jarod-OS Linux and type what
    you want, or press the voice key (`Alt+Space` on a Mac, `Super+V` on Linux) and say it.
 2. **Let Hermes catch you up.** The Overview offers to look at the names of your recent files,
    projects and chats and suggest where to pick up. It is off until you turn it on.
@@ -31,7 +31,7 @@ This manual is for using Herald OS day to day. The [README](../../README.md) cov
 ## Installing software
 
 Settings > Software (or Install in the `Super+M` menu on Linux, or just "install Steam") lists what
-Herald OS can install in one step: coding agents for the terminal (Claude Code, Codex, OpenCode,
+Jarod-OS can install in one step: coding agents for the terminal (Claude Code, Codex, OpenCode,
 Gemini CLI, Copilot CLI), local models with Ollama and LM Studio, languages (Node, Python, Go, Rust,
 Ruby and Rails, PHP and Laravel, and more), editors, terminals, games, a Windows 11 virtual machine,
 media apps, password managers and web apps. Each one installs the right way for your machine, and

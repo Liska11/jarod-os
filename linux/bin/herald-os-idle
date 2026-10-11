@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # The session's idle chain: screensaver, lock, screens off and sleep after the timings in
-# ~/.config/herald-os/idle.conf (seconds; Herald OS writes it from Settings). Runs swayidle as the
+# ~/.config/herald-os/idle.conf (seconds; Jarod-OS writes it from Settings). Runs swayidle as the
 # transient user unit herald-os-idle, so "stay awake" is simply that unit stopped.
 #
 #   herald-os-idle start | stop | restart | status

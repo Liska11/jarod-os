@@ -230,7 +230,7 @@ async function runningApps(skip: (name: string) => boolean): Promise<string[]> {
 }
 
 const NOT_AN_APP = /helper|agent|daemon|service|extension|updater|crashpad|renderer|webcontent/i
-const SELF = new Set(['Electron', 'Herald OS'])
+const SELF = new Set(['Electron', 'Jarod-OS'])
 
 /** `/Applications/Keynote.app/Contents/MacOS/Keynote` -> `Keynote`; helpers and system services -> null. */
 export function appNameFromCommand(command: string): string | null {

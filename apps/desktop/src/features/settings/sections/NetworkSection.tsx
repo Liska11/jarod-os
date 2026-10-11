@@ -53,7 +53,7 @@ export function NetworkSection() {
         {backend.sharedGateway && (
           <InlineNote tone="info">
             Another app (Hermes Desktop, say) runs a Hermes gateway on this Hermes home (pid {backend.sharedGateway}). That is fine: Hermes runs each scheduled job once and keeps one messaging gateway. To share its backend
-            too, start Herald OS with HERALD_OS_BACKEND_URL and HERALD_OS_BACKEND_TOKEN.
+            too, start Jarod-OS with HERALD_OS_BACKEND_URL and HERALD_OS_BACKEND_TOKEN.
           </InlineNote>
         )}
       </SettingsGroup>

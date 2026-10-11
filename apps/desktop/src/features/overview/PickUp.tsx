@@ -66,7 +66,7 @@ export function PickUp() {
           }
         />
       ) : (
-        <EmptyGlass className="min-h-28" title="Nothing to pick up yet" description={`When you open Herald OS or come back to this ${deviceNoun()}, Hermes suggests where to continue.`} />
+        <EmptyGlass className="min-h-28" title="Nothing to pick up yet" description={`When you open Jarod-OS or come back to this ${deviceNoun()}, Hermes suggests where to continue.`} />
       )}
     </Section>
   )
@@ -171,7 +171,7 @@ function PickUpOffer() {
       <div className="min-w-0 flex-1">
         <div className="text-[14px] font-semibold text-fg">Pick up where you left off</div>
         <div className="mt-0.5 text-[12.5px] leading-snug text-fg-3">
-          When you open Herald OS or come back after a break, Hermes looks at the names of your recent documents, projects, chats and calendar events and suggests where to continue. Never file contents or your screen.
+          When you open Jarod-OS or come back after a break, Hermes looks at the names of your recent documents, projects, chats and calendar events and suggests where to continue. Never file contents or your screen.
         </div>
       </div>
       <div className="flex shrink-0 items-center gap-2">

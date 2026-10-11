@@ -29,7 +29,7 @@ describe('parseEvent', () => {
 
 describe('toState', () => {
   const clients = [
-    { address: '0x10', mapped: true, hidden: false, title: 'Herald OS', class: 'herald-os', pid: 4242, floating: false, workspace: { id: 1, name: '1' } },
+    { address: '0x10', mapped: true, hidden: false, title: 'Jarod-OS', class: 'herald-os', pid: 4242, floating: false, workspace: { id: 1, name: '1' } },
     { address: '0x20', mapped: true, hidden: false, title: 'Inbox', class: 'firefox', pid: 99, floating: true, workspace: { id: 2, name: 'work' } },
     { address: '0x30', mapped: true, hidden: false, title: 'scratch', class: 'kitty', pid: 98, workspace: { id: -98, name: 'special:term' } },
     { address: '0x40', mapped: false, title: 'unmapped', class: 'x', pid: 97, workspace: { id: 1, name: '1' } }

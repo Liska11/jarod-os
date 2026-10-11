@@ -1,6 +1,6 @@
 # @herald-os/client
 
-How Herald OS talks to a Hermes backend (`hermes serve`). It is source-only (no build step) and
+How Jarod-OS talks to a Hermes backend (`hermes serve`). It is source-only (no build step) and
 consumed by `apps/desktop` through a Vite alias.
 
 `import { ... } from '@herald-os/client'` gives you:

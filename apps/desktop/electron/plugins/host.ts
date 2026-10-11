@@ -150,7 +150,7 @@ export class PluginHost {
       }
 
       if (!fs.existsSync(path.join(staging, 'manifest.json'))) {
-        throw new Error('Not a Herald OS plugin: there is no manifest.json at the top of the repository')
+        throw new Error('Not a Jarod-OS plugin: there is no manifest.json at the top of the repository')
       }
 
       const raw = readJson<{ id?: unknown }>(path.join(staging, 'manifest.json'), {})
@@ -162,7 +162,7 @@ export class PluginHost {
       }
 
       if (errors.length) {
-        throw new Error(`Not a Herald OS plugin: ${errors.join('; ')}`)
+        throw new Error(`Not a Jarod-OS plugin: ${errors.join('; ')}`)
       }
 
       const target = path.join(pluginsDir(), id)

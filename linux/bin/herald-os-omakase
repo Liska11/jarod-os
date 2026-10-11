@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Install the Herald OS omakase software set (linux/omakase/*.txt): Fedora packages as root,
+# Install the Jarod-OS omakase software set (linux/omakase/*.txt): Fedora packages as root,
 # Flathub apps and web apps for the session user. Idempotent; safe to re-run after list changes.
 #
 #   herald-os-omakase [install|list] [--packages|--flatpaks|--webapps]

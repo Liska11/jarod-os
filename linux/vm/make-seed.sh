@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Build the cloud-init NoCloud seed (cidata.iso) that turns a stock Fedora Cloud image into a
-# Herald OS Linux machine on first boot: creates the `hermes` user, installs an SSH key, embeds
+# Jarod-OS Linux machine on first boot: creates the `hermes` user, installs an SSH key, embeds
 # the `linux/` payload (provisioner, session files, dev scripts) and runs the provisioner.
 #
 #   bash linux/vm/make-seed.sh            # writes linux/vm/build/cidata.iso
@@ -81,7 +81,7 @@ runcmd:
   - [chmod, -R, a+rX, /usr/local/share/herald-os-linux]
   - [bash, /usr/local/share/herald-os-linux/provision.sh]
 
-final_message: "cloud-init finished after \$UPTIME seconds; the Herald OS provisioning log is /var/log/herald-os-provision.log"
+final_message: "cloud-init finished after \$UPTIME seconds; the Jarod-OS provisioning log is /var/log/herald-os-provision.log"
 EOF
 
 rm -f "$BUILD/cidata.iso"
