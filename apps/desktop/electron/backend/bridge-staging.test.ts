@@ -20,7 +20,7 @@ describe('staging for appx installs', () => {
   }
 
   it('is needed only under WindowsApps on Windows', () => {
-    const packaged = 'C:\\Program Files\\WindowsApps\\JarodOS.JarodOS_0.1.0.0_x64__abc\\app\\resources'
+    const packaged = 'C:\\Program Files\\WindowsApps\\Jarod.OS_0.1.0.0_x64__abc\\app\\resources'
 
     expect(needsStaging(packaged, 'win32')).toBe(true)
     expect(needsStaging('C:\\Users\\sam\\AppData\\Local\\Programs\\Jarod-OS\\resources', 'win32')).toBe(false)

@@ -220,9 +220,15 @@ became `Jarod` in docs and in non-comment lines of the interface (49 occurrences
 | --- | --- |
 | `productName`, `executableName`, window titles, `app.setName` | `Jarod-OS` (so `win-unpacked\Jarod-OS.exe`, install folder `Programs\Jarod-OS`, user data `%APPDATA%\Jarod-OS`) |
 | electron-builder `appId` and Windows AppUserModelId | `one.jarod.os` (the Jarod app is `one.jarod.desktop`) |
-| MSIX / appx | `applicationId` `JarodOS`, `identityName` `JarodOS.JarodOS`, `publisher` `CN=JarodOS`, display names `Jarod-OS` |
+| MSIX / appx | `identityName` `Jarod.OS`, `applicationId` left to the electron-builder default (= the identity name, so `Jarod.OS`), `publisher` `CN=JarodOS`, display names `Jarod-OS` (read back from `AppxManifest.xml` of the built package) |
 | Installer files | `JarodOS-Setup-<v>-win-x64.exe`, `JarodOS-<v>-win-x64.appx` (CI upload globs updated) |
 | Launcher default (jarod-cordis `launch.ts`, commit `9e90e35e`) | `…\win-unpacked\Jarod-OS.exe` |
+
+**The NSIS and MSIX identities are final.** `one.jarod.os` and `Jarod.OS` / `CN=JarodOS` are not to be changed again once an installer has been given to anyone:
+Windows ties the per-user uninstall entry, the AppUserModelId (taskbar pins, notifications) and the MSIX package family to them, so a later change orphans every
+existing install. Publishing to the Microsoft Store would **not** be possible with these values: the Store requires the identity name and the publisher subject that
+Partner Center reserves for the account, and a package signed by Microsoft. Until then the `.appx` is an unsigned sideload artifact (it needs a certificate whose
+subject is exactly `CN=JarodOS`, see `README-WINDOWS.md`), and the NSIS installer is also unsigned.
 
 The old `%APPDATA%\Herald OS` folder is **not migrated**: it may belong to an installed upstream Herald OS, and moving it would take that app's data.
 `NOTICE` and `LICENSE` are untouched and ship inside the package (`resources\NOTICE`, `resources\LICENSE`).

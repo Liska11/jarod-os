@@ -210,8 +210,7 @@
       "artifactName": "JarodOS-Setup-${version}-win-${arch}.${ext}"
     },
     "appx": {
-      "applicationId": "JarodOS",
-      "identityName": "JarodOS.JarodOS",
+      "identityName": "Jarod.OS",
       "publisher": "CN=JarodOS",
       "publisherDisplayName": "Jarod-OS",
       "displayName": "Jarod-OS",
