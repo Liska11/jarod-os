@@ -6,7 +6,7 @@ import { describe, expect, it, vi } from 'vitest'
 vi.mock('electron', () => ({ powerMonitor: { on: () => undefined }, ipcMain: { handle: () => undefined } }))
 
 const { batteryCrossing, networkKey } = await import('./sources.ts')
-const { hookScripts } = await import('./hooks.ts')
+const { hookCommand, hookScripts } = await import('./hooks.ts')
 
 describe('batteryCrossing', () => {
   it('fires once when the battery drops to 15% and re-arms after charging', () => {
@@ -42,7 +42,7 @@ describe('networkKey', () => {
 })
 
 describe('hookScripts', () => {
-  it('runs executable scripts in name order, skipping samples and dotfiles', () => {
+  it.skipIf(process.platform === 'win32')('runs executable scripts in name order, skipping samples and dotfiles', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'herald-hooks-'))
     const write = (name: string, mode: number) => fs.writeFileSync(path.join(dir, name), '#!/bin/sh\n', { mode })
 
@@ -54,5 +54,23 @@ describe('hookScripts', () => {
 
     expect(hookScripts(dir).map(file => path.basename(file))).toEqual(['10-first', '20-second'])
     expect(hookScripts(path.join(dir, 'missing'))).toEqual([])
+  })
+
+  it('on Windows runs runnable file types instead of looking for an executable bit', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'herald-hooks-'))
+
+    for (const name of ['20-second.ps1', '10-first.cmd', '15-tool.exe', 'notes.txt', '30-example.sample', '.hidden.ps1']) {
+      fs.writeFileSync(path.join(dir, name), '')
+    }
+
+    expect(hookScripts(dir, 'win32').map(file => path.basename(file))).toEqual(['10-first.cmd', '15-tool.exe', '20-second.ps1'])
+    fs.rmSync(dir, { recursive: true, force: true })
+  })
+
+  it('starts scripts through their interpreter on Windows and directly elsewhere', () => {
+    expect(hookCommand('C:\\h\\a.ps1', 'wake', 'win32')).toEqual({ file: 'powershell.exe', args: ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', 'C:\\h\\a.ps1', 'wake'] })
+    expect(hookCommand('C:\\h\\a.cmd', 'wake', 'win32')).toEqual({ file: 'cmd.exe', args: ['/d', '/c', 'C:\\h\\a.cmd', 'wake'] })
+    expect(hookCommand('C:\\h\\a.exe', 'wake', 'win32')).toEqual({ file: 'C:\\h\\a.exe', args: ['wake'] })
+    expect(hookCommand('/h/a', 'wake', 'linux')).toEqual({ file: '/h/a', args: ['wake'] })
   })
 })

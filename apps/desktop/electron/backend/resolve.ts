@@ -27,14 +27,29 @@ function checkoutRuntime(root: string, kind: BackendRuntime['kind'], label: stri
   return { kind, label, root, command: [python, '-m', 'hermes_cli.main'] }
 }
 
+/** Where a GUI app should also look for `hermes`: the usual user bin dirs it does not inherit. */
+export function extraHermesDirs(platform: NodeJS.Platform = process.platform, home: string = os.homedir(), env: NodeJS.ProcessEnv = process.env): string[] {
+  if (platform === 'win32') {
+    // install.ps1 puts the launcher in <HERMES_HOME>in and adds it to the user PATH, which an
+    // Explorer-started app only sees after the next sign-in.
+    return [path.win32.join(env.HERMES_HOME?.trim() || path.win32.join(env.LOCALAPPDATA ?? path.win32.join(home, 'AppData', 'Local'), 'hermes'), 'bin')]
+  }
+
+  return [path.join(home, '.local', 'bin'), '/opt/homebrew/bin', '/usr/local/bin']
+}
+
 function pathRuntime(extraDirs: string[]): BackendRuntime | null {
-  const dirs = [...(process.env.PATH ?? '').split(path.delimiter), ...extraDirs].filter(Boolean)
+  // Only `.exe`: execFile/spawn cannot start a `.cmd` shim without a shell.
+  const names = process.platform === 'win32' ? ['hermes.exe'] : ['hermes']
+  const dirs = [...(process.env.PATH ?? process.env.Path ?? '').split(path.delimiter), ...extraDirs].filter(Boolean)
 
   for (const dir of dirs) {
-    const candidate = path.join(dir, process.platform === 'win32' ? 'hermes.exe' : 'hermes')
+    for (const name of names) {
+      const candidate = path.join(dir, name)
 
-    if (isExecutable(candidate)) {
-      return { kind: 'path', label: `hermes on PATH (${candidate})`, command: [candidate] }
+      if (isExecutable(candidate)) {
+        return { kind: 'path', label: `hermes on PATH (${candidate})`, command: [candidate] }
+      }
     }
   }
 
@@ -64,5 +79,5 @@ export function resolveBackendRuntime(): BackendRuntime | null {
     return managed
   }
 
-  return pathRuntime([path.join(os.homedir(), '.local', 'bin'), '/opt/homebrew/bin', '/usr/local/bin'])
+  return pathRuntime(extraHermesDirs())
 }

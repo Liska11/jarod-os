@@ -12,6 +12,7 @@ import { type AttachTarget, attachTarget, foreignGateway } from './coexist.ts'
 import { waitForStatus } from './probe.ts'
 import { LineBuffer, parseReadyLine, readyFileName, staleReadyFiles } from './ready.ts'
 import { resolveBackendRuntime } from './resolve.ts'
+import { killProcessTree, windowsParentPid } from './process-tree.ts'
 import { loginShellPath } from './shell-env.ts'
 
 const READY_TIMEOUT_MS = 90_000
@@ -278,7 +279,8 @@ export class BackendManager {
       cwd: runtime.root ?? undefined,
       env,
       stdio: ['ignore', 'pipe', 'pipe'],
-      detached: false
+      detached: false,
+      windowsHide: true
     })
     this.child = child
 
@@ -387,7 +389,7 @@ export class BackendManager {
     await new Promise<void>(resolve => {
       const force = setTimeout(() => {
         try {
-          child.kill('SIGKILL')
+          killProcessTree(child, 'SIGKILL')
         } catch {
           // Already gone.
         }
@@ -400,7 +402,7 @@ export class BackendManager {
       })
 
       try {
-        child.kill('SIGTERM')
+        killProcessTree(child, 'SIGTERM')
       } catch {
         clearTimeout(force)
         resolve()
@@ -436,6 +438,10 @@ function parentPid(pid: number): number | null {
       const fields = stat.slice(stat.lastIndexOf(')') + 2).split(' ')
 
       return Number(fields[1]) || null
+    }
+
+    if (process.platform === 'win32') {
+      return windowsParentPid(pid)
     }
 
     const out = execFileSync('ps', ['-o', 'ppid=', '-p', String(pid)], { encoding: 'utf8', timeout: 2000 })

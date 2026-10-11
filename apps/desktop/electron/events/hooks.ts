@@ -12,8 +12,11 @@ export function hooksDir(): string {
   return path.join(os.homedir(), '.config', 'herald-os', 'hooks')
 }
 
+/** Windows has no executable bit: a hook is a file of a type the system can run. */
+const WINDOWS_HOOK_EXTENSIONS = new Set(['.exe', '.cmd', '.bat', '.ps1'])
+
 /** The scripts that run for an event: executable files in `<event>.d`, in name order (`.sample` files and dotfiles skipped). */
-export function hookScripts(dir: string): string[] {
+export function hookScripts(dir: string, platform: NodeJS.Platform = process.platform): string[] {
   let names: string[]
 
   try {
@@ -29,17 +32,33 @@ export function hookScripts(dir: string): string[] {
       try {
         const stat = fs.statSync(file)
 
-        return stat.isFile() && (stat.mode & 0o111) !== 0
+        return stat.isFile() && (platform === 'win32' ? WINDOWS_HOOK_EXTENSIONS.has(path.extname(file).toLowerCase()) : (stat.mode & 0o111) !== 0)
       } catch {
         return false
       }
     })
 }
 
+/** What to start for a hook script: scripts need their interpreter on Windows, which spawn cannot infer. */
+export function hookCommand(script: string, eventName: string, platform: NodeJS.Platform = process.platform): { file: string; args: string[] } {
+  const extension = path.extname(script).toLowerCase()
+
+  if (platform === 'win32' && extension === '.ps1') {
+    return { file: 'powershell.exe', args: ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', script, eventName] }
+  }
+
+  if (platform === 'win32' && (extension === '.cmd' || extension === '.bat')) {
+    return { file: 'cmd.exe', args: ['/d', '/c', script, eventName] }
+  }
+
+  return { file: script, args: [eventName] }
+}
+
 /** Run the person's hook scripts for an event, each with the event in its environment. Never waits on them. */
 export function runHooks(event: HeraldEvent): void {
   for (const script of hookScripts(path.join(hooksDir(), `${event.name}.d`))) {
-    const child = spawn(script, [event.name], { env: { ...process.env, ...hookEnv(event) }, stdio: ['ignore', 'pipe', 'pipe'] })
+    const { file, args } = hookCommand(script, event.name)
+    const child = spawn(file, args, { env: { ...process.env, ...hookEnv(event) }, stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true })
     let output = ''
     const collect = (chunk: Buffer) => {
       output = (output + chunk.toString('utf8')).slice(-2000)

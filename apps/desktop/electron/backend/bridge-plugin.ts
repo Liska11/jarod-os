@@ -26,7 +26,7 @@ export function bridgeLinkPlan(entry: PluginEntry, bundled: string): 'create' | 
   }
 
   // A link that leads nowhere, or into another copy of the app (moved, updated, run from the DMG).
-  const anotherApp = /\.app\/Contents\/Resources\/herald-os-bridge\/?$/.test(entry.target) || entry.target.startsWith('/opt/herald-os/')
+  const anotherApp = /\.app\/Contents\/Resources\/herald-os-bridge\/?$/.test(entry.target) || entry.target.startsWith('/opt/herald-os/') || /[\\/]Herald OS[\\/]resources[\\/]herald-os-bridge[\\/]?$/i.test(entry.target)
 
   return !entry.exists || anotherApp ? 'replace' : 'keep'
 }
@@ -56,7 +56,7 @@ function hermes(runtime: BackendRuntime, args: string[]): Promise<boolean> {
     }
 
     // Generous: the first Hermes command after an update finishes that update (its builds) first.
-    const child = execFile(command, [...head, ...args], { cwd: runtime.root ?? undefined, env: { ...process.env, HERMES_HOME: hermesHome() }, timeout: 10 * 60_000 }, error => {
+    const child = execFile(command, [...head, ...args], { cwd: runtime.root ?? undefined, env: { ...process.env, HERMES_HOME: hermesHome() }, timeout: 10 * 60_000, windowsHide: true }, error => {
       if (error) {
         log('bridge', `hermes ${args.join(' ')}: ${error.message}`)
       }
@@ -89,7 +89,8 @@ export async function ensureBridgePlugin(runtime: BackendRuntime, resources: str
     if (plan !== 'keep') {
       fs.mkdirSync(path.dirname(link), { recursive: true })
       fs.rmSync(link, { force: true })
-      fs.symlinkSync(bundled, link)
+      // A junction on Windows: a symbolic link needs Developer Mode or an administrator there.
+      fs.symlinkSync(bundled, link, process.platform === 'win32' ? 'junction' : undefined)
       log('bridge', `${plan === 'create' ? 'linked' : 'relinked'} ${link} -> ${bundled}`)
     }
   } catch (error) {

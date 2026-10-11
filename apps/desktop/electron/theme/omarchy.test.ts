@@ -47,7 +47,8 @@ describe('themeColorsFromOmarchy', () => {
 })
 
 describe('readOmarchyTheme', () => {
-  it('follows the current theme link and the background', () => {
+  // Omarchy is a Linux distribution; the fixture needs symbolic links, which Windows reserves for administrators.
+  it.skipIf(process.platform === 'win32')('follows the current theme link and the background', () => {
     const home = fs.mkdtempSync(path.join(os.tmpdir(), 'omarchy-'))
     const theme = path.join(home, '.config', 'omarchy', 'themes', 'tokyo-night')
     fs.mkdirSync(theme, { recursive: true })
