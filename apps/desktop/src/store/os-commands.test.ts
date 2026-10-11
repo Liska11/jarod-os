@@ -65,4 +65,9 @@ describe('runCommand', () => {
     expect(listCommands({ includeHidden: true }).map(c => c.id)).toEqual(['test.boom', 'test.echo'])
     expect(() => defineCommands([{ id: 'Bad Id', title: '', description: '', tier: 'read', args: [], run: () => ok('') }])).toThrow()
   })
+
+  it('accepts an underscore in the verb, as software.local_model has', () => {
+    expect(() => defineCommands([{ id: 'software.local_model', title: '', description: '', tier: 'read', args: [], run: () => ok('') }])).not.toThrow()
+    expect(() => defineCommands([{ id: 'software._x', title: '', description: '', tier: 'read', args: [], run: () => ok('') }])).toThrow()
+  })
 })

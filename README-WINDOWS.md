@@ -150,8 +150,15 @@ What is different from macOS and Herald OS Linux, honestly:
   the environment half-done. Run `hermes pm repair`, then `hermes update`, and start Herald OS again.
   If those cannot run either because `%LOCALAPPDATA%\hermes\tools\...` answers "Access is denied" (an
   update run as administrator can leave folders whose permissions exclude your account), reset that
-  folder's permissions from an administrator prompt (`takeown /f <folder> /r`, then
-  `icacls <folder> /reset /t`) or re-run the installer, and start Herald OS again.
+  folder's permissions from an **administrator PowerShell** and start Herald OS again:
+
+  ```powershell
+  takeown /f "$env:LOCALAPPDATA\hermes\tools" /r /d o
+  icacls "$env:LOCALAPPDATA\hermes\tools" /reset /t
+  ```
+
+  (In `cmd.exe` write `%LOCALAPPDATA%` instead of `$env:LOCALAPPDATA`; PowerShell does not expand it.)
+  Re-running the Hermes installer works too.
 - **`WinError 5` / "Access is denied" from Hermes's Python.** An executable under `WindowsApps` was
   started from another process. Use the NSIS install or the checkout, not an appx, for the bridge, or
   let Herald OS stage the plugin as described above.

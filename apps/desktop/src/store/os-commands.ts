@@ -92,7 +92,7 @@ export const $commandLog = atom<CommandEvent[]>([])
 
 export function defineCommands(commands: readonly OsCommand[]): void {
   for (const command of commands) {
-    if (!/^[a-z][a-z0-9]*(\.[a-z][a-zA-Z0-9]*)+$/.test(command.id)) {
+    if (!/^[a-z][a-z0-9]*(\.[a-z][a-zA-Z0-9_]*)+$/.test(command.id)) {
       throw new Error(`invalid command id ${command.id}`)
     }
 
