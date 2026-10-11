@@ -155,3 +155,39 @@ backslashes only for a Windows path; `OsControlServer` keeps the Unix socket off
   Later cleanups were filtered by executable path.
 - A scratch Hermes (venv, home, logs) lives under this session's scratchpad folder, outside the
   repository; nothing of the user's Hermes was modified.
+
+## Model selector in Jarod-OS: audit (2026-10-11)
+
+Read-only audit of `jarod-cordis` (branch `spike/hermes-gateway`), of the shell, and of the installed Hermes
+sources (`hermes_cli/auth_*.py`, read only; `auth.json` was **not** opened). Nothing is implemented yet.
+
+### What exists
+
+| Piece | Where | Facts |
+| --- | --- | --- |
+| Shell picker | `AgentsSection.tsx` `PreferredModelRow` | `model.options {include_unconfigured:false}`; shows only providers that have **at least one model**; a pick is `slash.exec "/model <provider>:<model>"`, which needs an open session |
+| Gateway side | `packages/cli/src/gateway/config.ts` `modelOptions`, `configGet/Set`, `applyConfigPatch` | Reads `core.providers.list()` and the two settings `activeProvider` / `activeModel`. No live discovery |
+| Provider catalogue | `plugins/llm/src/catalog.ts`, `providers.ts` | Local providers (`ollama`, `lmstudio`, `llamacpp`, `vllm`, `custom`) are always `configured` but ship `models: []`; the only local entry with a model is `local-whisper-cpp` (`large-v3-turbo`, **transcription only**). Cloud providers are `configured` only with a key in the profile vault |
+| Discovery | `plugins/llm` `listModels()` (`GET <base>/models`), `ProviderRouter.refreshModels`, desktop handlers `discover-provider-models` / `get-model-context-window`, `LmStudioClient` (`/api/v1/models`, LM Studio 0.4+) | All exist and are tested, **none is reachable from the gateway** |
+| LM Studio address | catalogue `http://localhost:1234/v1`, user override in `providerOverrides.lmstudio.baseUrl` | `localhost`, not `127.0.0.1` |
+| OAuth | `desktop/src/main/handlers/account.ts` | `oauth-login` answers `success:false` ("une clé API par fournisseur"), `get-oauth-provider-statuses` is `{}`. The gateway answers `GET /api/providers/oauth` with `{providers: []}` |
+| Nous | catalogue entry `nous`, `https://inference-api.nousresearch.com/v1`, **API key** (`NOUS_API_KEY`) | Jarod has no OAuth provider type at all |
+| Shell sign-in | `store/hermes-auth.ts` | `/api/providers/oauth` list, `/…/{id}/start` (`session_id`, `user_code`, `verification_url`), `/…/{id}/poll/{session}`, `DELETE /…/sessions/{id}`; reads `/api/config/raw` (`yaml`) only to find `model.provider` |
+| `/api/config/raw` | not served by the gateway | logged as unhandled; the shell then guesses the active provider from state |
+
+### Assumptions of the brief that the code contradicts
+
+1. **"OAuth provider type Nous exists in jarod-cordis"**: it does not. Nous is an API-key provider there. The
+   OAuth surface in Jarod is a deliberate stub (`NO_OAUTH` in `account.ts`). Device-code sign-in would be new code.
+2. **`%USERPROFILE%\.hermes\config.yaml` and `auth.json`**: Hermes on Windows keeps its data in
+   `%LOCALAPPDATA%\hermes` (see the table above, already recorded for the port). More importantly, Jarod-OS
+   does not use either file: the model is two settings in the encrypted profile database and keys live in the
+   profile vault. Jarod-OS gives Herald its own `HERMES_HOME` (`%LOCALAPPDATA%\Jarod-OS\herald-home`), so a
+   `config.yaml` written there would be a second, ignored source of truth.
+3. **"Selector missing"**: reading the code, the picker is present but empty on a fresh profile. Local providers
+   have no models until discovered, cloud providers are unconfigured, the Whisper entry is the only one listed
+   (and it is a speech model). This is deduced from the code and has not yet been observed in the window.
+4. **"Drive `hermes auth add nous --type oauth` through a pty"**: Jarod-OS has no Hermes dependency (the gateway
+   replaces `hermes serve`), Windows needs ConPTY / a native module for a pty, and Hermes would write
+   `auth.json` where Jarod never reads. The Nous flow in Hermes is also large (`auth_nous.py`, 1676 lines:
+   invoke-JWT scope check, refresh-token rotation, a shared cross-process store, quarantine on failure).
