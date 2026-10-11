@@ -14,10 +14,10 @@ bridge/
   tools.py           tool schemas and handlers (TOOL_SPECS)
   permissions.py     tiers, protected paths, the approval gate
   audit.py           one JSON line per call in $HERMES_HOME/herald-os/audit.jsonl
-  crash.py           crash report summaries for system_logs (macOS .ips, Linux core dumps)
-  ui.py              client for the shell's control socket (the `os_ui` tool)
+  crash.py           crash report summaries for system_logs (macOS .ips, Linux core dumps; Windows reads WER events in host/windows.py)
+  ui.py              client for the shell's control socket, a Unix socket or loopback TCP on Windows (the `os_ui` tool)
   util.py            shared helpers (data folder, HERALD_OS_* settings)
-  host/              HostAdapter per OS: darwin.py, linux.py, posix.py, windows.py (stub)
+  host/              HostAdapter per OS: darwin.py, linux.py, posix.py, windows.py (+ winps.py, the PowerShell scripts)
 skills/
   herald-os/         when to use these tools
   diagnose-crash/    how to explain a crash from its report

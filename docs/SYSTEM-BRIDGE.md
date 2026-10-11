@@ -85,8 +85,22 @@ logged.
 `bridge/host/base.py` defines `HostAdapter`. `darwin.py` implements it with `mdfind`, `open`,
 `lsof`, `ps`, `osascript`, `system_profiler`, `vm_stat`; `linux.py` with `ps`, `ss`,
 `plocate`/`fd`, `gio`, `xdg-open`, `nmcli`, `bluetoothctl`, `wpctl`, `gsettings` and `journalctl`
-(shared POSIX parts live in `posix.py`). `windows.py` raises `HostNotSupported` with a clear
-message. The adapters exist so the tool layer never branches on `sys.platform`.
+(shared POSIX parts live in `posix.py`). `windows.py` implements it with Windows PowerShell 5.1
+(`Get-CimInstance`, `Get-NetTCPConnection`, `Get-StartApps`, `Get-WinEvent`, the Recycle Bin through
+`Microsoft.VisualBasic`), the shell (`os.startfile`, `explorer.exe`, `ms-settings:`) and ripgrep for
+file search; its scripts are in `winps.py` and receive their arguments as JSON in an environment
+variable, never inside the script text. Pure parsers sit next to each adapter and are tested with
+fixture data on every platform. Things Windows cannot do without administrator rights (switching the
+Wi-Fi radio) raise `HostNotSupported` with the way around. The adapters exist so the tool layer never
+branches on `sys.platform`; the file-search predicates both Linux and Windows use are in `search.py`.
+
+On Windows the protected locations are `~/.ssh`, `~/.gnupg`, the Credential Manager / DPAPI / Vault
+stores under `%APPDATA%` and `%LOCALAPPDATA%`, `%SystemRoot%`, `%ProgramFiles%`, `%ProgramFiles(x86)%`
+and `%ProgramData%`, besides Hermes's own `.env` and `auth.json`. Opening a program or script with the
+default action is refused (it would run it); the kill tool refuses `System`, `lsass`, `csrss`,
+`svchost` and the other processes whose death takes the session down. The shell's control channel is a
+loopback TCP port (`tcp://127.0.0.1:<port>` in `HERALD_OS_CONTROL_SOCKET`), authenticated by the
+per-launch token like the Unix socket elsewhere.
 
 ## Tests
 

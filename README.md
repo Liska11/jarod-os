@@ -45,6 +45,7 @@ Pick the way that matches your machine:
 | Omarchy | [The Arch package, then one command](#omarchy) |
 | Another Linux | [The tarball](#another-linux) |
 | An Apple Silicon Mac, to try the whole OS | [The virtual machine](#the-whole-os-in-a-virtual-machine) |
+| Windows 10 or 11, as an app (alpha) | [README-WINDOWS.md](README-WINDOWS.md) |
 
 Hermes needs a model provider whichever you pick: a [Nous Portal](https://portal.nousresearch.com)
 account, or an API key for a provider Hermes supports (OpenRouter, OpenAI, Anthropic, a local model,
@@ -504,7 +505,7 @@ npm run build         # production build into apps/desktop/dist
 bash scripts/check-secrets.sh   # gitleaks over the history and your changes
 ```
 
-CI runs all of these on Ubuntu and macOS. [CONTRIBUTING.md](CONTRIBUTING.md) has the conventions.
+CI runs all of these on Ubuntu, macOS and Windows. [CONTRIBUTING.md](CONTRIBUTING.md) has the conventions.
 
 ## Updating
 

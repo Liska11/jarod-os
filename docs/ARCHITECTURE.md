@@ -47,9 +47,9 @@ host. The renderer and the agent see identical tool names and return shapes on e
 
 | | macOS | Linux (Herald OS Linux) | Windows |
 | --- | --- | --- | --- |
-| Shell runs as | fullscreen over the macOS desktop | the whole session: `greetd` -> `niri` -> shell (`cage` as a fallback) | stub |
-| `HostPlatform` | `platform/darwin.ts` (`plutil`, `sips`, `qlmanage`, `mdfind`, EventKit JXA) | `platform/linux.ts` (`/proc`, `.desktop` entries, icon themes, `nmcli`, `recently-used.xbel`, GNOME thumbnail cache) | `platform/generic.ts` |
-| `HostAdapter` | `host/darwin.py` (`osascript`, `lsof`, `mdfind`, `system_profiler`, `pmset`) | `host/linux.py` (`ps`, `ss`, `plocate`/`fd`, `gio`, `xdg-open`, `nmcli`, `bluetoothctl`, `wpctl`, `gsettings`, `journalctl`, `loginctl`) | `host/windows.py` stub |
+| Shell runs as | fullscreen over the macOS desktop | the whole session: `greetd` -> `niri` -> shell (`cage` as a fallback) | an application: the same window as on macOS (F11 toggles fullscreen); not a session |
+| `HostPlatform` | `platform/darwin.ts` (`plutil`, `sips`, `qlmanage`, `mdfind`, EventKit JXA) | `platform/linux.ts` (`/proc`, `.desktop` entries, icon themes, `nmcli`, `recently-used.xbel`, GNOME thumbnail cache) | `platform/windows.ts` (`Win32_Process`, `Get-StartApps` + `shell:AppsFolder`, the Recent folder, ripgrep, shell thumbnails) |
+| `HostAdapter` | `host/darwin.py` (`osascript`, `lsof`, `mdfind`, `system_profiler`, `pmset`) | `host/linux.py` (`ps`, `ss`, `plocate`/`fd`, `gio`, `xdg-open`, `nmcli`, `bluetoothctl`, `wpctl`, `gsettings`, `journalctl`, `loginctl`) | `host/windows.py` (Windows PowerShell, `os.startfile`, `explorer.exe`, ripgrep) |
 | App launch / reveal | `shell.openPath` / `showItemInFolder` | `gio launch <.desktop>` / `org.freedesktop.FileManager1` | |
 | Calendar | EventKit with permission state | unavailable (EDS later) | |
 
@@ -98,7 +98,7 @@ It runs in one of two modes, chosen by Electron main (`electron/shell/mode.ts`):
 
 | Mode | Used by | Windows |
 | --- | --- | --- |
-| `desktop` | macOS, Linux under `cage` | One fullscreen Electron window; the renderer's own window manager (`src/store/windows.ts`, `src/shell/wm/`) lays out every app inside it. |
+| `desktop` | macOS, Windows, Linux under `cage` | One fullscreen Electron window; the renderer's own window manager (`src/store/windows.ts`, `src/shell/wm/`) lays out every app inside it. |
 | `panels` | Linux under `niri` (`HERALD_OS_SHELL_MODE=panels`) | One Electron window per surface (menu bar, dock, main window, command bar, wallpaper, each floating app), tiled by the compositor. `src/shell/ShellRoot.tsx` picks what each window shows. |
 
 Code layout (details in [`apps/desktop/README.md`](../apps/desktop/README.md), conventions in
@@ -154,8 +154,8 @@ conversations and events go to the model provider.
 
 `plugins/herald-os-bridge` is a regular out-of-tree Hermes plugin. It registers a narrow toolset
 (`herald_os`) that exposes the host machine through explicit, permission-tiered tools. Execution
-happens on the backend host behind a `HostAdapter` abstraction (`darwin` and `linux` implemented;
-`windows` is a stub). Sensitive operations route through upstream's own approval gate
+happens on the backend host behind a `HostAdapter` abstraction (`darwin`, `linux` and `windows`
+implemented). Sensitive operations route through upstream's own approval gate
 (`tools.approval.request_tool_approval`) so the shell renders one approval card for everything.
 See [`SYSTEM-BRIDGE.md`](SYSTEM-BRIDGE.md).
 

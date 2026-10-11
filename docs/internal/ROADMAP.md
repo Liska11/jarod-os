@@ -29,8 +29,10 @@ Also planned:
 
 ## Beta
 
-- Windows: `HostPlatform`/`HostAdapter` implementations (PowerShell, `Get-Process`, Everything or
-  Windows Search for file search), NSIS installer.
+- Windows (application mode): `HostPlatform`/`HostAdapter`, NSIS and appx packages are done (see
+  [`README-WINDOWS.md`](../../README-WINDOWS.md)). Left: code signing and a store identity for the
+  appx, auto-update, screen capture and dictation, Wi-Fi / Bluetooth / volume in the quick panels,
+  Windows Search or Everything as a faster file index.
 - Signed and notarized macOS builds; auto-update channel.
 
 ## Herald OS Linux

@@ -194,7 +194,7 @@ def handle_system_disk_usage(args: dict[str, Any], **_: Any) -> str:
 
 SYSTEM_FIND_FILES_SCHEMA = _schema(
     "system_find_files",
-    "Search this computer's files (Spotlight on macOS; plocate, fd or find on Linux). Combine: text (content or display name), name (filename substring), kind (image, screenshot, document, pdf, video, audio, folder, code, archive), when (today, yesterday, this_week, last_7_days, this_month) or explicit since/until dates, scope (a directory), extensions. Example: 'screenshots I took yesterday' -> kind=screenshot, when=yesterday. Returns paths newest first. Read-only.",
+    "Search this computer's files (Spotlight on macOS; plocate, fd or find on Linux; ripgrep over the user's folders on Windows). Combine: text (content or display name), name (filename substring), kind (image, screenshot, document, pdf, video, audio, folder, code, archive), when (today, yesterday, this_week, last_7_days, this_month) or explicit since/until dates, scope (a directory), extensions. Example: 'screenshots I took yesterday' -> kind=screenshot, when=yesterday. Returns paths newest first. Read-only.",
     {
         "text": _desc(_STR, "Words to match in file content or display name."),
         "name": _desc(_STR, "Filename substring (case-insensitive)."),
@@ -229,6 +229,12 @@ def resolve_when(when: str | None, today: date | None = None) -> tuple[str | Non
     raise ValueError(f"unknown when '{when}'")
 
 
+_NO_MATCH_NOTE = {
+    "darwin": "No matches. Spotlight only indexes locations the user allows; try a broader query or a different kind.",
+    "win32": "No matches. Without a scope this looks in Desktop, Documents, Downloads, Pictures, Videos and Music; pass scope to search elsewhere.",
+}
+
+
 def handle_system_find_files(args: dict[str, Any], **_: Any) -> str:
     def execute() -> dict[str, Any]:
         since, until = args.get("since"), args.get("until")
@@ -241,7 +247,7 @@ def handle_system_find_files(args: dict[str, Any], **_: Any) -> str:
             extensions=tuple(str(e) for e in exts) if isinstance(exts, list) else (), limit=_int(args, "limit", 50, 1, 200),
         )
         results = host().find_files(search)
-        return {"count": len(results), "files": [f.to_dict() for f in results], "note": None if results else "No matches. Spotlight only indexes locations the user allows; try a broader query or a different kind."}
+        return {"count": len(results), "files": [f.to_dict() for f in results], "note": None if results else _NO_MATCH_NOTE.get(host().platform, "No matches. Try a broader query or a different kind.")}
 
     return _read("system_find_files", "search", args, execute)
 

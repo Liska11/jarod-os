@@ -2,7 +2,7 @@
 
 Registers the ``herald_os`` toolset: a narrow set of explicit, permission-tiered tools that let
 Hermes act on the computer it is running on. Execution goes through a per-platform
-``HostAdapter`` (macOS and Linux implemented; Windows is a typed stub), permissions through
+``HostAdapter`` (macOS, Linux and Windows; the Windows one runs PowerShell), permissions through
 ``bridge.permissions`` (tiers, protected paths, the upstream approval gate), and every call is
 recorded by ``bridge.audit``. ``system_os`` (registered from the same ``TOOL_SPECS`` table) drives
 Herald OS Linux's ``herald-os`` CLI and answers with a clear failure on other platforms.

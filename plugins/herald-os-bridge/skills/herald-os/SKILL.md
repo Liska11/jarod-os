@@ -3,7 +3,7 @@ name: herald-os
 description: Act as the operating environment on this computer via the system bridge
 metadata:
   hermes:
-    tags: [herald-os, system, macos, linux]
+    tags: [herald-os, system, macos, linux, windows]
 ---
 
 # Herald OS

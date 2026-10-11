@@ -3,7 +3,7 @@ name: diagnose-crash
 description: Explain why a program crashed from its crash report or core dump, and whether it is worth reporting
 metadata:
   hermes:
-    tags: [herald-os, crash, diagnostics, macos, linux]
+    tags: [herald-os, crash, diagnostics, macos, linux, windows]
 ---
 
 # Diagnose a crash
@@ -17,7 +17,10 @@ what happened from the evidence, explain it in plain words, and say what to do n
 - `system_logs action=crash_report report=<path or pid>` is the starting point. On macOS it returns
   the exception type and signal, the termination reason, the program's own last messages
   (`app_messages`) and the crashed thread's top frames; on Linux it returns `coredumpctl info`, which
-  includes a stack trace when debug symbols are installed.
+  includes a stack trace when debug symbols are installed; on Windows the report is the number of an
+  Application Error event (Windows Error Reporting) and it returns the program, the faulting module,
+  the exception code with its meaning (`0xc0000005` is an access violation, `0xc0000409` a fail-fast
+  abort, `0x80000003` a deliberate breakpoint) and the fault offset, but no stack.
 - No report named? `system_logs action=crashes` lists recent crashes; pick the program the person
   means, or ask.
 - Context when it helps: `system_logs action=log minutes=15 level=any process=<name>` for what the

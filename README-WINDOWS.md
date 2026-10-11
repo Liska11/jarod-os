@@ -1,0 +1,161 @@
+# Herald OS on Windows (alpha)
+
+Herald OS runs on Windows 10 and 11 as an **application**: the same window as on macOS, fullscreen
+by default, with Hermes Agent installed natively (no WSL). It does not replace the Windows
+desktop the way Herald OS Linux replaces the session.
+
+What you get is the shell (Overview, Missions, Memory, Hermes, Files, Terminal, System, Settings...),
+the agent, and the system bridge: Hermes can list processes, search your files, open apps and
+addresses, read the event log, move files to the Recycle Bin and so on, every call permission-tiered
+and written to `audit.jsonl`. What it does not do yet is in [Limitations](#limitations).
+
+## Requirements
+
+| | |
+| --- | --- |
+| Windows | 10 (1809 or later) or 11, x64. ARM64 is untested. |
+| Hermes Agent | Native install, see below. Hermes runs its shell tool through Git Bash, so Git for Windows must be on the machine (Hermes's installer fetches a portable one if not). |
+| Node.js | 22.12 or later, for running from source or building. |
+| ripgrep | Optional. File search uses `rg` when it is on `PATH` or in `%LOCALAPPDATA%\hermes\bin`, and a slower built-in walk otherwise. |
+| Python | Not needed: the bridge plugin runs inside Hermes's own Python. |
+
+## 1. Install Hermes Agent natively
+
+In PowerShell (no administrator rights needed):
+
+```powershell
+iex (irm https://hermes-agent.nousresearch.com/install.ps1)
+```
+
+Open a **new** terminal afterwards (the installer changes your user `PATH`), then:
+
+```powershell
+hermes --version
+hermes setup      # pick a model provider, if you have not yet
+```
+
+Hermes keeps its data in `%LOCALAPPDATA%\hermes` (that is `HERMES_HOME`), its code in
+`%LOCALAPPDATA%\hermes\hermes-agent` and the `hermes` launcher in `%LOCALAPPDATA%\hermes\bin`. Herald
+OS follows the same place, so the plugin link, the settings and the audit log
+(`%LOCALAPPDATA%\hermes\herald-os\audit.jsonl`) all sit next to Hermes's own files. If you set the
+`HERMES_HOME` environment variable, both use that instead.
+
+## 2. Run Herald OS from source
+
+```powershell
+git clone https://github.com/PAVADI234/herald-os
+cd herald-os
+npm run bootstrap
+npm run dev
+```
+
+`npm run bootstrap` downloads the pinned upstream snapshot, installs the Node packages, fetches
+Electron, links `plugins\herald-os-bridge` into `%HERMES_HOME%\plugins` with a **junction** (it needs
+neither Developer Mode nor an administrator), then enables the plugin and the `herald_os` toolset and
+turns Hermes's tool search off so the system tools stay directly callable. It is safe to run again
+after every pull. It uses `scripts\bootstrap.ps1`; `npm run` picks it over the bash version
+automatically.
+
+`npm run dev` starts the Vite server and Electron. Closing the window quits. Useful while developing:
+
+| Setting | Effect |
+| --- | --- |
+| `$env:HERALD_OS_WINDOWED = '1'` | Start in a window instead of fullscreen. |
+| `F11` | Toggle fullscreen at any time. `Alt+F4` closes the window. |
+| `$env:HERALD_OS_SHELL = 'pwsh.exe'` | The shell the Terminal app starts (PowerShell 5.1 by default). |
+| `$env:HERALD_OS_HERMES_ROOT = 'C:\path\to\hermes-agent'` | Use another Hermes checkout. |
+
+## 3. Check that it all works
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\verify-windows.ps1
+```
+
+It checks, in order: Hermes answers, the bridge plugin is linked and enabled, `hermes serve` starts
+and the gateway's `tools.list` shows the `herald_os` tools, a bridge tool (`system_info` by default,
+`-Tool` picks another read-only one) is called through Hermes's own tool registry, and that call left
+a correctly shaped line in `audit.jsonl`. The exit code is 0 only when every step passed;
+`-SkipGateway` leaves out the `hermes serve` step.
+
+The tests: `npm run typecheck`, `npm test` (Vitest, including a few read-only checks against the real
+PowerShell scripts) and `npm run test:bridge` (the plugin's pytest suite).
+
+## 4. Build the installers
+
+```powershell
+npm run dist:win
+```
+
+This builds the app and runs electron-builder for x64. In `apps\desktop\release`:
+
+| File | What it is |
+| --- | --- |
+| `HeraldOS-Setup-<version>-win-x64.exe` | NSIS installer. Per user (no administrator rights), lets you choose the folder, adds Start menu and desktop shortcuts and an uninstaller. |
+| `HeraldOS-<version>-win-x64.appx` | The same app as a Windows app package (the format MSIX packages use; electron-builder calls the target `appx`). **Unsigned.** |
+| `win-unpacked\` | The unpacked app, runnable as is: `win-unpacked\Herald OS.exe`. |
+
+Things to know:
+
+- **Both packages are unsigned.** Windows SmartScreen warns about the installer ("More info", then
+  "Run anyway"). An appx can only be installed once it is signed with a certificate whose subject
+  matches `build.appx.publisher` in `apps\desktop\package.json` (it is `CN=HeraldOS` now): set
+  `CSC_LINK` and `CSC_KEY_PASSWORD` for electron-builder, change `publisher` to your certificate's
+  subject, and for the Store use the identity values the Partner Center gives you.
+- electron-builder prints "Cannot create symbolic link" while unpacking `winCodeSign`. Those are macOS
+  libraries it does not need on Windows; the build goes on (the messages should go away with
+  Windows Developer Mode or an elevated terminal; that was not tried).
+- The first build downloads Electron and the NSIS and appx tooling; later ones reuse the cache.
+- The appx installs under `C:\Program Files\WindowsApps`, which other processes (Hermes's Python)
+  cannot read, so the app copies the bridge plugin to `%HERMES_HOME%\herald-os\bridge-plugin` and
+  links that. The NSIS install links the plugin from its own `resources` folder.
+- A packaged Herald OS links and enables the bridge plugin itself at first start, the way
+  `npm run bootstrap` does for a checkout.
+
+## Limitations
+
+What is different from macOS and Herald OS Linux, honestly:
+
+- **Application mode only.** No Windows session replacement, no tiling, no panels mode.
+- **No window buttons.** The window is frameless like on macOS and starts fullscreen. Use `F11` and
+  `Alt+F4`, or turn "Launch fullscreen" off in Settings -> General.
+- **Global hotkeys.** The voice hotkey is configurable and defaults to `Alt+Space`. Windows reserves
+  most `Win+` combinations, so Herald OS does not register any; inside the app `Ctrl` does what `Cmd`
+  does on macOS (`Ctrl+K` opens the command bar).
+- **Not implemented yet:** screenshots and screen recording from the app (use Win+Shift+S), dictation
+  anywhere (macOS-only), the emoji panel, calendar events, and changing Wi-Fi, Bluetooth, volume or
+  displays from the menu bar's quick panels (they show state; Windows Settings does the changing).
+  The agent can still read and set the volume and dark mode, and read network and Bluetooth state,
+  through the bridge.
+- **Bridge tools that differ.** Bluetooth shows paired devices but not which one is connected right
+  now. Wi-Fi power cannot be switched without administrator rights. Process owners are blank for
+  processes Windows does not let you inspect. File search looks in Desktop, Documents, Downloads,
+  Pictures, Videos and Music (and their OneDrive copies) unless you give it a folder; "created"
+  dates use the file's creation time. Crash reports come from Windows Error Reporting events (no
+  stack, but the faulting module and exception code).
+- **Safety rails.** The bridge refuses SSH and GnuPG keys, the Credential Manager / DPAPI / Vault
+  stores, the Windows folders, Program Files and ProgramData, Hermes's `.env` and `auth.json`, and
+  never opens a program or script with its default action (that would run it). Deleting goes to the
+  Recycle Bin after the usual approval card.
+- **Alpha.** Expect rough edges; [WINDOWS-PORT-NOTES.md](WINDOWS-PORT-NOTES.md) lists what was assumed,
+  what was verified and what was not.
+
+## Troubleshooting
+
+- **"hermes is not recognized."** Open a new terminal after installing, or check that
+  `%LOCALAPPDATA%\hermes\bin` is on your user `PATH`. Herald OS also looks there by itself.
+- **Hermes starts but `hermes serve` fails with `No module named 'pydantic_core...'`** (or another
+  missing module). A Hermes update was interrupted and left the environment half-done. Run
+  `hermes pm repair`, then `hermes update`, and start Herald OS again.
+- **`WinError 5` / "Access is denied" from Hermes's Python.** An executable under `WindowsApps` was
+  started from another process. Use the NSIS install or the checkout, not an appx, for the bridge, or
+  let Herald OS stage the plugin as described above.
+- **`npm run bootstrap` stops with `EALLOWSCRIPTS`.** Your user `.npmrc` has an `allow-scripts` line
+  that `npm run` passes down. The Windows bootstrap clears it for its own `npm install`; if you run
+  `npm install` by hand inside `npm run`, unset `npm_config_allow_scripts` first.
+- **Scripts will not run: "running scripts is disabled".** The npm scripts call PowerShell with
+  `-ExecutionPolicy Bypass`; run `scripts\*.ps1` the same way.
+- **The Terminal app is blank.** It needs ConPTY (Windows 10 1809 or later). `npm install` ships
+  node-pty's Windows binaries; if it was installed with scripts disabled, run `npm rebuild node-pty`.
+- **See what the agent did.** `%LOCALAPPDATA%\hermes\herald-os\audit.jsonl`, one JSON line per call:
+  `{ts, tool, tier, action, decision, ok, summary, error, args}`. The app's own log is
+  `%LOCALAPPDATA%\hermes\logs\herald-os.log`.
