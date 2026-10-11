@@ -168,14 +168,25 @@ def parse_wlan(text: str) -> dict[str, Any] | None:
         found = re.search(rf"^\s*(?:{'|'.join(labels)})[^:\n]*:\s*(.+?)\s*$", text, re.MULTILINE | re.IGNORECASE)
         return found[1] if found else None
 
-    signal = re.search(r"^\s*(?:Signal|Señal)\s*:\s*(\d+)\s*%", text, re.MULTILINE | re.IGNORECASE)
-    channel = field("Channel", "Canal")
-    rate = field("Receive rate", "Vitesse de réception")
+    # The labels are translated, the order of the lines is not: after "SSID" come BSSID, network type,
+    # radio type, authentication, cipher, connection mode, (band,) channel, receive rate, transmit rate,
+    # signal. A label this table does not know is read by position instead of being dropped.
+    rows = [tuple(part.strip() for part in line.split(":", 1)) for line in text.splitlines() if ":" in line]
+    start = next((i for i, (label, _) in enumerate(rows) if label.upper() == "SSID"), len(rows))
+    after = rows[start + 1:]
+    numbers = [value for _, value in after if re.fullmatch(r"\d+(?:[.,]\d+)?", value)]
+
+    signal = re.search(r"^\s*(?:Signal|Señal)\s*:\s*(\d+)\s*%", text, re.MULTILINE | re.IGNORECASE) or re.search(r":\s*(\d+)\s*%\s*$", text, re.MULTILINE)
+    channel = field("Channel", "Canal") or (numbers[0] if numbers else None)
+    rate = field("Receive rate", "Vitesse de réception") or (numbers[1] if len(numbers) > 1 else None)
+    rate = rate.replace(",", ".") if rate else rate
     return {
-        "interface": field("Name", "Nom"), "connected": True, "ssid": ssid[1],
-        "phy_mode": field("Radio type", "Type de radio"), "channel": int(channel) if channel and channel.isdigit() else None,
+        "interface": field("Name", "Nom", "Nombre"), "connected": True, "ssid": ssid[1],
+        "phy_mode": field("Radio type", "Type de radio") or (after[2][1] if len(after) > 2 else None),
+        "channel": int(channel) if channel and channel.isdigit() else None,
         "rate_mbps": float(rate) if rate and re.fullmatch(r"[\d.]+", rate) else None,
-        "signal_percent": int(signal[1]) if signal else None, "security": field("Authentication", "Authentification"),
+        "signal_percent": int(signal[1]) if signal else None,
+        "security": field("Authentication", "Authentification") or (after[3][1] if len(after) > 3 else None),
     }
 
 

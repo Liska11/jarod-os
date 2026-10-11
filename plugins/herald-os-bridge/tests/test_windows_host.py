@@ -180,6 +180,55 @@ def test_wlan_is_read_in_french_and_english_and_absent_without_a_radio(win):
     assert win.parse_wlan("Il n’existe aucune interface sans fil sur le système.") is None
 
 
+WLAN_DE = """
+Auf dem System ist 1 Schnittstelle vorhanden:
+
+    Name                   : WLAN
+    Beschreibung           : Intel(R) Wi-Fi 6 AX201
+    Status                 : Verbunden
+    SSID                   : Heimnetz
+    BSSID                  : aa:bb:cc:dd:ee:ff
+    Netzwerktyp            : Infrastruktur
+    Funktyp                : 802.11ax
+    Authentifizierung      : WPA2-Personal
+    Verschlüsselung        : CCMP
+    Verbindungsmodus       : Automatische Verbindung
+    Band                   : 5 GHz
+    Kanal                  : 44
+    Empfangsrate (MBit/s)  : 1201
+    Übertragungsrate (MBit/s) : 1201
+    Signal                 : 88%
+"""
+
+WLAN_IT = """
+    Nome                   : Wi-Fi
+    SSID                   : CasaMia
+    BSSID                  : 11:22:33:44:55:66
+    Tipo di rete           : Infrastruttura
+    Tipo di radio          : 802.11n
+    Autenticazione         : WPA2-Personal
+    Crittografia           : CCMP
+    Modalità connessione   : Connessione automatica
+    Canale                 : 11
+    Velocità di ricezione (Mbps) : 144,4
+    Velocità di trasmissione (Mbps) : 144,4
+    Segnale                : 72%
+"""
+
+
+def test_wlan_with_labels_the_table_does_not_know_is_read_by_position(win):
+    german = win.parse_wlan(WLAN_DE)
+    assert german["ssid"] == "Heimnetz" and german["interface"] == "WLAN"
+    assert german["phy_mode"] == "802.11ax" and german["security"] == "WPA2-Personal"
+    assert german["channel"] == 44 and german["rate_mbps"] == 1201.0 and german["signal_percent"] == 88
+    italian = win.parse_wlan(WLAN_IT)
+    assert italian["ssid"] == "CasaMia" and italian["interface"] == "Wi-Fi"
+    assert italian["phy_mode"] == "802.11n" and italian["security"] == "WPA2-Personal"
+    assert italian["channel"] == 11 and italian["rate_mbps"] == 144.4 and italian["signal_percent"] == 72
+    # The MAC address in the BSSID row has colons of its own and must not be taken for a number.
+    assert win.parse_wlan("    SSID : Only\n    BSSID : 11:22:33:44:55:66\n")["channel"] is None
+
+
 def test_network_picks_the_default_route_and_hides_link_local_interfaces(win):
     status = win.parse_network({
         "config": [
