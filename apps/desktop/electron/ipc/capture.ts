@@ -7,6 +7,7 @@ import { type CaptureTool, type CaptureToolResult, IPC, type RecordingState, typ
 import { log } from '../log.ts'
 import { run } from '../platform/exec.ts'
 import { pickColourMac, readImageMac } from '../platform/mac-tools.ts'
+import { captureScreenTo, ffmpegPath, recordingArgs, snipTo } from '../platform/windows-capture.ts'
 
 /** Screen grabs handed to Hermes; they only need to outlive the question about them. */
 export function capturesDir(): string {
@@ -69,6 +70,10 @@ export async function captureRegion(): Promise<string | null> {
     return grab.code === 0 && fs.existsSync(file) ? file : null
   }
 
+  if (process.platform === 'win32') {
+    return (await snipTo(file)) ? file : null
+  }
+
   throw new Error('Selecting part of the screen is not available on this platform yet')
 }
 
@@ -99,6 +104,13 @@ export async function captureScreenshot(mode: ScreenshotMode): Promise<string | 
     await run('screencapture', ['-x', ...flags, '-t', 'png', file], 300_000)
 
     return fs.existsSync(file) ? file : null
+  }
+
+  if (process.platform === 'win32') {
+    // The whole screen is taken here; a region or a window is drawn with the Snipping Tool.
+    const saved = mode === 'screen' ? await captureScreenTo(file) : await snipTo(file)
+
+    return saved ? file : null
   }
 
   if (process.platform !== 'linux') {
@@ -181,11 +193,26 @@ class Recorder {
       file = path.join(dir, `Recording ${stamp()}.mp4`)
       command = 'wf-recorder'
       args = ['-f', file, ...(geometry ? ['-g', geometry] : []), ...(options.audio ? ['--audio'] : [])]
+    } else if (process.platform === 'win32') {
+      const ffmpeg = ffmpegPath()
+
+      if (!ffmpeg) {
+        throw new Error('ffmpeg was not found (Hermes installs one in its tools folder; put ffmpeg on PATH otherwise)')
+      }
+
+      if (options.region) {
+        throw new Error('Recording part of the screen is not available on Windows yet; record the whole screen')
+      }
+
+      file = path.join(dir, `Recording ${stamp()}.mp4`)
+      command = ffmpeg
+      args = recordingArgs(file)
     } else {
       throw new Error('Screen recording is not available on this platform yet')
     }
 
-    const child = spawn(command, args, { stdio: ['ignore', 'ignore', 'pipe'] })
+    // ffmpeg on Windows is stopped by a "q" on its input: a signal would cut the file off without its index.
+    const child = spawn(command, args, { stdio: [process.platform === 'win32' ? 'pipe' : 'ignore', 'ignore', 'pipe'], windowsHide: true })
     let stderr = ''
     child.stderr?.on('data', chunk => {
       stderr = (stderr + String(chunk)).slice(-1000)
@@ -216,7 +243,13 @@ class Recorder {
     }
 
     const exited = new Promise<void>(resolve => child.once('exit', () => resolve()))
-    child.kill('SIGINT')
+    if (process.platform === 'win32' && child.stdin) {
+      child.stdin.write('q')
+      child.stdin.end()
+    } else {
+      child.kill('SIGINT')
+    }
+
     await Promise.race([exited, new Promise(resolve => setTimeout(resolve, 8000))])
 
     if (this.child === child) {
@@ -271,7 +304,7 @@ export function registerCaptureIpc(onRecording: (state: RecordingState) => void)
   // macOS: the colour picker, QR codes and text from the screen (Herald OS Linux runs them through its CLI).
   ipcMain.handle(IPC.captureTool, async (_event, tool: CaptureTool): Promise<CaptureToolResult> => {
     if (process.platform !== 'darwin') {
-      throw new Error('On Herald OS Linux the herald-os CLI runs these tools')
+      throw new Error(process.platform === 'win32' ? 'The colour picker, QR codes and text from the screen are not available on Windows yet' : 'On Herald OS Linux the herald-os CLI runs these tools')
     }
 
     if (tool === 'colour') {

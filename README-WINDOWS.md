@@ -123,7 +123,12 @@ What is different from macOS and Herald OS Linux, honestly:
 - **Global hotkeys.** The voice hotkey is configurable and defaults to `Alt+Space`. Windows reserves
   most `Win+` combinations, so Herald OS does not register any; inside the app `Ctrl` does what `Cmd`
   does on macOS (`Ctrl+K` opens the command bar).
-- **Not implemented yet:** screenshots and screen recording from the app (use Win+Shift+S), dictation
+- **Screenshots and recordings.** A whole-screen screenshot is taken by the app (primary display, saved
+  in `Pictures\Screenshots`); a region or a window opens Windows's Snipping Tool, and what you select is
+  saved the same way (your clipboard is put back as it was). Recordings are of the whole primary
+  screen, without sound, saved in `Videos\Recordings` as MP4 through the `ffmpeg` that Hermes installs
+  (or one on `PATH`). The colour picker, QR codes and text-from-screen are not there yet.
+- **Not implemented yet:** dictation
   anywhere (macOS-only), the emoji panel, calendar events, and changing Wi-Fi, Bluetooth, the default
   audio device or displays from the menu bar's quick panels (they show state; Windows Settings does
   the changing). The Sound panel lists every active output and input and sets each one's volume and
