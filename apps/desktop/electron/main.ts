@@ -334,6 +334,11 @@ app.whenReady().then(async () => {
     app.dock?.setIcon(icon)
   }
 
+  // Windows groups the taskbar button, jump list and toast notifications under this id.
+  if (process.platform === 'win32') {
+    app.setAppUserModelId('dev.iamluke.heraldos')
+  }
+
   registerCoreIpc()
   events.registerIpc()
   crashes.start()

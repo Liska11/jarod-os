@@ -25,6 +25,18 @@ interface PtyModule {
 let ptyModule: PtyModule | null | undefined
 
 /**
+ * The shell a Terminal tab starts. `$SHELL` wins on macOS and Linux; on Windows it is not a
+ * Windows path when set (Git Bash exports it), so PowerShell is used unless HERALD_OS_SHELL names one.
+ */
+export function defaultShell(platform: NodeJS.Platform = process.platform, env: NodeJS.ProcessEnv = process.env): string {
+  if (platform === 'win32') {
+    return env.HERALD_OS_SHELL?.trim() || 'powershell.exe'
+  }
+
+  return env.SHELL || (platform === 'darwin' ? '/bin/zsh' : '/bin/bash')
+}
+
+/**
  * npm strips the executable bit from node-pty's prebuilt `spawn-helper` (the tarball ships it
  * 0644), and pty.spawn then fails with `posix_spawnp failed`. Restore it before the first load.
  */
@@ -115,7 +127,7 @@ export function registerTerminalIpc(getWindow: () => BrowserWindow | null): void
       throw new Error('Terminal is unavailable: node-pty failed to load for this Electron build.')
     }
 
-    const shell = process.env.SHELL || (process.platform === 'win32' ? 'powershell.exe' : process.platform === 'darwin' ? '/bin/zsh' : '/bin/bash')
+    const shell = defaultShell()
     const cwd = options.cwd ? normalizeUserPath(options.cwd) : os.homedir()
     const id = `t${nextId++}`
     // A coding agent from the catalog runs first; the tab stays a shell after it exits.

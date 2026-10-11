@@ -1,4 +1,4 @@
-import { BrowserWindow, dialog, ipcMain, shell, type WebContents } from 'electron'
+import { BrowserWindow, dialog, ipcMain, nativeImage, shell, type WebContents } from 'electron'
 import { type FSWatcher, watch as watchFs } from 'node:fs'
 import fs from 'node:fs/promises'
 import os from 'node:os'
@@ -6,6 +6,7 @@ import path from 'node:path'
 import { type DirEntry, type FilePreview, IPC, type TreeEntry } from '../../shared/ipc.ts'
 import { run } from '../platform/exec.ts'
 import { type EditorTarget, hostPlatform } from '../platform/index.ts'
+import { assertWritablePath, isProjectLocation } from './path-guard.ts'
 
 const TEXT_LIMIT = 2 * 1024 * 1024
 const IMAGE_LIMIT = 24 * 1024 * 1024
@@ -28,7 +29,7 @@ const TEXT_EXTENSIONS = new Set([
 
 /** Only absolute paths; `~` expands to home. Relative paths are refused so the renderer cannot probe cwd. */
 export function normalizeUserPath(input: string): string {
-  const expanded = input === '~' || input.startsWith('~/') ? path.join(os.homedir(), input.slice(1)) : input
+  const expanded = input === '~' || input.startsWith('~/') || (process.platform === 'win32' && input.startsWith('~\\')) ? path.join(os.homedir(), input.slice(1)) : input
 
   if (!path.isAbsolute(expanded)) {
     throw new Error(`path must be absolute: ${input}`)
@@ -127,19 +128,7 @@ async function readFile(target: string): Promise<FilePreview> {
 
 /** Paths the shell may write to directly (user-initiated edits). Everything else goes through the audited bridge. */
 function assertWritable(target: string): string {
-  const file = normalizeUserPath(target)
-  const home = os.homedir()
-  const protectedRoots = [path.join(home, '.ssh'), path.join(home, 'Library', 'Keychains'), '/System', '/usr', '/bin', '/sbin', '/private/etc', '/Library']
-
-  if (!file.startsWith(home + path.sep) && !file.startsWith('/tmp/') && !file.startsWith('/private/tmp/')) {
-    throw new Error('Herald OS only edits files inside your home folder')
-  }
-
-  if (protectedRoots.some(root => file === root || file.startsWith(root + path.sep))) {
-    throw new Error(`${file} is a protected location`)
-  }
-
-  return file
+  return assertWritablePath(normalizeUserPath(target))
 }
 
 async function dirSize(target: string, budgetMs = 4000): Promise<{ bytes: number; files: number; complete: boolean }> {
@@ -196,7 +185,7 @@ const skipped = (relative: string): boolean => relative.split(path.sep).some(par
 async function projectRoot(target: string): Promise<string> {
   const root = normalizeUserPath(target)
 
-  if (!root.startsWith(os.homedir() + path.sep) && !root.startsWith('/tmp/') && !root.startsWith('/private/tmp/')) {
+  if (!isProjectLocation(root)) {
     throw new Error('project folders must be inside your home folder')
   }
 
@@ -322,6 +311,13 @@ export function registerFsIpc(getWindow: () => BrowserWindow | null): void {
   })
   ipcMain.handle(IPC.fsImageInfo, async (_event, target: string) => {
     const file = normalizeUserPath(target)
+    // sips is the macOS image tool; elsewhere Chromium's own decoder reads the size (PNG, JPEG, BMP, ICO).
+    if (process.platform !== 'darwin') {
+      const size = nativeImage.createFromPath(file).getSize()
+
+      return size.width > 0 && size.height > 0 ? size : null
+    }
+
     const result = await run('sips', ['-g', 'pixelWidth', '-g', 'pixelHeight', file], 5000)
     const width = Number(/pixelWidth:\s*(\d+)/.exec(result.stdout)?.[1])
     const height = Number(/pixelHeight:\s*(\d+)/.exec(result.stdout)?.[1])
