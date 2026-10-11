@@ -38,7 +38,7 @@ def test_protected_paths_cover_linux_system_locations(plugin):
     perm = _perm(plugin)
     for root in ("/boot", "/var/lib", "/lib", "/lib64", "/proc", "/sys"):
         assert root in perm.BUILTIN_PROTECTED
-    policy = perm.parse_policy({})
+    policy = perm.parse_policy({}, "linux")
     assert perm.protected_root(Path("/boot/vmlinuz"), policy) is not None
     assert perm.protected_root(Path("/var/lib/dpkg/status"), policy) is not None
     assert perm.protected_root(Path("/proc/1/status"), policy) is not None

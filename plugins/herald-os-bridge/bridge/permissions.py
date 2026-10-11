@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+import sys
 import time
 import uuid
 from dataclasses import dataclass
@@ -67,6 +68,30 @@ BUILTIN_PROTECTED = (
     "/sys",
 )
 
+# Windows: SSH and GnuPG keys, the Credential Manager / DPAPI / Vault stores, certificates, and the
+# system and program folders. Environment variables are expanded where the policy is built.
+WINDOWS_PROTECTED = (
+    "%APPDATA%/gnupg",
+    "%APPDATA%/Microsoft/Credentials",
+    "%APPDATA%/Microsoft/Protect",
+    "%APPDATA%/Microsoft/SystemCertificates",
+    "%LOCALAPPDATA%/Microsoft/Credentials",
+    "%LOCALAPPDATA%/Microsoft/Vault",
+    "%PROGRAMDATA%/Microsoft/Crypto",
+    "%SystemRoot%",
+    "%ProgramFiles%",
+    "%ProgramFiles(x86)%",
+    "%ProgramData%",
+)
+
+
+def builtin_protected(platform: str = sys.platform) -> tuple[str, ...]:
+    """The protected locations that apply on ``platform`` (the POSIX roots mean nothing on Windows)."""
+    if platform.startswith("win"):
+        return ("~/.ssh", "~/.gnupg", "$HERMES_HOME/.env", "$HERMES_HOME/auth.json", *WINDOWS_PROTECTED)
+    return BUILTIN_PROTECTED
+
+
 DEFAULT_POLICY_TEXT = """# Herald OS system bridge policy. See docs/SYSTEM-BRIDGE.md.
 version: 1
 tiers:
@@ -111,7 +136,7 @@ def _expand_protected(raw: Iterable[str]) -> tuple[Path, ...]:
     return tuple(out)
 
 
-def parse_policy(data: Any) -> Policy:
+def parse_policy(data: Any, platform: str = sys.platform) -> Policy:
     """Build a Policy from parsed YAML (pure; unit-tested). Unknown keys are ignored, bad values fall
     back to defaults rather than failing open."""
     tiers = dict(DEFAULT_TIER_MODES)
@@ -130,7 +155,7 @@ def parse_policy(data: Any) -> Policy:
         raw_protected = data.get("protected_paths")
         if isinstance(raw_protected, list):
             extra = [str(p) for p in raw_protected if p]
-    return Policy(tiers=tiers, protected=_expand_protected((*BUILTIN_PROTECTED, *extra)))
+    return Policy(tiers=tiers, protected=_expand_protected((*builtin_protected(platform), *extra)))
 
 
 _cache: tuple[float, Policy] | None = None

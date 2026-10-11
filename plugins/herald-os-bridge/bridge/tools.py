@@ -415,6 +415,8 @@ def handle_system_kill_process(args: dict[str, Any], **_: Any) -> str:
     try:
         if args.get("pid"):
             pid = int(args["pid"])
+            if pid in adapter.critical_pids:
+                return fail("Refusing to stop a system-critical process or Hermes itself.")
             match = adapter.find_processes("", 5000)
             row = next((r for r in match if r.pid == pid), None)
             targets = [{"pid": pid, "name": row.name if row else "unknown", "command": row.command if row else ""}]
@@ -437,7 +439,7 @@ def handle_system_kill_process(args: dict[str, Any], **_: Any) -> str:
     except (TypeError, ValueError) as exc:
         return fail(str(exc))
 
-    if any(t["pid"] in (0, 1, os.getpid(), os.getppid()) for t in targets):
+    if any(t["pid"] in (*adapter.critical_pids, os.getpid(), os.getppid()) or str(t["name"]).lower() in adapter.critical_process_names for t in targets):
         return fail("Refusing to stop a system-critical process or Hermes itself.")
     label = ", ".join(f"{t['name']} (pid {t['pid']})" for t in targets)
     summary = f"{'force kill' if force else 'terminate'} {label}"

@@ -75,7 +75,8 @@ def test_denied_mutation_is_not_applied(plugin, tmp_path, monkeypatch):
 
 def test_kill_refuses_critical_pids(plugin, monkeypatch):
     tools = _mod(plugin, "tools")
-    result = json.loads(tools.handle_system_kill_process({"pid": 1}))
+    critical = tools.host().critical_pids[-1]  # 1 on macOS and Linux, 4 (System) on Windows.
+    result = json.loads(tools.handle_system_kill_process({"pid": critical}))
     assert not result["success"] and "critical" in result["error"]
 
 

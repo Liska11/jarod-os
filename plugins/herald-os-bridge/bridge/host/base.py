@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -24,6 +25,9 @@ class ProcessRow:
 
     @property
     def name(self) -> str:
+        # A Windows path (drive letter or UNC) is split on backslashes as well.
+        if re.match(r"^(?:[A-Za-z]:\\|\\\\)", self.command):
+            return re.split(r"[\\/]", self.command)[-1]
         return self.command.rsplit("/", 1)[-1]
 
     def to_dict(self) -> dict[str, Any]:
@@ -85,6 +89,10 @@ class AppInfo:
 
 class HostAdapter(ABC):
     platform: str = "unknown"
+    # Processes the kill tool refuses outright, besides the bridge's own and its parent: pids, and
+    # lower-case process names (a host lists the ones whose death takes the session down).
+    critical_pids: tuple[int, ...] = (0, 1)
+    critical_process_names: frozenset[str] = frozenset()
 
     def available(self) -> bool:
         return True

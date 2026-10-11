@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import subprocess
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping, Sequence
@@ -21,12 +22,20 @@ class ExecResult:
         return self.code == 0
 
 
-def run(argv: Sequence[str], *, timeout: float = 15.0, env: Mapping[str, str] | None = None, cwd: str | None = None) -> ExecResult:
-    """Run a fixed argv (never a shell string) and never raise on non-zero exit."""
+def run(argv: Sequence[str], *, timeout: float = 15.0, env: Mapping[str, str] | None = None, cwd: str | None = None, encoding: str | None = None) -> ExecResult:
+    """Run a fixed argv (never a shell string) and never raise on non-zero exit.
+
+    ``encoding`` names how the child's output is decoded (default: the locale's, as ``text=True``
+    does); on Windows no console window is opened for the child."""
+    extra: dict[str, Any] = {"creationflags": subprocess.CREATE_NO_WINDOW} if sys.platform == "win32" else {}
+    if encoding:
+        extra.update(encoding=encoding, errors="replace")
+    else:
+        extra["text"] = True
     try:
         proc = subprocess.run(
-            list(argv), capture_output=True, text=True, timeout=timeout, cwd=cwd,
-            env={**os.environ, **(env or {})}, check=False,
+            list(argv), capture_output=True, timeout=timeout, cwd=cwd,
+            env={**os.environ, **(env or {})}, check=False, **extra,
         )
     except subprocess.TimeoutExpired as exc:
         return ExecResult(124, (exc.stdout or b"").decode() if isinstance(exc.stdout, bytes) else (exc.stdout or ""), f"timed out after {timeout}s")
@@ -56,7 +65,12 @@ def hermes_home() -> Path:
 
         return Path(get_hermes_home())
     except Exception:  # noqa: BLE001 - outside a Hermes runtime (tests) fall back to the default.
-        return Path(os.environ.get("HERMES_HOME") or Path.home() / ".hermes")
+        if os.environ.get("HERMES_HOME"):
+            return Path(os.environ["HERMES_HOME"])
+        # Hermes's own default: %LOCALAPPDATA%\hermes for a native Windows install, ~/.hermes elsewhere.
+        if sys.platform == "win32":
+            return Path(os.environ.get("LOCALAPPDATA") or Path.home() / "AppData" / "Local") / "hermes"
+        return Path.home() / ".hermes"
 
 
 def os_env(name: str) -> str:
