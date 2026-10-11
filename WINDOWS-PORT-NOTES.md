@@ -33,7 +33,10 @@ User-facing instructions are in [README-WINDOWS.md](README-WINDOWS.md); this fil
    paths, critical-process refusal, `util.run` without console windows and with an explicit decoding.
 6. **`WindowsPlatform`** for the shell (`platform/windows.ts`, `windows-parse.ts`).
 7. **Packaging and verification.** `dist:win`, NSIS and appx configuration, `verify-windows.ps1`.
-8. **CI, docs, appx staging.** `windows-latest` in the CI matrices and a PowerShell parse job, the
+8. **Window buttons, ripgrep lookup, bootstrap fix.** Minimize / maximize / close in the menu bar on
+   Windows; Hermes's own `tools/ripgrep-*` is searched; the voice probe of `bootstrap.ps1` no longer
+   loses its quotes.
+9. **CI, docs, appx staging.** `windows-latest` in the CI matrices and a PowerShell parse job, the
    bridge plugin staged out of `WindowsApps`, docs, `README-WINDOWS.md`, this file.
 
 Shared refactors that touch macOS/Linux paths, and why they are safe: the file-search predicates moved
@@ -47,8 +50,8 @@ backslashes only for a Windows path; `OsControlServer` keeps the Unix socket off
 | Check | Result |
 | --- | --- |
 | `npm run typecheck` | passes |
-| `npm test` (Vitest) | 65 files, 338 passed, 2 skipped (the skipped ones need Linux/macOS fixtures). Before the port: 4 failed on Windows (symlink `EPERM`, executable bit) |
-| `npm run test:bridge` (pytest, plugin) | 183 passed, 9 skipped (`AF_UNIX` variants). Before the port: 20 failed and 9 errored on Windows (`pwd`, `AF_UNIX`, signal numbers) |
+| `npm test` (Vitest) | 66 files, 339 passed, 2 skipped (the skipped ones need Linux/macOS fixtures). Before the port: 4 failed on Windows (symlink `EPERM`, executable bit) |
+| `npm run test:bridge` (pytest, plugin) | 184 passed, 9 skipped (`AF_UNIX` variants). Before the port: 20 failed and 9 errored on Windows (`pwd`, `AF_UNIX`, signal numbers) |
 | Real PowerShell scripts | each read-only script ran against this machine; the Vitest and pytest suites keep one real-PowerShell check each, skipped off Windows |
 | Bridge tools through Hermes's own registry (`discover_plugins()` + `registry.dispatch`, isolated `HERMES_HOME`) | `system_info`, `system_processes` (top/find), `system_disk_usage`, `system_find_files`, `system_apps` (installed/running), `system_network` (status/bluetooth), `system_control` (appearance/audio), `system_logs` (log/crashes) all returned real data |
 | Audit entry for a tool call | `scripts\verify-windows.ps1 -SkipGateway`: Hermes runtime, plugin linked and enabled, tool called, line written with the documented keys: passed |
@@ -58,21 +61,31 @@ backslashes only for a Windows path; `OsControlServer` keeps the Unix socket off
 | `npm run dev` | the shell and renderer start and the control server listens; the backend part is blocked, see below |
 | Linux | `linux.test.ts`, the Linux adapter tests and the `electron-builder --linux` packaging config (`-c.npmRebuild=false`) ran from Windows and pass. `npm run dist:linux` itself recompiles node-pty for Linux and cannot run on Windows |
 
-### Not validated, and why
+### Second pass (after the first report)
 
-- **`npm run dev` with an active native Hermes, the gateway steps of `verify-windows.ps1`, and a tool
-  called from the UI producing an audit entry.** Hermes on this machine is damaged: an interrupted
-  source update (`WinError 5` on `tools\python-3.14.7...\python.exe`) left `pydantic_core` missing, so
-  `hermes serve` cannot start (`hermes pm repair` / `hermes update` is the documented repair; it was
-  not run because it changes the user's Hermes install). The same script's later steps pass with a
-  working runtime, and the wire is exercised by Hermes's own registry.
-- **NSIS install and launch.** The installer is built but was not run (it writes to the user's profile
-  and registry); `win-unpacked` was launched instead.
+| Check | Result |
+| --- | --- |
+| Window buttons | `WindowControls` in the menu bar (Windows only): minimize, maximize / restore, close, in the status cluster's style; IPC `windowMinimize` / `windowToggleMaximize` / `windowClose`; `WindowState.maximized`. One real click on "restore" left fullscreen as designed. The other two buttons were not clicked on the real desktop (a media player was in front of the app and a stray click could have hit it); the toggle's decision logic is unit-tested (`window-controls.test.ts`) |
+| Hermes on this machine | Not repairable without changing permissions: `%LOCALAPPDATA%\hermes	ools\*` answers "Access is denied" to this account (also outside my tool sandbox), so the launcher's `python.exe` cannot run. Fixing that means taking ownership / resetting ACLs, which is a security-settings change and was not done; `hermes pm repair` and `hermes update` cannot start without that Python. The official `install.ps1` was read but not run: it prepends its `bin` folder to the user `PATH` |
+| An active Hermes instead | A second, isolated Hermes 0.21.5 built from the pinned upstream snapshot (`uv venv` + `uv pip install -e .` in a scratch folder, its own `HERMES_HOME`; nothing of the user's changed) |
+| `npm run bootstrap` against it | links the plugin, `plugins.enabled` gets `herald-os-bridge`, the `herald_os` toolset is enabled, `tools.tool_search.enabled: "off"`. Found and fixed: the voice probe's quotes were lost by Windows PowerShell 5.1 |
+| `scriptserify-windows.ps1` (full) | 6 of 6 steps pass: runtime, plugin, gateway status, `tools.list` over the WebSocket (`herald_os`: 13 tools, enabled), tool call through the registry, audit entry |
+| `npm run dev` with that Hermes | "Hermes is ready"; backend `ready on http://127.0.0.1:<port>`; control server on loopback TCP |
+| UI to bridge to audit | The app attached to a running `hermes serve` (it writes `control.json`); the bridge's `os_ui` tool, called through Hermes's registry, read the real shell's state (153 commands), opened Memory then Overview in the app, and each call left an audit line (`tool=os_ui tier=read decision=allowed ok=true`) |
+| NSIS installer | `/S /D=<dedicated folder>`: installed, Start menu and desktop shortcuts and an uninstall entry created, launched against the isolated Hermes (backend ready), `Uninstall ... /S` removed the folder, the entry and both shortcuts |
+| Hermes's own ripgrep | confirmed: it ships `tools
+ipgrep-15.2.0-win32-x64`; the bridge and the shell now look there too |
+
+### Still not validated, and why
+
 - **appx installation** (needs a signing certificate whose subject matches `CN=HeraldOS`), the tile
   images (electron-builder's defaults are used; real ones belong in `apps/desktop/build/appx/`), and
   the executable's embedded icon.
+- **The maximize and close buttons on the real desktop** (see above) and the window's behaviour on
+  Windows 10.
 - **macOS.** `dist:mac` and the macOS code paths cannot be built or run on Windows. The macOS-specific
-  tests (`darwin.test.ts`, the Darwin parsers) run and pass here.
+  tests (`darwin.test.ts`, the Darwin parsers) run and pass here. The WSL distribution on this machine
+  is broken (its virtual disk is missing), so Linux could not be run either.
 - **Windows 10 and non-French Windows.** Locale-dependent output (`netsh wlan`) is parsed with fixtures
   in French and English; Wi-Fi and Bluetooth hardware are absent on this machine, so those paths ran
   against fixtures only.
@@ -110,3 +123,9 @@ backslashes only for a Windows path; `OsControlServer` keeps the Unix socket off
   clone only.
 - `package-lock.json` was touched by `npm install` and left out of the commits.
 - Build output (`apps/desktop/release`) is git-ignored.
+- While stopping the dev servers I ran one `taskkill` that was broader than intended (it named every
+  `node.exe`). The other `node` processes on the machine (MCP servers and similar) were still running
+  afterwards, so it appears to have killed nothing outside this work, but it could not be proven.
+  Later cleanups were filtered by executable path.
+- A scratch Hermes (venv, home, logs) lives under this session's scratchpad folder, outside the
+  repository; nothing of the user's Hermes was modified.

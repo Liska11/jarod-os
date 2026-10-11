@@ -121,11 +121,11 @@ try {
         Add-Result 'Gateway status' ($status.StatusCode -eq 200) "GET /api/status on 127.0.0.1:$port"
 
         $socket = New-Object System.Net.WebSockets.ClientWebSocket
-        $socket.ConnectAsync([Uri]"ws://127.0.0.1:$port/api/ws?token=$token", [System.Threading.CancellationToken]::None).GetAwaiter().GetResult()
+        $socket.ConnectAsync([Uri]"ws://127.0.0.1:$port/api/ws?token=$token", [System.Threading.CancellationToken]::None).GetAwaiter().GetResult() | Out-Null
         $request = '{"jsonrpc":"2.0","id":"verify-1","method":"tools.list","params":{}}'
         $bytes = [System.Text.Encoding]::UTF8.GetBytes($request)
         $segment = New-Object 'System.ArraySegment[byte]' -ArgumentList (, $bytes)
-        $socket.SendAsync($segment, [System.Net.WebSockets.WebSocketMessageType]::Text, $true, [System.Threading.CancellationToken]::None).GetAwaiter().GetResult()
+        $socket.SendAsync($segment, [System.Net.WebSockets.WebSocketMessageType]::Text, $true, [System.Threading.CancellationToken]::None).GetAwaiter().GetResult() | Out-Null
         $reply = $null
         $until = (Get-Date).AddSeconds(30)
         while ((Get-Date) -lt $until -and -not $reply) {

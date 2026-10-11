@@ -83,7 +83,21 @@ const SKIPPED_DIRS = new Set(['appdata', 'node_modules', '.git', '$recycle.bin',
 
 function ripgrep(): string | null {
   const dirs = (process.env.PATH ?? process.env.Path ?? '').split(path.delimiter)
-  const candidates = [...dirs.map(dir => path.join(dir, 'rg.exe')), path.join(hermesHome(), 'bin', 'rg.exe')]
+  // Hermes's installer ships ripgrep in the tools folder of its home: tools/ripgrep-<version>-<platform>.
+  let shipped: string[] = []
+
+  try {
+    shipped = fsSync
+      .readdirSync(path.join(hermesHome(), 'tools'))
+      .filter(name => name.startsWith('ripgrep-'))
+      .sort()
+      .reverse()
+      .map(name => path.join(hermesHome(), 'tools', name, 'rg.exe'))
+  } catch {
+    // No Hermes tools folder.
+  }
+
+  const candidates = [...dirs.map(dir => path.join(dir, 'rg.exe')), ...shipped, path.join(hermesHome(), 'bin', 'rg.exe')]
 
   return candidates.find(candidate => fsSync.existsSync(candidate)) ?? null
 }

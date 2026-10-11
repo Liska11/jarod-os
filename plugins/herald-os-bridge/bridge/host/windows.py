@@ -439,7 +439,9 @@ class WindowsHost(HostAdapter):
     # --- file search ------------------------------------------------------------------------
     @staticmethod
     def _ripgrep() -> str | None:
-        for candidate in (shutil.which("rg"), str(hermes_home() / "bin" / "rg.exe")):
+        # Hermes's installer ships ripgrep under <HERMES_HOME>\tools\ripgrep-<version>-<platform>.
+        shipped = sorted((hermes_home() / "tools").glob("ripgrep-*/rg.exe"), reverse=True)
+        for candidate in (shutil.which("rg"), *(str(p) for p in shipped), str(hermes_home() / "bin" / "rg.exe")):
             if candidate and os.path.isfile(candidate):
                 return candidate
         return None

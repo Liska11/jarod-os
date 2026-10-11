@@ -5,7 +5,7 @@ import { VOICE_DEFAULTS } from '../../shared/voice-prefs.ts'
 
 /** Cache of Electron's backend truth; Electron is authoritative. */
 export const $backend = atom<BackendState>({ phase: 'idle', attempt: 0, logTail: [] })
-export const $windowState = atom<WindowState>({ fullscreen: false, focused: true })
+export const $windowState = atom<WindowState>({ fullscreen: false, focused: true, maximized: false })
 export const $env = atom<EnvInfo | null>(null)
 export const $prefs = atom<HeraldOSPrefs>({
   fullscreenOnLaunch: true,

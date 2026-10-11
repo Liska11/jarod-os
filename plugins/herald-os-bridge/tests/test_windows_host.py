@@ -334,6 +334,16 @@ def test_find_files_adds_content_hits_for_text(win, base, tmp_path, monkeypatch)
     assert {Path(f.path).name for f in found} == {"budget plan.txt", "meeting.txt"}
 
 
+def test_ripgrep_shipped_with_hermes_is_found(win, isolated_home, monkeypatch):
+    rg = isolated_home / "tools" / "ripgrep-15.2.0-win32-x64" / "rg.exe"
+    rg.parent.mkdir(parents=True)
+    rg.write_bytes(b"")
+    monkeypatch.setattr(win.shutil, "which", lambda name: None)
+    assert win.WindowsHost._ripgrep() == str(rg)
+    rg.unlink()
+    assert win.WindowsHost._ripgrep() is None
+
+
 def test_folder_search_walks_instead_of_listing_files(win, base, tmp_path, monkeypatch):
     (tmp_path / "Projects" / "herald").mkdir(parents=True)
     host = win.WindowsHost()

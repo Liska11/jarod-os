@@ -590,6 +590,8 @@ export interface AuditEntry {
 export interface WindowState {
   fullscreen: boolean
   focused: boolean
+  /** The window fills the work area without being fullscreen (Windows draws its own buttons for this). */
+  maximized: boolean
 }
 
 /**
@@ -847,6 +849,9 @@ export const IPC = {
   windowGetState: 'herald-os:window:get-state',
   windowToggleFullscreen: 'herald-os:window:toggle-fullscreen',
   windowQuit: 'herald-os:window:quit',
+  windowMinimize: 'herald-os:window:minimize',
+  windowToggleMaximize: 'herald-os:window:toggle-maximize',
+  windowClose: 'herald-os:window:close',
 
   shellOpenExternal: 'herald-os:shell:open-external',
 

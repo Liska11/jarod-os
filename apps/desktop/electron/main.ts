@@ -38,6 +38,7 @@ import { DesktopHost, type ShellHost } from './shell/host.ts'
 import { shellMode } from './shell/mode.ts'
 import { createCompositor, detectCompositor } from './wm/compositor.ts'
 import { NotificationDaemon } from './shell/notification-daemon.ts'
+import { maximizeAction } from './window-controls.ts'
 import { handleUiRequest, OsCommandBridge, OsControlServer, osControlToken } from './shell/os-control.ts'
 import { PanelShell } from './shell/panels.ts'
 import { registerBrandingIpc } from './shell/branding.ts'
@@ -172,7 +173,7 @@ if (!app.requestSingleInstanceLock()) {
 }
 
 function windowState(win: BrowserWindow): WindowState {
-  return { fullscreen: win.isFullScreen(), focused: win.isFocused() }
+  return { fullscreen: win.isFullScreen(), focused: win.isFocused(), maximized: win.isMaximized() }
 }
 
 function broadcastWindowState(): void {
@@ -196,13 +197,33 @@ function registerCoreIpc(): void {
     }
   })
 
-  ipcMain.handle(IPC.windowGetState, () => (mainWindow ? windowState(mainWindow) : { fullscreen: false, focused: false }))
+  ipcMain.handle(IPC.windowGetState, () => (mainWindow ? windowState(mainWindow) : { fullscreen: false, focused: false, maximized: false }))
   ipcMain.handle(IPC.windowToggleFullscreen, () => {
     if (mainWindow) {
       mainWindow.setFullScreen(!mainWindow.isFullScreen())
     }
   })
   ipcMain.handle(IPC.windowQuit, () => app.quit())
+  // The window buttons Windows needs (macOS has its own, Linux a compositor).
+  ipcMain.handle(IPC.windowMinimize, () => mainWindow?.minimize())
+  ipcMain.handle(IPC.windowToggleMaximize, () => {
+    if (!mainWindow) {
+      return
+    }
+
+    // Leaving fullscreen, un-maximising and maximising are the one button's three states.
+    switch (maximizeAction({ fullscreen: mainWindow.isFullScreen(), maximized: mainWindow.isMaximized() })) {
+      case 'leave-fullscreen':
+        mainWindow.setFullScreen(false)
+        break
+      case 'unmaximize':
+        mainWindow.unmaximize()
+        break
+      default:
+        mainWindow.maximize()
+    }
+  })
+  ipcMain.handle(IPC.windowClose, () => mainWindow?.close())
 
   ipcMain.handle(IPC.shellOpenExternal, (_event, url: string) => {
     if (/^https?:\/\//i.test(url)) {
@@ -290,6 +311,8 @@ function attachMainWindow(win: BrowserWindow): void {
 
   win.on('enter-full-screen', broadcastWindowState)
   win.on('leave-full-screen', broadcastWindowState)
+  win.on('maximize', broadcastWindowState)
+  win.on('unmaximize', broadcastWindowState)
   win.on('focus', broadcastWindowState)
   win.on('blur', broadcastWindowState)
 

@@ -16,7 +16,7 @@ and written to `audit.jsonl`. What it does not do yet is in [Limitations](#limit
 | Windows | 10 (1809 or later) or 11, x64. ARM64 is untested. |
 | Hermes Agent | Native install, see below. Hermes runs its shell tool through Git Bash, so Git for Windows must be on the machine (Hermes's installer fetches a portable one if not). |
 | Node.js | 22.12 or later, for running from source or building. |
-| ripgrep | Optional. File search uses `rg` when it is on `PATH` or in `%LOCALAPPDATA%\hermes\bin`, and a slower built-in walk otherwise. |
+| ripgrep | Optional. File search uses `rg` from `PATH`, from Hermes's own copy in `%LOCALAPPDATA%\hermes\tools\ripgrep-*`, or from `%LOCALAPPDATA%\hermes\bin`, and a slower built-in walk otherwise. |
 | Python | Not needed: the bridge plugin runs inside Hermes's own Python. |
 
 ## 1. Install Hermes Agent natively
@@ -116,8 +116,10 @@ Things to know:
 What is different from macOS and Herald OS Linux, honestly:
 
 - **Application mode only.** No Windows session replacement, no tiling, no panels mode.
-- **No window buttons.** The window is frameless like on macOS and starts fullscreen. Use `F11` and
-  `Alt+F4`, or turn "Launch fullscreen" off in Settings -> General.
+- **Fullscreen by default.** Like on macOS the window is frameless and starts fullscreen. The menu
+  bar carries minimize, maximize / restore and close buttons at its right end (Windows only); `F11`
+  toggles fullscreen and "Launch fullscreen" in Settings -> General turns the default off. Drag the
+  menu bar to move the window when it is not fullscreen.
 - **Global hotkeys.** The voice hotkey is configurable and defaults to `Alt+Space`. Windows reserves
   most `Win+` combinations, so Herald OS does not register any; inside the app `Ctrl` does what `Cmd`
   does on macOS (`Ctrl+K` opens the command bar).
@@ -144,8 +146,12 @@ What is different from macOS and Herald OS Linux, honestly:
 - **"hermes is not recognized."** Open a new terminal after installing, or check that
   `%LOCALAPPDATA%\hermes\bin` is on your user `PATH`. Herald OS also looks there by itself.
 - **Hermes starts but `hermes serve` fails with `No module named 'pydantic_core...'`** (or another
-  missing module). A Hermes update was interrupted and left the environment half-done. Run
-  `hermes pm repair`, then `hermes update`, and start Herald OS again.
+  missing module), or `hermes` exits silently with code 1. A Hermes update was interrupted and left
+  the environment half-done. Run `hermes pm repair`, then `hermes update`, and start Herald OS again.
+  If those cannot run either because `%LOCALAPPDATA%\hermes\tools\...` answers "Access is denied" (an
+  update run as administrator can leave folders whose permissions exclude your account), reset that
+  folder's permissions from an administrator prompt (`takeown /f <folder> /r`, then
+  `icacls <folder> /reset /t`) or re-run the installer, and start Herald OS again.
 - **`WinError 5` / "Access is denied" from Hermes's Python.** An executable under `WindowsApps` was
   started from another process. Use the NSIS install or the checkout, not an appx, for the bridge, or
   let Herald OS stage the plugin as described above.

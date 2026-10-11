@@ -1,12 +1,13 @@
 import { useStore } from '@nanostores/react'
-import { IconBattery, IconBattery1, IconBattery2, IconBattery3, IconBattery4, IconBatteryCharging, IconBell, IconBluetooth, IconCheck, IconChevronDown, IconCoffee, IconGauge, IconMoon, IconSearch, IconSunset2, IconVolume, IconWifi, IconWifiOff } from '@tabler/icons-react'
+import { IconBattery, IconBattery1, IconBattery2, IconBattery3, IconBattery4, IconBatteryCharging, IconBell, IconBluetooth, IconCheck, IconChevronDown, IconCoffee, IconCopy, IconGauge, IconMinus, IconMoon, IconSearch, IconSquare, IconSunset2, IconVolume, IconWifi, IconWifiOff, IconX } from '@tabler/icons-react'
 import { Fragment, type ReactNode, useEffect, useRef, useState } from 'react'
 import type { StatusPanelId, SwitchName } from '../../shared/ipc.ts'
 import { clockText, type MenuBarItem, normalizeMenuBar, visibleMenuBarItems } from '../../shared/menu-bar.ts'
 import { HeraldLogo } from '../components/herald-logo.tsx'
 import { cn } from '../lib/cn.ts'
+import { hostPlatform } from '../lib/platform-labels.ts'
 import { planPercent } from '../lib/usage.ts'
-import { $backend, $prefs } from '../store/backend.ts'
+import { $backend, $prefs, $windowState } from '../store/backend.ts'
 import { $connection } from '../store/gateway.ts'
 import { $notifications, $notificationsOpen } from '../store/notifications.ts'
 import { runCommand } from '../store/os-commands.ts'
@@ -108,6 +109,36 @@ export function MenuBarStatus({ onSearch, onBell, bellActive }: { onSearch: () =
       {visibleMenuBarItems(layout).map(item => (
         <Fragment key={item}>{items[item]}</Fragment>
       ))}
+    </div>
+  )
+}
+
+/**
+ * Minimize, maximize / restore and close for the frameless window. Only Windows needs them: macOS
+ * has its own and Herald OS Linux is the whole session. The same quiet buttons as the status cluster;
+ * close turns red on hover like the system's.
+ */
+export function WindowControls() {
+  const state = useStore($windowState)
+
+  if (hostPlatform() !== 'win32') {
+    return null
+  }
+
+  const filled = state.fullscreen || state.maximized
+  const base = 'flex h-6 w-8 items-center justify-center rounded-md text-fg-2 hover:text-fg'
+
+  return (
+    <div className="no-drag flex items-center gap-0.5" role="group" aria-label="Window controls">
+      <button type="button" aria-label="Minimize" title="Minimize" onClick={() => void window.heraldOS.window.minimize()} className={cn(base, 'hover:bg-white/10')}>
+        <IconMinus size={15} />
+      </button>
+      <button type="button" aria-label={filled ? 'Restore' : 'Maximize'} title={state.fullscreen ? 'Leave fullscreen (F11)' : filled ? 'Restore' : 'Maximize'} onClick={() => void window.heraldOS.window.toggleMaximize()} className={cn(base, 'hover:bg-white/10')}>
+        {filled ? <IconCopy size={14} /> : <IconSquare size={13} />}
+      </button>
+      <button type="button" aria-label="Close" title="Close" onClick={() => void window.heraldOS.window.close()} className={cn(base, 'hover:bg-danger/80 hover:text-white')}>
+        <IconX size={15} />
+      </button>
     </div>
   )
 }
@@ -260,7 +291,10 @@ export function MenuBar() {
         )}
       </div>
 
-      <MenuBarStatus onSearch={() => toggleCommandBar(true)} onBell={() => $notificationsOpen.set(!notificationsOpen)} bellActive={notificationsOpen} />
+      <div className="flex items-center gap-3">
+        <MenuBarStatus onSearch={() => toggleCommandBar(true)} onBell={() => $notificationsOpen.set(!notificationsOpen)} bellActive={notificationsOpen} />
+        <WindowControls />
+      </div>
     </header>
   )
 }

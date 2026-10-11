@@ -145,8 +145,15 @@ for n, p in (("openwakeword", "wake word"), ("faster_whisper", "local STT"), ("e
     except Exception:
         print(f"    {n}: missing ({p}); install with: pip install hermes-agent[voice] inside the Hermes venv")
 '@
-        $r = Invoke-Native -File $HermesPy -Arguments @('-c', $probe)
-        if ($r.Output) { Write-Host $r.Output }
+        # A script file, not -c: Windows PowerShell 5.1 drops the double quotes of a native argument.
+        $probeFile = Join-Path ([System.IO.Path]::GetTempPath()) ('herald-voice-probe-' + [guid]::NewGuid().ToString('N') + '.py')
+        Set-Content -LiteralPath $probeFile -Value $probe -Encoding ascii
+        try {
+            $r = Invoke-Native -File $HermesPy -Arguments @($probeFile)
+            if ($r.Output) { Write-Host $r.Output }
+        } finally {
+            Remove-Item -LiteralPath $probeFile -Force -ErrorAction SilentlyContinue
+        }
     }
 }
 

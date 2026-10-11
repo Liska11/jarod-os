@@ -262,7 +262,10 @@ const api = {
     getState: (): Promise<WindowState> => ipcRenderer.invoke(IPC.windowGetState),
     onState: (listener: (state: WindowState) => void): Unsubscribe => subscribe(IPC.windowState, listener),
     toggleFullscreen: (): Promise<void> => ipcRenderer.invoke(IPC.windowToggleFullscreen),
-    quit: (): Promise<void> => ipcRenderer.invoke(IPC.windowQuit)
+    quit: (): Promise<void> => ipcRenderer.invoke(IPC.windowQuit),
+    minimize: (): Promise<void> => ipcRenderer.invoke(IPC.windowMinimize),
+    toggleMaximize: (): Promise<void> => ipcRenderer.invoke(IPC.windowToggleMaximize),
+    close: (): Promise<void> => ipcRenderer.invoke(IPC.windowClose)
   },
   shell: {
     openExternal: (url: string): Promise<void> => ipcRenderer.invoke(IPC.shellOpenExternal, url),
