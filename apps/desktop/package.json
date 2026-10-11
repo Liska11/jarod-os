@@ -20,7 +20,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.electron.json --noEmit",
     "test": "vitest run",
     "dist:mac": "npm run build && electron-builder --mac --arm64 -c.npmRebuild=false --publish never",
-    "dist:linux": "npm run build && electron-builder --linux --publish never"
+    "dist:linux": "npm run build && electron-builder --linux --publish never",
+    "dist:win": "npm run build && electron-builder --win --x64 -c.npmRebuild=false --publish never"
   },
   "dependencies": {
     "@herald-os/client": "*",
@@ -168,6 +169,52 @@
           "Categories": "System;"
         }
       }
+    },
+    "win": {
+      "icon": "build/icon.png",
+      "artifactName": "HeraldOS-${version}-win-${arch}.${ext}",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "appx",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "extraResources": [
+        {
+          "from": "../../plugins/herald-os-bridge",
+          "to": "herald-os-bridge",
+          "filter": [
+            "**/*",
+            "!tests/**",
+            "!**/__pycache__/**",
+            "!.pytest_cache/**"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Herald OS",
+      "artifactName": "HeraldOS-Setup-${version}-win-${arch}.${ext}"
+    },
+    "appx": {
+      "applicationId": "HeraldOS",
+      "identityName": "HeraldOS.HeraldOS",
+      "publisher": "CN=HeraldOS",
+      "publisherDisplayName": "Herald OS",
+      "displayName": "Herald OS"
     }
   }
 }

@@ -41,6 +41,7 @@
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
     "test:bridge": "node scripts/run.mjs test-bridge",
-    "dist:mac": "npm run dist:mac --workspace apps/desktop"
+    "dist:mac": "npm run dist:mac --workspace apps/desktop",
+    "dist:win": "npm run dist:win --workspace apps/desktop"
   }
 }
