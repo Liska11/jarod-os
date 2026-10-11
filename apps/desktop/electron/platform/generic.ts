@@ -4,8 +4,8 @@ import type { CalendarResult, InstalledApp, NetworkStatus, ProcessInfo, RecentFi
 import { type EditorTarget, type HostPlatform, HostNotSupported } from './types.ts'
 
 /**
- * Placeholder for win32 (and anything without a dedicated implementation): enough for the shell
- * to boot and show honest "not yet" states. Windows support is planned in docs/internal/ROADMAP.md.
+ * Placeholder for platforms without a dedicated implementation (FreeBSD, say): enough for the shell
+ * to boot and show honest "not yet" states. Windows has its own in windows.ts.
  */
 export class GenericPlatform implements HostPlatform {
   async systemInfo(): Promise<SystemInfo> {

@@ -239,6 +239,14 @@ def test_settings_panes_resolve_by_name_or_fragment(win):
 
 # --- file search and disk usage (real files, no PowerShell) ----------------------------------
 
+def test_windows_snipping_tool_names_count_as_screenshots(plugin, base):
+    search = _mod(plugin, "host.search")
+    shots = base.FileSearch(kind="screenshot")
+    for name in ("Capture d’écran 2026-10-10 143012.png", "Screenshot 2026-10-10 143012.png", "Snip 3.png"):
+        assert search.matches_search("C:/Users/sam/Pictures/Screenshots/" + name, shots, is_dir=False, mtime=None), name
+    assert not search.matches_search("C:/Users/sam/Pictures/holiday.png", shots, is_dir=False, mtime=None)
+
+
 def test_rg_arguments_prefer_extensions_over_the_name_and_escape_globs(win, base):
     by_name = win.rg_arguments(base.FileSearch(name="a[1]*"), ["C:\\u"], skip_appdata=True)
     assert "*a[[]1[]][*]*" in by_name and "!**/AppData/**" in by_name and by_name[-2:] == ["--", "C:\\u"]

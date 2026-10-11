@@ -43,7 +43,8 @@ export function scoreMatch(query: string, file: Pick<RecentFile, 'name' | 'path'
     score = words.length > 0 && words.every(w => name.includes(w)) ? 35 : 0
   }
 
-  if (score > 0 && NOISE.test(file.path)) {
+  // Windows paths use backslashes; the pattern is written with slashes.
+  if (score > 0 && NOISE.test(file.path.replace(/\\/g, '/'))) {
     score -= 30
   }
 

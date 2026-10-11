@@ -21,7 +21,7 @@ KIND_EXTENSIONS: dict[str, tuple[str, ...]] = {
     "code": ("py", "js", "ts", "tsx", "jsx", "go", "rs", "c", "h", "cpp", "hpp", "java", "rb", "sh", "swift", "kt", "php", "html", "css", "json", "yaml", "yml", "toml", "sql", "lua"),
     "archive": ("zip", "tar", "gz", "tgz", "bz2", "xz", "zst", "7z", "rar", "deb", "rpm", "appimage"),
 }
-_SCREENSHOT_NAME = re.compile(r"screenshot|screen shot|screencapture|captura", re.IGNORECASE)
+_SCREENSHOT_NAME = re.compile(r"screenshot|screen shot|screencapture|captura|capture d.[ée]cran|snip", re.IGNORECASE)
 
 
 def search_time_bounds(search: FileSearch) -> tuple[float | None, float | None]:
