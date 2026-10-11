@@ -191,3 +191,18 @@ sources (`hermes_cli/auth_*.py`, read only; `auth.json` was **not** opened). Not
    replaces `hermes serve`), Windows needs ConPTY / a native module for a pty, and Hermes would write
    `auth.json` where Jarod never reads. The Nous flow in Hermes is also large (`auth_nous.py`, 1676 lines:
    invoke-JWT scope check, refresh-token rotation, a shared cross-process store, quarantine on failure).
+
+### Outcome (2026-10-11, same day)
+
+Option C kept (Nous stays an API-key provider, `NOUS_API_KEY`); device-code OAuth (B) is deferred to a separate phase with its own
+security audit; driving `hermes auth` through a pty (A) is dropped. Done in `jarod-cordis` (`spike/hermes-gateway`), shell untouched:
+
+| Commit | What |
+| --- | --- |
+| `e23769c6` | `model.options` reads local servers (`GET <base>/models`, 2 s timeout, 5 s cache, 2 s on failure; invalidated by `config.set`, `PUT /api/config`, `/model`). Embedding models and the local Whisper are not offered; no remote provider is queried |
+| `945ded7b` | `GET /api/config/raw`: read-only view limited to `model.provider` / `model.default`, values quoted and masked; `PUT` answers 405. A test fails if a key-shaped value, the vault key or the server address appears |
+| `31a548e9` | **Found in the window, step 3:** the picker sends `/model provider:model` but Jarod's `/model` only reads `provider/model`, so the choice left the provider unchanged and set the whole text as the model name. `slash.exec` now rewrites the unambiguous case (known provider id first). Verified in the window with a fake LM Studio and the real Ollama model (`qwen3.5:0.8b` answers) |
+| `1d0766a4` | `scripts\verify-jarod-os.ps1`: gateway reachable → models discovered → provider change → setting persisted after reopening the core → `config/raw` current and secret-free. Exit code 1 when the `/model` fix is removed |
+
+Step 3 finding recorded, not fixed (shell behaviour): the picker only changes the model while a conversation is open
+("Open a session first" otherwise). The gateway is not involved.
