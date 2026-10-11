@@ -1,4 +1,5 @@
 import { atom } from 'nanostores'
+import { isCommandId } from '../../shared/command-id.ts'
 import type { PageId } from '../shell/apps.ts'
 
 /*
@@ -92,7 +93,7 @@ export const $commandLog = atom<CommandEvent[]>([])
 
 export function defineCommands(commands: readonly OsCommand[]): void {
   for (const command of commands) {
-    if (!/^[a-z][a-z0-9]*(\.[a-z][a-zA-Z0-9_]*)+$/.test(command.id)) {
+    if (!isCommandId(command.id)) {
       throw new Error(`invalid command id ${command.id}`)
     }
 

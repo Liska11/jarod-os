@@ -4,6 +4,8 @@
  * answers them) and the renderer (which places them); pure and tested.
  */
 
+import { isCommandId } from './command-id.ts'
+
 export type PluginPlacement = 'menubar' | 'overview' | 'panel'
 
 export const PLUGIN_PLACEMENTS: readonly PluginPlacement[] = ['menubar', 'overview', 'panel']
@@ -55,7 +57,6 @@ export type PluginMethod = 'stats' | 'notify' | 'storage.get' | 'storage.set' | 
 
 const ID = /^[a-z0-9][a-z0-9-]{1,47}$/
 const HOST = /^(\*\.)?[a-z0-9-]+(\.[a-z0-9-]+)+(:\d{1,5})?$/
-const COMMAND = /^[a-z][a-z0-9]*(\.[a-z][a-zA-Z0-9]*)+$/
 
 /** A manifest as the shell uses it, or the reasons it cannot be used (pure; tested). */
 export function validateManifest(value: unknown, folder: string): { manifest: PluginManifest | null; errors: string[] } {
@@ -99,7 +100,7 @@ export function validateManifest(value: unknown, folder: string): { manifest: Pl
   for (const item of Array.isArray(raw.permissions) ? raw.permissions : []) {
     if (item === 'stats' || item === 'notify' || item === 'storage') {
       permissions.push(item)
-    } else if (typeof item === 'string' && item.startsWith('run:') && COMMAND.test(item.slice(4))) {
+    } else if (typeof item === 'string' && item.startsWith('run:') && isCommandId(item.slice(4))) {
       permissions.push(item as PluginPermission)
     } else {
       errors.push(`unknown permission ${JSON.stringify(item)}`)

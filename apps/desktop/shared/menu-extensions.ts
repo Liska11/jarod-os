@@ -4,6 +4,8 @@
  * programs) and shown by the control menu; pure and tested.
  */
 
+import { isCommandId } from './command-id.ts'
+
 export type MenuExtensionAction =
   | { kind: 'herald-os'; argv: string[] }
   | { kind: 'exec'; argv: string[] }
@@ -35,7 +37,6 @@ export const MENU_GROUPS = ['install', 'remove', 'update', 'style', 'trigger', '
 
 const MAX_ENTRIES = 50
 const MAX_ARGS = 64
-const COMMAND = /^[a-z][a-z0-9]*(\.[a-z][a-zA-Z0-9]*)+$/
 const ACTION_KEYS = ['herald-os', 'exec', 'url', 'command'] as const
 
 const slug = (text: string) =>
@@ -110,7 +111,7 @@ export function parseMenuExtensions(value: unknown): MenuExtensions {
     } else {
       const command = typeof entry.command === 'string' ? entry.command : ''
       const args = entry.args && typeof entry.args === 'object' && !Array.isArray(entry.args) ? (entry.args as Record<string, unknown>) : {}
-      action = COMMAND.test(command) ? { kind: 'command', command, args } : null
+      action = isCommandId(command) ? { kind: 'command', command, args } : null
 
       if (!action) {
         errors.push(`"${label}": "command" is a Herald OS command id, like "page.open"`)
