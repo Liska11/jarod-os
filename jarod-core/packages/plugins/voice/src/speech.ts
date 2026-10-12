@@ -1,7 +1,7 @@
 // Portage de packages/core/src/services/speech.ts (rév. 2e180305) — verbatim, sauf `findOnPath` (@jarod/kernel/find-on-path) et le moteur Piper (Jarod-cordis, PLAN §4.3), balisé « Piper ».
 import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { existsSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { findOnPath } from "@jarod/kernel/find-on-path";
@@ -81,6 +81,17 @@ const SAPI_SPEAK = [
   "$s = New-Object System.Speech.Synthesis.SpeechSynthesizer",
   "if ($env:JAROD_TTS_VOICE) { $s.SelectVoice($env:JAROD_TTS_VOICE) }",
   "if ($env:JAROD_TTS_RATE) { $s.Rate = [int]$env:JAROD_TTS_RATE }",
+  "$s.Speak([IO.File]::ReadAllText($env:JAROD_TTS_TEXT, [Text.Encoding]::UTF8))",
+  "$s.Dispose()",
+].join("; ");
+
+/** Comme SAPI_SPEAK, mais la voix va dans un fichier WAV (Jarod-OS : le noyau n'a pas de haut-parleur, la fenêtre joue le son). */
+const SAPI_SYNTHESIZE = [
+  "Add-Type -AssemblyName System.Speech",
+  "$s = New-Object System.Speech.Synthesis.SpeechSynthesizer",
+  "if ($env:JAROD_TTS_VOICE) { $s.SelectVoice($env:JAROD_TTS_VOICE) }",
+  "if ($env:JAROD_TTS_RATE) { $s.Rate = [int]$env:JAROD_TTS_RATE }",
+  "$s.SetOutputToWaveFile($env:JAROD_TTS_WAV)",
   "$s.Speak([IO.File]::ReadAllText($env:JAROD_TTS_TEXT, [Text.Encoding]::UTF8))",
   "$s.Dispose()",
 ].join("; ");
@@ -224,6 +235,47 @@ export class SpeechService {
       this.dropFile();
     }
     return { chars: spoken.length, truncated: spoken.length < body.length, voice };
+  }
+
+  /**
+   * La voix en octets WAV au lieu du haut-parleur : ce que `speak` dirait, rendu en fichier. Piper (voix `piper:<nom>`) et SAPI (Windows) ; macOS et Linux n'ont pas de
+   * sortie WAV vérifiée ici : refus nommé plutôt qu'un format inattendu.
+   */
+  async synthesize(text: string, opts: SpeechOptions = {}): Promise<SpeechResult & { wav: Buffer }> {
+    const wavPath = join(this.d.tmpDir ?? tmpdir(), `jarod-speech-${randomUUID()}.wav`);
+    try {
+      let result: SpeechResult;
+      if (String(opts.voice ?? "").trim().startsWith(PIPER_VOICE_PREFIX)) {
+        result = await this.synthesizePiper(text, opts, wavPath);
+      } else {
+        const engine = this.engine();
+        if (!engine) throw new Error("SPEECH_NO_ENGINE: aucun moteur vocal sur cette machine.");
+        if (engine.kind !== "sapi") throw new Error("SPEECH_NO_WAV: la sortie en fichier n'est pas prise en charge avec ce moteur vocal (Windows ou voix Piper).");
+        const body = String(text ?? "").trim();
+        if (!body) throw new Error("SPEECH_EMPTY: rien à lire.");
+        const rate = normaliseRate(opts.rate);
+        const spoken = body.length > SPEECH_MAX_CHARS ? body.slice(0, SPEECH_MAX_CHARS) : body;
+        const voice = String(opts.voice ?? "").trim();
+        await this.stop();
+        const file = join(this.d.tmpDir ?? tmpdir(), `jarod-speech-${randomUUID()}.txt`);
+        writeFileSync(file, spoken, "utf8");
+        this.textFile = file;
+        const env: NodeJS.ProcessEnv = { ...this.env(), JAROD_TTS_TEXT: file, JAROD_TTS_WAV: wavPath, JAROD_TTS_VOICE: voice, JAROD_TTS_RATE: String(Math.max(-10, Math.min(10, Math.round((rate - 1) * 10)))) };
+        const child = (this.d.spawn ?? defaultSpawn)(engine.command, ["-NoProfile", "-NonInteractive", "-Command", SAPI_SYNTHESIZE], env);
+        this.child = child;
+        try {
+          await waitFor(child, engine);
+        } finally {
+          if (this.child === child) this.child = null;
+          this.dropFile();
+        }
+        result = { chars: spoken.length, truncated: spoken.length < body.length, voice };
+      }
+      if (!existsSync(wavPath)) throw new Error("SPEECH_ENGINE_FAILED: le moteur n'a rien écrit.");
+      return { ...result, wav: readFileSync(wavPath) };
+    } finally {
+      rmSync(wavPath, { force: true });
+    }
   }
 
   /**

@@ -24,6 +24,8 @@ export interface NativeEffects {
   relaunch(): void
   /** Restart the Jarod engine (it reopens on the active profile). The effect defers the actual restart so the answer to this gesture still gets out. */
   restartBackend(): void
+  /** One tool call of the agent's browser (see ../agent-browser/host.ts): the answer is `{ ok, snapshot? }` or `{ ok: false, error }`. */
+  browser(params: Record<string, unknown>): Promise<unknown>
 }
 
 export const str = (value: unknown, max = 4000): string => (typeof value === 'string' ? value.slice(0, max) : '')
@@ -120,6 +122,8 @@ export async function runNativeGesture(kind: string, params: Record<string, unkn
       effects.relaunch()
 
       return true
+    case 'browser':
+      return effects.browser(params)
     case 'restartBackend':
       effects.restartBackend()
 

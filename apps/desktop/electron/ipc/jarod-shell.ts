@@ -1,5 +1,7 @@
-import { app, BrowserWindow, clipboard, dialog, ipcMain, nativeTheme, shell } from 'electron'
+import { app, BrowserWindow, clipboard, dialog, ipcMain, nativeTheme, session, shell } from 'electron'
 import { IPC } from '../../shared/ipc.ts'
+import { AgentBrowser, type ElectronBits } from '../agent-browser/agent-browser.ts'
+import { runBrowserOp } from '../agent-browser/host.ts'
 import { type NativeDialogs, type NativeEffects, runNativeGesture, str } from './jarod-shell-gestures.ts'
 
 /* Registers the `jarod.shell` gestures (see jarod-shell-gestures.ts for the rules). */
@@ -28,6 +30,13 @@ export function registerJarodShellIpc(getWindow: () => BrowserWindow | null, res
     }
   }
 
+  // The agent's browser: one isolated window, created on the first `browser_open`. Whether it shows and whether its session is kept on disk are the engine's
+  // settings, sent with every call.
+  let browserSettings = { visible: true, persistent: false }
+  const agentBrowser = new AgentBrowser({ electron: { BrowserWindow, session } as unknown as ElectronBits, visible: () => browserSettings.visible, persistent: () => browserSettings.persistent })
+
+  app.on('before-quit', () => void agentBrowser.close().catch(() => {}))
+
   const effects: NativeEffects = {
     writeClipboard: text => clipboard.writeText(text),
     openExternal: url => shell.openExternal(url),
@@ -40,6 +49,11 @@ export function registerJarodShellIpc(getWindow: () => BrowserWindow | null, res
     relaunch: () => {
       app.relaunch()
       app.quit()
+    },
+    browser: params => {
+      browserSettings = { visible: params.visible !== false, persistent: params.persistent === true }
+
+      return runBrowserOp(agentBrowser, params.op, params.args)
     },
     // Later, so the gateway still receives the answer to this very gesture before it is stopped.
     restartBackend: () => void setTimeout(restartBackend, 400)

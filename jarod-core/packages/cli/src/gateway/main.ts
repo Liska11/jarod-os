@@ -8,6 +8,7 @@ import { assertOneaiChannel, bindLocalModelsEvents, bindUpdateEvents, bindVoiceE
 import { ProfileManager } from "@jarod/plugin-persona";
 import { defaultDataRoot, openCore } from "../context.js";
 import { createBridgePort } from "./bridge.js";
+import { createRemoteBrowser } from "./browser.js";
 import { createBridgeShell } from "./bridge-shell.js";
 import { createGateway } from "./server.js";
 
@@ -37,10 +38,22 @@ const { core, dataDir, profile } = await openCore({ env, ...(init ? { init: true
 if (init) await core.init();
 await core.skills.reload();
 const gatewayVersion = "0.1.5-gateway-spike";
+// La voix : transcription par le fournisseur des réglages, synthèse par la voix de la machine (WAV) ; la fenêtre joue le son.
+const voiceService = (core.app as unknown as { voice?: { transcribe(audio: Buffer, mime: string): Promise<string>; speech: { synthesize(text: string, opts?: { voice?: string; rate?: number }): Promise<{ wav: Buffer }> } } }).voice;
+const voice = voiceService
+  ? {
+      transcribe: (audio: Buffer, mime: string) => voiceService.transcribe(audio, mime),
+      synthesize: async (text: string) => {
+        const v = core.settings.get("voice");
+        return (await voiceService.speech.synthesize(text, { ...(v.ttsVoice ? { voice: v.ttsVoice } : {}), rate: v.ttsRate })).wav;
+      },
+    }
+  : undefined;
 const gateway = createGateway({
   core,
   ...(workspace ? { workspace } : {}),
   version: gatewayVersion,
+  ...(voice ? { voice } : {}),
   ...(env.JAROD_GATEWAY_TOKEN ? { token: env.JAROD_GATEWAY_TOKEN } : {}),
   log: (line) => console.error(`[passerelle] ${line}`),
 });
@@ -56,8 +69,11 @@ const switchProfile = async (name: string): Promise<void> => {
     throw new Error("changement de profil impossible : aucune fenêtre pour relancer le moteur");
   }
 };
+// Le navigateur de l'agent : les outils `browser_*` n'existent qu'avec un hôte ; ici c'est la fenêtre de Jarod-OS (sa fenêtre isolée est tenue par son processus principal).
+const remoteBrowser = createRemoteBrowser({ link: gateway.link, visible: () => core.settings.get("browserVisible") !== false, persistent: () => core.settings.get("browserPersistent") === true });
+const detachBrowser = (core.app as unknown as { tools?: { attachBrowser(port: typeof remoteBrowser): () => void } }).tools?.attachBrowser(remoteBrowser);
 const shell = createBridgeShell({ version: gatewayVersion, dataDir, link: gateway.link });
-gateway.attachBridge(createBridgePort(createHandlers({ kernel: () => kernel, shell, registry: new RegistryClient(HERMES_REGISTRY), switchProfile }), (channel) => assertOneaiChannel("invoke", channel)));
+gateway.attachBridge(createBridgePort(createHandlers({ kernel: () => kernel, shell, registry: new RegistryClient(HERMES_REGISTRY), switchProfile, agentBrowser: remoteBrowser }), (channel) => assertOneaiChannel("invoke", channel)));
 const pushEvent = (channel: string, ...args: unknown[]) => gateway.link.send(channel, args);
 const unbindEvents = [bindLocalModelsEvents(kernel.localEngine?.models, pushEvent), bindUpdateEvents(core.app as never, pushEvent), bindVoiceEvents(core.app as never, pushEvent)];
 // Le serveur d'API compatible OpenAI que l'utilisateur avait allumé revient avec le noyau.
@@ -82,6 +98,7 @@ const stop = async () => {
   console.error("[passerelle] non servi :", JSON.stringify(gateway.unhandled()));
   console.error("[passerelle] événements de Jarod sans équivalent :", JSON.stringify(gateway.ignoredEvents()));
   for (const off of unbindEvents) off();
+  detachBrowser?.();
   closeAllApiServers();
   await gateway.close();
   await core.dispose().catch(() => {});

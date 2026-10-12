@@ -48,6 +48,7 @@ export interface JarodSettings {
   fallbacks: FallbackEntry[]
   imageDescription: { mode: 'auto' | 'always' | 'off'; provider: string; model: string }
   learning: { enabled: boolean; reviewEvery: number }
+  voice: { sttProvider: string; sttModel: string; ttsVoice: string; ttsRate: number }
 }
 
 export interface JarodOptions {

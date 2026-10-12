@@ -16,6 +16,7 @@
 import { DEFAULT_DOCKER, EcosystemFlags, ecosystemFlags, PermissionRule, type Settings, type ShellPolicy } from "@jarod/contracts";
 import { describeShellGuard } from "@jarod/plugin-agent";
 import { rulesWeakenings } from "@jarod/plugin-permissions";
+import { STT_DEFAULTS } from "@jarod/plugin-voice";
 import type { HandlerContext } from "./context.js";
 import { launchAtLoginRefusal, launchAtLoginView, type LoginItemsPort, setLaunchAtLogin } from "../tray-policy.js";
 import { shellsOf } from "./terminal.js";
@@ -554,6 +555,40 @@ const ENTRIES: Record<string, Entry> = {
       };
     },
   },
+  // La voix de la conversation parlée : le fournisseur de transcription (liste fermée : ceux qui ont un point d'accès de transcription), son modèle, la voix et le débit de
+  // la synthèse locale. `autoSpeak` (lire les réponses sur le haut-parleur DU NOYAU) n'est pas ici : la fenêtre joue elle-même la voix.
+  voice: {
+    read: (s) => ({ sttProvider: s.voice.sttProvider, sttModel: s.voice.sttModel, ttsVoice: s.voice.ttsVoice, ttsRate: s.voice.ttsRate }),
+    write: (v, current, env) => {
+      const o = record("voice", v, ["sttProvider", "sttModel", "ttsVoice", "ttsRate"]);
+      const next = { ...current.voice };
+      if (o.sttProvider !== undefined) {
+        const id = text("voice.sttProvider", o.sttProvider, 80, false);
+        if (!Object.hasOwn(STT_DEFAULTS, id)) bad("voice.sttProvider", `un fournisseur de transcription parmi ${Object.keys(STT_DEFAULTS).join(", ")}`);
+        env.provider(id); // lève : fournisseur inconnu
+        next.sttProvider = id;
+      }
+      if (o.sttModel !== undefined) next.sttModel = text("voice.sttModel", o.sttModel, 200);
+      if (o.ttsVoice !== undefined) next.ttsVoice = text("voice.ttsVoice", o.ttsVoice, 200);
+      if (o.ttsRate !== undefined) {
+        if (typeof o.ttsRate !== "number" || !Number.isFinite(o.ttsRate) || o.ttsRate < 0.25 || o.ttsRate > 4) bad("voice.ttsRate", "entre 0,25 et 4");
+        next.ttsRate = o.ttsRate as number;
+      }
+      return { voice: next };
+    },
+    // Transcrire envoie ce que vous dites (l'enregistrement) au fournisseur : un fournisseur qui sort de la machine et qui change demande une confirmation qui le NOMME.
+    confirm: (patch, current, env) => {
+      const next = patch.voice?.sttProvider;
+      if (!next || next === current.voice.sttProvider) return null;
+      const p = env.provider(next);
+      if (!p.leavesMachine) return null;
+      return {
+        message: `Envoyer vos enregistrements vocaux à ${p.name} ?`,
+        detail: "Pour transformer votre voix en texte, Jarod envoie chaque énoncé enregistré à ce fournisseur, hors de cette machine. Choisissez un serveur de cette machine (whisper.cpp, LM Studio) pour que la voix ne parte pas.",
+        action: "Autoriser l'envoi",
+      };
+    },
+  },
   learning: {
     read: (s) => ({ enabled: s.learning.enabled, reviewEvery: s.learning.reviewEvery }),
     write: (v, current) => {
@@ -617,8 +652,15 @@ export function createJarodSettingsHandlers(ctx: HandlerContext) {
       return true;
     },
     /** Les listes dont les écrans ont besoin pour proposer un choix (jamais de clé ni de secret). */
-    "get-jarod-options": async (): Promise<{ providers: { id: string; name: string; local: boolean; configured: boolean; models: string[] }[]; shells: { path: string; name: string }[]; shellGuardText: string }> => ({
+    "get-jarod-options": async (): Promise<{ providers: { id: string; name: string; local: boolean; configured: boolean; models: string[] }[]; shells: { path: string; name: string }[]; shellGuardText: string; sttProviders: { id: string; name: string; local: boolean; configured: boolean; defaultModel: string }[]; voices: string[] }> => ({
       shells: shellsOf(ctx),
+      // Les fournisseurs de transcription (ceux qui ont un point d'accès « audio/transcriptions ») et les voix de la machine (SAPI, Piper) : de quoi proposer un choix.
+      sttProviders: ctx
+        .kernel()
+        .agent.providers.list()
+        .filter((p) => Object.hasOwn(STT_DEFAULTS, p.id))
+        .map((p) => ({ id: p.id, name: p.name, local: !leavesMachine(p), configured: p.configured, defaultModel: STT_DEFAULTS[p.id]! })),
+      voices: (await ctx.kernel().voice?.speech.voices().catch(() => [] as string[])) ?? [],
       // Le texte de `/shell-guard` : EXACTEMENT ce qui s'applique, mécanisme de confinement de cette machine compris.
       shellGuardText: describeShellGuard(settings().getAll()).replace(/\*\*|`/g, ""),
       providers: ctx

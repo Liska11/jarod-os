@@ -2,8 +2,9 @@ import { IconAdjustments, IconArrowDown, IconArrowUp, IconBrain, IconListCheck, 
 import { useState } from 'react'
 import { GlassButton, Pill } from '../../../components/ui/glass.tsx'
 import { jarod } from '../../../lib/jarod.ts'
+import { notify } from '../../../store/notifications.ts'
 import { useBackendData } from '../../../lib/use-async.ts'
-import { ChipsEditor, ChoiceRow, NumberRow, SwitchRow, useJarodSettings } from './jarod-controls.tsx'
+import { ChipsEditor, ChoiceRow, NumberRow, reportEngineError, SwitchRow, useJarodSettings } from './jarod-controls.tsx'
 import {
   DECISION_LABEL,
   type Decision,
@@ -101,6 +102,13 @@ function BehaviourGroup({ s, api }: Props) {
       />
       <SwitchRow icon={<IconBrain />} label="Use memory in conversations" description="Facts the agent remembered are added to its context." keywords="memory inject remember" value={s.memoryInject} disabled={saving} onChange={value => void save({ memoryInject: value })} />
       <SwitchRow icon={<IconBrain />} label="Title conversations" description="Ask the model for a short title after the first exchange." keywords="auto title name conversation" value={s.autoTitle} disabled={saving} onChange={value => void save({ autoTitle: value })} />
+      <SwitchRow icon={<IconAdjustments />} label="Show the agent’s browser" description="When the agent browses the web, its own window is shown (it never takes the focus). Off keeps it hidden." keywords="browser visible window agent web" value={s.browserVisible} disabled={saving} onChange={value => void save({ browserVisible: value })} />
+      <SwitchRow icon={<IconShieldLock />} label="Keep the agent’s browser logins" description="Cookies and sign-ins made in the agent’s browser are kept on this PC, so it can act with those accounts. It is its own session, not your browser. You will be asked to confirm when turning it on." keywords="browser persistent cookies login session" value={s.browserPersistent} disabled={saving} onChange={value => void save({ browserPersistent: value })} />
+      <SettingsRow icon={<IconShieldLock />} label="Forget the agent’s browser" description="Erases its cookies, sign-ins and cache, and closes its window. Your own browsers are not touched." keywords="browser forget clear cookies">
+        <GlassButton size="sm" variant="secondary" disabled={saving} onClick={() => void jarod<boolean>('agent-browser-forget').then(done => done && notify({ title: 'Browser forgotten', level: 'success' }), error => reportEngineError('Browser', error))}>
+          Forget…
+        </GlassButton>
+      </SettingsRow>
       <SwitchRow icon={<IconBrain />} label="Learn from conversations" description="Every so often the agent reviews what happened and keeps what is worth remembering or turning into a skill." keywords="learning review curator skills" value={s.learning.enabled} disabled={saving} onChange={value => void save({ learning: { enabled: value } })} />
       <NumberRow icon={<IconBrain />} label="Review every" description="How many exchanges between two reviews." keywords="learning review every" value={s.learning.reviewEvery} format={value => `${value} exchanges`} validate={text => intProblem(text, 1, 1000)} disabled={saving || !s.learning.enabled} onSave={value => save({ learning: { reviewEvery: value } })} />
       <NumberRow icon={<IconListCheck />} label="Token limit per conversation" description="The conversation stops when it has used this many tokens (0 = no limit)." keywords="budget tokens limit session" value={s.sessionBudget.maxTokens} format={value => (value === 0 ? 'no limit' : value.toLocaleString('en-US'))} validate={text => intProblem(text, 1, 1_000_000_000, true)} disabled={saving} onSave={value => save({ sessionBudget: { maxTokens: value } })} />

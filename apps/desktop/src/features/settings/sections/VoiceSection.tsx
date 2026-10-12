@@ -5,6 +5,8 @@ import type { MicPermission, VoiceEngine, VoicePrefs } from '../../../../shared/
 import { GlassButton, Pill, Toggle } from '../../../components/ui/glass.tsx'
 import { deviceNoun } from '../../../lib/platform-labels.ts'
 import { rest } from '../../../lib/rest.ts'
+import { $engineKind } from '../../../store/engine.ts'
+import { JarodSpeechGroup } from './JarodSpeechGroup.tsx'
 import { useBackendData } from '../../../lib/use-async.ts'
 import { LOCAL_STT_MODELS } from '../../../lib/voice/stt-tuning.ts'
 import { $prefs, updatePrefs } from '../../../store/backend.ts'
@@ -54,6 +56,7 @@ export function VoiceSection() {
   const wake = useStore($wake)
   const live = useStore($voice).live
   const active = useStore($voiceActive)
+  const engineKind = useStore($engineKind)
   const config = useBackendData(() => rest.get<HermesConfig>('/api/config'))
   const [liveStatus, setLiveStatus] = useState<LiveStatus | null>(live.status)
   const [mic, setMic] = useState<MicPermission>('unknown')
@@ -237,6 +240,9 @@ export function VoiceSection() {
         </SettingsRow>
       </SettingsGroup>
 
+      {engineKind === 'jarod' ? (
+        <JarodSpeechGroup />
+      ) : (
       <SettingsGroup title="Speech providers (free engine)">
         <SettingsRow icon={<IconLanguage />} label="Speech to text" description={config.error ? `Could not read Hermes config: ${config.error}` : 'Which service turns your voice into text. Stored in Hermes config.yaml (stt.provider).'} keywords="stt transcribe whisper">
           <MenuDropdown ariaLabel="Speech-to-text provider" label={STT_PROVIDERS.find(p => p.id === sttProvider)?.label ?? sttProvider} value={sttProvider} items={STT_PROVIDERS} onSelect={id => void saveConfig('stt', id)} disabled={!config.data} />
@@ -250,6 +256,7 @@ export function VoiceSection() {
           <MenuDropdown ariaLabel="Text-to-speech provider" label={TTS_PROVIDERS.find(p => p.id === ttsProvider)?.label ?? ttsProvider} value={ttsProvider} items={TTS_PROVIDERS} onSelect={id => void saveConfig('tts', id)} disabled={!config.data} />
         </SettingsRow>
       </SettingsGroup>
+      )}
 
       <SettingsGroup title="Live cost controls">
         <SettingsRow icon={<IconClockPause />} label="Close after silence" description="A Live session bills per second while open; it is closed after this much quiet." keywords="idle timeout">

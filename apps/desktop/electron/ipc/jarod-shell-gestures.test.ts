@@ -15,7 +15,8 @@ function rig(answers: { open?: string | null; save?: string | null; button?: num
     setThemeSource: vi.fn(),
     quit: vi.fn(),
     relaunch: vi.fn(),
-    restartBackend: vi.fn()
+    restartBackend: vi.fn(),
+    browser: vi.fn(async () => ({ ok: true }))
   } satisfies NativeEffects
 
   return { dialogs, effects, run: (kind: string, params: Record<string, unknown> = {}) => runNativeGesture(kind, params, dialogs, effects) }
@@ -100,6 +101,8 @@ describe('effects', () => {
     await r.run('quit')
     await r.run('relaunch')
     expect([r.effects.quit.mock.calls.length, r.effects.relaunch.mock.calls.length]).toEqual([1, 1])
+    expect(await r.run('browser', { op: 'read', args: [] })).toEqual({ ok: true })
+    expect(r.effects.browser).toHaveBeenCalledWith({ op: 'read', args: [] })
     expect(await r.run('restartBackend')).toBe(true)
     expect(r.effects.restartBackend).toHaveBeenCalledTimes(1)
     await expect(r.run('format-disk')).rejects.toThrow(/unknown gesture/)

@@ -3,6 +3,7 @@
 //   WS   /api/ws?token=…      JSON-RPC 2.0 : sessions, tour de conversation, accords ; événements en notifications `event`
 //   *    /api/…               REST : jeton `X-Hermes-Session-Token` exigé ; tout ce qui n'est pas servi répond 404 ET est consigné
 // Ce qui n'est pas servi est le résultat de l'essai : `unhandled()` le liste, il alimente le plan de portage.
+import { redactText } from "@jarod/kernel/redact";
 import { randomBytes } from "node:crypto";
 import { statSync } from "node:fs";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
@@ -12,6 +13,7 @@ import type { AgentHooks } from "@jarod/plugin-agent";
 import { approvalParams, chooseWorkspace, eventFrame, isApproved, promptText, RPC, readyFrame, sessionInfo, sessionRow, toTranscript, TurnTranslator } from "./protocol.js";
 import { applyConfigPatch, CONFIG_RAW_READ_ONLY, configRaw, GUARDED_COMMANDS, type CommandResultLike, checkTerminalBackend, type CommandRegistryLike, commandCatalog, ConfigError, configGet, configSet, hermesConfig, modelOptions, normalizeModelCommand, type ProviderLike, setToolsetEnabled, slashResult, terminalBackends, type ToolLike, toolsets } from "./config.js";
 import { findMcp, type GatewayStatusLike, type McpConfigLike, type McpPort, mcpServers, messagingPlatforms, type PlatformId, probeResult, refusePlatformToggle, removeMcp, setMcpEnabled } from "./connections.js";
+import { AudioError, MAX_AUDIO_BODY, parseDataUrl, speakText, type VoicePort, wavDataUrl } from "./audio.js";
 import { BridgeError, type BridgePort, parseInvokeBody } from "./bridge.js";
 import type { ShellLink } from "./bridge-shell.js";
 import { ModelDiscovery } from "./discovery.js";
@@ -61,6 +63,8 @@ export interface GatewayOptions {
   log?: (line: string) => void;
   /** « Run now » attend la fin de l'exécution au plus ce temps (ms) avant de répondre ; 30 s par défaut (Herald abandonne à 60 s). */
   triggerWaitMs?: number;
+  /** La voix (transcription, synthèse) : sans elle, `/api/audio/*` répond 404 et la fenêtre le dit. */
+  voice?: VoicePort;
 }
 
 export interface Gateway {
@@ -362,13 +366,13 @@ export function createGateway(opts: GatewayOptions): Gateway {
 
   const MAX_BODY = 1024 * 1024;
   /** Le corps JSON d'une requête (1 Mio au plus) ; vide = `{}`. */
-  const readJson = (req: IncomingMessage): Promise<Record<string, unknown>> =>
+  const readJson = (req: IncomingMessage, limit = MAX_BODY): Promise<Record<string, unknown>> =>
     new Promise((resolve, reject) => {
       const parts: Buffer[] = [];
       let size = 0;
       req.on("data", (c: Buffer) => {
         size += c.length;
-        if (size > MAX_BODY) {
+        if (size > limit) {
           reject(new HttpError(413, "request body too large"));
           req.destroy();
         } else parts.push(c);
@@ -725,6 +729,31 @@ export function createGateway(opts: GatewayOptions): Gateway {
       if (await configRoutes(req, res, url.pathname)) return;
     }
     if (url.pathname.startsWith("/api/cron/") && (await cronRoutes(req, res, url.pathname))) return;
+    // La voix du shell : transcrire un énoncé, dire une réponse (WAV). Les fautes de configuration (pas de clé, pas de moteur vocal) arrivent avec les mots du noyau.
+    if (url.pathname === "/api/audio/transcribe" && req.method === "POST") {
+      if (!opts.voice) throw new HttpError(404, "la voix n'est pas branchée");
+      try {
+        const body = await readJson(req, MAX_AUDIO_BODY);
+        const audio = parseDataUrl(body.data_url, body.mime_type);
+        const transcript = await opts.voice.transcribe(audio.bytes, audio.mime);
+        return json(res, 200, { ok: true, transcript });
+      } catch (e) {
+        if (e instanceof AudioError) throw new HttpError(e.status, e.message);
+        if (e instanceof HttpError) throw e;
+        throw new HttpError(502, redactText(e instanceof Error ? e.message : String(e)).slice(0, 600));
+      }
+    }
+    if (url.pathname === "/api/audio/speak" && req.method === "POST") {
+      if (!opts.voice) throw new HttpError(404, "la voix n'est pas branchée");
+      try {
+        const text = speakText((await readJson(req)).text);
+        return json(res, 200, { ok: true, data_url: wavDataUrl(await opts.voice.synthesize(text)) });
+      } catch (e) {
+        if (e instanceof AudioError) throw new HttpError(e.status, e.message);
+        if (e instanceof HttpError) throw e;
+        throw new HttpError(502, redactText(e instanceof Error ? e.message : String(e)).slice(0, 600));
+      }
+    }
     if (url.pathname === "/api/jarod/invoke" && req.method === "POST") {
       if (!bridge) throw new HttpError(404, "les canaux de pilotage ne sont pas branchés");
       const body = await readJson(req);
@@ -757,6 +786,13 @@ export function createGateway(opts: GatewayOptions): Gateway {
   server.on("upgrade", (req, socket, head) => {
     const url = new URL(req.url ?? "/", "http://127.0.0.1");
     const supplied = url.searchParams.get("token") ?? req.headers["x-hermes-session-token"];
+    // Le flux de voix phrase par phrase n'est pas servi : on répond « repli » tout de suite, la fenêtre dit alors la réponse entière par `/api/audio/speak`.
+    if (url.pathname === "/api/audio/speak-stream" && supplied === token) {
+      const stream = acceptUpgrade(req, socket, head, { onText: () => {}, onClose: () => {} });
+      stream?.send(JSON.stringify({ type: "fallback" }));
+      stream?.close();
+      return;
+    }
     if (url.pathname !== "/api/ws" || supplied !== token) {
       socket.end(`HTTP/1.1 ${url.pathname === "/api/ws" ? "401 Unauthorized" : "404 Not Found"}\r\nConnection: close\r\n\r\n`);
       return;
