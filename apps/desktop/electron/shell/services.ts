@@ -2,14 +2,7 @@ import { execFile, spawn } from 'node:child_process'
 import { ipcMain } from 'electron'
 import { type ClipboardEntry, type HeraldOsResult, IPC, type PowerAction } from '../../shared/ipc.ts'
 import { log } from '../log.ts'
-
-const POWER_COMMANDS: Record<PowerAction, string[]> = {
-  suspend: ['systemctl', 'suspend'],
-  reboot: ['systemctl', 'reboot'],
-  poweroff: ['systemctl', 'poweroff'],
-  logout: ['niri', 'msg', 'action', 'quit', '--skip-confirmation'],
-  lock: ['herald-os', 'lock']
-}
+import { powerCommand } from './power.ts'
 
 function run(command: string, args: string[], input?: string, timeout = 60_000): Promise<HeraldOsResult> {
   return new Promise(resolve => {
@@ -24,7 +17,7 @@ function run(command: string, args: string[], input?: string, timeout = 60_000):
   })
 }
 
-/** System services every surface can reach: the CLI, power actions, clipboard history. Linux only. */
+/** System services every surface can reach: the CLI and clipboard history (Linux only), power actions (Linux and Windows). */
 export function registerServiceIpc(): void {
   ipcMain.handle(IPC.shellHeraldOs, async (_event, args: string[]): Promise<HeraldOsResult> => {
     if (process.platform !== 'linux') {
@@ -44,10 +37,10 @@ export function registerServiceIpc(): void {
   })
 
   ipcMain.handle(IPC.shellPower, async (_event, action: PowerAction) => {
-    const command = POWER_COMMANDS[action]
+    const command = powerCommand(process.platform, action)
 
     if (!command) {
-      throw new Error(`unknown power action ${String(action)}`)
+      throw new Error(`power action ${String(action)} is not available on ${process.platform}`)
     }
 
     log('services', `power ${action}`)

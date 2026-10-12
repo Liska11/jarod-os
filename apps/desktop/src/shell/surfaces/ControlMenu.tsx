@@ -142,8 +142,8 @@ export async function runPower(action: PowerAction): Promise<string | null> {
   const bridge = window.heraldOS?.shell?.power
   const platform = $env.get()?.platform
 
-  // systemctl / niri / herald-os only exist on Jarod-OS Linux; elsewhere say so instead of spawning nothing.
-  if (typeof bridge !== 'function' || (platform && platform !== 'linux')) {
+  // systemctl / niri / herald-os only exist on Jarod-OS Linux, shutdown.exe on Windows; elsewhere say so instead of spawning nothing.
+  if (typeof bridge !== 'function' || (platform && platform !== 'linux' && platform !== 'win32')) {
     return CLI_UNAVAILABLE_MESSAGE
   }
 
