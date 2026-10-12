@@ -104,8 +104,14 @@ export class RoutingService {
 
   /** La chaîne à essayer, dans l'ordre. Les écartés passent derrière, jamais dehors. */
   order(candidates: Candidate[], strategy: Strategy = "order"): Candidate[] {
-    const available = candidates.filter((candidate) => !this.isDown(candidate));
-    const down = candidates.filter((candidate) => this.isDown(candidate));
+    // Une seule décision par candidat, mémorisée : `isDown` remet l'état à zéro quand le délai vient
+    // d'expirer (voir plus haut), donc deux appels successifs peuvent répondre deux choses
+    // différentes. Un candidat dont le refroidissement expirait entre les deux passes était alors
+    // écarté des disponibles puis rétabli dans les écartés : il ne sortait dans aucune des deux
+    // listes, et la chaîne le perdait — alors qu'un écarté doit passer derrière, jamais dehors.
+    const verdicts = candidates.map((candidate) => ({ candidate, down: this.isDown(candidate) }));
+    const available = verdicts.filter((verdict) => !verdict.down).map((verdict) => verdict.candidate);
+    const down = verdicts.filter((verdict) => verdict.down).map((verdict) => verdict.candidate);
     const sort = (list: Candidate[]): Candidate[] => {
       if (strategy === "fastest") {
         return [...list].sort((a, b) => rank(a, b, this, "latencyMs"));

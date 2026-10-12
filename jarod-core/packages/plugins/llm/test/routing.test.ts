@@ -76,4 +76,21 @@ describe("repli et disjoncteur", () => {
     // On essaie quand même : refuser de parler serait une panne de plus.
     expect(routing.order([a, b, c])).toHaveLength(3);
   });
+
+  it("garde dans la chaîne un candidat dont le délai expire PENDANT la décision", () => {
+    // Horloge qui avance de 30 s à chaque lecture : la première passe le voit encore écarté, la
+    // seconde le verrait rétabli. Deux appels à `isDown` décidaient donc sur deux états, et le
+    // candidat ne sortait ni dans les disponibles ni dans les écartés : la chaîne le perdait.
+    const clock = { value: 0 };
+    const routing = new RoutingService({ now: () => (clock.value += 30_000), failureThreshold: 3, cooldownMs: 60_000 });
+    for (let i = 0; i < 3; i += 1) routing.record(a, { ok: false });
+    expect(routing.order([a, b])).toEqual([b, a]);
+  });
+
+  it("n'essaie qu'une fois un candidat dont le délai vient d'expirer", () => {
+    const { routing, clock } = setup();
+    for (let i = 0; i < 3; i += 1) routing.record(a, { ok: false });
+    clock.value += 60_001;
+    expect(routing.order([b, a]).filter((candidate) => candidate === a)).toHaveLength(1);
+  });
 });
