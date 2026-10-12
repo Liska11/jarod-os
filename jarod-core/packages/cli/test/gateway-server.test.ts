@@ -260,4 +260,52 @@ describe("passerelle compatible Hermes", () => {
     expect(gw.unhandled()).toEqual({ "rpc usage.bars": 2 });
     c.close();
   });
+
+  it("masque un secret dans un message d'erreur RPC, pour la fenêtre comme pour le journal", async () => {
+    const lines: string[] = [];
+    const secret = "sk-abcdefghijklmnopqrstuvwx";
+    const { core } = fakeCore(async () => {});
+    const gw = createGateway({
+      core: { ...core, sessions: { ...core.sessions, create: () => { throw new Error(`le fournisseur a refusé la clé (api_key=${secret})`); } } },
+      version: "test",
+      log: (s: string) => void lines.push(s),
+    });
+    open.push(gw);
+    const c = await connect(gw, await gw.listen(0));
+    const refused = await c.call("session.create", { title: "Essai" });
+    expect(refused.error).toMatchObject({ code: -32603 });
+    expect(refused.error?.message).toContain("sk-[masqué]");
+    expect(refused.error?.message).not.toContain(secret);
+    expect(lines.join("\n")).not.toContain(secret);
+    c.close();
+  });
+
+  it("ne journalise que le chemin d'une requête REST et masque les secrets des réponses d'erreur", async () => {
+    const lines: string[] = [];
+    const secret = "sk-abcdefghijklmnopqrstuvwx";
+    const job = { id: "j1", name: "J", prompt: "p", spec: { kind: "interval" as const, minutes: 5 }, enabled: true, lastRun: null, nextRun: null, lastStatus: null };
+    const sched = {
+      list: (): never => { throw new Error(`le planificateur a échoué (api_key=${secret})`); },
+      get: () => job,
+      save: (): never => { throw new Error(`enregistrement refusé (secret=${secret})`); },
+      delete: () => {},
+      runNow: () => Promise.resolve(),
+    };
+    const { core } = fakeCore(async () => {});
+    const gw = createGateway({ core: { ...core, scheduler: sched }, version: "test", log: (s: string) => void lines.push(s) });
+    open.push(gw);
+    const port = await gw.listen(0);
+    const headers = { "X-Hermes-Session-Token": gw.token };
+
+    const listed = await fetch(`http://127.0.0.1:${port}/api/cron/jobs?token=${secret}`, { headers });
+    expect(listed.status).toBe(500);
+    expect(lines.join("\n")).toContain("REST GET /api/cron/jobs");
+    expect(lines.join("\n")).not.toContain(secret);
+
+    const patched = await fetch(`http://127.0.0.1:${port}/api/cron/jobs/j1`, { method: "PUT", headers: { ...headers, "content-type": "application/json" }, body: JSON.stringify({ updates: { name: "n" } }) });
+    expect(patched.status).toBe(400);
+    const { detail } = (await patched.json()) as { detail: string };
+    expect(detail).toContain("[masqué]");
+    expect(detail).not.toContain(secret);
+  });
 });

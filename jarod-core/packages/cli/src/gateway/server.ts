@@ -353,7 +353,10 @@ export function createGateway(opts: GatewayOptions): Gateway {
       const result = await fn(params, conn);
       if (id !== undefined) send(conn, { jsonrpc: "2.0", id, result: result ?? null });
     } catch (e) {
-      const err = e instanceof RpcError ? e : new RpcError(RPC.internal, e instanceof Error ? e.message : String(e));
+      const raw = e instanceof RpcError ? e : new RpcError(RPC.internal, e instanceof Error ? e.message : String(e));
+      // Un message d'erreur peut citer ce qui a échoué — une URL avec un jeton, une clé recopiée dans un texte :
+      // il est masqué ici, une seule fois, pour le journal comme pour la fenêtre.
+      const err = new RpcError(raw.code, redactText(raw.message));
       log(`rpc ${frame.method} : ${err.message}`);
       if (id !== undefined) send(conn, { jsonrpc: "2.0", id, error: { code: err.code, message: err.message } });
     }
@@ -777,8 +780,10 @@ export function createGateway(opts: GatewayOptions): Gateway {
   const server: Server = createServer((req: IncomingMessage, res: ServerResponse) => {
     handle(req, res).catch((e: unknown) => {
       if (res.headersSent) return res.destroy();
-      if (e instanceof HttpError) return json(res, e.status, { detail: e.message });
-      log(`REST ${req.method} ${req.url} : ${e instanceof Error ? e.message : String(e)}`);
+      if (e instanceof HttpError) return json(res, e.status, { detail: redactText(e.message) });
+      // Le chemin seul : `req.url` porte la *query string*, où un appelant peut avoir mis un jeton.
+      const path = new URL(req.url ?? "/", "http://127.0.0.1").pathname;
+      log(`REST ${req.method} ${path} : ${redactText(e instanceof Error ? e.message : String(e))}`);
       json(res, 500, { detail: "internal error" });
     });
   });
