@@ -475,8 +475,15 @@ describe("Q19 — 5. tripwires de source (sites d'appel)", () => {
     });
   });
 
-  it("Q19-5 : `portability.apply(` n'a qu'un appelant (le handler d'import, après confirmations) ; le service n'écrit des réglages qu'à deux endroits (liste blanche, fusion MCP)", () => {
+  it("Q19-5 : `portability.apply(` n'a que les deux chemins d'import (ligne de commande, handler du shell), tous deux après confirmations ; le service n'écrit des réglages qu'à deux endroits (liste blanche, fusion MCP)", () => {
+    // 2026-10-12 : la ligne de commande (`jarod portability apply`, `--approve-mcp` obligatoire, l.60-68) et le handler
+    // d'import du shell (`backup.ts`) sont les deux seuls sites. Le second est encadré par la sélection de fichier native,
+    // `gate.userChosen`, la vérification du `manifest.json` et DEUX confirmations natives (`ctx.shell.confirm`) ; l'appel
+    // est construit à partir du plan inspecté, donc `approve` ne peut pas élargir ce que l'utilisateur a vu. Le script de
+    // maintenance (`scripts/portability-apply.mjs`, `--approve-mcp` obligatoire lui aussi) vit hors de `packages/`, donc
+    // hors de ce recensement.
     expect(count(/\bportability\.apply\(/g)).toEqual({
+      "packages/bridge/src/main/handlers/backup.ts": 1,
       "packages/cli/src/portability.ts": 1,
     });
     expect(count(/\bthis\.d\.settings\.set\(/g)["packages/plugins/memory/src/portability.ts"]).toBe(2);
@@ -484,7 +491,13 @@ describe("Q19 — 5. tripwires de source (sites d'appel)", () => {
 
   // Jarod-OS : le noyau n'a plus d'IPC Electron (le shell parle à la passerelle en JSON-RPC) ; aucun `ipcMain` ne doit réapparaître dans le noyau.
   it("aucun `ipcMain` dans le noyau", () => {
-    expect(count(/\bipcMain\.(?:handle|on|once)\(/g)).toEqual({});
+    // 2026-10-12 : le noyau ne dépend d'Electron nulle part, et c'est la garde qui compte : un `import { ipcMain } from "electron"`
+    // ne compilerait même pas hors d'Electron.
+    expect(count(/from\s+["']electron["']|require\(["']electron["']\)/g)).toEqual({});
+    // Le seul `ipcMain` restant est le transport INJECTÉ de l'ancien guichet (`IpcMainLike`, un paramètre de
+    // `registerOneaiHandlers`) : aucun fichier du noyau n'en fabrique. Le shell passe par `jarod.invoke` (JSON-RPC) ;
+    // `dispatchOneaiCall` n'a que des appelants de test, `registerOneaiHandlers` aucun appelant de production.
+    expect(count(/\bipcMain\.(?:handle|on|once)\(/g)).toEqual({ "packages/bridge/src/main/ipc.ts": 1 });
   });
 });
 
