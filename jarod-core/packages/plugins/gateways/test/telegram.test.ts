@@ -100,4 +100,69 @@ describe("telegram gateway", () => {
     expect(statuses[0]!.error).toMatch(/<jeton>/);
     expect(JSON.stringify(statuses)).not.toContain(token);
   });
+
+  it("ne confirme l'offset à Telegram qu'après la fin du traitement (un incident rejoue le message)", async () => {
+    const offsets: number[] = [];
+    const sent: string[] = [];
+    const queue: unknown[] = [[{ update_id: 7, message: { chat: { id: 42 }, text: "Bonjour" } }]];
+    let inFlight = 0;
+    let confirmedInFlight = 0;
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
+    let entered!: () => void;
+    const started = new Promise<void>((r) => (entered = r));
+    const api = await new Promise<string>((resolve) => {
+      server = createServer((req, res) => {
+        let body = "";
+        req.on("data", (c) => (body += c));
+        req.on("end", async () => {
+          const method = req.url!.split("/").pop();
+          const json = body ? JSON.parse(body) : {};
+          let result: unknown = true;
+          if (method === "getMe") result = { username: "jarod_bot" };
+          if (method === "getUpdates") {
+            offsets.push(json.offset);
+            // Telegram tient une mise à jour pour acquise dès qu'un getUpdates cite un offset plus
+            // grand (au-delà de son `update_id`) : c'est cette confirmation pendant le traitement qui
+            // perdait le message.
+            if (inFlight > 0 && json.offset > 0) confirmedInFlight++;
+            const next = queue.shift();
+            if (!next) await new Promise((r) => setTimeout(r, 200));
+            result = next ?? [];
+          }
+          if (method === "sendMessage") sent.push(json.text);
+          res.writeHead(200, { "content-type": "application/json" });
+          res.end(JSON.stringify({ ok: true, result }));
+        });
+      }).listen(0, () => resolve(`http://127.0.0.1:${(server!.address() as AddressInfo).port}`));
+    });
+
+    const gw = new TelegramGateway(
+      "123:abc",
+      () => ["42"],
+      async () => {
+        inFlight = 1;
+        entered();
+        await gate;
+        inFlight = 0;
+        return "Bonjour Bob !";
+      },
+      api,
+    );
+    await gw.start();
+    await started; // le message est en cours de traitement
+    // Laisse le temps à la boucle de reprendre si elle ne patiente pas après le traitement.
+    for (let i = 0; i < 25 && !confirmedInFlight; i++) await new Promise((r) => setTimeout(r, 20));
+    expect(confirmedInFlight).toBe(0); // la mutation (offset avancé avant, `void this.handle`) donne 1
+    expect(offsets).toEqual([0]);
+    expect(sent).toEqual([]); // rien n'est répondu avant la fin du traitement
+
+    release();
+    for (let i = 0; i < 50 && !(sent.length && offsets.includes(8)); i++) await new Promise((r) => setTimeout(r, 20));
+    gw.stop();
+    expect(sent).toEqual(["Bonjour Bob !"]);
+    // L'offset n'est avancé qu'après la réponse, et il ne repart jamais de zéro (aucun doublon).
+    expect(offsets.every((o) => o === 0 || o === 8)).toBe(true);
+    expect(offsets).toContain(8);
+  });
 });

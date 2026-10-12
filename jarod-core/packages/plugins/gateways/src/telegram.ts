@@ -155,18 +155,26 @@ export class TelegramGateway extends Emitter<{ status: GatewayStatus }> {
         );
         failures = 0;
         for (const u of updates) {
-          this.offset = u.update_id + 1;
           const m = u.message;
-          if (!m) continue;
-          const files = this.filesOf(m);
-          const text = m.text ?? m.caption ?? "";
-          if (!text && files.length === 0) continue;
-          void this.handle({
+          const files = m ? this.filesOf(m) : [];
+          const text = m?.text ?? m?.caption ?? "";
+          // Rien à traiter (mise à jour sans message, ou sans texte ni fichier) : l'offset peut être
+          // avancé tout de suite, il n'y a rien à rejouer.
+          if (!m || (!text && files.length === 0)) {
+            this.offset = u.update_id + 1;
+            continue;
+          }
+          // L'offset n'est avancé qu'APRÈS la fin du traitement, et le traitement est attendu (donc
+          // sérialisé) : Telegram ne tient une mise à jour pour acquise que lorsqu'un `getUpdates` est
+          // rappelé avec le nouvel offset. Un incident en cours de traitement la laisse en attente côté
+          // serveur, donc rejouée au tour suivant, au lieu d'être perdue.
+          await this.handle({
             chatId: String(m.chat.id),
             text,
             from: m.from?.username ?? m.from?.first_name ?? "?",
             ...(files.length ? { files } : {}),
           });
+          this.offset = u.update_id + 1;
         }
       } catch (e) {
         if (controller.signal.aborted) break;
