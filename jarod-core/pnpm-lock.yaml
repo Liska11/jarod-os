@@ -186,8 +186,56 @@ importers:
         specifier: 5.0.2
         version: 5.0.2(@types/node@24.13.6)(@vitest/coverage-v8@5.0.2)(jsdom@26.1.0(supports-color@7.2.0))(vite@8.3.1(@types/node@24.13.6)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15))
 
+  packages/bridge:
+    dependencies:
+      '@jarod/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@jarod/kernel':
+        specifier: workspace:*
+        version: link:../kernel
+      '@jarod/plugin-agent':
+        specifier: workspace:*
+        version: link:../plugins/agent
+      '@jarod/plugin-automation':
+        specifier: workspace:*
+        version: link:../plugins/automation
+      '@jarod/plugin-gateways':
+        specifier: workspace:*
+        version: link:../plugins/gateways
+      '@jarod/plugin-llm':
+        specifier: workspace:*
+        version: link:../plugins/llm
+      '@jarod/plugin-permissions':
+        specifier: workspace:*
+        version: link:../plugins/permissions
+      '@jarod/plugin-persona':
+        specifier: workspace:*
+        version: link:../plugins/persona
+      '@jarod/plugin-scheduler':
+        specifier: workspace:*
+        version: link:../plugins/scheduler
+      '@jarod/plugin-skills':
+        specifier: workspace:*
+        version: link:../plugins/skills
+      '@jarod/plugin-storage':
+        specifier: workspace:*
+        version: link:../plugins/storage
+      '@jarod/plugin-updates':
+        specifier: workspace:*
+        version: link:../plugins/updates
+      '@jarod/plugin-voice':
+        specifier: workspace:*
+        version: link:../plugins/voice
+      '@jarod/plugin-workflows':
+        specifier: workspace:*
+        version: link:../plugins/workflows
+
   packages/cli:
     dependencies:
+      '@jarod/bridge':
+        specifier: workspace:*
+        version: link:../bridge
       '@jarod/contracts':
         specifier: workspace:*
         version: link:../contracts

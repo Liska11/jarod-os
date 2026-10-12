@@ -1,0 +1,30 @@
+{
+  "name": "@jarod/bridge",
+  "private": true,
+  "version": "0.1.5",
+  "description": "Les canaux de pilotage de Jarod (fournisseurs, modèles locaux, skills, profils, messageries…) : les handlers de l'application jarod-cordis, sans Electron, servis par la passerelle de Jarod-OS.",
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@jarod/contracts": "workspace:*",
+    "@jarod/kernel": "workspace:*",
+    "@jarod/plugin-agent": "workspace:*",
+    "@jarod/plugin-automation": "workspace:*",
+    "@jarod/plugin-gateways": "workspace:*",
+    "@jarod/plugin-llm": "workspace:*",
+    "@jarod/plugin-permissions": "workspace:*",
+    "@jarod/plugin-persona": "workspace:*",
+    "@jarod/plugin-scheduler": "workspace:*",
+    "@jarod/plugin-skills": "workspace:*",
+    "@jarod/plugin-storage": "workspace:*",
+    "@jarod/plugin-updates": "workspace:*",
+    "@jarod/plugin-voice": "workspace:*",
+    "@jarod/plugin-workflows": "workspace:*"
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  }
+}

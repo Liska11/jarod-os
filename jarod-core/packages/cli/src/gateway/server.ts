@@ -11,6 +11,8 @@ import type { AgentHooks } from "@jarod/plugin-agent";
 import { approvalParams, chooseWorkspace, eventFrame, isApproved, promptText, RPC, readyFrame, sessionInfo, sessionRow, toTranscript, TurnTranslator } from "./protocol.js";
 import { applyConfigPatch, CONFIG_RAW_READ_ONLY, configRaw, GUARDED_COMMANDS, type CommandResultLike, checkTerminalBackend, type CommandRegistryLike, commandCatalog, ConfigError, configGet, configSet, hermesConfig, modelOptions, normalizeModelCommand, type ProviderLike, setToolsetEnabled, slashResult, terminalBackends, type ToolLike, toolsets } from "./config.js";
 import { findMcp, type GatewayStatusLike, type McpConfigLike, type McpPort, mcpServers, messagingPlatforms, type PlatformId, probeResult, refusePlatformToggle, removeMcp, setMcpEnabled } from "./connections.js";
+import { BridgeError, type BridgePort, parseInvokeBody } from "./bridge.js";
+import type { ShellLink } from "./bridge-shell.js";
 import { ModelDiscovery } from "./discovery.js";
 import { clearProviderKey, type KeySources, providerRows, setExtraProviderKeys, setProviderKey, setProviderOverride, testProvider } from "./providers.js";
 import { analytics, parseDays, periodStart, type UsageRow, USAGE_SQL } from "./usage.js";
@@ -68,6 +70,10 @@ export interface Gateway {
   unhandled(): Record<string, number>;
   /** Événements de Jarod sans équivalent côté shell, par type. */
   ignoredEvents(): Record<string, number>;
+  /** Branche les canaux de pilotage (`POST /api/jarod/invoke`) ; sans cela la route répond 404. */
+  attachBridge(port: BridgePort): void;
+  /** Le lien avec la fenêtre : événements poussés et gestes natifs demandés (boîtes « Ouvrir », confirmations…). */
+  readonly link: ShellLink;
 }
 
 class RpcError extends Error {
@@ -107,6 +113,7 @@ export function createGateway(opts: GatewayOptions): Gateway {
   const conns = new Set<Conn>();
   const turns = new Map<string, TurnTranslator>();
   let serverRequestSeq = 0;
+  let bridge: BridgePort | null = null;
 
   const send = (conn: Conn, frame: unknown) => conn.ws.send(JSON.stringify(frame));
 
@@ -675,6 +682,18 @@ export function createGateway(opts: GatewayOptions): Gateway {
       if (await configRoutes(req, res, url.pathname)) return;
     }
     if (url.pathname.startsWith("/api/cron/") && (await cronRoutes(req, res, url.pathname))) return;
+    if (url.pathname === "/api/jarod/invoke" && req.method === "POST") {
+      if (!bridge) throw new HttpError(404, "les canaux de pilotage ne sont pas branchés");
+      const body = await readJson(req);
+      try {
+        const call = parseInvokeBody(body);
+        const result = await bridge.invoke(call.channel, call.args);
+        return json(res, 200, { result: result ?? null });
+      } catch (e) {
+        if (e instanceof BridgeError) throw new HttpError(e.status, e.message);
+        throw e;
+      }
+    }
     const key = `${req.method} ${url.pathname}`;
     bump(unhandled, key);
     log(`REST non servi : ${key}`);
@@ -731,5 +750,18 @@ export function createGateway(opts: GatewayOptions): Gateway {
       }),
     unhandled: () => Object.fromEntries(unhandled),
     ignoredEvents: () => Object.fromEntries(ignored),
+    attachBridge: (port) => {
+      bridge = port;
+    },
+    link: {
+      send: (channel, args) => {
+        for (const c of conns) send(c, eventFrame("jarod.event", undefined, { channel, args }));
+      },
+      // La demande va à la fenêtre la plus récemment connectée ; sans fenêtre, `null` (refus).
+      ask: (kind, params = {}) => {
+        const conn = [...conns].at(-1);
+        return conn ? askClient(conn, "jarod.shell", { kind, ...params }) : Promise.resolve(null);
+      },
+    },
   };
 }

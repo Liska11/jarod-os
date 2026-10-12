@@ -4,7 +4,10 @@
 // `gateway.json` (url + jeton, 0600) dans le dossier du profil ; Ctrl-C affiche ce que le shell a demandé sans l'obtenir.
 import { chmodSync, existsSync, realpathSync, statSync, writeFileSync } from "node:fs";
 import { isAbsolute, join } from "node:path";
-import { openCore } from "../context.js";
+import { assertOneaiChannel, bindLocalModelsEvents, bindUpdateEvents, bindVoiceEvents, createHandlers, desktopKernelOf } from "@jarod/bridge";
+import { defaultDataRoot, openCore } from "../context.js";
+import { createBridgePort } from "./bridge.js";
+import { createBridgeShell } from "./bridge-shell.js";
 import { createGateway } from "./server.js";
 
 const env = process.env;
@@ -29,16 +32,23 @@ if (wsRaw) {
 // `--init` : le cœur complet (verrou du profil, tick du planificateur, MCP, passerelles de messagerie), pour une application qui reste ouverte ;
 // sans lui, le noyau minimal de l'essai (les planifications ne tirent que par « Run now »).
 const init = process.argv.includes("--init");
-const { core, dataDir } = await openCore({ env, ...(init ? { init: true } : {}) });
+const { core, dataDir, profile } = await openCore({ env, ...(init ? { init: true } : {}) });
 if (init) await core.init();
 await core.skills.reload();
+const gatewayVersion = "0.1.5-gateway-spike";
 const gateway = createGateway({
   core,
   ...(workspace ? { workspace } : {}),
-  version: "0.1.5-gateway-spike",
+  version: gatewayVersion,
   ...(env.JAROD_GATEWAY_TOKEN ? { token: env.JAROD_GATEWAY_TOKEN } : {}),
   log: (line) => console.error(`[passerelle] ${line}`),
 });
+// Les canaux de pilotage (fournisseurs, modèles locaux, skills…) : les handlers de jarod-cordis sur ce noyau, les gestes natifs demandés à la fenêtre.
+const kernel = desktopKernelOf(core.app as never, { profile, dataRoot: defaultDataRoot(env) });
+const shell = createBridgeShell({ version: gatewayVersion, dataDir, link: gateway.link });
+gateway.attachBridge(createBridgePort(createHandlers({ kernel: () => kernel, shell }), (channel) => assertOneaiChannel("invoke", channel)));
+const pushEvent = (channel: string, ...args: unknown[]) => gateway.link.send(channel, args);
+const unbindEvents = [bindLocalModelsEvents(kernel.localEngine?.models, pushEvent), bindUpdateEvents(core.app as never, pushEvent), bindVoiceEvents(core.app as never, pushEvent)];
 const port = await gateway.listen(env.JAROD_GATEWAY_PORT ? Number(env.JAROD_GATEWAY_PORT) : 0);
 const file = join(dataDir, "gateway.json");
 writeFileSync(file, JSON.stringify({ url: `http://127.0.0.1:${port}`, token: gateway.token }), { mode: 0o600 });
@@ -58,6 +68,7 @@ const stop = async () => {
   stopping = true;
   console.error("[passerelle] non servi :", JSON.stringify(gateway.unhandled()));
   console.error("[passerelle] événements de Jarod sans équivalent :", JSON.stringify(gateway.ignoredEvents()));
+  for (const off of unbindEvents) off();
   await gateway.close();
   await core.dispose().catch(() => {});
   process.exit(0);

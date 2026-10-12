@@ -22,7 +22,8 @@
     "@jarod/plugin-rag": "workspace:*",
     "@jarod/plugin-scheduler": "workspace:*",
     "@jarod/plugin-storage": "workspace:*",
-    "tsx": "^4.21.0"
+    "tsx": "^4.21.0",
+    "@jarod/bridge": "workspace:*"
   },
   "devDependencies": {
     "@agentclientprotocol/sdk": "1.5.0",
