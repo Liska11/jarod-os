@@ -473,3 +473,17 @@ temporary profile `jarod-lock-*`, parent shell gone, no Jarod-OS window open) he
 stopped with `taskkill /PID <pid> /T /F` on the owner's authorisation; the lock was gone (the folder deleted right after). Cleaned in `apps/desktop/release/`: the `HeraldOS-*` installers and
 blockmap (11 Oct, before the rename), the top-level `win-unpacked` and `win-unpacked.tmp`, and `installer/win-unpacked` with its `.tmp`. Kept: `installer-lot5/` (the build to test), `installer/`
 (12:19 build, installers only) and the top-level `JarodOS-*` of 11 Oct. `release/` is git-ignored.
+
+## Windows, Hermes page and icon (after the owner's first real test)
+
+- **Floating windows** (`lib/window-geometry.ts`, `store/windows.ts`, `shell/wm/Window.tsx`). Dragging the west or north edge past the minimum slid the window; the east edge past the desktop moved the left edge;
+  a desktop that shrank and grew back left every window small (reproduced in a real window, see `ANALYSE-2026-10-12.md`). Now the edge opposite the one held never moves, windows keep the size
+  chosen (`preferred`) beside the size drawn, apps may declare a minimum (`minSize`: camera 200×230, widget 240×160), and the resize handles sit on the outline, outside the rounded clip, so the corners can be grabbed.
+- **Hermes page divider** (`components/ui/split-row.tsx`, `lib/split.ts`). Drag, arrow keys (Shift = bigger step), Home/End, Enter or double-click to reset; the preview collapses below 160 px and a tab at the right
+  edge restores it; remembered per device (`localStorage`). The preview stays mounted while hidden; native views hide while the divider is held (`$webViewsPaused`).
+- **Under the composer** (`features/hermes/ComposerBar.tsx`): model picker (same data and `/model` as Settings → Preferred model, local servers first), context gauge (`lib/context-meter.ts`), Compact button (`/compact`).
+  The gauge needed the gateway to send `Usage`: `sessionUsage()` in `cli/src/gateway/protocol.ts`, on `session.info`, on `message.complete`, and as `session.usage` after `/compact` or `/model`. The window is the one the core knows
+  (`contextWindow` setting, LM Studio's requested context, llama.cpp preset); a model whose window is unknown shows a token count and never warns. After a compaction the reported figure is stale until the next reply,
+  so it is estimated from the text still sent and flagged "(estimated)".
+- **Icon**: `build/icon.png`, `public/brand/herald-icon.png` and the appx tiles come from `Pictures\Jarod.png`. `build/icon.icns` (macOS) is not regenerated (needs macOS); the menu-bar wings and the Hermes avatar inside the UI are unchanged.
+- **Test hygiene**: a second instance of the dev shell quits at once when the installed Jarod-OS runs (same instance lock): test runs now pass their own `--user-data-dir`.
