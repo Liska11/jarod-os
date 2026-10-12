@@ -329,6 +329,21 @@ if wanted: the model name and size, whether it was picked through the picker or 
 is the part of the brief that remains to be judged). `gateway.log` of that run holds nothing for it (last written 2026-10-11 19:57, before the `/api/config/raw` change), so
 there is no server-side trace to check the first message against.
 
+## Shell change: choose the model without an open conversation (2026-10-12)
+
+The owner allowed changes to the shell where needed. The first real run showed the cost of the old limit: on a fresh profile the first message goes out before any model can be
+chosen, because the picker refused to act without a conversation ("Open a session first").
+
+`apps/desktop/src/features/settings/sections/AgentsSection.tsx` (`PreferredModelRow.setModel`): with a conversation open nothing changes (`slash.exec /model provider:model`).
+Without one it now sends `config.set {key: 'model', value: 'provider:model'}`, which the Jarod gateway applies as the default of new conversations. The footer hint
+"Open a session to change the model." is removed. Against the original Hermes, which answers `config.set model requires a live session` (code 4001, `tui_gateway/methods_config_set.py`),
+the error is caught and the former "Open a session first" notification is shown, so that backend behaves as before.
+
+Verified in the window (dev shell + demo gateway, no conversation open, the owner's real LM Studio on port 1234): the list shows its two chat models (the embedding model is left
+out); choosing `qwen3-coder-30b-a3b-instruct` shows "Model changed · lmstudio · qwen3-coder-30b-a3b-instruct" and the button reads the same. `npm run typecheck` and `npm test` pass (358, 2 skipped).
+Not verified: a conversation started afterwards answering with that model (no message was sent to the real models in this check), and the fallback path against a real Hermes
+(read from its source, not run). The shell has no component test setup, so there is no automated test for this change.
+
 ## Verification debt: Linux and macOS (not verified)
 
 The renamed text and the new identity were applied to the Linux and macOS files too, but **none of it was run**. This machine is Windows only: the WSL

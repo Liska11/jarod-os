@@ -218,22 +218,26 @@ function PreferredModelRow({ ready }: { ready: boolean }) {
   }, [options.data, filter])
 
   const setModel = async (providerSlug: string, model: string) => {
-    if (!chat) {
-      notify({ title: 'Open a session first', body: 'Model changes apply to the active session and become the default for new ones.', level: 'info' })
-
-      return
-    }
-
     setPending(`${providerSlug}:${model}`)
 
     try {
-      await gatewayRequest('slash.exec', { session_id: chat.sessionId, command: `/model ${providerSlug}:${model}` })
+      if (chat) {
+        await gatewayRequest('slash.exec', { session_id: chat.sessionId, command: `/model ${providerSlug}:${model}` })
+      } else {
+        // No conversation yet: set the default for new ones. A backend that cannot do that without a live session (Hermes answers 4001) keeps the old hint.
+        await gatewayRequest('config.set', { key: 'model', value: `${providerSlug}:${model}` })
+      }
+
       markSaved()
       notify({ title: 'Model changed', body: `${providerSlug} · ${model}`, level: 'success' })
       setOpen(false)
       options.reload()
     } catch (error) {
-      notify({ title: 'Could not change model', body: errorText(error), level: 'error' })
+      if (!chat && /live session|session/i.test(errorText(error))) {
+        notify({ title: 'Open a session first', body: 'Model changes apply to the active session and become the default for new ones.', level: 'info' })
+      } else {
+        notify({ title: 'Could not change model', body: errorText(error), level: 'error' })
+      }
     } finally {
       setPending(null)
     }
@@ -276,7 +280,6 @@ function PreferredModelRow({ ready }: { ready: boolean }) {
                 </section>
               ))}
             </div>
-            {!chat && <div className="border-t border-line px-3 py-2 text-[11.5px] text-fg-4">Open a session to change the model.</div>}
           </div>
         )}
       </div>
