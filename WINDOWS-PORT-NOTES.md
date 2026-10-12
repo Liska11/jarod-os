@@ -316,6 +316,19 @@ only Chromium/Electron state (`Cache`, `Code Cache`, `GPUCache`, `Local Storage`
 folder comes from **my** earlier runs of the old `Herald OS.exe` (UI checks before the rename), not from an upstream Herald OS install; no process was using it and no
 install of the old app exists on this machine. My earlier note that it "may belong to an installed upstream Herald OS" was wrong. It is safe to delete; it stays for you to decide.
 
+## Test with a real model, in the window (2026-10-12, run by the owner, reported in chat)
+
+Launched by the owner through `scripts\Jarod-OS.cmd` with LM Studio as the local provider. Result as reported, not observed by me:
+
+- The model picker answered "Open a session first": the model choice is refused while no conversation is open (the shell behaviour documented above). The first message
+  sent at that point did not get an answer.
+- The following messages were answered by the real model.
+
+So the selector works with a real model once a conversation is open, and the "open a session first" limit is confirmed on a real run. Not recorded, to be filled in
+if wanted: the model name and size, whether it was picked through the picker or already loaded, and whether any tool was called (the driving of the PC with a capable model
+is the part of the brief that remains to be judged). `gateway.log` of that run holds nothing for it (last written 2026-10-11 19:57, before the `/api/config/raw` change), so
+there is no server-side trace to check the first message against.
+
 ## Verification debt: Linux and macOS (not verified)
 
 The renamed text and the new identity were applied to the Linux and macOS files too, but **none of it was run**. This machine is Windows only: the WSL
