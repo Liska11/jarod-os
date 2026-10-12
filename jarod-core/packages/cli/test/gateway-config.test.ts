@@ -35,6 +35,23 @@ describe("modèle", () => {
     expect(modelOptions(providers, s, true).providers.map((p) => p.slug)).toEqual(["anthropic", "openai", "ollama"]);
   });
 
+  it("model.options d'un profil qui n'a rien choisi : pas de modèle courant, les serveurs locaux d'abord, `needs_choice` ; un profil qui a choisi ne change pas", () => {
+    const written = new Set<string>();
+    const s = { ...fakeSettings(), isSet: (k: string) => written.has(k) };
+    const blank = modelOptions(providers, s, false);
+    expect(blank).toMatchObject({ provider: "", model: "", needs_choice: true });
+    expect(blank.providers.map((p) => p.slug)).toEqual(["ollama", "anthropic"]); // le serveur local avant le service payant, malgré l'ordre d'origine
+    expect(blank.providers.some((p) => p.is_current)).toBe(false);
+    written.add("activeProvider"); // à moitié écrit n'est pas choisi
+    expect(modelOptions(providers, s, false)).toMatchObject({ provider: "", needs_choice: true });
+    written.add("activeModel");
+    const chosen = modelOptions(providers, s, false);
+    expect(chosen).toMatchObject({ provider: "anthropic", model: "claude-a" });
+    expect(chosen).not.toHaveProperty("needs_choice");
+    expect(chosen.providers.map((p) => p.slug)).toEqual(["anthropic", "ollama"]);
+    expect(modelOptions(providers, fakeSettings(), false)).toMatchObject({ provider: "anthropic" }); // un faux noyau sans isSet : le choix est supposé fait
+  });
+
   it("parseModelChoice : fournisseur:modèle, fournisseur/modèle, modèle seul (fournisseur courant) ; vide refusé", () => {
     expect(parseModelChoice("openai:gpt-x", providers, "anthropic")).toEqual({ activeProvider: "openai", activeModel: "gpt-x" });
     expect(parseModelChoice("openai/gpt-x", providers, "anthropic")).toEqual({ activeProvider: "openai", activeModel: "gpt-x" });
@@ -192,14 +209,15 @@ afterEach(async () => {
   for (const d of dirs.splice(0)) rmSync(d, { recursive: true, force: true });
 });
 
-async function rig(answer: (call: { tool: string }) => "once" | "deny" = () => "deny") {
+async function rig(answer: (call: { tool: string }) => "once" | "deny" = () => "deny", opts: { blank?: boolean } = {}) {
   const root = mkdtempSync(join(tmpdir(), "jarod-gw-cfg-"));
   dirs.push(root);
   const pm = new ProfileManager(root);
   pm.create("travail");
   pm.setActive("travail");
   const { core } = await openCore({ env: { JAROD_HOME: root, JAROD_CUSTOM_API_KEY: KEY } });
-  core.settings.patch({ activeProvider: "custom", activeModel: "modele-test", providerOverrides: { custom: { baseUrl: "http://127.0.0.1:9/v1", models: ["modele-test", "autre"] } }, autoTitle: false });
+  // `blank` : un profil qui n'a encore rien choisi (ni fournisseur ni modèle écrits), avec seulement le fournisseur « custom » configuré.
+  core.settings.patch({ ...(opts.blank ? {} : { activeProvider: "custom", activeModel: "modele-test" }), providerOverrides: { custom: { baseUrl: "http://127.0.0.1:9/v1", models: ["modele-test", "autre"] } }, autoTitle: false });
   const gw = createGateway({ core, version: "test" });
   const port = await gw.listen(0);
   closers.push(async () => {
@@ -250,6 +268,23 @@ describe("devant le vrai noyau", { timeout: 60_000 }, () => {
     expect(custom).toMatchObject({ is_current: true, authenticated: true, models: ["modele-test", "autre"] });
     expect(r.providers.every((p: any) => p.authenticated)).toBe(true);
     expect((await rpc("model.options", { include_unconfigured: true })).result.providers.length).toBeGreaterThan(r.providers.length);
+  });
+
+  it("profil vierge : aucun modèle annoncé, le premier message est refusé avec le chemin à suivre, un choix par config.set le débloque", async () => {
+    const { core, rpc } = await rig(undefined, { blank: true });
+    expect(core.settings.isSet("activeProvider")).toBe(false);
+    const created = (await rpc("session.create", {})).result;
+    expect(created.info.model ?? "").toBe("");
+    expect(created.info.provider ?? "").toBe("");
+    expect((await rpc("model.options", {})).result).toMatchObject({ provider: "", model: "", needs_choice: true });
+    const refused = await rpc("prompt.submit", { session_id: created.session_id, text: "bonjour" });
+    expect(refused.error).toMatchObject({ code: -32000, message: expect.stringContaining("No model chosen yet") });
+    expect(refused.error.message).toContain("Preferred model");
+    // une commande `/` passe : c'est ainsi qu'on choisit
+    expect((await rpc("slash.exec", { session_id: created.session_id, command: "/model custom:autre" })).error).toBeUndefined();
+    expect(core.settings.isSet("activeProvider")).toBe(true);
+    expect((await rpc("model.options", {})).result).toMatchObject({ provider: "custom", model: "autre" });
+    expect((await rpc("model.options", {})).result).not.toHaveProperty("needs_choice");
   });
 
   it("/model fournisseur:modèle (la forme que Herald envoie) change AUSSI le fournisseur : le choix de Herald est utilisable, pas un nom de modèle collé sur l'ancien fournisseur", async () => {

@@ -12,6 +12,7 @@ import { $activeChat } from '../../../store/chat.ts'
 import { $connection, gatewayRequest } from '../../../store/gateway.ts'
 import { $hermesAuth, loginTarget, refreshHermesAuth, requestHermesLogin } from '../../../store/hermes-auth.ts'
 import { notify } from '../../../store/notifications.ts'
+import { modelButtonLabel } from './model-choice.ts'
 import { readTier, withTier } from './policy.ts'
 import { errorText, InlineNote, markSaved, MenuDropdown, RadioCard, SectionTitle, SettingsBlock, SettingsGroup, SettingsRow, Stepper, useDismiss } from './shared.tsx'
 
@@ -190,14 +191,6 @@ function AutonomyBlock({ ready }: { ready: boolean }) {
 
 // ---- Preferred model -----------------------------------------------------------------------
 
-function shortModel(model: string | undefined | null): string {
-  if (!model) {
-    return 'Automatic'
-  }
-
-  return model.includes('/') ? model.slice(model.indexOf('/') + 1) : model
-}
-
 function PreferredModelRow({ ready }: { ready: boolean }) {
   const chat = useStore($activeChat)
   const options = useBackendData(() => gatewayRequest('model.options', { include_unconfigured: false }), [], { enabled: ready })
@@ -207,7 +200,7 @@ function PreferredModelRow({ ready }: { ready: boolean }) {
   const ref = useDismiss(open, () => setOpen(false))
 
   const current = options.data?.model ?? chat?.info.model
-  const provider = options.data?.provider ?? chat?.info.provider
+  const needsChoice = Boolean((options.data as { needs_choice?: boolean } | null | undefined)?.needs_choice)
   const providers = useMemo(() => {
     const q = filter.trim().toLowerCase()
 
@@ -244,9 +237,9 @@ function PreferredModelRow({ ready }: { ready: boolean }) {
   }
 
   return (
-    <SettingsRow icon={<IconCpu />} label="Preferred model" description="Choose the model Hermes uses for most tasks." keywords="llm provider">
+    <SettingsRow icon={<IconCpu />} label="Preferred model" description={needsChoice ? 'Nothing chosen yet: pick a provider and a model to start chatting (a local server such as LM Studio is listed first when it is running).' : 'Choose the model Hermes uses for most tasks.'} keywords="llm provider">
       <div ref={ref} className="relative">
-        <Dropdown label={<span className="max-w-[240px] truncate">{provider ? `${provider} · ${shortModel(current)}` : `Hermes · ${shortModel(current)}`}</span>} onClick={() => ready && setOpen(o => !o)} className={cn(!ready && 'opacity-50')} />
+        <Dropdown label={<span className="max-w-[240px] truncate">{modelButtonLabel(options.data, chat?.info)}</span>} onClick={() => ready && setOpen(o => !o)} className={cn(!ready && 'opacity-50')} />
         {open && (
           <div className="float animate-pop absolute top-[calc(100%+6px)] right-0 z-30 flex w-[380px] flex-col rounded-lg" role="dialog" aria-label="Choose model">
             <label className="glass-input m-2 flex h-8 items-center gap-2 rounded-lg px-2.5">

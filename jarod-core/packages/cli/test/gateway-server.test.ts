@@ -465,3 +465,44 @@ describe("llm.oneshot et messages stockés (panneau Catch-up)", () => {
     expect((await get(`/api/sessions/${s.id}/messages`, null)).status).toBe(401);
   });
 });
+
+describe("premier message sans modèle choisi", () => {
+  const blankCore = () => {
+    const f = fakeCore(async (id, _t, hooks) => hooks.emit({ type: "done", sessionId: id }));
+    return { f, core: { ...f.core, settings: { ...f.core.settings, isSet: () => false } } };
+  };
+
+  it("refuse un message ordinaire tant que rien n'est choisi, sans démarrer de tour", async () => {
+    const { f, core } = blankCore();
+    const started: string[] = [];
+    const { gw, port } = await start({ ...core, start: (id, text, hooks) => (started.push(id), f.core.start(id, text, hooks)) });
+    const c = await connect(gw, port);
+    await c.call("session.create", {});
+    const r = await c.call("prompt.submit", { session_id: "s1", text: "bonjour" });
+    expect(r.error).toMatchObject({ code: -32000, message: expect.stringContaining("No model chosen yet") });
+    expect(started).toEqual([]);
+    c.close();
+  });
+
+  it("laisse passer une commande `/` et une conversation qui porte déjà son propre modèle", async () => {
+    const { f, core } = blankCore();
+    const { gw, port } = await start(core);
+    const c = await connect(gw, port);
+    await c.call("session.create", {});
+    expect((await c.call("prompt.submit", { session_id: "s1", text: "/model lmstudio/x" })).result).toEqual({ status: "streaming" });
+    await c.waitFor(() => c.events.some((e) => e.type === "message.complete"));
+    await c.call("session.create", {});
+    f.core.sessions.get("s2")!.context = { provider: "lmstudio", model: "x", workspace: "", agentMode: "build" } as never;
+    expect((await c.call("prompt.submit", { session_id: "s2", text: "bonjour" })).result).toEqual({ status: "streaming" });
+    c.close();
+  });
+
+  it("un noyau dont les réglages sont écrits (ou sans isSet) n'est pas touché", async () => {
+    const f = fakeCore(async (id, _t, hooks) => hooks.emit({ type: "done", sessionId: id }));
+    const { gw, port } = await start({ ...f.core, settings: { ...f.core.settings, isSet: () => true } });
+    const c = await connect(gw, port);
+    await c.call("session.create", {});
+    expect((await c.call("prompt.submit", { session_id: "s1", text: "bonjour" })).result).toEqual({ status: "streaming" });
+    c.close();
+  });
+});

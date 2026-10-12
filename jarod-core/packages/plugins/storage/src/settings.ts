@@ -44,6 +44,11 @@ export class SettingsService {
     return row ? parseJson(row.value, DEFAULT_SETTINGS[key]) : DEFAULT_SETTINGS[key];
   }
 
+  /** Le réglage a-t-il été ÉCRIT un jour (par opposition à sa valeur par défaut) ? Un profil vierge n'a encore rien choisi. */
+  isSet(key: keyof Settings): boolean {
+    return this.db.get<{ key: string }>("SELECT key FROM settings WHERE key = ?", key) !== undefined;
+  }
+
   set<K extends keyof Settings>(key: K, value: Settings[K]): void {
     this.db.run(
       "INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",

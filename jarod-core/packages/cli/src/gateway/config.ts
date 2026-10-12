@@ -45,6 +45,17 @@ const str = (v: unknown): string => (typeof v === "string" ? v : "");
 
 // --- modèle ------------------------------------------------------------------------------------------------
 
+/** Un profil vierge n'a encore choisi ni fournisseur ni modèle : les valeurs par défaut du noyau (Anthropic) ne sont pas un choix. */
+export interface ModelChoicePort {
+  get(key: string): unknown;
+  isSet?(key: string): boolean;
+}
+
+/** Sans `isSet` (faux noyau), le choix est supposé fait. */
+export function modelChosen(settings: ModelChoicePort): boolean {
+  return settings.isSet ? settings.isSet("activeProvider") && settings.isSet("activeModel") : true;
+}
+
 export interface ModelOptionProvider {
   slug: string;
   name: string;
@@ -58,9 +69,11 @@ export interface ModelOptionProvider {
 }
 
 /** `model.options` : les fournisseurs (configurés seulement, sauf demande contraire) avec leurs modèles, et le modèle actif. Les fournisseurs qui ne conversent pas (Whisper local) sont absents. */
-export function modelOptions(providers: readonly ProviderLike[], settings: SettingsPort, includeUnconfigured: boolean): { providers: ModelOptionProvider[]; model: string; provider: string } {
-  const provider = str(settings.get("activeProvider"));
-  const model = str(settings.get("activeModel"));
+export function modelOptions(providers: readonly ProviderLike[], settings: SettingsPort & ModelChoicePort, includeUnconfigured: boolean): { providers: ModelOptionProvider[]; model: string; provider: string; needs_choice?: true } {
+  const chosen = modelChosen(settings);
+  // Rien de choisi : ni modèle ni fournisseur « courant » (le défaut du noyau n'est pas un choix), et les serveurs locaux détectés d'abord (LM Studio, Ollama…).
+  const provider = chosen ? str(settings.get("activeProvider")) : "";
+  const model = chosen ? str(settings.get("activeModel")) : "";
   const rows = providers
     .filter((p) => !NON_CHAT_PROVIDERS.has(p.id) && (includeUnconfigured || p.configured))
     .map((p) => ({
@@ -74,6 +87,11 @@ export function modelOptions(providers: readonly ProviderLike[], settings: Setti
       auth_type: p.local ? ("none" as const) : ("api_key" as const),
       source: "jarod" as const,
     }));
+  if (!chosen) {
+    const local = (r: ModelOptionProvider) => (r.auth_type === "none" ? 0 : 1);
+    rows.sort((a, b) => local(a) - local(b)); // tri stable : l'ordre d'origine reste dans chaque groupe
+    return { providers: rows, model, provider, needs_choice: true };
+  }
   return { providers: rows, model, provider };
 }
 

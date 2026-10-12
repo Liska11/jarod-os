@@ -12,7 +12,7 @@ import type { AddressInfo } from "node:net";
 import type { Message, Session, SessionContext } from "@jarod/contracts";
 import type { AgentHooks } from "@jarod/plugin-agent";
 import { approvalParams, chooseWorkspace, eventFrame, isApproved, promptText, RPC, readyFrame, sessionInfo, sessionRow, storedMessages, toTranscript, TurnTranslator } from "./protocol.js";
-import { applyConfigPatch, CONFIG_RAW_READ_ONLY, configRaw, GUARDED_COMMANDS, type CommandResultLike, checkTerminalBackend, type CommandRegistryLike, commandCatalog, ConfigError, configGet, configSet, hermesConfig, modelOptions, normalizeModelCommand, type ProviderLike, setToolsetEnabled, slashResult, terminalBackends, type ToolLike, toolsets } from "./config.js";
+import { applyConfigPatch, CONFIG_RAW_READ_ONLY, modelChosen, configRaw, GUARDED_COMMANDS, type CommandResultLike, checkTerminalBackend, type CommandRegistryLike, commandCatalog, ConfigError, configGet, configSet, hermesConfig, modelOptions, normalizeModelCommand, type ProviderLike, setToolsetEnabled, slashResult, terminalBackends, type ToolLike, toolsets } from "./config.js";
 import { findMcp, type GatewayStatusLike, type McpConfigLike, type McpPort, mcpServers, messagingPlatforms, type PlatformId, probeResult, refusePlatformToggle, removeMcp, setMcpEnabled } from "./connections.js";
 import { AudioError, MAX_AUDIO_BODY, parseDataUrl, speakText, type VoicePort, wavDataUrl } from "./audio.js";
 import { BridgeError, type BridgePort, parseInvokeBody } from "./bridge.js";
@@ -38,7 +38,7 @@ export interface GatewayCore {
   start(sessionId: string, text: string | null, hooks: AgentHooks): { kind: string };
   stop(sessionId: string): void;
   updateSessionContext(sessionId: string | null, patch: Partial<SessionContext>): void;
-  settings: { get(key: string): unknown; patch?(p: Record<string, unknown>): void; setSecret?(key: string, value: string): void };
+  settings: { get(key: string): unknown; isSet?(key: string): boolean; patch?(p: Record<string, unknown>): void; setSecret?(key: string, value: string): void };
   /** Absents d'un faux noyau : la route correspondante reste alors non servie. */
   providers?: { list(): readonly ProviderLike[]; client?(id: string): { listModels(): Promise<string[]> }; setExtraKeys?(id: string, keys: string[]): void };
   tools?: { all(): readonly ToolLike[] };
@@ -111,6 +111,10 @@ interface Conn {
   ws: WsConnection;
   pending: Map<string, (result: unknown) => void>;
 }
+
+/** Ce que la fenêtre lit dans le chat quand on écrit avant d'avoir choisi : où aller, et ce qui est proposé en premier. */
+export const NO_MODEL_CHOSEN =
+  "No model chosen yet. Open Settings → Hermes & agents → Preferred model and pick a provider and a model first (a local server such as LM Studio is listed first when it is running).";
 
 const MAX_ONESHOT_CHARS = 200_000;
 /** Le shell abandonne à 150 s : la passerelle s'arrête avant lui. */
@@ -186,8 +190,10 @@ export function createGateway(opts: GatewayOptions): Gateway {
   const info = (id: string): Record<string, unknown> => {
     const session = core.sessions.get(id);
     if (!session) throw new RpcError(RPC.params, `unknown session ${id}`);
-    const provider = str(core.settings.get("activeProvider"));
-    const model = str(core.settings.get("activeModel"));
+    // Un profil vierge n'a rien choisi : on n'annonce pas le défaut du noyau comme s'il l'était.
+    const chosen = modelChosen(core.settings);
+    const provider = chosen ? str(core.settings.get("activeProvider")) : "";
+    const model = chosen ? str(core.settings.get("activeModel")) : "";
     return sessionInfo({
       session,
       running: turns.has(id),
@@ -202,7 +208,7 @@ export function createGateway(opts: GatewayOptions): Gateway {
   const settingsPort = () => {
     const s = core.settings;
     if (!s.patch) throw new RpcError(RPC.notFound, "settings are not available");
-    return { get: (k: string) => s.get(k), patch: (p: Record<string, unknown>) => s.patch!(p) };
+    return { get: (k: string) => s.get(k), ...(s.isSet ? { isSet: (k: string) => s.isSet!(k) } : {}), patch: (p: Record<string, unknown>) => s.patch!(p) };
   };
   const providerList = (): readonly ProviderLike[] => core.providers?.list() ?? [];
   // Les modèles que les serveurs locaux proposent à cet instant (LM Studio, Ollama…) : sans cela le sélecteur de Herald reste vide.
@@ -310,6 +316,12 @@ export function createGateway(opts: GatewayOptions): Gateway {
       if (!core.sessions.get(id)) throw new RpcError(RPC.params, `unknown session ${id}`);
       const text = promptText(p.text).trim();
       if (!text) throw new RpcError(RPC.params, "empty prompt");
+      // Un profil vierge n'a pas choisi de modèle : partir sur le défaut du noyau (Anthropic, sans clé) ne donnerait qu'une erreur de clé incompréhensible.
+      // Une conversation qui porte son propre modèle, ou une commande `/`, passe.
+      const own = core.sessions.get(id)?.context;
+      if (!modelChosen(core.settings) && !(own?.provider && own?.model) && !text.startsWith("/")) {
+        throw new RpcError(-32000, NO_MODEL_CHOSEN);
+      }
       // Avant de toucher à `turns` : un refus ne doit pas effacer le tour qui court (il ne pourrait plus être interrompu).
       if (turns.has(id)) throw new RpcError(-32000, "a turn is already running in this session");
       const translator = new TurnTranslator(id, (frame) => {
@@ -617,7 +629,10 @@ export function createGateway(opts: GatewayOptions): Gateway {
     if (!router || !settings.patch || !settings.setSecret) return false;
     const port = { get: (k: string) => settings.get(k), patch: (p: Record<string, unknown>) => settings.patch!(p), setSecret: (k: string, v: string) => settings.setSecret!(k, v) };
     const sources = () => (settings as { keySources?: () => KeySources }).keySources?.();
-    const snapshot = () => providerRows(router.list(), str(settings.get("activeProvider")), str(settings.get("activeModel")), sources());
+    const snapshot = () => {
+      const chosen = modelChosen(settings); // un profil vierge n'a aucun fournisseur actif : le défaut du noyau n'est pas un choix
+      return providerRows(router.list(), chosen ? str(settings.get("activeProvider")) : "", chosen ? str(settings.get("activeModel")) : "", sources());
+    };
     if (path === "/api/jarod/providers" && method === "GET") return done(200, snapshot());
     const m = /^\/api\/jarod\/providers\/([^/]+)(?:\/(key|extra-keys|test))?$/.exec(path);
     if (!m) return false;

@@ -189,6 +189,9 @@ describe("passerelle réelle", () => {
     const openai = before.json.providers.find((p: any) => p.id === "openai");
     expect(openai).toMatchObject({ has_key: false, configured: false });
     expect(before.json.providers.length).toBeGreaterThan(5);
+    // profil vierge : aucun fournisseur « actif » (le défaut du noyau n'est pas un choix de l'utilisateur)
+    expect(before.json.active).toEqual({ provider: "", model: "" });
+    expect(before.json.providers.some((p: any) => p.active)).toBe(false);
 
     const put = await call("PUT", "/api/jarod/providers/openai/key", { key: KEY });
     expect(put.status).toBe(200);
