@@ -462,4 +462,14 @@ of an answer; a late reply finds nothing. Before, a window that stayed silent fr
 **Still Mac/POSIX-shaped (not part of this lot):** the Files page's path arithmetic (breadcrumbs "Macintosh HD", `resolvePath`, `landingPath`, `joinPath`), the Linux crash-report parsing, and the
 plugins folder `~/.config/herald-os/plugins` offered by Settings → Plugins.
 
-**Known flake, not mine:** `scripts/verify-windows.ps1` can exit 1 with all six steps passing when its final `taskkill` finds the process already gone (seen once in four runs).
+**The `verify-windows.ps1` flake, fixed.** The script could exit 1 with all six steps passing when its final `taskkill` failed (the tree already gone): under `$ErrorActionPreference = 'Stop'`,
+Windows PowerShell 5.1 turns the native tool's stderr into a terminating error, and thrown from the `finally` block it ended the script before the verdict. `Stop-Tree` now runs `taskkill` with
+`Continue`, swallows its failure and restores the caller's preference: cleanup never decides the exit code. `scripts/verify-windows.test.ps1` loads the real `Stop-Tree` from the script and
+replaces `taskkill.exe` by a function that throws or writes an error; with the original function it fails 2 checks (mutation), with the fix it passes 7 of 7. Replayed three times against the
+real Hermes: 6 of 6 steps, exit 0, each time.
+
+**The orphan test core and the stale build outputs.** A test core of an earlier build (`node.exe gateway.mjs` plus its `--permission` runner, started 13:03 from `release\installer\win-unpacked`,
+temporary profile `jarod-lock-*`, parent shell gone, no Jarod-OS window open) held a lock that made the packaging fail with EBUSY. Identified by `Win32_Process` (command line and creation date),
+stopped with `taskkill /PID <pid> /T /F` on the owner's authorisation; the lock was gone (the folder deleted right after). Cleaned in `apps/desktop/release/`: the `HeraldOS-*` installers and
+blockmap (11 Oct, before the rename), the top-level `win-unpacked` and `win-unpacked.tmp`, and `installer/win-unpacked` with its `.tmp`. Kept: `installer-lot5/` (the build to test), `installer/`
+(12:19 build, installers only) and the top-level `JarodOS-*` of 11 Oct. `release/` is git-ignored.
