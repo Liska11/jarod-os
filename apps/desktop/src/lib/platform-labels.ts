@@ -1,8 +1,24 @@
 import { $env } from '../store/backend.ts'
 
-/** Host platform of the shell; `darwin` until main reports (the boot value on macOS builds). */
-export function hostPlatform(): NodeJS.Platform | 'darwin' {
-  return ($env.get()?.platform as NodeJS.Platform | undefined) ?? 'darwin'
+/** The platform a user agent string belongs to, or `unknown` (a test runner, an unusual shell). */
+export function platformOfAgent(agent: string): NodeJS.Platform | 'unknown' {
+  if (/Windows/i.test(agent)) {
+    return 'win32'
+  }
+
+  if (/Macintosh|Mac OS X/i.test(agent)) {
+    return 'darwin'
+  }
+
+  return /Linux|X11/i.test(agent) ? 'linux' : 'unknown'
+}
+
+/**
+ * Host platform of the shell: what main reported, else what the window's own user agent says (it knows the OS before main answers). Never a guess of
+ * macOS: until one of the two speaks the labels are the generic ones.
+ */
+export function hostPlatform(): NodeJS.Platform | 'unknown' {
+  return ($env.get()?.platform as NodeJS.Platform | undefined) ?? platformOfAgent(typeof navigator === 'undefined' ? '' : navigator.userAgent)
 }
 
 /** Name of the host file manager, for "Reveal in …" affordances. */
