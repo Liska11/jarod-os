@@ -53,20 +53,35 @@ export function readRuntimeLock(dataDir: string): RuntimeLock | null {
 export function acquireRuntimeLock(dataDir: string, mode: RuntimeMode, pid = process.pid): () => void {
   const path = join(dataDir, RUNTIME_LOCK_FILE);
   const mine: RuntimeLock = { pid, mode, startedAt: Date.now() };
-  for (let attempt = 0; attempt < 2; attempt++) {
+  for (let attempt = 0; attempt < 3; attempt++) {
     try {
       // `wx`: create only if absent, so two processes starting together cannot both win.
       writeFileSync(path, JSON.stringify(mine), { flag: "wx" });
-      return () => {
-        if (readRuntimeLock(dataDir)?.pid === pid) rmSync(path, { force: true });
-      };
     } catch (e) {
       if ((e as { code?: string }).code !== "EEXIST") throw e;
       const holder = readRuntimeLock(dataDir);
       if (holder && holder.pid !== pid && isProcessAlive(holder.pid)) throw new RuntimeLockError(holder);
       // Stale (dead holder, unreadable file, or our own pid from a previous core): take it over.
       rmSync(path, { force: true });
+      continue;
     }
+    // La création exclusive ne suffit pas : entre le `rmSync` du verrou périmé et notre écriture, un
+    // autre démarrage a pu supprimer notre fichier et poser le sien. On relit donc ce qui est
+    // RÉELLEMENT écrit, et pas seulement le pid : `startedAt` distingue notre écriture d'une reprise
+    // (deux noyaux peuvent porter le même pid, jamais le même instant).
+    const written = readRuntimeLock(dataDir);
+    if (written?.pid === pid && written.startedAt === mine.startedAt) {
+      return () => {
+        const current = readRuntimeLock(dataDir);
+        // Seulement si c'est encore NOTRE écriture : après une reprise, l'ancien détenteur ne doit
+        // pas effacer le verrou de celui qui a repris le profil.
+        if (current?.pid === pid && current.startedAt === mine.startedAt) rmSync(path, { force: true });
+      };
+    }
+    // Course perdue : quelqu'un d'autre tient le profil. On le dit plutôt que de continuer à deux.
+    if (written && isProcessAlive(written.pid)) throw new RuntimeLockError(written);
+    // Fichier disparu, illisible, ou repris par un processus mort : on retente.
+    rmSync(path, { force: true });
   }
   throw new Error(`Impossible de prendre le verrou ${path}`);
 }
