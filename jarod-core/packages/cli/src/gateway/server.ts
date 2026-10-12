@@ -12,6 +12,7 @@ import { approvalParams, chooseWorkspace, eventFrame, isApproved, promptText, RP
 import { applyConfigPatch, CONFIG_RAW_READ_ONLY, configRaw, GUARDED_COMMANDS, type CommandResultLike, checkTerminalBackend, type CommandRegistryLike, commandCatalog, ConfigError, configGet, configSet, hermesConfig, modelOptions, normalizeModelCommand, type ProviderLike, setToolsetEnabled, slashResult, terminalBackends, type ToolLike, toolsets } from "./config.js";
 import { findMcp, type GatewayStatusLike, type McpConfigLike, type McpPort, mcpServers, messagingPlatforms, type PlatformId, probeResult, refusePlatformToggle, removeMcp, setMcpEnabled } from "./connections.js";
 import { ModelDiscovery } from "./discovery.js";
+import { clearProviderKey, type KeySources, providerRows, setExtraProviderKeys, setProviderKey, setProviderOverride, testProvider } from "./providers.js";
 import { analytics, parseDays, periodStart, type UsageRow, USAGE_SQL } from "./usage.js";
 import { checkTexts, MEMORY_FILE_NAMES, type MemoryFileName, type MemoryServiceLike, memoryFiles, type ProfileLike, writeMemoryFile } from "./memory.js";
 import { cronJobs, memoryStatus, type SchedulerLike } from "./rest.js";
@@ -30,9 +31,9 @@ export interface GatewayCore {
   start(sessionId: string, text: string | null, hooks: AgentHooks): { kind: string };
   stop(sessionId: string): void;
   updateSessionContext(sessionId: string | null, patch: Partial<SessionContext>): void;
-  settings: { get(key: string): unknown; patch?(p: Record<string, unknown>): void };
+  settings: { get(key: string): unknown; patch?(p: Record<string, unknown>): void; setSecret?(key: string, value: string): void };
   /** Absents d'un faux noyau : la route correspondante reste alors non servie. */
-  providers?: { list(): readonly ProviderLike[]; client?(id: string): { listModels(): Promise<string[]> } };
+  providers?: { list(): readonly ProviderLike[]; client?(id: string): { listModels(): Promise<string[]> }; setExtraKeys?(id: string, keys: string[]): void };
   tools?: { all(): readonly ToolLike[] };
   commands?: CommandRegistryLike;
   /** La voie GARDÉE des commandes `/` (règle, accord si effet, audit) : `AgentRuntime.executeRemoteCommand`. */
@@ -501,6 +502,65 @@ export function createGateway(opts: GatewayOptions): Gateway {
     return false;
   };
 
+  /** `/api/jarod/providers…` : fournisseurs de modèles et clés API (écran « Providers »). Les clés entrent, ne ressortent jamais. Retourne `true` si servie. */
+  const providerRoutes = async (req: IncomingMessage, res: ServerResponse, path: string): Promise<boolean> => {
+    const method = req.method ?? "GET";
+    const done = (status: number, body: unknown): true => {
+      json(res, status, body);
+      return true;
+    };
+    const asHttp = <T,>(fn: () => T): T => {
+      try {
+        return fn();
+      } catch (e) {
+        if (e instanceof ConfigError) throw new HttpError(400, e.message);
+        throw e;
+      }
+    };
+    const settings = core.settings;
+    const router = core.providers;
+    if (!router || !settings.patch || !settings.setSecret) return false;
+    const port = { get: (k: string) => settings.get(k), patch: (p: Record<string, unknown>) => settings.patch!(p), setSecret: (k: string, v: string) => settings.setSecret!(k, v) };
+    const sources = () => (settings as { keySources?: () => KeySources }).keySources?.();
+    const snapshot = () => providerRows(router.list(), str(settings.get("activeProvider")), str(settings.get("activeModel")), sources());
+    if (path === "/api/jarod/providers" && method === "GET") return done(200, snapshot());
+    const m = /^\/api\/jarod\/providers\/([^/]+)(?:\/(key|extra-keys|test))?$/.exec(path);
+    if (!m) return false;
+    const id = decodeURIComponent(m[1]!);
+    const action = m[2];
+    if (!action && method === "PUT") {
+      const body = await readJson(req);
+      asHttp(() => setProviderOverride(port, router.list(), id, body));
+      discovery.invalidate();
+      return done(200, snapshot());
+    }
+    if (action === "key" && method === "PUT") {
+      const body = await readJson(req);
+      asHttp(() => setProviderKey(port, router.list(), id, body.key));
+      discovery.invalidate();
+      return done(200, snapshot());
+    }
+    if (action === "key" && method === "DELETE") {
+      asHttp(() => clearProviderKey(port, router.list(), id));
+      discovery.invalidate();
+      return done(200, snapshot());
+    }
+    if (action === "extra-keys" && method === "PUT") {
+      const body = await readJson(req);
+      if (!router.setExtraKeys) throw new HttpError(404, "extra keys are not available");
+      asHttp(() => setExtraProviderKeys({ list: () => router.list(), setExtraKeys: (pid, keys) => router.setExtraKeys!(pid, keys), client: (pid) => router.client!(pid) }, id, body.keys));
+      return done(200, snapshot());
+    }
+    if (action === "test" && method === "POST") {
+      if (!router.client) throw new HttpError(404, "provider test is not available");
+      const result = await testProvider({ list: () => router.list(), setExtraKeys: () => {}, client: (pid) => router.client!(pid) }, id).catch((e: unknown) => {
+        throw e instanceof ConfigError ? new HttpError(400, e.message) : e;
+      });
+      return done(200, result);
+    }
+    return false;
+  };
+
   /** `/api/mcp/…` et `/api/messaging/…` : serveurs MCP et plateformes de messagerie. Retourne `true` si la requête a été servie. */
   const connectionsRoutes = async (req: IncomingMessage, res: ServerResponse, path: string): Promise<boolean> => {
     const method = req.method ?? "GET";
@@ -610,6 +670,7 @@ export function createGateway(opts: GatewayOptions): Gateway {
     // Les fournisseurs de modèles de Jarod se connectent par clé d'API ou par serveur local : aucun module du noyau n'utilise OAuth (recherche dans
     // packages/plugins/*/src : 0 occurrence). La liste vide est exacte.
     if (req.method === "GET" && url.pathname === "/api/providers/oauth") return json(res, 200, { providers: [] });
+    if (url.pathname.startsWith("/api/jarod/providers") && (await providerRoutes(req, res, url.pathname))) return;
     if (url.pathname === "/api/config" || url.pathname === "/api/config/raw" || url.pathname.startsWith("/api/tools/")) {
       if (await configRoutes(req, res, url.pathname)) return;
     }

@@ -37,3 +37,5 @@ compilée ajoutés). Les tests racine passent à 226 (269 à l'origine : la diff
 
 - Le message d'erreur de dépassement de contexte (`plugins/llm/src/openai.ts`) ne renvoie plus à « Paramètres → Local engine » de l'application Jarod (inexistant dans Jarod-OS) :
   il nomme le réglage « Context Length » de LM Studio et `lms load <modèle> --context-length 16384`. Test ajouté.
+- `cli/src/context.ts` : `settings.secretKeys()` liste tout le coffre lisible et les clés de l'environnement (et non plus seulement la clé principale des fournisseurs à variable d'environnement) ; `settings.keySources()` dit d'où vient chaque clé. Voir `PARITY.md`.
+- Ajout : `cli/src/gateway/providers.ts` et ses routes `/api/jarod/providers*` (écran Fournisseurs du shell), test `cli/test/gateway-providers.test.ts`.

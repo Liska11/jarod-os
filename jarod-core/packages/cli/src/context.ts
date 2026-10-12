@@ -165,9 +165,23 @@ export async function openCore(
     const provider = Object.keys(ENV_KEYS).find((p) => secretKeyFor(p) === key);
     return provider ? ENV_KEYS[provider]!.map((k) => env[k]).find(Boolean) : undefined;
   };
-  core.settings.secretKeys = () =>
-    Object.entries(ENV_KEYS)
-      .filter(([p, keys]) => keys.some((k) => env[k]) || Boolean(stored(secretKeyFor(p))))
-      .map(([p]) => secretKeyFor(p));
+  // Les clés connues : celles du coffre que ce processus sait lire (tous les fournisseurs, clés supplémentaires comprises) + celles que
+  // l'environnement fournit. Avant Jarod-OS la liste ne portait que la clé principale des fournisseurs à variable d'environnement : une clé
+  // de Nous, z.ai ou Qwen enregistrée dans le coffre n'était jamais vue (fournisseur « non configuré »), ni les clés supplémentaires.
+  const storedKeys = core.settings.secretKeys.bind(core.settings);
+  /** D'où vient chaque clé : le coffre (modifiable ici) ou une variable d'environnement (nom de la variable ; le coffre, s'il a la clé, passe devant). */
+  const keySources = (): { vault: string[]; env: Record<string, string> } => {
+    const envNames: Record<string, string> = {};
+    for (const [p, vars] of Object.entries(ENV_KEYS)) {
+      const name = vars.find((k) => env[k]);
+      if (name) envNames[secretKeyFor(p)] = name;
+    }
+    return { vault: storedKeys().filter((k) => Boolean(stored(k))), env: envNames };
+  };
+  core.settings.secretKeys = () => {
+    const { vault, env: fromEnv } = keySources();
+    return [...new Set([...vault, ...Object.keys(fromEnv)])];
+  };
+  (core.settings as { keySources?: typeof keySources }).keySources = keySources;
   return { core, profile, dataDir, started };
 }
