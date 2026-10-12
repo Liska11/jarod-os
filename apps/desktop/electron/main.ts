@@ -284,7 +284,7 @@ function registerCoreIpc(): void {
   )
 
   registerFsIpc(() => mainWindow)
-  registerJarodShellIpc(() => mainWindow)
+  registerJarodShellIpc(() => mainWindow, () => void backend.restart())
   registerAppsIpc()
   registerBridgeIpc()
   registerServiceIpc()

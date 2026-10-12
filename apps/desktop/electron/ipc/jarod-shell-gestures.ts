@@ -22,6 +22,8 @@ export interface NativeEffects {
   setThemeSource(source: 'dark' | 'light' | 'system'): void
   quit(): void
   relaunch(): void
+  /** Restart the Jarod engine (it reopens on the active profile). The effect defers the actual restart so the answer to this gesture still gets out. */
+  restartBackend(): void
 }
 
 export const str = (value: unknown, max = 4000): string => (typeof value === 'string' ? value.slice(0, max) : '')
@@ -116,6 +118,10 @@ export async function runNativeGesture(kind: string, params: Record<string, unkn
       return true
     case 'relaunch':
       effects.relaunch()
+
+      return true
+    case 'restartBackend':
+      effects.restartBackend()
 
       return true
     default:

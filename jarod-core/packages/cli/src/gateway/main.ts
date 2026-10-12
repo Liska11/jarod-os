@@ -4,7 +4,8 @@
 // `gateway.json` (url + jeton, 0600) dans le dossier du profil ; Ctrl-C affiche ce que le shell a demandé sans l'obtenir.
 import { chmodSync, existsSync, realpathSync, statSync, writeFileSync } from "node:fs";
 import { isAbsolute, join } from "node:path";
-import { assertOneaiChannel, bindLocalModelsEvents, bindUpdateEvents, bindVoiceEvents, createHandlers, desktopKernelOf } from "@jarod/bridge";
+import { assertOneaiChannel, bindLocalModelsEvents, bindUpdateEvents, bindVoiceEvents, createHandlers, desktopKernelOf, HERMES_REGISTRY, RegistryClient } from "@jarod/bridge";
+import { ProfileManager } from "@jarod/plugin-persona";
 import { defaultDataRoot, openCore } from "../context.js";
 import { createBridgePort } from "./bridge.js";
 import { createBridgeShell } from "./bridge-shell.js";
@@ -45,8 +46,18 @@ const gateway = createGateway({
 });
 // Les canaux de pilotage (fournisseurs, modèles locaux, skills…) : les handlers de jarod-cordis sur ce noyau, les gestes natifs demandés à la fenêtre.
 const kernel = desktopKernelOf(core.app as never, { profile, dataRoot: defaultDataRoot(env) });
+// Changer de profil = ouvrir le noyau sur un autre profil : on pose le profil actif puis la fenêtre relance la passerelle (un noyau = un profil). Sans fenêtre pour la relancer, on revient en arrière.
+const switchProfile = async (name: string): Promise<void> => {
+  const profiles = new ProfileManager(defaultDataRoot(env));
+  const previous = profiles.active();
+  profiles.setActive(name);
+  if ((await gateway.link.ask("restartBackend")) !== true) {
+    profiles.setActive(previous);
+    throw new Error("changement de profil impossible : aucune fenêtre pour relancer le moteur");
+  }
+};
 const shell = createBridgeShell({ version: gatewayVersion, dataDir, link: gateway.link });
-gateway.attachBridge(createBridgePort(createHandlers({ kernel: () => kernel, shell }), (channel) => assertOneaiChannel("invoke", channel)));
+gateway.attachBridge(createBridgePort(createHandlers({ kernel: () => kernel, shell, registry: new RegistryClient(HERMES_REGISTRY), switchProfile }), (channel) => assertOneaiChannel("invoke", channel)));
 const pushEvent = (channel: string, ...args: unknown[]) => gateway.link.send(channel, args);
 const unbindEvents = [bindLocalModelsEvents(kernel.localEngine?.models, pushEvent), bindUpdateEvents(core.app as never, pushEvent), bindVoiceEvents(core.app as never, pushEvent)];
 const port = await gateway.listen(env.JAROD_GATEWAY_PORT ? Number(env.JAROD_GATEWAY_PORT) : 0);

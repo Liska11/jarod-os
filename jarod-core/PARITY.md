@@ -18,10 +18,10 @@ Légende : ✅ fait et vérifié en fenêtre · 🟡 partiel · ⬜ à faire · 
 | 8 | Modèles locaux : moteur llama.cpp, préréglages, téléchargement Hugging Face, charger/décharger LM Studio | ✅ | Réglages → « Local models » ; canaux `local-models-*`, `local-engine-*`, `hf-*` du pont. Vérifié en fenêtre : liste réelle de LM Studio, recherche et « tient-il ? » sur huggingface.co. Non essayés en fenêtre (boîtes natives, téléchargements) : installation du moteur, chargement, téléchargement ; couverts par les tests du pont |
 | 9 | Navigateur de l'agent (`browser_*`) | ⬜ | hôte Electron à écrire (`BrowserPort`) |
 | 10 | Voix : micro, mot d'éveil, STT/TTS locaux | ⬜ | plugin `voice` ; routes `/api/audio/*`, `wake.*` |
-| 11 | Skills (écran, hub d'installation) | ⬜ | plugin `skills` |
-| 12 | Persona / Soul, profils multiples | ⬜ | plugin `persona` |
-| 13 | Messageries : configuration (jetons Telegram, Discord, Slack, WhatsApp, e-mail) | 🟡 | état en lecture seule ; écriture à faire (jetons au coffre) |
-| 14 | Règles d'accord (« Toujours » par outil, politiques) | 🟡 | seul « Ask first » est réglable |
+| 11 | Skills (écran, hub d'installation) | ✅ | Réglages → « Skills » : installées (activer/couper, lire, archiver) + registre communautaire (skills, serveurs MCP, agents) avec confirmation native. Vérifié en fenêtre : liste, bascule, 349 entrées du registre |
+| 12 | Persona / Soul, profils multiples | ✅ | Réglages → « Persona & profiles » : SOUL.md, profils (créer, nom, couleur, retirer, activer = relance du moteur). Persona vérifiée en fenêtre ; l'activation d'un profil n'est pas essayée en fenêtre (relance du moteur) |
+| 13 | Messageries : configuration (jetons Telegram, Discord, Slack, WhatsApp, e-mail) | ✅ | Réglages → « Messaging » : champs, jetons au coffre (jamais relus), interrupteurs, démarrer/arrêter. Jeton enregistré vérifié en fenêtre ; aucune passerelle activée (pas de connexion réelle essayée) |
+| 14 | Règles d'accord (« Toujours » par outil, politiques) | ✅ | Réglages → « Agent & security » : règles ordonnées, outils « toujours », garde du shell, budget, mode, repli de modèles |
 | 15 | Kanban | ⬜ | plugin `kanban` |
 | 16 | RAG : indexation et documents | ⬜ | plugin `rag` |
 | 17 | Automatisations avancées : webhooks, déclencheurs, workflows | ⬜ | plugins `scheduler`, `automation`, `workflows` |

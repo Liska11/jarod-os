@@ -4,3 +4,4 @@ export { bindLocalModelsEvents, bindUpdateEvents, bindVoiceEvents, closeAllApiSe
 export type { DesktopKernel, DesktopShell, HandlerContext } from "./main/handlers/index.js";
 export { desktopKernelOf } from "./main/kernel.js";
 export type { OneaiHandler } from "./main/ipc.js";
+export { HERMES_REGISTRY, RegistryClient } from "./main/registry.js";

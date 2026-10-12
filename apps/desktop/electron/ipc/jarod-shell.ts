@@ -4,7 +4,7 @@ import { type NativeDialogs, type NativeEffects, runNativeGesture, str } from '.
 
 /* Registers the `jarod.shell` gestures (see jarod-shell-gestures.ts for the rules). */
 
-export function registerJarodShellIpc(getWindow: () => BrowserWindow | null): void {
+export function registerJarodShellIpc(getWindow: () => BrowserWindow | null, restartBackend: () => void): void {
   const parent = () => getWindow() ?? undefined
 
   const dialogs: NativeDialogs = {
@@ -40,7 +40,9 @@ export function registerJarodShellIpc(getWindow: () => BrowserWindow | null): vo
     relaunch: () => {
       app.relaunch()
       app.quit()
-    }
+    },
+    // Later, so the gateway still receives the answer to this very gesture before it is stopped.
+    restartBackend: () => void setTimeout(restartBackend, 400)
   }
 
   ipcMain.handle(IPC.jarodShell, (_event, kind: unknown, params: unknown) =>
