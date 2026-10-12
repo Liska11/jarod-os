@@ -5,8 +5,16 @@ import { $connectionEpoch } from '../store/gateway.ts'
 export interface AsyncState<T> {
   data: T | null
   error: string | null
+  /** True while a load runs, and also before the first connection: "not connected yet" is not "nothing to show". */
   loading: boolean
+  /** The engine has not answered `gateway.ready` yet: nothing was asked, so an empty list means nothing. */
+  connecting: boolean
   reload: () => void
+}
+
+/** Backend-owned data cannot be loaded before the first `gateway.ready` (epoch 0); until then pages must say they are waiting, not that they are empty. */
+export function isConnecting(epoch: number, enabled: boolean): boolean {
+  return enabled && epoch === 0
 }
 
 /**
@@ -17,10 +25,12 @@ export function useBackendData<T>(loader: () => Promise<T>, deps: readonly unkno
   const epoch = useStore($connectionEpoch)
   const [data, setData] = useState<T | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [loading, setLoading] = useState(false)
+  const enabled = options.enabled ?? true
+  // Starts true when a load is due, so the first paint after a connection is "loading", not an empty page.
+  const [loading, setLoading] = useState(enabled)
   const [tick, setTick] = useState(0)
   const generation = useRef(0)
-  const enabled = options.enabled ?? true
+  const connecting = isConnecting(epoch, enabled)
 
   useEffect(() => {
     if (!enabled || epoch === 0) {
@@ -51,7 +61,7 @@ export function useBackendData<T>(loader: () => Promise<T>, deps: readonly unkno
 
   const reload = useCallback(() => setTick(t => t + 1), [])
 
-  return { data, error, loading, reload }
+  return { data, error, loading: loading || connecting, connecting, reload }
 }
 
 /** Same shape for machine-owned data that does not depend on the backend. */
@@ -87,5 +97,5 @@ export function useLocalData<T>(loader: () => Promise<T>, deps: readonly unknown
 
   const reload = useCallback(() => setTick(t => t + 1), [])
 
-  return { data, error, loading, reload }
+  return { data, error, loading, connecting: false, reload }
 }
