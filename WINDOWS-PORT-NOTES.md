@@ -344,6 +344,55 @@ out); choosing `qwen3-coder-30b-a3b-instruct` shows "Model changed Â· lmstudio Â
 Not verified: a conversation started afterwards answering with that model (no message was sent to the real models in this check), and the fallback path against a real Hermes
 (read from its source, not run). The shell has no component test setup, so there is no automated test for this change.
 
+## Independence from jarod-cordis (2026-10-12)
+
+The owner's requirement: Jarod-OS is a new application, independent of `jarod-cordis`. Before this change it was not: the kernel, the tools, the gateway and the launcher lived in
+`D:\store\projet\jarod-cordis`, and the shell only worked when that checkout started it. Choices made with the owner: copy the kernel into Jarod-OS (not just ship it),
+in this repository, and keep Hermes as an option.
+
+**What exists now**
+
+| Piece | Where | Commit |
+| --- | --- | --- |
+| The kernel (agent, tools, providers, memory, scheduler, messaging, gateway), copied from `jarod-cordis` commit `2d5bf46d` with `git archive` (the owner's uncommitted work there is not in it). `PROVENANCE.md` records what was left out and adapted | `jarod-core/` | `30d3eb4` |
+| A registry of already-loaded plugins in the kernel, and `scripts/bundle-gateway.mjs`: the gateway and its 19 plugins compiled to one 6 MB file, plus the two plain-JS worker files and the SQLite module (prebuilt binary of the build platform only); test that builds it and starts it from a folder holding only the output | `jarod-core/` | `76a89e2` |
+| The shell starts that core as its backend (`HERALD_OS_BACKEND=jarod|hermes`; the core when the build has one), stops it by closing its input, and keeps its Hermes-style files in a home of its own; `npm run bundle:core` and the `dist:*` scripts build and ship it with the Node runtime that built it | `apps/desktop/electron/backend/jarod-core.ts`, `manager.ts`, `main.ts` | `b178666`, `b3342d4` |
+| The `jarod-cordis` launcher removed from the copy; the context-overflow message no longer points to a screen Jarod-OS does not have | `jarod-core/` | `ec3a4ca` |
+
+**Verified on this machine** (Windows 11): `pnpm -r typecheck` and `pnpm -r test` in `jarod-core` pass with the origin's totals per package (cli 350 + 1 expected failure; root 226,
+the difference with the origin being the removed desktop-only and launcher tests); `npm test` and `npm run typecheck` in the shell pass (370 tests). The NSIS installer built by
+`electron-builder` (146 MB, was 121) was **installed**, and the installed app started on its own, with no launcher and no variable pointing at `jarod-cordis`:
+its process tree is `resources\jarod-core\node.exe gateway.mjs` plus the plugin sandbox process; no process anywhere mentions `jarod-cordis`. In it, a conversation with the
+owner's real LM Studio model (`qwen3-coder-30b-a3b-instruct`, 16 384 context) answered, found a system tool through `tool_search` and used it. Closing the window left no
+process and no `-wal` file. It was then uninstalled cleanly. `HERALD_OS_BACKEND=hermes` still starts the real `hermes serve` (and stops it on close).
+
+**Behaviour that changed**
+
+- No more `scripts\Jarod-OS.cmd` and no `--real-profile`: Jarod-OS has its own profile. It is still `%LOCALAPPDATA%\Jarod-OS\profile` (the folder the launcher used), so the profile
+  already created by earlier runs is picked up. `JAROD_OS_DATA` moves it.
+- The working folder is `JAROD_WORKSPACE`, else `Documents\Jarod-OS` (created on demand). The old launcher default `D:\JAROD-OS` was the owner's choice, not a product default: to keep it,
+  set `JAROD_WORKSPACE=D:\JAROD-OS` as a user environment variable.
+- With the Jarod core, the shell's own `HERMES_HOME` is `<data>\herald-home`: it never writes into a Hermes install. (Unless `HERMES_HOME` or `HERALD_OS_BACKEND_URL` is set.)
+
+**Not in the package** (so not available in the installed app): the embeddings and reranker workers (they run TypeScript through `tsx` and need OpenVINO), `onnxruntime-node`,
+`openvino`, `node-pty`. The local embedding model, the reranker and NPU acceleration are therefore off; conversation, tools, memory, schedules and messaging are on.
+
+**Debts and limits**
+
+- `jarod-core` and `jarod-cordis` now diverge. A fix made in one must be carried to the other by hand.
+- The runtime shipped is the Node of the build machine (90 MB). Its license notice (`NODE-LICENSE.txt`) is a short MIT text pointing to the full upstream list; the full text was not bundled.
+- Building needs `pnpm` (the core is its own workspace with its own lockfile). The CI workflows were not updated to install it.
+- `bundle:core`, `dist:linux` and `dist:mac` were not run on Linux or macOS (the bundling script picks the build platform's SQLite binary and Node; the data folders for those systems are in the code and unit-tested, never run).
+- Still not ported from the kernel's own app, as before: `os_ui`, `client.capabilities`, `usage.bars`, `billing.state`, MCP catalogue/OAuth, Studio, streaming voice, `clarify`.
+
+**Findings from the real-model runs (not fixed)**
+
+- With a local model Jarod offers only 17 core tools plus `tool_search` (the other tools, among them the 14 system tools, are found by searching). Asked for "the free space of my disks", the model
+  reached for `run_shell` (`wmic`, which recent Windows 11 no longer has), and only used the system tool when told to search for it. Putting some system tools in the core set would cost about 380 tokens each.
+- `system_disk_usage` measures folder sizes in the home folder; it answers "what uses my disk" better than "how much is free on each drive".
+- LM Studio loads a model on demand with an 8 192-token context, too small for the tool list (5 700 tokens): the first agent turn that uses a tool fails with a context error. The owner's model was reloaded with
+  16 384 (`lms load qwen3-coder-30b-a3b-instruct --context-length 16384`, which also removes its idle time-to-live).
+
 ## Verification debt: Linux and macOS (not verified)
 
 The renamed text and the new identity were applied to the Linux and macOS files too, but **none of it was run**. This machine is Windows only: the WSL
