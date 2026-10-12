@@ -90,7 +90,7 @@ backslashes only for a Windows path; `OsControlServer` keeps the Unix socket off
 | `open_settings`, `sleep_display` | `open_settings("sound")` started Windows Settings; the display was put to sleep for two seconds and woken. `lock_screen` was **not** called (it would lock the session); only the `LockWorkStation` symbol was resolved |
 | `netsh wlan` in other languages | `parse_wlan` reads the fields by position when a label is unknown; German and Italian samples pass |
 | `npm audit` | 12 findings (2 critical), all in build and dev tooling (`concurrently`, `electron-builder` and its dependencies). `npm audit --omit=dev` reports 0, so nothing in the packaged app. The lockfile was not changed |
-| CI | A step name with an unquoted `:` made `ci.yml` invalid YAML; fixed, and every workflow now parses. `windows-installers.yml` (manual or `v*` tag) builds the installers as artifacts. **Neither has run**: `origin` is `PAVADI234/herald-os`, there is no fork of the owner's, and nothing was pushed |
+| CI | A step name with an unquoted `:` made `ci.yml` invalid YAML; fixed, and every workflow now parses (checked again after the `kernel` job and the pnpm steps were added). `windows-installers.yml` (manual or `v*` tag) builds the installers as artifacts. **None of it has run**: `origin` is `PAVADI234/herald-os`, there is no fork of the owner's, and nothing was pushed |
 | Counts | `npm run typecheck` passes; Vitest 68 files, 348 passed, 2 skipped; pytest 185 passed, 9 skipped |
 
 ### Still not validated, and why
@@ -308,8 +308,9 @@ on purpose, which is why it needed no change.
 
 Observations: the installer and the uninstaller are unsigned (`Get-AuthenticodeSignature`: NotSigned), so SmartScreen will warn — left as is by choice (there is no
 certificate). The Add/Remove Programs **Publisher** read "Luke The Dev", taken from the `author` field of `apps/desktop/package.json`; since 2026-10-12 it reads
-"Jarod-OS" (`author` plus an explicit `copyright`), the upstream attribution staying in LICENSE and NOTICE, where the MIT licence requires it. An installer built
-before that change still shows the old value. **Not tested:** the interactive wizard (folder choice, "run after install"), installing the `.appx`, upgrading over an
+"Jarod-OS" (`author` plus an explicit `copyright`), the upstream attribution staying in LICENSE and NOTICE, where the MIT licence requires it. Read on the artifacts
+built before that change (`release\JarodOS-Setup-0.1.0-alpha.1-win-x64.exe`, `release\win-unpacked\Jarod-OS.exe`): `CompanyName` "Luke The Dev",
+`LegalCopyright` "Copyright © 2026 Luke The Dev", `ProductName` already "Jarod-OS" — a rebuilt installer carries the new values. **Not tested:** the interactive wizard (folder choice, "run after install"), installing the `.appx`, upgrading over an
 older Jarod-OS, pinning to the taskbar.
 
 **3. `%APPDATA%\Herald OS`** (read only, nothing changed or moved). It exists: created 2026-10-11 03:13, last written 20:28, 1 075 files in 26 folders, 140 MB. It holds
@@ -383,7 +384,11 @@ process and no `-wal` file. It was then uninstalled cleanly. `HERALD_OS_BACKEND=
 
 - `jarod-core` and `jarod-cordis` now diverge. A fix made in one must be carried to the other by hand.
 - The runtime shipped is the Node of the build machine (90 MB). Its license notice (`NODE-LICENSE.txt`) is a short MIT text pointing to the full upstream list; the full text was not bundled.
-- Building needs `pnpm` (the core is its own workspace with its own lockfile). The CI workflows were not updated to install it.
+- Building needs `pnpm` (the core is its own workspace with its own lockfile). Every workflow that runs
+  `dist:win`, `dist:mac` or `dist:linux` (`bundle:core` is the first step) now installs pnpm first, and
+  `ci.yml` has a `kernel` job that installs the core's workspace and runs `npm run typecheck:core` and
+  `npm run test:core` on Ubuntu and Windows — before it, `npm test` at the root never reached the core's
+  226 tests. Neither the workflows nor the new job have run on GitHub (nothing was pushed).
 - `bundle:core`, `dist:linux` and `dist:mac` were not run on Linux or macOS (the bundling script picks the build platform's SQLite binary and Node; the data folders for those systems are in the code and unit-tested, never run).
 - Still not ported from the kernel's own app, as before: `os_ui`, `client.capabilities`, `usage.bars`, `billing.state`, MCP catalogue/OAuth, Studio, streaming voice, `clarify`.
 

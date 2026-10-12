@@ -27,12 +27,17 @@ jobs:
         with:
           node-version: 22
           cache: npm
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12
       - name: Fetch the pinned Hermes Agent snapshot
         run: npm run sync-upstream
       - run: npm ci
       - run: npm run typecheck
       - run: npm test
       - name: Build the installers
+        # `dist:win` starts with `bundle:core`, which builds the core that ships inside the app:
+        # `jarod-core` is a pnpm workspace, so pnpm has to be there (see the pnpm step above).
         env:
           CSC_LINK: ${{ secrets.CSC_LINK }}
           CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}

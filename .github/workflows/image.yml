@@ -50,6 +50,9 @@ jobs:
         with:
           node-version: 22
           cache: npm
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12
       - name: Build the shell for this architecture
         run: |
           sudo apt-get update -qq && sudo apt-get install -y -qq build-essential python3

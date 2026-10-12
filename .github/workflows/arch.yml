@@ -31,6 +31,10 @@ jobs:
         run: namcap packaging/arch/herald-os-bin/PKGBUILD packaging/arch/herald-os-git/PKGBUILD
       - name: A user to build as (makepkg refuses root)
         run: useradd -m builder && chown -R builder:builder "$GITHUB_WORKSPACE"
+      - name: pnpm, for the core `dist:linux` builds
+        # `dist:linux` starts with `bundle:core`, which builds `jarod-core` (a pnpm workspace);
+        # the container has npm, so pnpm comes from there.
+        run: npm install --global pnpm@12
       - name: Build the tarball
         run: su builder -c 'cd "$GITHUB_WORKSPACE" && npm run sync-upstream && npm ci && npm run dist:linux --workspace apps/desktop -- --x64'
       - name: Package it

@@ -33,6 +33,32 @@ jobs:
       - run: npm test
       - run: npm run build
 
+  kernel:
+    name: Kernel (${{ matrix.os }})
+    # The core (`jarod-core`) is its own pnpm workspace: the shell's `npm ci` does not install it and
+    # `npm test` at the root does not reach it, so none of its tests ran in CI. It needs pnpm, and its
+    # package scripts are called by name from the root (`test:core`, `typecheck:core`).
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: jarod-core/pnpm-lock.yaml
+      - name: Install the core's workspace
+        run: pnpm install --frozen-lockfile
+        working-directory: jarod-core
+      - run: npm run typecheck:core
+      - run: npm run test:core
+
   bridge:
     name: Bridge plugin (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
