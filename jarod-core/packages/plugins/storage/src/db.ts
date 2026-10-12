@@ -682,6 +682,15 @@ export class Db {
     if (key !== null && isPlainDb(path)) encryptInPlace(path, key, opts.nativeBinding);
     this.raw = openRaw(path, key, opts.nativeBinding);
     this.encrypted = key !== null;
+    // Une mort brutale laisse des transactions validées dans le `-wal`, donc hors du fichier principal
+    // (et, pour une base en clair, lisibles sur le disque). SQLite sait les rejouer ; on les replie tout
+    // de suite pour qu'une disparition des compagnons ne perde plus rien.
+    if (existsSync(`${path}-wal`)) this.checkpoint();
+    // Le chiffrement recopie la base EN CLAIR dans `<chemin>.avant-chiffrement` avant de la ré-encrypter :
+    // une mort du processus entre les deux laissait cette copie derrière elle, pour toujours. Le fichier
+    // principal vient de s'ouvrir, donc la migration a abouti et la copie est redondante — c'est le seul
+    // moment où on peut la supprimer sans risquer de jeter la seule donnée intacte.
+    rmSync(`${path}.avant-chiffrement`, { force: true });
     this.raw.exec("PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;");
     try {
       this.migrate();
@@ -812,7 +821,27 @@ export class Db {
     if (password) rekeyFile(path, this.opts.key ?? null, password, this.opts.nativeBinding);
   }
 
+  /**
+   * Replie le journal (`-wal`) dans le fichier principal. Rend `false` quand une autre connexion le
+   * retient encore : le journal reste alors en place, il ne faut surtout pas le supprimer.
+   */
+  private checkpoint(): boolean {
+    try {
+      const res = this.raw.pragma("wal_checkpoint(TRUNCATE)") as { busy?: number } | undefined;
+      return !(res?.busy ?? 0);
+    } catch {
+      // Base déjà fermée ou verrouillée : la fermeture reste la priorité.
+      return false;
+    }
+  }
+
   close(): void {
+    // Replier le journal avant de fermer : un checkpoint occupé laisse des transactions validées
+    // DANS le `-wal`, et la fermeture ne doit ni les perdre ni les supprimer à la main — un autre
+    // processus peut tenir le journal ouvert (Windows refuse alors l'effacement, EPERM ; POSIX
+    // l'accepterait et ferait perdre les données du voisin). Le checkpoint de l'ouverture suivant
+    // repliera ce qui reste.
+    this.checkpoint();
     this.raw.close();
   }
 }

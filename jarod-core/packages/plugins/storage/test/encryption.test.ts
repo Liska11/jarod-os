@@ -3,11 +3,11 @@
 // remplacés par les mêmes écritures SQL sur les mêmes tables (triggers FTS inclus).
 // Non portés ici : :68-90 (backup/import → `importBackupInto`, core.ts:177, Phase 1),
 // :103-127 (pièces jointes chiffrées → plugin-rag, Phase 2).
-import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { bootApp, shutdown } from "@jarod/kernel/testing";
 import { describe, expect, it } from "vitest";
-import { type Db, ftsQuery, isEncryptedDb, isPlainDb } from "../src/db.js";
+import { Db, ftsQuery, isEncryptedDb, isPlainDb } from "../src/db.js";
 import { defaultKeyStores, fileKeyStore, type KeyStore, memoryKeyStore, resolveDbKey } from "../src/dbkey.js";
 import { tempDir } from "./helpers.js";
 
@@ -91,6 +91,86 @@ describe("database encryption", () => {
     expect(isEncryptedDb(join(dir, "jarod.db"))).toBe(true);
     expect(fileContains(dir, SECRET)).toBe(false);
     expect(readdirSync(dir).some((f) => f.includes("avant-chiffrement"))).toBe(false);
+  });
+
+  it("folds the write-ahead log a crash left behind as soon as the database opens", async () => {
+    const keys = memoryKeyStore();
+    const live = tempDir();
+    const app = await open(live, { keyStores: [keys] });
+    const id = "session-apres-crash";
+    const t = Date.now();
+    app.storage.db.run("INSERT INTO sessions (id, title, created_at, updated_at) VALUES (?, ?, ?, ?)", id, "Crash", t, t);
+    app.storage.db.run(
+      "INSERT INTO messages (id, session_id, role, content, created_at) VALUES ('mc', ?, 'user', ?, ?)",
+      id,
+      SECRET,
+      t,
+    );
+    const key = resolveDbKey(live, [keys], true).key;
+    // Trio copié pendant que la base est ouverte : l'image exacte d'un arrêt brutal.
+    const crash = tempDir();
+    for (const f of ["jarod.db", "jarod.db-wal", "jarod.db-shm"]) copyFileSync(join(live, f), join(crash, f));
+    keys.save(crash, key);
+    await shutdown(app);
+
+    const recovered = await open(crash, { keyStores: [keys] });
+    expect(firstMessage(recovered.storage.db, id)).toBe(SECRET);
+    // Le fichier principal, copié AVANT la fermeture, doit déjà tout contenir.
+    const alone = tempDir();
+    copyFileSync(join(crash, "jarod.db"), join(alone, "jarod.db"));
+    keys.save(alone, key);
+    const reader = await open(alone, { keyStores: [keys] });
+    expect(firstMessage(reader.storage.db, id)).toBe(SECRET);
+    await shutdown(reader);
+    await shutdown(recovered);
+  });
+
+  it("removes the clear copy an interrupted encryption left behind", async () => {
+    const clear = tempDir();
+    await seed(await open(clear, { encryptDb: false }));
+    const clearCopy = readFileSync(join(clear, "jarod.db"));
+
+    const keys = memoryKeyStore();
+    const dir = tempDir();
+    await seed(await open(dir, { keyStores: [keys] }));
+    const orphan = join(dir, "jarod.db.avant-chiffrement");
+    writeFileSync(orphan, clearCopy);
+    expect(fileContains(dir, SECRET)).toBe(true); // la copie de secours expose le secret en clair
+
+    const app = await open(dir, { keyStores: [keys] });
+    expect(existsSync(orphan)).toBe(false);
+    expect(fileContains(dir, SECRET)).toBe(false);
+    await shutdown(app);
+  });
+
+  it("leaves no write-ahead log behind when it closes", async () => {
+    const dir = tempDir();
+    const app = await open(dir, { keyStores: [memoryKeyStore()] });
+    await seed(app);
+    expect(readdirSync(dir).filter((f) => f.startsWith("jarod.db-"))).toEqual([]);
+  });
+
+  it("closes without touching a journal another connection still holds", () => {
+    // Deux connexions sur la même base : c'est le cas réel (application + `jarod` en ligne de commande).
+    // Fermer la première ne doit rien supprimer — sous Windows l'effacement échoue (EPERM), et sous
+    // POSIX il ferait perdre à la seconde les transactions encore dans le journal.
+    const dir = tempDir();
+    const path = join(dir, "jarod.db");
+    const first = new Db(path);
+    const t = Date.now();
+    first.run("INSERT INTO sessions (id, title, created_at, updated_at) VALUES ('s1', 'Coffre', ?, ?)", t, t);
+    const second = new Db(path);
+    expect(existsSync(`${path}-wal`)).toBe(true);
+
+    expect(() => first.close()).not.toThrow();
+
+    second.run("INSERT INTO sessions (id, title, created_at, updated_at) VALUES ('s2', 'Après', ?, ?)", t, t);
+    expect(second.all<{ id: string }>("SELECT id FROM sessions ORDER BY id").map((r) => r.id)).toEqual(["s1", "s2"]);
+    second.close();
+
+    const reader = new Db(path);
+    expect(reader.all<{ id: string }>("SELECT id FROM sessions ORDER BY id").map((r) => r.id)).toEqual(["s1", "s2"]);
+    reader.close();
   });
 
   it("refuses to open (or replace) an encrypted database without its key", async () => {
