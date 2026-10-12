@@ -91,6 +91,10 @@
       {
         "from": "../../jarod-core/dist/gateway",
         "to": "jarod-core"
+      },
+      {
+        "from": "../../jarod-core/dist/gateway/node_modules",
+        "to": "jarod-core/node_modules"
       }
     ],
     "asar": true,
