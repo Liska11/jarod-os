@@ -11,7 +11,7 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import type { AddressInfo } from "node:net";
 import type { Message, Session, SessionContext } from "@jarod/contracts";
 import type { AgentHooks } from "@jarod/plugin-agent";
-import { approvalParams, chooseWorkspace, eventFrame, isApproved, promptText, RPC, readyFrame, sessionInfo, sessionRow, toTranscript, TurnTranslator } from "./protocol.js";
+import { approvalParams, chooseWorkspace, eventFrame, isApproved, promptText, RPC, readyFrame, sessionInfo, sessionRow, storedMessages, toTranscript, TurnTranslator } from "./protocol.js";
 import { applyConfigPatch, CONFIG_RAW_READ_ONLY, configRaw, GUARDED_COMMANDS, type CommandResultLike, checkTerminalBackend, type CommandRegistryLike, commandCatalog, ConfigError, configGet, configSet, hermesConfig, modelOptions, normalizeModelCommand, type ProviderLike, setToolsetEnabled, slashResult, terminalBackends, type ToolLike, toolsets } from "./config.js";
 import { findMcp, type GatewayStatusLike, type McpConfigLike, type McpPort, mcpServers, messagingPlatforms, type PlatformId, probeResult, refusePlatformToggle, removeMcp, setMcpEnabled } from "./connections.js";
 import { AudioError, MAX_AUDIO_BODY, parseDataUrl, speakText, type VoicePort, wavDataUrl } from "./audio.js";
@@ -52,6 +52,8 @@ export interface GatewayCore {
   memory?: MemoryServiceLike;
   userProfile?: ProfileLike;
   scheduler?: SchedulerLike;
+  /** Une complétion sans outil sur le modèle actif (`llm.oneshot`) ; absente d'un faux noyau. */
+  agent?: { complete(prompt: string, signal: AbortSignal, opts?: { system?: string; thinking?: boolean; maxTokens?: number }): Promise<string> };
 }
 
 export interface GatewayOptions {
@@ -108,6 +110,10 @@ interface Conn {
   ws: WsConnection;
   pending: Map<string, (result: unknown) => void>;
 }
+
+const MAX_ONESHOT_CHARS = 200_000;
+/** Le shell abandonne à 150 s : la passerelle s'arrête avant lui. */
+const ONESHOT_TIMEOUT_MS = 120_000;
 
 const str = (v: unknown): string => (typeof v === "string" ? v : "");
 
@@ -217,6 +223,28 @@ export function createGateway(opts: GatewayOptions): Gateway {
   type Method = (params: Record<string, unknown>, conn: Conn) => unknown | Promise<unknown>;
   const methods: Record<string, Method> = {
     "gateway.ping": () => ({}),
+
+    // Une complétion unique, sans conversation ni outil, sur le modèle actif : le panneau « Catch-up » s'en sert. `template` n'existe pas ici.
+    "llm.oneshot": async (p) => {
+      const agent = core.agent;
+      if (!agent) throw new RpcError(RPC.notFound, "one-shot generation is not available");
+      if (str(p.template).trim()) throw new RpcError(RPC.params, "llm.oneshot: les modèles (template) ne sont pas pris en charge ici, envoyer instructions/input");
+      const instructions = str(p.instructions).trim();
+      const input = str(p.input).trim();
+      if (!instructions && !input) throw new RpcError(RPC.params, "llm.oneshot requires instructions/input");
+      if (instructions.length + input.length > MAX_ONESHOT_CHARS) throw new RpcError(RPC.params, `llm.oneshot: texte trop long (${MAX_ONESHOT_CHARS} caractères au plus)`);
+      const maxTokens = typeof p.max_tokens === "number" && Number.isInteger(p.max_tokens) && p.max_tokens > 0 ? Math.min(p.max_tokens, 8192) : undefined;
+      try {
+        const text = await agent.complete(input || instructions, AbortSignal.timeout(ONESHOT_TIMEOUT_MS), {
+          ...(input && instructions ? { system: instructions } : {}),
+          thinking: false,
+          ...(maxTokens ? { maxTokens } : {}),
+        });
+        return { text };
+      } catch (e) {
+        throw new RpcError(5030, `one-shot generation failed: ${redactText(e instanceof Error ? e.message : String(e)).slice(0, 400)}`);
+      }
+    },
 
     // Les canaux de pilotage (@jarod/bridge) par le WebSocket : sans le délai de 60 s de l'HTTP du shell (installer un moteur, télécharger un modèle).
     "jarod.invoke": async (p) => {
@@ -758,6 +786,13 @@ export function createGateway(opts: GatewayOptions): Gateway {
       if (await configRoutes(req, res, url.pathname)) return;
     }
     if (url.pathname.startsWith("/api/cron/") && (await cronRoutes(req, res, url.pathname))) return;
+    // Les messages stockés d'une conversation (le panneau « Catch-up » lit où elle s'est arrêtée).
+    const stored = req.method === "GET" ? /^\/api\/sessions\/([^/]+)\/messages$/.exec(url.pathname) : null;
+    if (stored) {
+      const sid = decodeURIComponent(stored[1]!);
+      if (!core.sessions.get(sid)) throw new HttpError(404, `unknown session ${sid}`);
+      return json(res, 200, storedMessages(core.messages.list(sid), { limit: Number(url.searchParams.get("limit")), order: url.searchParams.get("order") ?? undefined }));
+    }
     // La voix du shell : transcrire un énoncé, dire une réponse (WAV). Les fautes de configuration (pas de clé, pas de moteur vocal) arrivent avec les mots du noyau.
     if (url.pathname === "/api/audio/transcribe" && req.method === "POST") {
       if (!opts.voice) throw new HttpError(404, "la voix n'est pas branchée");

@@ -930,7 +930,7 @@ ${project.text}`);
   async complete(
     prompt: string,
     signal: AbortSignal,
-    opts: { system?: string; thinking?: boolean; settings?: Settings } = {},
+    opts: { system?: string; thinking?: boolean; settings?: Settings; maxTokens?: number } = {},
   ): Promise<string> {
     const s = opts.settings ?? this.d.settings.getAll();
     // Le premier candidat disponible, pas le fournisseur actif aveuglément : une chaîne vide
@@ -948,6 +948,7 @@ ${project.text}`);
           thinking: opts.thinking ?? s.thinking,
           effort: s.effort,
           anthropicFallbacks: s.anthropicFallbacks,
+          ...(opts.maxTokens ? { maxTokens: opts.maxTokens } : {}),
         },
         {},
       ),

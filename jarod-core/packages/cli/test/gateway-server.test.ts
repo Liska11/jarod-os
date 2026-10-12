@@ -380,3 +380,69 @@ describe("passerelle compatible Hermes", () => {
     expect(detail).not.toContain(secret);
   });
 });
+
+describe("llm.oneshot et messages stockés (panneau Catch-up)", () => {
+  const calls: { prompt: string; opts: Record<string, unknown> }[] = [];
+  const withAgent = (complete: (prompt: string, signal: AbortSignal, opts?: Record<string, unknown>) => Promise<string>) => {
+    calls.length = 0;
+    const f = fakeCore(async () => {});
+    return { f, core: { ...f.core, agent: { complete: (p: string, s: AbortSignal, o?: Record<string, unknown>) => (calls.push({ prompt: p, opts: o ?? {} }), complete(p, s, o)) } } };
+  };
+
+  it("`llm.oneshot` : les instructions sont le système, l'entrée est la demande ; sans outil ni réflexion ; max_tokens borné", async () => {
+    const { core } = withAgent(async () => "{\"threads\":[]}");
+    const { gw, port } = await start(core);
+    const c = await connect(gw, port);
+    expect((await c.call("llm.oneshot", { instructions: "Réponds en JSON.", input: "les faits", max_tokens: 900, temperature: 0.2 })).result).toEqual({ text: "{\"threads\":[]}" });
+    expect(calls[0]).toMatchObject({ prompt: "les faits", opts: { system: "Réponds en JSON.", thinking: false, maxTokens: 900 } });
+    await c.call("llm.oneshot", { instructions: "seulement des instructions", max_tokens: 99999 });
+    expect(calls[1]).toMatchObject({ prompt: "seulement des instructions", opts: { thinking: false, maxTokens: 8192 } });
+    expect(calls[1]!.opts).not.toHaveProperty("system");
+    c.close();
+  });
+
+  it("`llm.oneshot` refuse une demande vide, un modèle (template) et un texte démesuré ; un échec du modèle est dit sans secret", async () => {
+    const secret = "sk-abcdefghijklmnopqrstuvwx";
+    const { core } = withAgent(async () => {
+      throw new Error(`le fournisseur a refusé la clé (api_key=${secret})`);
+    });
+    const { gw, port } = await start(core);
+    const c = await connect(gw, port);
+    expect((await c.call("llm.oneshot", {})).error).toMatchObject({ code: -32602 });
+    expect((await c.call("llm.oneshot", { template: "titre", input: "x" })).error).toMatchObject({ code: -32602 });
+    expect((await c.call("llm.oneshot", { input: "x".repeat(200_001) })).error).toMatchObject({ code: -32602 });
+    expect(calls).toHaveLength(0);
+    const failed = await c.call("llm.oneshot", { input: "x" });
+    expect(failed.error).toMatchObject({ code: 5030, message: expect.stringContaining("one-shot generation failed") });
+    expect(failed.error!.message).not.toContain(secret);
+    c.close();
+  });
+
+  it("`llm.oneshot` sans complétion dans le noyau : -32601, pas un plantage", async () => {
+    const { gw, port } = await start(fakeCore(async () => {}).core);
+    const c = await connect(gw, port);
+    expect((await c.call("llm.oneshot", { input: "x" })).error).toMatchObject({ code: -32601 });
+    c.close();
+  });
+
+  it("`GET /api/sessions/{id}/messages` : les derniers messages dans l'ordre, `content` et `timestamp` en secondes ; session inconnue = 404", async () => {
+    const f = fakeCore(async () => {});
+    const { gw, port } = await start(f.core);
+    const s = f.core.sessions.create("Bilan");
+    const row = (i: number, role: "user" | "assistant" | "tool", content: string, extra: Record<string, unknown> = {}) => ({ id: `m${i}`, sessionId: s.id, role, content, createdAt: 1_700_000_000_000 + i * 1000, ...extra });
+    f.messages.set(s.id, [row(1, "user", "un"), row(2, "assistant", "deux"), row(3, "tool", "{\"todos\":[]}", { toolName: "todo" }), row(4, "assistant", "ancien résumé", { compacted: true }), row(5, "user", "cinq"), row(6, "assistant", "six")] as never);
+    const get = (path: string, token: string | null = gw.token) => fetch(`http://127.0.0.1:${port}${path}`, { headers: token ? { "x-hermes-session-token": token } : {} });
+
+    const latest = await (await get(`/api/sessions/${s.id}/messages?limit=3&order=latest`)).json();
+    expect(latest).toEqual({
+      messages: [
+        { role: "tool", content: "{\"todos\":[]}", timestamp: 1_700_000_003 },
+        { role: "user", content: "cinq", timestamp: 1_700_000_005 },
+        { role: "assistant", content: "six", timestamp: 1_700_000_006 },
+      ],
+    });
+    expect(((await (await get(`/api/sessions/${s.id}/messages?limit=2`)).json()) as { messages: unknown[] }).messages).toHaveLength(2);
+    expect((await get(`/api/sessions/nope/messages`)).status).toBe(404);
+    expect((await get(`/api/sessions/${s.id}/messages`, null)).status).toBe(401);
+  });
+});

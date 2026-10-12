@@ -149,6 +149,18 @@ export function toTranscript(messages: readonly Message[]): Record<string, unkno
   return out;
 }
 
+/**
+ * Les messages d'une conversation tels que `GET /api/sessions/{id}/messages` les rend (le panneau « Catch-up » lit où une conversation s'est arrêtée) :
+ * `content` en texte, `timestamp` en secondes. `latest` : les `limit` derniers, dans l'ordre chronologique ; sinon les `limit` premiers.
+ */
+export function storedMessages(messages: readonly Message[], opts: { limit?: number; order?: string } = {}): { messages: { role: string; content: string; timestamp: number }[] } {
+  const rows = messages
+    .filter((m) => !m.compacted)
+    .map((m) => ({ role: m.role === "user" || m.role === "assistant" ? m.role : "tool", content: m.content, timestamp: Math.floor(m.createdAt / 1000) }));
+  const limit = Number.isInteger(opts.limit) && (opts.limit as number) > 0 ? Math.min(opts.limit as number, 500) : 100;
+  return { messages: opts.order === "latest" ? rows.slice(-limit) : rows.slice(0, limit) };
+}
+
 export interface SessionInfoInput {
   session: Session;
   running: boolean;
