@@ -150,7 +150,8 @@ export type ScheduleRunner = (schedule: Schedule) => Promise<{ sessionId: string
 /** Runs prompts on a schedule while the app is open (missed runs fire once at startup). */
 export class Scheduler extends Emitter<{ changed: Schedule[] }> {
   private timer: NodeJS.Timeout | null = null;
-  private running = new Set<string>();
+  /** Les horaires servis en ce moment, avec l'instant du départ (voir `purgeStalledRunning`). */
+  private running = new Map<string, number>();
 
   constructor(
     private readonly db: Db,
@@ -253,8 +254,30 @@ export class Scheduler extends Emitter<{ changed: Schedule[] }> {
     this.jobs = jobs;
   }
 
+  /**
+   * M7 (§3.6-2) — le délai au-delà duquel une exécution qui n'a jamais rendu la main est déclarée
+   * bloquée. C'est celui de la file, pour que la même panne se lise de la même façon des deux côtés
+   * (et 15 minutes par défaut quand le planificateur tourne sans file).
+   */
+  get stalledAfterMs(): number {
+    return this.jobs?.stalledAfterMs ?? 15 * 60_000;
+  }
+
+  /**
+   * M7 (§3.6-2) — `running.delete` n'est atteint que si le runner se règle : un runner qui ne rend
+   * jamais la main laissait donc l'identifiant en place et l'horaire ne repartait plus JAMAIS, alors
+   * que `jobs.ts` sait déjà requalifier une exécution bloquée. On libère les exécutions qui dépassent
+   * le délai, pour que l'horaire reparte au tick suivant au lieu de rester « en cours » pour toujours.
+   */
+  private purgeStalledRunning(at: number): void {
+    for (const [id, startedAt] of this.running) {
+      if (at - startedAt >= this.stalledAfterMs) this.running.delete(id);
+    }
+  }
+
   /** Runs every enabled schedule whose time has come. Exposed for tests. */
   async tick(at = now()): Promise<void> {
+    this.purgeStalledRunning(at);
     const due = this.list().filter(
       (s) => s.enabled && s.nextRun !== null && s.nextRun <= at && !this.running.has(s.id),
     );
@@ -262,9 +285,10 @@ export class Scheduler extends Emitter<{ changed: Schedule[] }> {
   }
 
   async runNow(id: string, at = now()): Promise<void> {
+    this.purgeStalledRunning(at);
     const s = this.get(id);
     if (!s || this.running.has(id)) return;
-    this.running.add(id);
+    this.running.set(id, at);
     // L'exécution est d'abord ÉCRITE : si l'application s'arrête en cours, elle repart en `pending`
     // au démarrage au lieu de disparaître sans trace. La clé d'idempotence porte l'instant du tir,
     // donc un tick rejoué (même horaire, même instant) ne produit pas une seconde exécution.
@@ -298,7 +322,9 @@ export class Scheduler extends Emitter<{ changed: Schedule[] }> {
     } catch (e) {
       status = `erreur : ${(e as Error).message.slice(0, 200)}`;
     } finally {
-      this.running.delete(id);
+      // Seulement si c'est encore NOTRE départ : une exécution déclarée bloquée puis reprise par un
+      // tick suivant ne doit pas libérer la place de la nouvelle en se réglant après coup.
+      if (this.running.get(id) === at) this.running.delete(id);
     }
     // On referme l'exécution avec son issue, succès comme échec : un échec reste un fait accompli.
     // La file ne relance pas — l'horaire a son propre prochain tir, et retenter ici le doublerait.
