@@ -23,10 +23,17 @@ Les corrections utiles aux deux sont à reporter à la main (aucune synchronisat
 - Tests retirés parce qu'ils ne portaient que sur `packages/desktop` : les gardes de la sonde de fumée (8 fichiers), `sank-ui-protected`, le crochet git `pre-commit`.
   `tests/repo/effect-paths.test.ts` ne compte plus les appels du desktop et vérifie qu'aucun `ipcMain` n'apparaît dans le noyau.
 - Scripts retirés : `channels-count`, `sweep-temp`, `sank-manifest` (ils importaient `packages/desktop`).
+- Le lanceur de `jarod-cordis` (`gateway/launch.ts`, `scripts/Jarod-OS.cmd`) et son test : c'est le shell (`apps/desktop/electron/backend/`) qui démarre le noyau.
+- Ajouts : `setBundledPlugins` dans le noyau, `scripts/bundle-gateway.mjs` et `packages/cli/test/gateway-bundle.test.ts` (compilation en un fichier pour l'application installée).
 - Lockfile : l'importeur `packages/desktop` en est retiré ; les versions résolues des autres paquets sont celles de l'origine.
 
 ## Vérifié sur la copie (Windows 11, Node 24.20, pnpm 12.6)
 
 `pnpm install --prefer-frozen-lockfile`, `pnpm -r typecheck` et `pnpm -r test` passent, avec les mêmes totaux qu'à l'origine pour chaque paquet
-(cli : 355 + 1 échec attendu ; llm : 290 ; agent : 243 ; tools : 210 ; rag : 164 + 13 ignorés ; …). Les tests racine passent à 226 (269 à l'origine : la différence
-est celle des tests retirés ci-dessus).
+(llm : 290 ; agent : 243 ; tools : 210 ; rag : 164 + 13 ignorés ; …) sauf `cli` : 350 + 1 échec attendu (355 à l'origine : 8 tests du lanceur retirés, 3 de la passerelle
+compilée ajoutés). Les tests racine passent à 226 (269 à l'origine : la différence est celle des tests retirés ci-dessus).
+
+## Écarts voulus depuis la copie
+
+- Le message d'erreur de dépassement de contexte (`plugins/llm/src/openai.ts`) ne renvoie plus à « Paramètres → Local engine » de l'application Jarod (inexistant dans Jarod-OS) :
+  il nomme le réglage « Context Length » de LM Studio et `lms load <modèle> --context-length 16384`. Test ajouté.

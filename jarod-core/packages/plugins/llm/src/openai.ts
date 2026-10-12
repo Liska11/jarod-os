@@ -97,7 +97,7 @@ export function describeStreamError(error: unknown, requestChars: number, tools:
   if (!/terminated|context|n_ctx|too long|exceed|tokens to keep/i.test(message)) return base;
   // ~3.5 characters per token for this mix of French text and JSON schemas.
   const approx = Math.round(requestChars / 3.5 / 100) * 100;
-  return `${base}\nLa requête faisait environ ${approx} tokens (${tools} outils). Avec un modèle local, vérifiez que sa longueur de contexte la contient (16 384 ou plus : Paramètres → Local engine → Local models, champ « Context » du modèle LM Studio puis « Reload » ; préréglage llama.cpp : « Context size »), ou allégez-la (Paramètres → Outils : recherche d'outils « Toujours », ou désactivez des outils).`;
+  return `${base}\nLa requête faisait environ ${approx} tokens (${tools} outils). Avec un modèle local, vérifiez que sa longueur de contexte la contient (16 384 ou plus). LM Studio : réglage « Context Length » du modèle au chargement, ou en ligne de commande \`lms load <modèle> --context-length 16384\` ; llama.cpp : « Context size » du préréglage. Un modèle déjà chargé garde son ancien contexte : rechargez-le.`;
 }
 
 /** Client for any OpenAI Chat Completions-compatible endpoint (streaming + function calling). */

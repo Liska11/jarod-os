@@ -96,6 +96,13 @@ describe("OpenAICompatibleClient", () => {
     expect((err as Error).message).toMatch(
       /^Le serveur a interrompu la génération : terminated\nLa requête faisait environ 2\d00 tokens \(1 outils\)/,
     );
+    // Le conseil vaut pour tout hôte (Jarod-OS n'a ni « Paramètres → Local engine » ni réglage d'outils) : il nomme le réglage de LM Studio et la commande qui le pose.
+    const advice = describeStreamError({ message: "request (8570 tokens) exceeds the available context size (8192 tokens)" }, 20000, 15);
+    expect(advice).toContain("16 384 ou plus");
+    expect(advice).toContain("« Context Length »");
+    expect(advice).toContain("lms load <modèle> --context-length 16384");
+    expect(advice).toContain("rechargez-le");
+    expect(advice).not.toContain("Paramètres");
     expect(describeStreamError({ message: "model crashed" }, 100, 0)).toBe(
       "Le serveur a interrompu la génération : model crashed",
     );

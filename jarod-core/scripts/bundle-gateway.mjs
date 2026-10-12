@@ -81,7 +81,7 @@ function copyPackage(name, fromDir) {
     // Les sources C de SQLite (plusieurs dizaines de Mo) ne servent plus une fois le module compilé.
     filter: (src) => {
       const rel = src.slice(dir.length);
-      if (/[\\/](deps|src|docs|test|tests)[\\/]/.test(rel + "/") || /\.(cc|cpp|h|c|gyp|obj|pdb|lib|exp|ilk)$/.test(src)) return false;
+      if (/[\\/](deps|src|docs|test|tests|build)[\\/]/.test(rel + "/") || /\.(cc|cpp|h|c|gyp|obj|pdb|lib|exp|ilk)$/.test(src)) return false;
       // `prebuilds/<plateforme>-<arch>.node` : seul celui de la machine qui compile sert (le module est natif, donc propre à la plateforme).
       const prebuilt = /[\\/]prebuilds[\\/]([a-z0-9]+-[a-z0-9]+)\.node$/.exec(src);
       return !prebuilt || prebuilt[1] === `${process.platform}-${process.arch}`;

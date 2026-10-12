@@ -1,45 +1,49 @@
-# Jarod-OS
+# Jarod-OS : le noyau
 
-Jarod-OS est l'interface dérivée de **Herald OS** (renommée Jarod-OS ; le shell : fenêtre, dock, pages Aperçu, Mémoire, Automatisations, Réglages…) posée sur le **noyau de Jarod-cordis**
-(conversation, outils, mémoire, planifications). Herald croit parler à son moteur `hermes serve` ; en réalité c'est la passerelle de ce dépôt
-(`packages/cli/src/gateway/`) qui lui répond avec le noyau de Jarod. Aucune modification du shell n'est nécessaire pour la conversation, les accords d'outils
-et les automatisations ; la page Mémoire de Herald a reçu un adaptateur (branche `feature/windows-port` du dépôt Herald, commit « Memory page: read and write
-through the backend… »).
+`jarod-core/` est le **noyau de Jarod-OS** : conversation, outils, mémoire, planifications, messageries. Le shell (`apps/desktop` : fenêtre, dock, pages Aperçu,
+Mémoire, Automatisations, Réglages…, dérivé de Herald OS) le démarre lui-même et lui parle comme à un `hermes serve` : la passerelle de ce dossier
+(`packages/cli/src/gateway/`) répond au protocole JSON-RPC / REST que le shell connaît. Jarod-OS n'a besoin ni de `jarod-cordis`, ni d'une installation de Jarod,
+ni de Hermes (Hermes reste possible en option : `HERALD_OS_BACKEND=hermes`). Origine du code : `PROVENANCE.md`.
 
 ## Lancer
 
+Installé : lancer **Jarod-OS** (raccourci du menu Démarrer). L'application démarre son noyau (`resources\jarod-core\node.exe gateway.mjs`, fourni avec elle), attend
+qu'il soit prêt, puis l'arrête proprement (entrée fermée, 8 s de délai) quand la fenêtre se ferme ; il ne reste jamais orphelin.
+
+En développement (dépôt Herald) :
+
 ```
-scripts\Jarod-OS.cmd [--workspace D:\JAROD-OS] [--data <dossier>] [--real-profile] [--herald "<Jarod-OS.exe>"]
+npm run bundle:core --workspace apps/desktop     # compile le noyau dans jarod-core/dist/gateway (pnpm requis)
+npm run dev --workspace apps/desktop             # le shell lance ce noyau
 ```
 
-Le lanceur (`packages/cli/src/gateway/launch.ts`) : (1) prépare le profil, (2) démarre la passerelle et attend qu'elle soit prête, (3) lance l'application Jarod-OS
-avec l'adresse et le jeton de la passerelle, (4) arrête la passerelle quand la fenêtre se ferme (ou si le lanceur meurt : elle ne reste jamais orpheline).
-
-| Option | Défaut | Rôle |
+| Réglage (variable d'environnement) | Défaut | Rôle |
 |---|---|---|
-| `--workspace` (ou `JAROD_WORKSPACE`) | `D:\JAROD-OS` | dossier de travail de TOUTES les conversations ; les outils fichiers de Jarod s'y confinent |
-| `--data` (ou `JAROD_OS_DATA`) | `%LOCALAPPDATA%\Jarod-OS` | données de Jarod-OS : `profile\`, `herald-home\`, `herald-userdata\`, `gateway.log` |
-| `--herald` (ou `HERALD_OS_EXE`) | `…\herald-os\apps\desktop\release\win-unpacked\Jarod-OS.exe` | l'application Jarod-OS empaquetée (`npm run dist:win` dans le dépôt Herald) |
-| `--real-profile` | non | ouvre le profil RÉEL de Jarod (fournisseurs, mémoire, planifications) au lieu du profil de Jarod-OS |
-
-Données : Herald reçoit son propre `HERMES_HOME` et son propre dossier utilisateur (`--user-data-dir`) : il ne partage rien avec une installation de Herald ou de
-Hermes existante, et peut tourner à côté d'elle.
+| `JAROD_OS_DATA` | `%LOCALAPPDATA%\Jarod-OS` (Linux : `~/.local/share/jarod-os`) | données du noyau : `profile\` (base chiffrée, fournisseurs, mémoire, planifications) et `herald-home\` (fichiers du shell) |
+| `JAROD_WORKSPACE` | `Documents\Jarod-OS` | dossier de travail de TOUTES les conversations ; les outils fichiers de Jarod s'y confinent |
+| `HERALD_OS_BACKEND` | `jarod` si le noyau est présent, sinon `hermes` | choix du backend |
+| `HERALD_OS_JAROD_CORE` | (emplacement par défaut) | dossier contenant un `gateway.mjs` compilé à utiliser à la place |
+| `HERALD_OS_BACKEND_URL` + `HERALD_OS_BACKEND_TOKEN` | non défini | se brancher sur un backend déjà lancé (passerelle de développement, par exemple) |
 
 ### Profil
 
-Par défaut Jarod-OS a **son profil** (créé au premier lancement) : il ne touche pas aux données de l'application Jarod. Il est vide : pour parler à un vrai
-modèle, donner une clé par l'environnement avant de lancer (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `OPENROUTER_API_KEY`, `GEMINI_API_KEY`… : la liste est `ENV_KEYS`
-dans `packages/cli/src/context.ts`), ou utiliser un serveur local (Ollama, LM Studio), puis choisir le modèle dans Réglages › Hermes & agents.
-`--real-profile` ouvre à la place le profil réel de Jarod : tout ce qu'il contient est alors disponible, mais le verrou du profil interdit de lancer en même temps
-l'application Jarod, et les conversations, la mémoire et les planifications créées d'ici apparaissent dans Jarod.
+Jarod-OS a **son propre profil**, créé au premier lancement : il ne partage rien avec une installation de Jarod. Il est vide : pour parler à un vrai modèle, donner
+une clé par l'environnement avant de lancer (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `OPENROUTER_API_KEY`, `GEMINI_API_KEY`… : la liste est `ENV_KEYS` dans
+`packages/cli/src/context.ts`), ou utiliser un serveur local (Ollama, LM Studio), puis choisir le modèle dans Réglages › Hermes & agents.
 
-La passerelle tourne avec le cœur complet (`--init` : verrou du profil, tick du planificateur, MCP, passerelles de messagerie) : les automatisations se
-déclenchent seules tant que Jarod-OS est ouvert.
+Le noyau tourne avec le cœur complet (`--init` : verrou du profil, tick du planificateur, MCP, passerelles de messagerie) : les automatisations se déclenchent seules
+tant que Jarod-OS est ouvert.
+
+### Ce que le paquet n'embarque pas
+
+Les workers d'embeddings et de reranker (ils lancent du TypeScript par `tsx` et OpenVINO), `onnxruntime-node`, `openvino` et `node-pty`. Les fonctions locales qui en
+dépendent (recherche sémantique par modèle d'embedding local, reranker, accélération NPU) ne sont pas disponibles dans l'application installée ; la conversation, les outils,
+la mémoire, les planifications et les messageries le sont.
 
 ## Vérifier le sélecteur de modèles
 
 ```
-powershell -ExecutionPolicy Bypass -File scriptserify-jarod-os.ps1
+powershell -ExecutionPolicy Bypass -File scripts\verify-jarod-os.ps1
 ```
 
 Profil jetable, faux serveur LM Studio local, vrai noyau et passerelle (`src/gateway/verify.ts`) : passerelle joignable, modèles découverts, `/model fournisseur:modèle`,
