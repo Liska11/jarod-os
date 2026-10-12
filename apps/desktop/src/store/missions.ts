@@ -7,6 +7,7 @@ import { $chats, SESSION_SOURCE } from './chat.ts'
 import { onAnyGatewayEvent } from './gateway.ts'
 import { $pendingRequests } from './requests.ts'
 import { $runtimeIds, $sessions } from './sessions.ts'
+import { baseName } from '../../shared/path-names.ts'
 
 /*
  * Missions are derived, never stored: a mission is a Hermes session viewed through its goal, its
@@ -142,7 +143,7 @@ function recordArtifact(sessionId: string, tool: string, args: Record<string, un
   const additions: Artifact[] = []
 
   for (const p of paths) {
-    const name = p.split('/').filter(Boolean).pop() ?? p
+    const name = baseName(p)
     const existing = current.find(a => a.path === p)
 
     if (existing) {
@@ -278,7 +279,7 @@ function seedArtifactsFromChat(chat: ChatState): void {
     const ts = row.ts
 
     for (const p of outputPaths(row.name, row.args)) {
-      const name = p.split('/').filter(Boolean).pop() ?? p
+      const name = baseName(p)
       const existing = found.find(a => a.path === p)
 
       if (existing) {

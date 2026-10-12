@@ -3,6 +3,7 @@ import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 import { isExcluded } from '../../shared/continuity.ts'
+import { segmentsOf } from '../../shared/path-names.ts'
 import type { ContextSnapshot, ProjectActivity, RecentFile } from '../../shared/ipc.ts'
 import { run } from '../platform/exec.ts'
 import { hostPlatform } from '../platform/index.ts'
@@ -46,10 +47,14 @@ export async function takeSnapshot(options: SnapshotOptions): Promise<ContextSna
   return { takenAt: now, files, projects, apps }
 }
 
-function isNoise(target: string, home: string): boolean {
-  const relative = target.startsWith(`${home}/`) ? target.slice(home.length + 1) : target
+/** Under the home folder, only what follows it counts (the home's own name is no noise); the comparison is blind to case and separator on Windows. */
+export function isNoise(target: string, home: string): boolean {
+  const windows = /^[A-Za-z]:|^\\\\/.test(home)
+  const flat = (text: string) => (windows ? text.replace(/\\/g, '/').toLowerCase() : text)
+  const inside = flat(target).startsWith(`${flat(home)}/`)
+  const relative = inside ? target.slice(home.length + 1) : target
 
-  return relative.split('/').some(segment => segment.startsWith('.') || NOISE_SEGMENTS.has(segment))
+  return segmentsOf(relative).some(segment => segment.startsWith('.') || NOISE_SEGMENTS.has(segment))
 }
 
 const touched = (file: RecentFile) => Math.max(file.lastUsedAt, file.modifiedAt)

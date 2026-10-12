@@ -4,6 +4,7 @@ import { isPanels } from '../store/shell.ts'
 import { $studios, focusStudioFile, openStudio, setPreview, studioWindowFor } from '../store/studio.ts'
 import { startBuild } from '../store/studio-actions.ts'
 import { $focusedWindowId, $windows, closeWindow } from '../store/windows.ts'
+import { baseName } from '../../shared/path-names.ts'
 
 /* The Studio: build something and watch Hermes do it. */
 
@@ -119,7 +120,7 @@ export const studioCommands: readonly OsCommand[] = [
       focusStudioFile(sessionId, absolute)
       const id = openStudio(sessionId, titleOf(sessionId))
 
-      return ok(`Showing ${absolute.split('/').pop()}`, { highlight: { kind: 'window', id } })
+      return ok(`Showing ${baseName(absolute)}`, { highlight: { kind: 'window', id } })
     }
   },
   {

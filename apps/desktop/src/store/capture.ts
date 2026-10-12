@@ -3,11 +3,12 @@ import type { RecordingState } from '../../shared/ipc.ts'
 import { notify } from './notifications.ts'
 import { isMainSurface, isPanels, openSurface } from './shell.ts'
 import { openAsk } from './surface.ts'
+import { baseName } from '../../shared/path-names.ts'
 
 /** The screen recording, as main reports it (every window: the menu bar shows a red dot). */
 export const $recording = atom<RecordingState>({ recording: false })
 
-const fileName = (file: string) => file.split('/').pop() ?? file
+const fileName = baseName
 
 /** After a screenshot: a notification that offers to mark it up, copy it, ask Hermes or show it. */
 export function offerCapture(file: string): void {

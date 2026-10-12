@@ -14,6 +14,7 @@ import { $screensaverUp } from './switches.ts'
 import { $applicationsOpen, openAsk, toggleCommandBar } from './surface.ts'
 import { openWebWindow } from './web-windows.ts'
 import { openApp, showPage } from './windows.ts'
+import { baseName } from '../../shared/path-names.ts'
 
 /*
  * `ShellCommand`s addressed to the Hermes window: from the `herald-os` CLI (compositor hotkeys), the
@@ -34,7 +35,7 @@ async function pickWallpaper(): Promise<void> {
     }
 
     await updatePrefs({ wallpaper })
-    notify({ title: 'Wallpaper updated', body: wallpaper.split('/').pop() || wallpaper, level: 'success' })
+    notify({ title: 'Wallpaper updated', body: baseName(wallpaper), level: 'success' })
   } catch (error) {
     notify({ title: 'Could not set wallpaper', body: error instanceof Error ? error.message : String(error), level: 'error' })
   }

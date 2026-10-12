@@ -12,6 +12,7 @@ import { $activeSpace } from '../../store/spaces.ts'
 import { openFileWindow } from '../../store/web-windows.ts'
 import { showPage } from '../../store/windows.ts'
 import { isViewable } from '../../../shared/viewer.ts'
+import { baseName } from '../../../shared/path-names.ts'
 
 /*
  * Page-local state for Files: where we are, what is selected, how we look at it, plus the
@@ -77,7 +78,7 @@ export function joinPath(dir: string, name: string): string {
 }
 
 export function basename(path: string): string {
-  return path.split('/').filter(Boolean).pop() ?? path
+  return baseName(path)
 }
 
 export function locationKey(location: Location | null): string {

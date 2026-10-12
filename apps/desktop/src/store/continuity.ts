@@ -13,6 +13,7 @@ import { notify } from './notifications.ts'
 import { isMainSurface } from './shell.ts'
 import { openStudio } from './studio.ts'
 import { $page, showPage } from './windows.ts'
+import { baseName } from '../../shared/path-names.ts'
 
 /*
  * "Pick up where you left off". On boot and whenever the user comes back from a break, Hermes
@@ -182,7 +183,7 @@ const samePath = (a: string | null | undefined, b: string) => Boolean(a) && a!.r
 const placeOf = (thread: ContinuityThread) => thread.items.find(item => item.kind === 'project' || item.kind === 'folder')
 
 function asFileItem(item: ContinuityItem): FileItem {
-  const name = item.ref.split('/').pop() ?? item.label
+  const name = baseName(item.ref) || item.label
 
   return { name, path: item.ref, kind: 'file', size: 0, modifiedAt: 0, extension: name.includes('.') ? name.split('.').pop()!.toLowerCase() : '', hidden: name.startsWith('.') }
 }

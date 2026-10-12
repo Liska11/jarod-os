@@ -1,6 +1,7 @@
 import { IconChevronDown, IconChevronRight, IconFile, IconFolder } from '@tabler/icons-react'
 import { useEffect, useMemo, useState } from 'react'
 import type { TreeEntry } from '../../../shared/ipc.ts'
+import { folderPart } from '../../../shared/path-names.ts'
 import { cn } from '../../lib/cn.ts'
 import type { StudioFile } from '../../lib/studio-model.ts'
 
@@ -17,7 +18,7 @@ function buildTree(root: string, entries: TreeEntry[]): Node[] {
   const sorted = [...entries].sort((a, b) => a.path.localeCompare(b.path))
 
   for (const entry of sorted) {
-    const parentPath = entry.path.slice(0, entry.path.lastIndexOf('/'))
+    const parentPath = folderPart(entry.path)
     const parent = byPath.get(parentPath)
 
     if (!parent) {

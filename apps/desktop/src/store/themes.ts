@@ -4,6 +4,7 @@ import { type ColorScheme, HERALD_SKIN, schemeOf, themeColorsFromSkin, themeFrom
 import { $prefs, applyPrefsToDocument, updatePrefs } from './backend.ts'
 import { $gatewayReady, onGatewayEvent } from './gateway.ts'
 import { isMainSurface } from './shell.ts'
+import { baseName } from '../../shared/path-names.ts'
 
 /** Installed themes (built in first, then the person's own), as main lists them. */
 export const $themes = atom<ThemeSummary[]>([])
@@ -41,7 +42,7 @@ async function imagePixels(imagePath: string): Promise<Uint8ClampedArray> {
   const dataUrl = await window.heraldOS.theme.sample(imagePath)
 
   if (!dataUrl) {
-    throw new Error(`${imagePath.split('/').pop() || imagePath} is not an image Jarod-OS can read (PNG or JPEG).`)
+    throw new Error(`${baseName(imagePath)} is not an image Jarod-OS can read (PNG or JPEG).`)
   }
 
   const image = new Image()
@@ -62,7 +63,7 @@ async function imagePixels(imagePath: string): Promise<Uint8ClampedArray> {
 }
 
 const fileLabel = (file: string) =>
-  (file.split('/').pop() ?? file)
+  baseName(file)
     .replace(/\.[a-z0-9]+$/i, '')
     .replace(/[-_]+/g, ' ')
     .replace(/\s+/g, ' ')
@@ -73,7 +74,7 @@ export async function generateTheme(options: { image: string; name?: string; sch
   const file = decodeURIComponent(options.image.replace(/^file:\/\//, ''))
   const pixels = await imagePixels(file)
   const label = options.name?.trim() || fileLabel(file) || 'My theme'
-  const spec = themeFromPixels(pixels, { name: themeSlug(label), label, description: `Made from ${file.split('/').pop() ?? 'an image'}.`, scheme: options.scheme })
+  const spec = themeFromPixels(pixels, { name: themeSlug(label), label, description: `Made from ${baseName(file) || 'an image'}.`, scheme: options.scheme })
   const name = await window.heraldOS.theme.save(spec, file)
   await loadThemes()
   await applyTheme(name)

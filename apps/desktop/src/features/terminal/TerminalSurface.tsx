@@ -12,6 +12,7 @@ import { useShellCommands } from '../../shell/surfaces/shell-utils.ts'
 import { $prefs } from '../../store/backend.ts'
 import { $catalog, loadCatalog } from '../../store/catalog.ts'
 import { $terminalRequest } from '../../store/terminal.ts'
+import { baseName } from '../../../shared/path-names.ts'
 
 const MONO_STACK = 'SF Mono, JetBrains Mono, Menlo, monospace'
 
@@ -73,7 +74,7 @@ export function TerminalSurface() {
       }
 
       live.current.add(handle.id)
-      setTabs(current => [...current, { id: handle.id, title: program?.label ?? handle.shell.split('/').pop() ?? 'shell' }])
+      setTabs(current => [...current, { id: handle.id, title: program?.label ?? (baseName(handle.shell) || 'shell') }])
       setActive(handle.id)
       setError(null)
     } catch (err) {

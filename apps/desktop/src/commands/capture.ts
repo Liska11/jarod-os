@@ -5,6 +5,7 @@ import { $recording, askAbout, offerCapture } from '../store/capture.ts'
 import { fail, ok, type OsCommand } from '../store/os-commands.ts'
 import { isPanels } from '../store/shell.ts'
 import { $windows, closeWindow, openApp } from '../store/windows.ts'
+import { baseName } from '../../shared/path-names.ts'
 
 /* The capture suite: screenshots, recording, the colour picker, QR codes, text, markup, the camera. */
 
@@ -66,7 +67,7 @@ export const captureCommands: readonly OsCommand[] = [
         offerCapture(file)
       }
 
-      return ok(`Saved ${file.split('/').pop()}`, { data: { file } })
+      return ok(`Saved ${baseName(file)}`, { data: { file } })
     }
   },
   {
@@ -83,7 +84,7 @@ export const captureCommands: readonly OsCommand[] = [
     run: async ({ action, region, audio }) => {
       const state = await window.heraldOS.capture.record((action as 'toggle' | 'start' | 'stop') ?? 'toggle', { region: Boolean(region), audio: Boolean(audio) })
 
-      return ok(state.recording ? 'Recording the screen; run it again (or click the red dot) to stop' : state.file ? `Saved ${state.file.split('/').pop()}` : 'Not recording', { data: { ...state } })
+      return ok(state.recording ? 'Recording the screen; run it again (or click the red dot) to stop' : state.file ? `Saved ${baseName(state.file)}` : 'Not recording', { data: { ...state } })
     }
   },
   {

@@ -2,6 +2,7 @@ import { atom, computed } from 'nanostores'
 import type { ChatMessage, ToolMessage } from '../../lib/chat-model.ts'
 import { $activeChatId } from '../../store/chat.ts'
 import { $artifacts, type Artifact } from '../../store/missions.ts'
+import { baseName } from '../../../shared/path-names.ts'
 
 /*
  * Page-local state for the Hermes page: which artifact the pane shows, which tab is open and
@@ -113,7 +114,7 @@ function sourcesOfTool(tool: ToolMessage): SourceRow[] {
     for (const key of FILE_KEYS) {
       for (const p of stringsOf(args[key])) {
         if (p.startsWith('/') || p.startsWith('~')) {
-          rows.push({ id: `${tool.id}:${p}`, kind: 'file', label: p.split('/').filter(Boolean).pop() ?? p, target: p, action, ts: tool.ts })
+          rows.push({ id: `${tool.id}:${p}`, kind: 'file', label: baseName(p), target: p, action, ts: tool.ts })
         }
       }
     }
@@ -126,7 +127,7 @@ function sourcesOfTool(tool: ToolMessage): SourceRow[] {
           for (const key of FILE_KEYS) {
             for (const p of stringsOf((op as Record<string, unknown>)[key])) {
               if (p.startsWith('/') || p.startsWith('~')) {
-                rows.push({ id: `${tool.id}:${p}`, kind: 'file', label: p.split('/').filter(Boolean).pop() ?? p, target: p, action: 'wrote', ts: tool.ts })
+                rows.push({ id: `${tool.id}:${p}`, kind: 'file', label: baseName(p), target: p, action: 'wrote', ts: tool.ts })
               }
             }
           }

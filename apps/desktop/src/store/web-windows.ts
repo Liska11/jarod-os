@@ -6,6 +6,7 @@ import { $pendingRequests } from './requests.ts'
 import { isPanels } from './shell.ts'
 import { $applicationsOpen, $commandBarOpen } from './surface.ts'
 import { $windows, type Bounds, closeWindow, focusWindow, openApp, retitleWindow } from './windows.ts'
+import { baseName } from '../../shared/path-names.ts'
 
 /*
  * Web pages inside Jarod-OS. A web window is a native view main layers over the shell
@@ -131,7 +132,7 @@ export async function openWebWindow(url: string, options: OpenWebWindowOptions =
 /** Show a local file (PDF, image, text, media) in a Jarod-OS window; resolves with the view id. */
 export async function openFileWindow(filePath: string, options: OpenWebWindowOptions = {}): Promise<string> {
   bind()
-  const title = options.title ?? filePath.split('/').pop() ?? filePath
+  const title = options.title ?? baseName(filePath)
   const id = await window.heraldOS.web.openFile(filePath, { title })
   const url = `file://${filePath}`
   const windowId = isPanels ? null : openApp('web', { payload: { viewId: id, url }, title, bounds: options.bounds, singleton: false })

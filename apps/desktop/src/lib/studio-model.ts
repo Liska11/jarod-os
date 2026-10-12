@@ -2,6 +2,7 @@
 // (with the changed lines), the commands it runs, its background processes' live output, and the
 // site to preview. Pure: `reduceStudioEvent` folds gateway events into a `StudioState`.
 import { parseUnifiedDiff } from './unified-diff.ts'
+import { baseName } from '../../shared/path-names.ts'
 
 export type StudioFileStatus = 'writing' | 'editing' | 'written' | 'edited' | 'failed' | 'changed'
 
@@ -105,7 +106,6 @@ export function detectLocalUrl(text: string): string | null {
   return match[0].replace(/\/\/(?:0\.0\.0\.0|\[::1?\])/, '//localhost').replace(/[.,;:]+$/, '')
 }
 
-const baseName = (path: string): string => path.split('/').pop() ?? path
 
 const record = (value: unknown): Record<string, unknown> => (value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : {})
 

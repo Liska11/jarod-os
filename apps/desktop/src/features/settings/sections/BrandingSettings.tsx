@@ -8,6 +8,7 @@ import { $branding } from '../../../store/branding.ts'
 import { notify } from '../../../store/notifications.ts'
 import { runCommand } from '../../../store/os-commands.ts'
 import { markSaved, SettingsBlock, SettingsGroup, SettingsRow } from './shared.tsx'
+import { baseName } from '../../../../shared/path-names.ts'
 
 async function run(command: string, args: Record<string, unknown>) {
   const result = await runCommand(command, args, { source: 'ui' })
@@ -91,7 +92,7 @@ export function BrandingSettings() {
         <SettingsRow
           icon={<IconLock />}
           label="Lock screen picture"
-          description={branding.lock ? <span className="selectable">{branding.lock.split('/').pop()}</span> : 'The theme colours. A PNG or JPEG of your own goes behind the password ring.'}
+          description={branding.lock ? <span className="selectable">{baseName(branding.lock)}</span> : 'The theme colours. A PNG or JPEG of your own goes behind the password ring.'}
           keywords="branding lock screen wallpaper swaylock"
         >
           {branding.lock && (

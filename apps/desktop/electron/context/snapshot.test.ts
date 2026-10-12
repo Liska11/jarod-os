@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { RecentFile } from '../../shared/ipc.ts'
-import { appNameFromCommand, mergeRecent, parseGitLog, parseGitStatus } from './snapshot.ts'
+import { appNameFromCommand, isNoise, mergeRecent, parseGitLog, parseGitStatus } from './snapshot.ts'
 
 describe('parseGitStatus', () => {
   it('reads the branch and the changed paths', () => {
@@ -51,5 +51,30 @@ describe('mergeRecent', () => {
 
     expect(rows.map(r => r.path)).toEqual(['/b', '/a'])
     expect(rows[1]).toMatchObject({ lastUsedAt: 100, modifiedAt: 200 })
+  })
+})
+
+describe('isNoise', () => {
+  it('skips build output, dependencies and dot folders below the home folder (POSIX)', () => {
+    expect(isNoise('/home/san/work/app/node_modules/x/index.js', '/home/san')).toBe(true)
+    expect(isNoise('/home/san/.config/app/settings.json', '/home/san')).toBe(true)
+    expect(isNoise('/home/san/work/app/src/index.ts', '/home/san')).toBe(false)
+  })
+
+  it('does the same on Windows paths, with either separator and whatever the case of the drive and the home', () => {
+    const home = 'C:\\Users\\San'
+
+    expect(isNoise('C:\\Users\\San\\work\\app\\node_modules\\x\\index.js', home)).toBe(true)
+    expect(isNoise('C:\\Users\\San\\.cache\\thing.txt', home)).toBe(true)
+    expect(isNoise('c:\\users\\san\\work\\app\\.git\\HEAD', home)).toBe(true)
+    expect(isNoise('C:/Users/San/work/app/dist/main.js', home)).toBe(true)
+    expect(isNoise('C:\\Users\\San\\Documents\\report.docx', home)).toBe(false)
+  })
+
+  it('does not count the home folder\'s own name as noise', () => {
+    expect(isNoise('C:\\Users\\.hidden\\Documents\\a.txt', 'C:\\Users\\.hidden')).toBe(false)
+    expect(isNoise('c:\\users\\.hidden\\Documents\\a.txt', 'C:\\Users\\.hidden')).toBe(false) // Windows paths differ by case only
+    expect(isNoise('C:/Users/.hidden/Documents/a.txt', 'C:\\Users\\.hidden')).toBe(false)
+    expect(isNoise('C:\\Users\\.hidden\\Documents\\.git\\HEAD', 'C:\\Users\\.hidden')).toBe(true)
   })
 })

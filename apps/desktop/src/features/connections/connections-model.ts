@@ -1,6 +1,7 @@
 import { rest } from '../../lib/rest.ts'
 import type { ActivityEntry } from '../../store/missions.ts'
 import { failureText, isNotAvailable } from '../../lib/unavailable.ts'
+import { baseName } from '../../../shared/path-names.ts'
 
 /*
  * A Connection is a uniform view over three upstream things the Hermes runtime exposes over REST:
@@ -568,7 +569,7 @@ export function writeFolders(id: string, folders: string[]): void {
 }
 
 export function basename(path: string): string {
-  return path.split('/').filter(Boolean).pop() ?? path
+  return baseName(path)
 }
 
 /* ---- Activity ----------------------------------------------------------------------------- */

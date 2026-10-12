@@ -13,6 +13,7 @@ import { FileTree } from './FileTree.tsx'
 import { openInEditor } from './open-in-editor.ts'
 import { PreviewPane } from './PreviewPane.tsx'
 import { TerminalPane } from './TerminalPane.tsx'
+import { baseName } from '../../../shared/path-names.ts'
 
 /** A drag handle between two panes; reports the pointer's movement in pixels. */
 function Splitter({ axis, onDrag }: { axis: 'x' | 'y'; onDrag: (delta: number) => void }) {
@@ -146,7 +147,7 @@ export function StudioWindow({ win }: { win: OSWindow }) {
       <div className="flex h-10 shrink-0 items-center gap-3 border-b border-line px-3">
         <StatusDot tone={running ? 'accent' : 'ok'} pulse={running} />
         <div className="min-w-0 max-w-[40%]">
-          <div className="truncate text-[12.5px] text-fg">{chat?.title || root?.split('/').pop() || 'Studio'}</div>
+          <div className="truncate text-[12.5px] text-fg">{chat?.title || (root ? baseName(root) : '') || 'Studio'}</div>
           <div className="truncate text-[11px] text-fg-3">{status}</div>
         </div>
         {plan.length > 0 && (

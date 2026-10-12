@@ -12,6 +12,7 @@ import { CommandPalette } from '../CommandBar.tsx'
 import { ClipboardPanel } from './ClipboardPanel.tsx'
 import { ControlMenu, PowerCard } from './ControlMenu.tsx'
 import { useShellCommands, windowLabel } from './shell-utils.ts'
+import { baseName } from '../../../shared/path-names.ts'
 
 type Mode = 'ask' | 'command' | 'applications' | 'menu' | 'power' | 'clipboard' | 'emoji'
 
@@ -171,7 +172,7 @@ export function AskPanel({ state, onClose }: { state: AskState; onClose: () => v
           {state.attachments.map(path => (
             <Pill key={path} tone="muted" className="max-w-full">
               <IconPaperclip size={13} />
-              <span className="truncate">{path.split('/').pop() || path}</span>
+              <span className="truncate">{baseName(path)}</span>
             </Pill>
           ))}
         </div>

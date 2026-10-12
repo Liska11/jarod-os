@@ -9,6 +9,7 @@ import { notify } from '../../../store/notifications.ts'
 import { $themes, applyTheme, generateTheme, installThemes, loadThemes } from '../../../store/themes.ts'
 import { MenuBarSettings } from './MenuBarSettings.tsx'
 import { errorText, Filterable, InlineNote, markSaved, SectionTitle, SettingsGroup, SettingsRow } from './shared.tsx'
+import { baseName } from '../../../../shared/path-names.ts'
 
 const ACCENTS: { id: 'blue' | 'ice' | 'violet'; label: string; color: string }[] = [
   { id: 'blue', label: 'Blue', color: '#2f7dff' },
@@ -40,7 +41,7 @@ export function AppearanceSection() {
     }
   }
 
-  const wallpaperName = prefs.wallpaper ? decodeURIComponent(prefs.wallpaper.replace(/^file:\/\//, '')).split('/').pop() : null
+  const wallpaperName = prefs.wallpaper ? baseName(decodeURIComponent(prefs.wallpaper.replace(/^file:\/\//, ''))) : null
 
   return (
     <>

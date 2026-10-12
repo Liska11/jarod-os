@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { ProjectActivity, RecentFile } from '../../shared/ipc.ts'
-import { buildCatchUp, type CatchUpEvidence, durationLabel, findThread, parseThreads, readTranscript, threadId, whenLabel } from './continuity.ts'
+import { buildCatchUp, type CatchUpEvidence, durationLabel, findThread, folderOf, parseThreads, readTranscript, threadId, tilde, whenLabel } from './continuity.ts'
 
 const HOME = '/Users/sam'
 const NOW = new Date(2026, 9, 5, 14, 30).getTime()
@@ -171,5 +171,17 @@ describe('findThread', () => {
 describe('threadId', () => {
   it('is stable for the same title', () => {
     expect(threadId('Ember & Oak website!')).toBe('t-ember-oak-website')
+  })
+})
+
+describe('tilde / folderOf', () => {
+  it('shortens the home folder with either separator and finds the folder of a file', () => {
+    expect(tilde('/home/san/work', '/home/san')).toBe('~/work')
+    expect(tilde('C:\\Users\\San\\work', 'C:\\Users\\San')).toBe('~\\work')
+    expect(tilde('C:\\Users\\Sandra\\work', 'C:\\Users\\San')).toBe('C:\\Users\\Sandra\\work')
+    expect(tilde('C:\\Users\\San', 'C:\\Users\\San')).toBe('~')
+    expect(folderOf('/home/san/work/a.txt', '/home/san')).toBe('~/work')
+    expect(folderOf('C:\\Users\\San\\work\\a.txt', 'C:\\Users\\San')).toBe('~\\work')
+    expect(folderOf('a.txt', '/home/san')).toBe('/')
   })
 })

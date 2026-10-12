@@ -5,6 +5,7 @@ import { GlassButton } from '../../components/ui/glass.tsx'
 import { cn } from '../../lib/cn.ts'
 import { askAbout } from '../../store/capture.ts'
 import { notify } from '../../store/notifications.ts'
+import { baseName } from '../../../shared/path-names.ts'
 
 /*
  * Markup: draw on a screenshot before sharing it. Shapes are kept in image pixels and drawn on a
@@ -241,7 +242,7 @@ export function CaptureEditor({ file }: { file?: string }) {
           <HermesAvatar size={16} rounded={4} />
           Ask Hermes
         </GlassButton>
-        <GlassButton size="sm" variant="primary" disabled={busy || !image} onClick={() => void act(async () => window.heraldOS.capture.saveImage(markedUpName(file), exportPng()).then(saved => notify({ title: 'Saved', body: saved.split('/').pop() ?? saved, level: 'success', actions: [{ label: 'Show', command: 'files.show', args: { path: saved } }] })))}>
+        <GlassButton size="sm" variant="primary" disabled={busy || !image} onClick={() => void act(async () => window.heraldOS.capture.saveImage(markedUpName(file), exportPng()).then(saved => notify({ title: 'Saved', body: baseName(saved), level: 'success', actions: [{ label: 'Show', command: 'files.show', args: { path: saved } }] })))}>
           <IconDeviceFloppy />
           Save
         </GlassButton>

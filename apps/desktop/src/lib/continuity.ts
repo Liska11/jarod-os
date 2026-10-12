@@ -1,4 +1,5 @@
 import type { ContinuityItem, ContinuityThread, ProjectActivity, RecentFile } from '../../shared/ipc.ts'
+import { folderPart } from '../../shared/path-names.ts'
 
 /*
  * "Pick up where you left off", the pure half: the evidence Hermes reads (each entry tagged with a
@@ -108,12 +109,13 @@ export function durationLabel(ms: number): string {
   return hours < 36 ? `${hours} hours` : `${Math.round(hours / 24)} days`
 }
 
-function tilde(target: string, home: string): string {
-  return home && (target === home || target.startsWith(`${home}/`)) ? `~${target.slice(home.length)}` : target
+/** `~` for the home folder, with either separator (a Windows home is `C:\Users\name`). */
+export function tilde(target: string, home: string): string {
+  return home && (target === home || target.startsWith(`${home}/`) || target.startsWith(`${home}\\`)) ? `~${target.slice(home.length)}` : target
 }
 
-function folderOf(target: string, home: string): string {
-  return tilde(target.slice(0, target.lastIndexOf('/')) || '/', home)
+export function folderOf(target: string, home: string): string {
+  return tilde(folderPart(target) || '/', home)
 }
 
 const oneLine = (text: string, max: number) => {

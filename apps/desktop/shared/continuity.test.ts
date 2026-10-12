@@ -30,3 +30,25 @@ describe('isExcluded', () => {
     expect(isExcluded('', ['notes'], HOME)).toBe(false)
   })
 })
+
+describe('isExcluded on Windows paths', () => {
+  const WHOME = 'C:\\Users\\San'
+
+  it('treats a drive path as a folder (not a word), whatever the separators and the case', () => {
+    expect(isExcluded('C:\\Users\\San\\Clients\\Acme\\deck.pptx', ['C:\\Users\\San\\Clients'], WHOME)).toBe(true)
+    expect(isExcluded('C:/users/san/clients/acme/deck.pptx', ['C:\\Users\\San\\Clients'], WHOME)).toBe(true)
+    expect(isExcluded('C:\\Users\\San\\Clients', ['C:\\Users\\San\\Clients\\'], WHOME)).toBe(true)
+  })
+
+  it('expands ~ with a Windows home, and does not hide a sibling that shares a prefix', () => {
+    expect(isExcluded('C:\\Users\\San\\Clients\\a.txt', ['~\\Clients'], WHOME)).toBe(true)
+    expect(isExcluded('C:\\Users\\San\\Clients/a.txt', ['~/Clients'], WHOME)).toBe(true)
+    expect(isExcluded('C:\\Users\\San\\ClientsArchive\\a.txt', ['~\\Clients'], WHOME)).toBe(false)
+    expect(isExcluded('D:\\Clients\\a.txt', ['C:\\Users\\San\\Clients'], WHOME)).toBe(false)
+  })
+
+  it('hides titles that mention the folder by its name, and a UNC share is a folder too', () => {
+    expect(isExcluded('Draft the Acme proposal', ['C:\\Work\\Acme'], WHOME)).toBe(true)
+    expect(isExcluded('\\\\server\\share\\x.txt', ['\\\\server\\share'], WHOME)).toBe(true)
+  })
+})
