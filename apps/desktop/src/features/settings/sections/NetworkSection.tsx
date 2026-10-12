@@ -8,6 +8,7 @@ import { $backend } from '../../../store/backend.ts'
 import { $connection } from '../../../store/gateway.ts'
 import { notify } from '../../../store/notifications.ts'
 import { errorText, InlineNote, markSaved, SectionTitle, SettingsGroup, SettingsRow } from './shared.tsx'
+import { attempt } from '../../../lib/native.ts'
 
 interface McpServerRow {
   name: string
@@ -33,7 +34,7 @@ export function NetworkSection() {
           <Pill tone={phaseTone(backend.phase)} dot>
             {backend.phase}
           </Pill>
-          <GlassButton size="sm" variant="ghost" onClick={() => void window.heraldOS.backend.restart()} aria-label="Restart Hermes">
+          <GlassButton size="sm" variant="ghost" onClick={() => void attempt('restart the engine', () => window.heraldOS.backend.restart())} aria-label="Restart Hermes">
             Restart
           </GlassButton>
         </SettingsRow>

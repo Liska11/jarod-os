@@ -9,6 +9,7 @@ import { $plugins } from '../../../store/plugins.ts'
 import { openAsk } from '../../../store/surface.ts'
 import { openApp } from '../../../store/windows.ts'
 import { errorText, InlineNote, markSaved, SectionTitle, SettingsGroup, SettingsRow } from './shared.tsx'
+import { attempt } from '../../../lib/native.ts'
 
 const MAKE_A_WIDGET = 'Make me a Jarod-OS widget that '
 
@@ -68,7 +69,7 @@ export function PluginsSection() {
           </GlassButton>
         </SettingsRow>
         <SettingsRow icon={<IconFolder />} label="Plugins folder" description={<span className="font-mono text-[11.5px]">~/.config/herald-os/plugins</span>} keywords="plugin folder files">
-          <GlassButton size="sm" variant="ghost" onClick={() => void window.heraldOS.fs.openPath('~/.config/herald-os/plugins')}>
+          <GlassButton size="sm" variant="ghost" onClick={() => void attempt('open the plugins folder', () => window.heraldOS.fs.openPath('~/.config/herald-os/plugins'))}>
             Open
           </GlassButton>
         </SettingsRow>

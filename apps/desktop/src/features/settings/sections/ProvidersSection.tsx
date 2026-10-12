@@ -7,6 +7,7 @@ import { useBackendData } from '../../../lib/use-async.ts'
 import { notify } from '../../../store/notifications.ts'
 import { addressProblem, groupProviders, isUnsupported, keyProblem, type ProviderRow, type ProvidersPayload, providerState, providerSummary, type ProviderTestResult } from './providers-model.ts'
 import { errorText, InlineNote, markSaved, SectionTitle, SettingsGroup, SettingsRow } from './shared.tsx'
+import { attempt } from '../../../lib/native.ts'
 
 /*
  * Providers & keys: where the Jarod engine gets its models. Every control binds to `/api/jarod/providers`:
@@ -180,7 +181,7 @@ function ProviderItem({ row, onChanged }: { row: ProviderRow; onChanged: () => v
         {pill.label}
       </Pill>
       {row.key_url && state === 'needs-key' && (
-        <GlassButton size="sm" variant="ghost" onClick={() => void window.heraldOS.shell.openExternal(row.key_url!)} aria-label={`Get an API key for ${row.name}`} title="Open the page where the key is created">
+        <GlassButton size="sm" variant="ghost" onClick={() => void attempt('open the link', () => window.heraldOS.shell.openExternal(row.key_url!))} aria-label={`Get an API key for ${row.name}`} title="Open the page where the key is created">
           <IconExternalLink />
         </GlassButton>
       )}

@@ -86,7 +86,7 @@ export function notify(input: NotifyInput): HermesNotification {
   }
 
   if (input.native && !quiet && !$windowState.get().focused) {
-    void window.heraldOS.notifications.native(item.title, item.body ?? '')
+    void window.heraldOS.notifications.native(item.title, item.body ?? '').catch(() => undefined)
   }
 
   return item

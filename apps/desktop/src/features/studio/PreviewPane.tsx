@@ -5,6 +5,7 @@ import { cn } from '../../lib/cn.ts'
 import { openWebWindow } from '../../store/web-windows.ts'
 import type { OSWindow } from '../../store/windows.ts'
 import { useNativeView } from '../web/native-view.ts'
+import { attempt, quietly } from '../../lib/native.ts'
 
 const RETRY_MS = 1500
 const MAX_RETRIES = 40
@@ -48,8 +49,10 @@ export function PreviewPane({ win, target, root, contentKey, compact = false }: 
     return () => {
       off()
 
-      if (idRef.current) {
-        void window.heraldOS.web.close(idRef.current)
+      const open = idRef.current
+
+      if (open) {
+        void quietly(() => window.heraldOS.web.close(open))
         idRef.current = null
       }
     }
@@ -102,8 +105,10 @@ export function PreviewPane({ win, target, root, contentKey, compact = false }: 
     }
 
     const timer = setTimeout(() => {
-      if (idRef.current) {
-        void window.heraldOS.web.reload(idRef.current)
+      const open = idRef.current
+
+      if (open) {
+        void attempt('reload the preview', () => window.heraldOS.web.reload(open))
       }
     }, RELOAD_DEBOUNCE_MS)
 
@@ -121,7 +126,7 @@ export function PreviewPane({ win, target, root, contentKey, compact = false }: 
           <span className="truncate text-fg-2">{label || 'No preview yet'}</span>
           {loading && <Spinner className="ml-auto shrink-0" />}
         </div>
-        <button type="button" disabled={!viewId} onClick={() => viewId && void window.heraldOS.web.reload(viewId)} className="flex size-6 items-center justify-center rounded-md text-fg-3 hover:bg-white/8 hover:text-fg disabled:opacity-40" title="Reload" aria-label="Reload preview">
+        <button type="button" disabled={!viewId} onClick={() => viewId && void attempt('reload the preview', () => window.heraldOS.web.reload(viewId))} className="flex size-6 items-center justify-center rounded-md text-fg-3 hover:bg-white/8 hover:text-fg disabled:opacity-40" title="Reload" aria-label="Reload preview">
           <IconRefresh size={14} />
         </button>
         <button type="button" disabled={!target || !isWeb(target)} onClick={() => target && void openWebWindow(url || target)} className="flex size-6 items-center justify-center rounded-md text-fg-3 hover:bg-white/8 hover:text-fg disabled:opacity-40" title="Open in its own window" aria-label="Open preview in its own window">

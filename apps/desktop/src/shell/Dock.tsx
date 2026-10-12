@@ -11,6 +11,7 @@ import { notify } from '../store/notifications.ts'
 import { $applicationsOpen } from '../store/surface.ts'
 import { $windows, focusWindow, MAIN_WINDOW_ID, showPage } from '../store/windows.ts'
 import { useNativeApps } from '../store/native-apps.ts'
+import { attempt } from '../lib/native.ts'
 
 interface DockItem {
   id: string
@@ -140,7 +141,7 @@ export function Dock() {
     }
 
     list.push({ id: 'applications', label: 'Applications', render: () => <span className="icon-tile size-11 rounded-[11px]"><AppGlyph id="grid" size={22} /></span>, onClick: () => $applicationsOpen.set(true) })
-    list.push({ id: 'trash', label: 'Trash', render: () => <span className="flex size-11 items-center justify-center rounded-[11px] bg-white/6 text-fg-2"><AppGlyph id="trash" size={22} /></span>, onClick: () => void window.heraldOS.fs.openPath(trashPath) })
+    list.push({ id: 'trash', label: 'Trash', render: () => <span className="flex size-11 items-center justify-center rounded-[11px] bg-white/6 text-fg-2"><AppGlyph id="trash" size={22} /></span>, onClick: () => void attempt('open the Trash', () => window.heraldOS.fs.openPath(trashPath)) })
 
     return list
     // eslint-disable-next-line react-hooks/exhaustive-deps

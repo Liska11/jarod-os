@@ -12,6 +12,7 @@ import { notify } from '../../../store/notifications.ts'
 import { $spaces } from '../../../store/spaces.ts'
 import { $switches, setSwitch, SWITCH_LABELS } from '../../../store/switches.ts'
 import { errorText, markSaved, MenuDropdown, SectionTitle, SettingsGroup, SettingsRow, Stepper } from './shared.tsx'
+import { attempt } from '../../../lib/native.ts'
 
 export function GeneralSection() {
   const prefs = useStore($prefs)
@@ -89,13 +90,13 @@ export function GeneralSection() {
       <SettingsGroup title="Session">
         {hostPlatform() === 'linux' ? (
           <SettingsRow icon={<IconPower />} label="Restart Jarod-OS" description="Stops the Hermes backend this shell started and starts a fresh session." keywords="exit close quit">
-            <GlassButton size="sm" variant="danger" onClick={() => void window.heraldOS.window.quit()} aria-label="Restart Jarod-OS">
+            <GlassButton size="sm" variant="danger" onClick={() => void attempt('quit Jarod-OS', () => window.heraldOS.window.quit())} aria-label="Restart Jarod-OS">
               Restart
             </GlassButton>
           </SettingsRow>
         ) : (
           <SettingsRow icon={<IconPower />} label="Quit Jarod-OS" description="Stops the Hermes backend this shell started and returns to macOS." keywords="exit close">
-            <GlassButton size="sm" variant="danger" onClick={() => void window.heraldOS.window.quit()} aria-label="Quit Jarod-OS">
+            <GlassButton size="sm" variant="danger" onClick={() => void attempt('quit Jarod-OS', () => window.heraldOS.window.quit())} aria-label="Quit Jarod-OS">
               Quit
             </GlassButton>
           </SettingsRow>

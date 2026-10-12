@@ -23,6 +23,7 @@ import { toggleCommandBar } from '../store/surface.ts'
 import { $systemStats, useNetworkStatus, useSystemStats } from '../store/system.ts'
 import { $focusedTitle } from '../store/windows.ts'
 import { VoiceIndicator } from '../features/voice/VoiceIndicator.tsx'
+import { quietly } from '../lib/native.ts'
 
 export function useClock(intervalMs = 10_000): Date {
   const [now, setNow] = useState(() => new Date())
@@ -130,13 +131,13 @@ export function WindowControls() {
 
   return (
     <div className="no-drag flex items-center gap-0.5" role="group" aria-label="Window controls">
-      <button type="button" aria-label="Minimize" title="Minimize" onClick={() => void window.heraldOS.window.minimize()} className={cn(base, 'hover:bg-white/10')}>
+      <button type="button" aria-label="Minimize" title="Minimize" onClick={() => void quietly(() => window.heraldOS.window.minimize())} className={cn(base, 'hover:bg-white/10')}>
         <IconMinus size={15} />
       </button>
-      <button type="button" aria-label={filled ? 'Restore' : 'Maximize'} title={state.fullscreen ? 'Leave fullscreen (F11)' : filled ? 'Restore' : 'Maximize'} onClick={() => void window.heraldOS.window.toggleMaximize()} className={cn(base, 'hover:bg-white/10')}>
+      <button type="button" aria-label={filled ? 'Restore' : 'Maximize'} title={state.fullscreen ? 'Leave fullscreen (F11)' : filled ? 'Restore' : 'Maximize'} onClick={() => void quietly(() => window.heraldOS.window.toggleMaximize())} className={cn(base, 'hover:bg-white/10')}>
         {filled ? <IconCopy size={14} /> : <IconSquare size={13} />}
       </button>
-      <button type="button" aria-label="Close" title="Close" onClick={() => void window.heraldOS.window.close()} className={cn(base, 'hover:bg-danger/80 hover:text-white')}>
+      <button type="button" aria-label="Close" title="Close" onClick={() => void quietly(() => window.heraldOS.window.close())} className={cn(base, 'hover:bg-danger/80 hover:text-white')}>
         <IconX size={15} />
       </button>
     </div>

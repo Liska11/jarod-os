@@ -6,6 +6,7 @@ import { openStoredSession } from '../../store/chat.ts'
 import type { Mission, MissionStep } from '../../store/missions.ts'
 import { showPage } from '../../store/windows.ts'
 import { AvatarStack, FileThumb, IconTile } from './shared.tsx'
+import { attempt } from '../../lib/native.ts'
 
 const STATUS: Record<Mission['status'], { label: string; tone: PillTone; dot: boolean }> = {
   active: { label: 'In progress', tone: 'progress', dot: true },
@@ -95,7 +96,7 @@ export function MissionCard({ mission }: { mission: Mission }) {
               <div className="truncate text-[11px] text-fg-4">{artifact.kind === 'folder' ? 'Folder' : 'Draft'}</div>
             </div>
           </div>
-          <GlassButton size="sm" aria-label={`Open ${artifact.name}`} onClick={() => void window.heraldOS.fs.openPath(artifact.path)}>
+          <GlassButton size="sm" aria-label={`Open ${artifact.name}`} onClick={() => void attempt('open the file', () => window.heraldOS.fs.openPath(artifact.path))}>
             Open draft
             <IconExternalLink />
           </GlassButton>

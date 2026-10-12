@@ -13,6 +13,7 @@ import { $prefs } from '../../store/backend.ts'
 import { $catalog, loadCatalog } from '../../store/catalog.ts'
 import { $terminalRequest } from '../../store/terminal.ts'
 import { baseName } from '../../../shared/path-names.ts'
+import { quietly } from '../../lib/native.ts'
 
 const MONO_STACK = 'SF Mono, JetBrains Mono, Menlo, monospace'
 
@@ -68,7 +69,7 @@ export function TerminalSurface() {
       const handle = await window.heraldOS.terminal.create({ cols: 120, rows: 30, program: program?.id })
 
       if (!mounted.current) {
-        void window.heraldOS.terminal.dispose(handle.id)
+        void quietly(() => window.heraldOS.terminal.dispose(handle.id))
 
         return
       }
@@ -126,7 +127,7 @@ export function TerminalSurface() {
       mounted.current = false
 
       for (const id of ids) {
-        void window.heraldOS.terminal.dispose(id)
+        void quietly(() => window.heraldOS.terminal.dispose(id))
       }
 
       ids.clear()
@@ -149,7 +150,7 @@ export function TerminalSurface() {
 
   const close = (id: string) => {
     live.current.delete(id)
-    void window.heraldOS.terminal.dispose(id)
+    void quietly(() => window.heraldOS.terminal.dispose(id))
     setTabs(current => {
       const next = current.filter(tab => tab.id !== id)
       setActive(prev => (prev === id ? (next[next.length - 1]?.id ?? null) : prev))

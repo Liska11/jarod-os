@@ -7,6 +7,7 @@ import { notify } from '../../../store/notifications.ts'
 import { fieldProblem, type MessagingPlatform, type MessagingPlatforms, missingFields, stateOf, updateFromDraft, visibleVars } from './messaging-model.ts'
 import { isUnsupported } from './providers-model.ts'
 import { errorText, InlineNote, markSaved, SectionTitle, SettingsGroup, SettingsRow } from './shared.tsx'
+import { attempt } from '../../../lib/native.ts'
 
 /*
  * Messaging: let the agent be reached from Telegram, Discord, Slack, e-mail and WhatsApp. Tokens go to the profile's encrypted store and never come back;
@@ -163,7 +164,7 @@ function PlatformRow({ platform, onChanged }: { platform: MessagingPlatform; onC
                     </GlassButton>
                   )}
                   {v.url && (
-                    <GlassButton type="button" size="sm" variant="ghost" onClick={() => void window.heraldOS.shell.openExternal(v.url!)} aria-label={`Where to find ${v.prompt || v.key}`}>
+                    <GlassButton type="button" size="sm" variant="ghost" onClick={() => void attempt('open the link', () => window.heraldOS.shell.openExternal(v.url!))} aria-label={`Where to find ${v.prompt || v.key}`}>
                       <IconExternalLink />
                     </GlassButton>
                   )}
@@ -179,7 +180,7 @@ function PlatformRow({ platform, onChanged }: { platform: MessagingPlatform; onC
             {test && <InlineNote tone={test.ok ? 'info' : 'warn'}>{test.message}</InlineNote>}
             <div className="flex items-center justify-end gap-2">
               {platform.docs_url && (
-                <GlassButton type="button" size="sm" variant="ghost" onClick={() => void window.heraldOS.shell.openExternal(platform.docs_url)}>
+                <GlassButton type="button" size="sm" variant="ghost" onClick={() => void attempt('open the link', () => window.heraldOS.shell.openExternal(platform.docs_url))}>
                   Setup guide
                 </GlassButton>
               )}

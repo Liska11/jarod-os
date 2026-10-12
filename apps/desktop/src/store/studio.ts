@@ -4,6 +4,7 @@ import { $env } from './backend.ts'
 import { $chats } from './chat.ts'
 import { onAnyGatewayEvent } from './gateway.ts'
 import { $windows, desktopArea, focusWindow, openApp } from './windows.ts'
+import { quietly } from '../lib/native.ts'
 
 /*
  * The Studio's live model of each Hermes session: files written and edited, commands, background
@@ -107,7 +108,7 @@ export function bindStudioEvents(): () => void {
 
 const release = (watchId: string | null): void => {
   if (watchId) {
-    void window.heraldOS.fs.unwatchTree(watchId)
+    void quietly(() => window.heraldOS.fs.unwatchTree(watchId))
   }
 }
 

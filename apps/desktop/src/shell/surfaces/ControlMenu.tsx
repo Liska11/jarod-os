@@ -64,6 +64,7 @@ import { $env } from '../../store/backend.ts'
 import { $catalog, loadCatalog } from '../../store/catalog.ts'
 import { openSurface, relayToMain } from '../../store/shell.ts'
 import { openApp, showPage } from '../../store/windows.ts'
+import { attempt } from '../../lib/native.ts'
 
 /*
  * The Jarod-OS control menu (Mod+M or Mod+Alt+Space), modelled on Omarchy's: a tree of groups whose leaves
@@ -390,7 +391,7 @@ function extensionItem(entry: MenuExtension, close: () => void): MenuItem {
         leaf: {
           kind: 'local',
           run: () => {
-            void window.heraldOS.shell.openExternal(action.url)
+            void attempt('open the link', () => window.heraldOS.shell.openExternal(action.url))
             close()
           }
         }

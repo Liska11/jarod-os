@@ -34,6 +34,7 @@ import { Markdown } from '../chat/Markdown.tsx'
 import { $editing, $paneTab, $selectedArtifact, $zoom, artifactKind, collectSources, extensionOf, isEditable, type PaneTab, type SourceRow } from './artifact-store.ts'
 import { MenuDivider, MenuItem, PopMenu } from './Menu.tsx'
 import { revealLabel } from '../../lib/platform-labels.ts'
+import { attempt } from '../../lib/native.ts'
 
 const TABS: readonly TabDef<PaneTab>[] = [
   { id: 'preview', label: 'Preview' },
@@ -216,7 +217,7 @@ export function ArtifactPane({ chat }: { chat: ChatState | null }) {
               setExportOpen(false)
 
               if (artifact) {
-                void window.heraldOS.fs.reveal(artifact.path)
+                void attempt('show the file', () => window.heraldOS.fs.reveal(artifact.path))
               }
             }}
           >
@@ -239,7 +240,7 @@ export function ArtifactPane({ chat }: { chat: ChatState | null }) {
               setExportOpen(false)
 
               if (artifact) {
-                void window.heraldOS.fs.openPath(artifact.path)
+                void attempt('open the file', () => window.heraldOS.fs.openPath(artifact.path))
               }
             }}
           >
@@ -251,7 +252,7 @@ export function ArtifactPane({ chat }: { chat: ChatState | null }) {
               setExportOpen(false)
 
               if (artifact) {
-                void window.heraldOS.fs.reveal(artifact.path)
+                void attempt('show the file', () => window.heraldOS.fs.reveal(artifact.path))
               }
             }}
           >
@@ -358,7 +359,7 @@ function Document({ artifact, file, loading, error, zoom }: { artifact: Artifact
   if (error || !file) {
     const missing = !error || /ENOENT/.test(error)
 
-    return <EmptyGlass className="h-full" icon={<IconFileText />} title="Can't open this file" description={missing ? 'The file is not on disk any more.' : error} action={<GlassButton size="sm" onClick={() => void window.heraldOS.fs.reveal(artifact.path)}>{revealLabel()}</GlassButton>} />
+    return <EmptyGlass className="h-full" icon={<IconFileText />} title="Can't open this file" description={missing ? 'The file is not on disk any more.' : error} action={<GlassButton size="sm" onClick={() => void attempt('show the file', () => window.heraldOS.fs.reveal(artifact.path))}>{revealLabel()}</GlassButton>} />
   }
 
   if (file.kind === 'image' && file.content) {
@@ -402,7 +403,7 @@ function BinaryPreview({ artifact, file, zoom }: { artifact: Artifact; file: Fil
           {extensionOf(artifact.name).toUpperCase() || 'File'} · {formatBytes(file.size)}
         </div>
       </div>
-      <GlassButton size="sm" variant="primary" onClick={() => void window.heraldOS.fs.openPath(artifact.path)}>
+      <GlassButton size="sm" variant="primary" onClick={() => void attempt('open the file', () => window.heraldOS.fs.openPath(artifact.path))}>
         <IconExternalLink />
         Open in default app
       </GlassButton>
@@ -433,7 +434,7 @@ function Sources({ chat }: { chat: ChatState | null }) {
             </div>
           </div>
           {row.kind === 'file' && (
-            <button type="button" aria-label={revealLabel()} title={revealLabel()} onClick={() => void window.heraldOS.fs.reveal(row.target)} className="flex size-7 items-center justify-center rounded-lg text-fg-3 hover:bg-white/8 hover:text-fg">
+            <button type="button" aria-label={revealLabel()} title={revealLabel()} onClick={() => void attempt('show the file', () => window.heraldOS.fs.reveal(row.target))} className="flex size-7 items-center justify-center rounded-lg text-fg-3 hover:bg-white/8 hover:text-fg">
               <IconFolder size={15} />
             </button>
           )}
