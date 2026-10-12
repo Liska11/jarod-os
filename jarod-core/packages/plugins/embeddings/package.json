@@ -1,0 +1,25 @@
+{
+  "name": "@jarod/plugin-embeddings",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "jarod": {
+    "plugin": "embeddings",
+    "order": 35
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@jarod/contracts": "workspace:*",
+    "@jarod/kernel": "workspace:*",
+    "@jarod/plugin-storage": "workspace:*",
+    "cordis": "4.0.0-rc.10",
+    "openvino-genai-node": "2026.4.0",
+    "openvino-node": "2026.4.0"
+  }
+}

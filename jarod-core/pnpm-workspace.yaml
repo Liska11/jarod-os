@@ -1,0 +1,18 @@
+packages:
+  - "packages/*"
+  - "packages/plugins/*"
+  - "tests"
+allowBuilds:
+  better-sqlite3-multiple-ciphers: true
+  esbuild: true
+  esbuild@0.28.2: true
+  # B18 : postinstall inspecté (2026-09-29) — sous win32/x64 il ne télécharge rien (binaires DirectML dans
+  # l'archive ; seul linux/x64 récupère CUDA) ; refusé explicitement, jamais exécuté.
+  onnxruntime-node: false
+  openvino-genai-node: true
+  openvino-node: true
+overrides:
+  # B18 option (a), DECISIONS 2026-09-29 : dépendances du seul script d'installation d'onnxruntime-node
+  # (bloqué), retirées pour rester dans la liste approuvée ; le code d'exécution ne doit importer ni l'un ni l'autre.
+  "onnxruntime-node>global-agent": "-"
+  "onnxruntime-node>adm-zip": "-"

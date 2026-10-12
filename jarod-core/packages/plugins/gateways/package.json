@@ -1,0 +1,35 @@
+{
+  "name": "@jarod/plugin-gateways",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "jarod": {
+    "plugin": "gateways",
+    "order": 85
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "cordis": "4.0.0-rc.10",
+    "@jarod/contracts": "workspace:*",
+    "@jarod/kernel": "workspace:*",
+    "@jarod/plugin-agent": "workspace:*",
+    "@jarod/plugin-llm": "workspace:*",
+    "@jarod/plugin-rag": "workspace:*",
+    "@jarod/plugin-storage": "workspace:*",
+    "@jarod/plugin-tools": "workspace:*",
+    "@jarod/plugin-voice": "workspace:*",
+    "imapflow": "1.7.8",
+    "mailparser": "3.9.28",
+    "nodemailer": "7.0.13"
+  },
+  "devDependencies": {
+    "@types/mailparser": "3.4.6",
+    "@types/nodemailer": "8.0.2"
+  }
+}

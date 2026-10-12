@@ -1,0 +1,22 @@
+{
+  "name": "@jarod/plugin-kanban",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "jarod": {
+    "plugin": "kanban",
+    "order": 22
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@jarod/kernel": "workspace:*",
+    "@jarod/plugin-storage": "workspace:*",
+    "cordis": "4.0.0-rc.10"
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "name": "@jarod/kernel",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./util": "./src/util.ts",
+    "./testing": "./src/testing.ts",
+    "./find-on-path": "./src/find-on-path.ts",
+    "./redact": "./src/redact.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json",
+    "start": "tsx src/main.ts"
+  },
+  "dependencies": {
+    "@jarod/contracts": "workspace:*",
+    "cordis": "4.0.0-rc.10"
+  }
+}

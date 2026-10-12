@@ -1,0 +1,31 @@
+{
+  "name": "@jarod/cli",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Jarod-One en ligne de commande, sur le kernel cordis",
+  "type": "module",
+  "bin": {
+    "jarod": "bin/jarod.mjs"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json",
+    "jarod": "tsx src/main.ts"
+  },
+  "dependencies": {
+    "@jarod/contracts": "workspace:*",
+    "@jarod/kernel": "workspace:*",
+    "@jarod/plugin-agent": "workspace:*",
+    "@jarod/plugin-gateways": "workspace:*",
+    "@jarod/plugin-llm": "workspace:*",
+    "@jarod/plugin-persona": "workspace:*",
+    "@jarod/plugin-rag": "workspace:*",
+    "@jarod/plugin-scheduler": "workspace:*",
+    "@jarod/plugin-storage": "workspace:*",
+    "tsx": "^4.21.0"
+  },
+  "devDependencies": {
+    "@agentclientprotocol/sdk": "1.5.0",
+    "@modelcontextprotocol/client": "2.1.0"
+  }
+}

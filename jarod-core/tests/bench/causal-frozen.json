@@ -1,0 +1,23 @@
+{
+ "rules": {
+  "causal-rules.ts": "8211f2366584ae53bf147cd75801ac114e653196312f6aeb824e4801678072af",
+  "causal-eval.ts": "c53d18a6806e8f18502e38d13068f50d1724a14cfeaa0d284c78f5e090dbb767",
+  "causal-verdict.ts": "e881075ef6ab6d204eaea623b8228817d877a93efb4b40dc26b33de454320ce0",
+  "causal-prep.ts": "bce6056bff46ada8283c14d844c3042b119d396312d08d038a8f9ccb591dd561",
+  "causal-measure.ts": "b78c5fd3c9b0ca1d53749dac93d1d61226a3585bcd8163451ebd8e0ac0c7dd1c"
+ },
+ "trainResults": 37151,
+ "testResults": 25358,
+ "cutTs": 1789084799,
+ "calibrationSplitTs": 1788479999,
+ "precisionTargetPercent": 85,
+ "gateCoveragePercent": 47,
+ "controls": {
+  "targets": 640,
+  "baselineHits": 5,
+  "systemHits": 175,
+  "offTargets": 10672,
+  "falseAlarms": 10672
+ },
+ "calibrationSha256": "d5d7261006b18094d4a404c9c79d32cedd7a0c61bf9363f9796a3f04c1d8362f"
+}

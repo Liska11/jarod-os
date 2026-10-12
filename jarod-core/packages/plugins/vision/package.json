@@ -1,0 +1,25 @@
+{
+  "name": "@jarod/plugin-vision",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "jarod": {
+    "plugin": "vision",
+    "order": 65
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "cordis": "4.0.0-rc.10",
+    "@jarod/contracts": "workspace:*",
+    "@jarod/kernel": "workspace:*",
+    "@jarod/plugin-storage": "workspace:*",
+    "@jarod/plugin-llm": "workspace:*",
+    "@jarod/plugin-rag": "workspace:*"
+  }
+}

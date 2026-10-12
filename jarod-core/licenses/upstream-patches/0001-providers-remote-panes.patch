@@ -1,0 +1,72 @@
+# Correctif AMONT pour S:\SANK-UI (SPECS-P5-UI-PARITE.md § 24.2) — src/renderer/src/screens/Providers/Providers.tsx, révision amont 20759e7.
+# Cache le compte Hermes, la connexion OAuth des fournisseurs et l'onglet « Auxiliary » SEULEMENT si __JAROD_REMOTE_PANES__ est défini et faux ; sans cette constante, rien ne change.
+# À appliquer par l'utilisateur dans S:\SANK-UI (git apply licenses/upstream-patches/0001-providers-remote-panes.patch), PUIS synchroniser ici avec une note dans licenses/SANK-UI.md.
+# Jamais appliqué par l'agent : le dépôt amont n'est jamais modifié.
+diff --git a/src/renderer/src/screens/Providers/Providers.tsx b/src/renderer/src/screens/Providers/Providers.tsx
+--- a/src/renderer/src/screens/Providers/Providers.tsx
++++ b/src/renderer/src/screens/Providers/Providers.tsx
+@@ -33,6 +33,10 @@ import {
+ import { customProviderEnvKey } from "../../../../shared/url-key-map";
+ import type { HermesAccount } from "../../../../shared/account";
+ 
++// Montage Jarod : les volets sans équivalent (compte Hermes, connexion OAuth, onglet « Auxiliary ») sont cachés quand `__JAROD_REMOTE_PANES__` est défini et faux.
++declare const __JAROD_REMOTE_PANES__: boolean | undefined;
++const REMOTE_PANES = typeof __JAROD_REMOTE_PANES__ === "undefined" || __JAROD_REMOTE_PANES__;
++
+ /** Preview a stored key as prefix + dots + last 4, so a set key is recognisable
+  * without exposing it. */
+ function maskKey(value: string): string {
+@@ -674,6 +678,7 @@ function Providers({
+           <KeyRound size={16} />
+           {t("navigation.providers")}
+         </button>
++        {REMOTE_PANES && (
+         <button
+           className={`models-tab ${activeTab === "auxiliary" ? "active" : ""}`}
+           onClick={() => setActiveTab("auxiliary")}
+@@ -681,10 +686,12 @@ function Providers({
+           <Workflow size={16} />
+           {t("constants.auxiliaryTitle")}
+         </button>
++        )}
+       </div>
+ 
+       {activeTab === "providers" && (
+         <>
++          {REMOTE_PANES && (
+           <div className="settings-section">
+             <div className="settings-section-title">
+               {t("providers.hermesAccount.sectionTitle")}
+@@ -766,6 +773,7 @@ function Providers({
+               </button>
+             )}
+           </div>
++          )}
+ 
+           <div className="settings-section">
+             <div className="settings-section-title settings-section-title-row">
+@@ -1059,6 +1067,7 @@ function Providers({
+             );
+           })}
+ 
++          {REMOTE_PANES && (
+           <div className="settings-section">
+             <div className="settings-section-title">
+               {t("providers.oauth.sectionTitle")}
+@@ -1086,6 +1095,7 @@ function Providers({
+               ))}
+             </div>
+           </div>
++          )}
+ 
+           {oauthModal && (
+             <OAuthLoginModal
+@@ -1197,7 +1207,7 @@ function Providers({
+         </>
+       )}
+ 
+-      {activeTab === "auxiliary" && <AuxiliaryTasksSection visible={visible} />}
++      {REMOTE_PANES && activeTab === "auxiliary" && <AuxiliaryTasksSection visible={visible} />}
+ 
+       {registryOpen && (
+         <RegistryBrowserModal onClose={() => setRegistryOpen(false)} />

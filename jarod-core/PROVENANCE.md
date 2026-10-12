@@ -1,0 +1,32 @@
+# jarod-core : provenance
+
+`jarod-core/` est le **noyau de Jarod-OS** : agent, outils, fournisseurs, mémoire, planificateur, messageries, passerelle JSON-RPC pour le shell.
+C'est une **copie indépendante** du dépôt `jarod-cordis` (branche `spike/hermes-gateway`), faite le 2026-10-12 à partir du commit
+**`2d5bf46d75fd0e8a8682bc1bf485a3eb42b1a2aa`** (`git archive` du commit : les modifications non commitées de ce dépôt n'y sont pas).
+
+Depuis cette copie, `jarod-core` et `jarod-cordis` évoluent séparément : rien dans Jarod-OS n'importe, ne lance ni ne référence `jarod-cordis`.
+Les corrections utiles aux deux sont à reporter à la main (aucune synchronisation automatique).
+
+## Ce qui a été copié
+
+`packages/{cli,contracts,kernel,plugins/*}`, `tests/` (intégration et gardes du dépôt), `licenses/`, `scripts/`, `sidecars/`, `DECISIONS.md`,
+`docs/JAROD-OS.md`, les fichiers de configuration du workspace (`pnpm-workspace.yaml`, `pnpm-lock.yaml`, `tsconfig.base.json`).
+
+## Ce qui n'a pas été copié
+
+- `packages/desktop` : l'application Electron de Jarod (Jarod-One). Son rôle est tenu par le shell de Jarod-OS (`apps/desktop`, interface dérivée de Herald OS).
+- Les documents de phase et de spécification, `workspace/`, les sauvegardes et le plan de travail de `jarod-cordis`.
+
+## Ce qui a été adapté
+
+- `package.json` et `pnpm-workspace.yaml` : nom `jarod-core`, plus de dépendances propres à l'application desktop (`electron`, `node-pty`), plus de script `dist`.
+- Tests retirés parce qu'ils ne portaient que sur `packages/desktop` : les gardes de la sonde de fumée (8 fichiers), `sank-ui-protected`, le crochet git `pre-commit`.
+  `tests/repo/effect-paths.test.ts` ne compte plus les appels du desktop et vérifie qu'aucun `ipcMain` n'apparaît dans le noyau.
+- Scripts retirés : `channels-count`, `sweep-temp`, `sank-manifest` (ils importaient `packages/desktop`).
+- Lockfile : l'importeur `packages/desktop` en est retiré ; les versions résolues des autres paquets sont celles de l'origine.
+
+## Vérifié sur la copie (Windows 11, Node 24.20, pnpm 12.6)
+
+`pnpm install --prefer-frozen-lockfile`, `pnpm -r typecheck` et `pnpm -r test` passent, avec les mêmes totaux qu'à l'origine pour chaque paquet
+(cli : 355 + 1 échec attendu ; llm : 290 ; agent : 243 ; tools : 210 ; rag : 164 + 13 ignorés ; …). Les tests racine passent à 226 (269 à l'origine : la différence
+est celle des tests retirés ci-dessus).

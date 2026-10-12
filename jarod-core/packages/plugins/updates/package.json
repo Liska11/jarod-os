@@ -1,0 +1,26 @@
+{
+  "name": "@jarod/plugin-updates",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./testing": "./src/testing.ts"
+  },
+  "jarod": {
+    "plugin": "updates",
+    "order": 95
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "cordis": "4.0.0-rc.10",
+    "@jarod/contracts": "workspace:*",
+    "@jarod/plugin-storage": "workspace:*"
+  },
+  "devDependencies": {
+    "@jarod/kernel": "workspace:*"
+  }
+}

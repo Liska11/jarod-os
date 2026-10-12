@@ -1,0 +1,2506 @@
+{
+ "overlap0": {
+  "stages": [
+   {
+    "stage": "ingest a",
+    "result": {
+     "docId": "a",
+     "chunks": 10,
+     "deduped": false
+    },
+    "rows": [
+     {
+      "doc_id": "a",
+      "ord": 0,
+      "text": "Ligne 0 de a : le renard brun saute par-dessus le chien paresseux, 0 fois.\nLigne 1 de a : le renard brun saute par-dessus le chien paresseux, 7 fois.\n",
+      "dim": 16,
+      "embedding": "892b79f1f9218674add564cc198e5ffa9967980e2c9646b373ecfac2e2570b4a",
+      "sha256": "0a055309ae638d5fd83f6adbcf7e9d3223c064db542d80fc1037960c38c5f1c9",
+      "source": "a.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 1,
+      "text": "Ligne 2 de a : le renard brun saute par-dessus le chien paresseux, 14 fois.\nLigne 3 de a : le renard brun saute par-dessus le chien paresseux, 21 fois.\n",
+      "dim": 16,
+      "embedding": "b07fa2a5a887cc14d0553f73c1963a797ca8d8f349ae805961f6892cf8c966a9",
+      "sha256": "0a055309ae638d5fd83f6adbcf7e9d3223c064db542d80fc1037960c38c5f1c9",
+      "source": "a.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 2,
+      "text": "Ligne 4 de a : le renard brun saute par-dessus le chien paresseux, 28 fois.\nLigne 5 de a : le renard brun saute par-dessus le chien paresseux, 35 fois.\n",
+      "dim": 16,
+      "embedding": "e8c364d79b83bc6826e6f43c75ca39030d746093a4744dc472445bd8b31987ec",
+      "sha256": "0a055309ae638d5fd83f6adbcf7e9d3223c064db542d80fc1037960c38c5f1c9",
+      "source": "a.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 3,
+      "text": "Ligne 6 de a : le renard brun saute par-dessus le chien paresseux, 42 fois.\nLigne 7 de a : le renard brun saute par-dessus le chien paresseux, 49 fois.\n",
+      "dim": 16,
+      "embedding": "cc856759d70080ca480354c8549452f399715cd07d787fa21d7af11ab23241da",
+      "sha256": "0a055309ae638d5fd83f6adbcf7e9d3223c064db542d80fc1037960c38c5f1c9",
+      "source": "a.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 4,
+      "text": "Ligne 8 de a : le renard brun saute par-dessus le chien paresseux, 56 fois.\nLigne 9 de a : le renard brun saute par-dessus le chien paresseux, 63 fois.\n",
+      "dim": 16,
+      "embedding": "b0ef7ffd850a22866de711ad91a35b704e8d6b4588e32fcba5f6243553438868",
+      "sha256": "0a055309ae638d5fd83f6adbcf7e9d3223c064db542d80fc1037960c38c5f1c9",
+      "source": "a.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 5,
+      "text": "Ligne 10 de a : le renard brun saute par-dessus le chien paresseux, 70 fois.\nLigne 11 de a : le renard brun saute par-dessus le chien paresseux, 77 fois.\n",
+      "dim": 16,
+      "embedding": "2f772b79b531d941529e39478bcdec3f1c7d4a1255cbc9b629c6e5cdbb572655",
+      "sha256": "0a055309ae638d5fd83f6adbcf7e9d3223c064db542d80fc1037960c38c5f1c9",
+      "source": "a.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 6,
+      "text": "Ligne 12 de a : le renard brun saute par-dessus le chien paresseux, 84 fois.\nLigne 13 de a : le renard brun saute par-dessus le chien paresseux, 91 fois.\n",
+      "dim": 16,
+      "embedding": "5d71a29a04efa609d51a33241fecc24d1c469a05f9ad93f3042f4eab718e29a7",
+      "sha256": "0a055309ae638d5fd83f6adbcf7e9d3223c064db542d80fc1037960c38c5f1c9",
+      "source": "a.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 7,
+      "text": "Ligne 14 de a : le renard brun saute par-dessus le chien paresseux, 98 fois.\nLigne 15 de a : le renard brun saute par-dessus le chien paresseux, 105 fois.\n",
+      "dim": 16,
+      "embedding": "846045fe51d338319930db69683f9ef3af91e6e22eb1814dfc8d33e273ec37aa",
+      "sha256": "0a055309ae638d5fd83f6adbcf7e9d3223c064db542d80fc1037960c38c5f1c9",
+      "source": "a.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 8,
+      "text": "Ligne 16 de a : le renard brun saute par-dessus le chien paresseux, 112 fois.\nLigne 17 de a : le renard brun saute par-dessus le chien paresseux, 119 fois.\n",
+      "dim": 16,
+      "embedding": "20ebb74a5540c0fdf459681959f10f58c48b397f5f8c20d3ced5eeb1f837a212",
+      "sha256": "0a055309ae638d5fd83f6adbcf7e9d3223c064db542d80fc1037960c38c5f1c9",
+      "source": "a.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 9,
+      "text": "Ligne 18 de a : le renard brun saute par-dessus le chien paresseux, 126 fois.\nLigne 19 de a : le renard brun saute par-dessus le chien paresseux, 133 fois.",
+      "dim": 16,
+      "embedding": "add440ee701923c0307cb866b43719ea5484dfd770cf027985123f2045a3134d",
+      "sha256": "0a055309ae638d5fd83f6adbcf7e9d3223c064db542d80fc1037960c38c5f1c9",
+      "source": "a.md",
+      "model": null
+     }
+    ]
+   },
+   {
+    "stage": "ingest sans docId",
+    "result": {
+     "docId": "335bf8d698105c87",
+     "chunks": 3,
+     "deduped": false
+    },
+    "rows": [
+     {
+      "doc_id": "335bf8d698105c87",
+      "ord": 0,
+      "text": "Ligne 0 de b : le renard brun saute par-dessus le chien paresseux, 0 fois.\nLigne 1 de b : le renard brun saute par-dessus le chien paresseux, 7 fois.\n",
+      "dim": 16,
+      "embedding": "f9ae9f7fd92d0a58ca335a26d5a81a83f59381a36c5bb347566e4694c5e4e860",
+      "sha256": "335bf8d698105c87e3772f49325c3326d628541f05bc7f409753dd1900fb16c3",
+      "source": "b.md",
+      "model": null
+     },
+     {
+      "doc_id": "335bf8d698105c87",
+      "ord": 1,
+      "text": "Ligne 2 de b : le renard brun saute par-dessus le chien paresseux, 14 fois.\nLigne 3 de b : le renard brun saute par-dessus le chien paresseux, 21 fois.\n",
+      "dim": 16,
+      "embedding": "8ce40e1d8ee7d8ea5c1dfca89838c78a40b6325619bdc411e3e446135770e43c",
+      "sha256": "335bf8d698105c87e3772f49325c3326d628541f05bc7f409753dd1900fb16c3",
+      "source": "b.md",
+      "model": null
+     },
+     {
+      "doc_id": "335bf8d698105c87",
+      "ord": 2,
+      "text": "Ligne 4 de b : le renard brun saute par-dessus le chien paresseux, 28 fois.\nLigne 5 de b : le renard brun saute par-dessus le chien paresseux, 35 fois.",
+      "dim": 16,
+      "embedding": "d80041afc6bc11a1eb3cef4de119aff37edcc4c583f7ee2f8dbee188a1238ab5",
+      "sha256": "335bf8d698105c87e3772f49325c3326d628541f05bc7f409753dd1900fb16c3",
+      "source": "b.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 0,
+      "text": "Ligne 0 de a : le renard brun saute par-dessus le chien paresseux, 0 fois.\nLigne 1 de a : le renard brun saute par-dessus le chien paresseux, 7 fois.\n",
+      "dim": 16,
+      "embedding": "892b79f1f9218674add564cc198e5ffa9967980e2c9646b373ecfac2e2570b4a",
+      "sha256": "0a055309ae638d5fd83f6adbcf7e9d3223c064db542d80fc1037960c38c5f1c9",
+      "source": "a.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 1,
+      "text": "Ligne 2 de a : le renard brun saute par-dessus le chien paresseux, 14 fois.\nLigne 3 de a : le renard brun saute par-dessus le chien paresseux, 21 fois.\n",
+      "dim": 16,
+      "embedding": "b07fa2a5a887cc14d0553f73c1963a797ca8d8f349ae805961f6892cf8c966a9",
+      "sha256": "0a055309ae638d5fd83f6adbcf7e9d3223c064db542d80fc1037960c38c5f1c9",
+      "source": "a.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 2,
+      "text": "Ligne 4 de a : le renard brun saute par-dessus le chien paresseux, 28 fois.\nLigne 5 de a : le renard brun saute par-dessus le chien paresseux, 35 fois.\n",
+      "dim": 16,
+      "embedding": "e8c364d79b83bc6826e6f43c75ca39030d746093a4744dc472445bd8b31987ec",
+      "sha256": "0a055309ae638d5fd83f6adbcf7e9d3223c064db542d80fc1037960c38c5f1c9",
+      "source": "a.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 3,
+      "text": "Ligne 6 de a : le renard brun saute par-dessus le chien paresseux, 42 fois.\nLigne 7 de a : le renard brun saute par-dessus le chien paresseux, 49 fois.\n",
+      "dim": 16,
+      "embedding": "cc856759d70080ca480354c8549452f399715cd07d787fa21d7af11ab23241da",
+      "sha256": "0a055309ae638d5fd83f6adbcf7e9d3223c064db542d80fc1037960c38c5f1c9",
+      "source": "a.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 4,
+      "text": "Ligne 8 de a : le renard brun saute par-dessus le chien paresseux, 56 fois.\nLigne 9 de a : le renard brun saute par-dessus le chien paresseux, 63 fois.\n",
+      "dim": 16,
+      "embedding": "b0ef7ffd850a22866de711ad91a35b704e8d6b4588e32fcba5f6243553438868",
+      "sha256": "0a055309ae638d5fd83f6adbcf7e9d3223c064db542d80fc1037960c38c5f1c9",
+      "source": "a.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 5,
+      "text": "Ligne 10 de a : le renard brun saute par-dessus le chien paresseux, 70 fois.\nLigne 11 de a : le renard brun saute par-dessus le chien paresseux, 77 fois.\n",
+      "dim": 16,
+      "embedding": "2f772b79b531d941529e39478bcdec3f1c7d4a1255cbc9b629c6e5cdbb572655",
+      "sha256": "0a055309ae638d5fd83f6adbcf7e9d3223c064db542d80fc1037960c38c5f1c9",
+      "source": "a.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 6,
+      "text": "Ligne 12 de a : le renard brun saute par-dessus le chien paresseux, 84 fois.\nLigne 13 de a : le renard brun saute par-dessus le chien paresseux, 91 fois.\n",
+      "dim": 16,
+      "embedding": "5d71a29a04efa609d51a33241fecc24d1c469a05f9ad93f3042f4eab718e29a7",
+      "sha256": "0a055309ae638d5fd83f6adbcf7e9d3223c064db542d80fc1037960c38c5f1c9",
+      "source": "a.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 7,
+      "text": "Ligne 14 de a : le renard brun saute par-dessus le chien paresseux, 98 fois.\nLigne 15 de a : le renard brun saute par-dessus le chien paresseux, 105 fois.\n",
+      "dim": 16,
+      "embedding": "846045fe51d338319930db69683f9ef3af91e6e22eb1814dfc8d33e273ec37aa",
+      "sha256": "0a055309ae638d5fd83f6adbcf7e9d3223c064db542d80fc1037960c38c5f1c9",
+      "source": "a.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 8,
+      "text": "Ligne 16 de a : le renard brun saute par-dessus le chien paresseux, 112 fois.\nLigne 17 de a : le renard brun saute par-dessus le chien paresseux, 119 fois.\n",
+      "dim": 16,
+      "embedding": "20ebb74a5540c0fdf459681959f10f58c48b397f5f8c20d3ced5eeb1f837a212",
+      "sha256": "0a055309ae638d5fd83f6adbcf7e9d3223c064db542d80fc1037960c38c5f1c9",
+      "source": "a.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 9,
+      "text": "Ligne 18 de a : le renard brun saute par-dessus le chien paresseux, 126 fois.\nLigne 19 de a : le renard brun saute par-dessus le chien paresseux, 133 fois.",
+      "dim": 16,
+      "embedding": "add440ee701923c0307cb866b43719ea5484dfd770cf027985123f2045a3134d",
+      "sha256": "0a055309ae638d5fd83f6adbcf7e9d3223c064db542d80fc1037960c38c5f1c9",
+      "source": "a.md",
+      "model": null
+     }
+    ]
+   },
+   {
+    "stage": "doublon de a",
+    "result": {
+     "docId": "a",
+     "chunks": 0,
+     "deduped": true
+    },
+    "rows": [
+     {
+      "doc_id": "335bf8d698105c87",
+      "ord": 0,
+      "text": "Ligne 0 de b : le renard brun saute par-dessus le chien paresseux, 0 fois.\nLigne 1 de b : le renard brun saute par-dessus le chien paresseux, 7 fois.\n",
+      "dim": 16,
+      "embedding": "f9ae9f7fd92d0a58ca335a26d5a81a83f59381a36c5bb347566e4694c5e4e860",
+      "sha256": "335bf8d698105c87e3772f49325c3326d628541f05bc7f409753dd1900fb16c3",
+      "source": "b.md",
+      "model": null
+     },
+     {
+      "doc_id": "335bf8d698105c87",
+      "ord": 1,
+      "text": "Ligne 2 de b : le renard brun saute par-dessus le chien paresseux, 14 fois.\nLigne 3 de b : le renard brun saute par-dessus le chien paresseux, 21 fois.\n",
+      "dim": 16,
+      "embedding": "8ce40e1d8ee7d8ea5c1dfca89838c78a40b6325619bdc411e3e446135770e43c",
+      "sha256": "335bf8d698105c87e3772f49325c3326d628541f05bc7f409753dd1900fb16c3",
+      "source": "b.md",
+      "model": null
+     },
+     {
+      "doc_id": "335bf8d698105c87",
+      "ord": 2,
+      "text": "Ligne 4 de b : le renard brun saute par-dessus le chien paresseux, 28 fois.\nLigne 5 de b : le renard brun saute par-dessus le chien paresseux, 35 fois.",
+      "dim": 16,
+      "embedding": "d80041afc6bc11a1eb3cef4de119aff37edcc4c583f7ee2f8dbee188a1238ab5",
+      "sha256": "335bf8d698105c87e3772f49325c3326d628541f05bc7f409753dd1900fb16c3",
+      "source": "b.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 0,
+      "text": "Ligne 0 de a : le renard brun saute par-dessus le chien paresseux, 0 fois.\nLigne 1 de a : le renard brun saute par-dessus le chien paresseux, 7 fois.\n",
+      "dim": 16,
+      "embedding": "892b79f1f9218674add564cc198e5ffa9967980e2c9646b373ecfac2e2570b4a",
+      "sha256": "0a055309ae638d5fd83f6adbcf7e9d3223c064db542d80fc1037960c38c5f1c9",
+      "source": "a.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 1,
+      "text": "Ligne 2 de a : le renard brun saute par-dessus le chien paresseux, 14 fois.\nLigne 3 de a : le renard brun saute par-dessus le chien paresseux, 21 fois.\n",
+      "dim": 16,
+      "embedding": "b07fa2a5a887cc14d0553f73c1963a797ca8d8f349ae805961f6892cf8c966a9",
+      "sha256": "0a055309ae638d5fd83f6adbcf7e9d3223c064db542d80fc1037960c38c5f1c9",
+      "source": "a.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 2,
+      "text": "Ligne 4 de a : le renard brun saute par-dessus le chien paresseux, 28 fois.\nLigne 5 de a : le renard brun saute par-dessus le chien paresseux, 35 fois.\n",
+      "dim": 16,
+      "embedding": "e8c364d79b83bc6826e6f43c75ca39030d746093a4744dc472445bd8b31987ec",
+      "sha256": "0a055309ae638d5fd83f6adbcf7e9d3223c064db542d80fc1037960c38c5f1c9",
+      "source": "a.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 3,
+      "text": "Ligne 6 de a : le renard brun saute par-dessus le chien paresseux, 42 fois.\nLigne 7 de a : le renard brun saute par-dessus le chien paresseux, 49 fois.\n",
+      "dim": 16,
+      "embedding": "cc856759d70080ca480354c8549452f399715cd07d787fa21d7af11ab23241da",
+      "sha256": "0a055309ae638d5fd83f6adbcf7e9d3223c064db542d80fc1037960c38c5f1c9",
+      "source": "a.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 4,
+      "text": "Ligne 8 de a : le renard brun saute par-dessus le chien paresseux, 56 fois.\nLigne 9 de a : le renard brun saute par-dessus le chien paresseux, 63 fois.\n",
+      "dim": 16,
+      "embedding": "b0ef7ffd850a22866de711ad91a35b704e8d6b4588e32fcba5f6243553438868",
+      "sha256": "0a055309ae638d5fd83f6adbcf7e9d3223c064db542d80fc1037960c38c5f1c9",
+      "source": "a.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 5,
+      "text": "Ligne 10 de a : le renard brun saute par-dessus le chien paresseux, 70 fois.\nLigne 11 de a : le renard brun saute par-dessus le chien paresseux, 77 fois.\n",
+      "dim": 16,
+      "embedding": "2f772b79b531d941529e39478bcdec3f1c7d4a1255cbc9b629c6e5cdbb572655",
+      "sha256": "0a055309ae638d5fd83f6adbcf7e9d3223c064db542d80fc1037960c38c5f1c9",
+      "source": "a.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 6,
+      "text": "Ligne 12 de a : le renard brun saute par-dessus le chien paresseux, 84 fois.\nLigne 13 de a : le renard brun saute par-dessus le chien paresseux, 91 fois.\n",
+      "dim": 16,
+      "embedding": "5d71a29a04efa609d51a33241fecc24d1c469a05f9ad93f3042f4eab718e29a7",
+      "sha256": "0a055309ae638d5fd83f6adbcf7e9d3223c064db542d80fc1037960c38c5f1c9",
+      "source": "a.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 7,
+      "text": "Ligne 14 de a : le renard brun saute par-dessus le chien paresseux, 98 fois.\nLigne 15 de a : le renard brun saute par-dessus le chien paresseux, 105 fois.\n",
+      "dim": 16,
+      "embedding": "846045fe51d338319930db69683f9ef3af91e6e22eb1814dfc8d33e273ec37aa",
+      "sha256": "0a055309ae638d5fd83f6adbcf7e9d3223c064db542d80fc1037960c38c5f1c9",
+      "source": "a.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 8,
+      "text": "Ligne 16 de a : le renard brun saute par-dessus le chien paresseux, 112 fois.\nLigne 17 de a : le renard brun saute par-dessus le chien paresseux, 119 fois.\n",
+      "dim": 16,
+      "embedding": "20ebb74a5540c0fdf459681959f10f58c48b397f5f8c20d3ced5eeb1f837a212",
+      "sha256": "0a055309ae638d5fd83f6adbcf7e9d3223c064db542d80fc1037960c38c5f1c9",
+      "source": "a.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 9,
+      "text": "Ligne 18 de a : le renard brun saute par-dessus le chien paresseux, 126 fois.\nLigne 19 de a : le renard brun saute par-dessus le chien paresseux, 133 fois.",
+      "dim": 16,
+      "embedding": "add440ee701923c0307cb866b43719ea5484dfd770cf027985123f2045a3134d",
+      "sha256": "0a055309ae638d5fd83f6adbcf7e9d3223c064db542d80fc1037960c38c5f1c9",
+      "source": "a.md",
+      "model": null
+     }
+    ]
+   },
+   {
+    "stage": "a modifié",
+    "result": {
+     "docId": "a",
+     "chunks": 5,
+     "deduped": false
+    },
+    "rows": [
+     {
+      "doc_id": "335bf8d698105c87",
+      "ord": 0,
+      "text": "Ligne 0 de b : le renard brun saute par-dessus le chien paresseux, 0 fois.\nLigne 1 de b : le renard brun saute par-dessus le chien paresseux, 7 fois.\n",
+      "dim": 16,
+      "embedding": "f9ae9f7fd92d0a58ca335a26d5a81a83f59381a36c5bb347566e4694c5e4e860",
+      "sha256": "335bf8d698105c87e3772f49325c3326d628541f05bc7f409753dd1900fb16c3",
+      "source": "b.md",
+      "model": null
+     },
+     {
+      "doc_id": "335bf8d698105c87",
+      "ord": 1,
+      "text": "Ligne 2 de b : le renard brun saute par-dessus le chien paresseux, 14 fois.\nLigne 3 de b : le renard brun saute par-dessus le chien paresseux, 21 fois.\n",
+      "dim": 16,
+      "embedding": "8ce40e1d8ee7d8ea5c1dfca89838c78a40b6325619bdc411e3e446135770e43c",
+      "sha256": "335bf8d698105c87e3772f49325c3326d628541f05bc7f409753dd1900fb16c3",
+      "source": "b.md",
+      "model": null
+     },
+     {
+      "doc_id": "335bf8d698105c87",
+      "ord": 2,
+      "text": "Ligne 4 de b : le renard brun saute par-dessus le chien paresseux, 28 fois.\nLigne 5 de b : le renard brun saute par-dessus le chien paresseux, 35 fois.",
+      "dim": 16,
+      "embedding": "d80041afc6bc11a1eb3cef4de119aff37edcc4c583f7ee2f8dbee188a1238ab5",
+      "sha256": "335bf8d698105c87e3772f49325c3326d628541f05bc7f409753dd1900fb16c3",
+      "source": "b.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 0,
+      "text": "Ligne 0 de a2 : le renard brun saute par-dessus le chien paresseux, 0 fois.\nLigne 1 de a2 : le renard brun saute par-dessus le chien paresseux, 7 fois.\n",
+      "dim": 16,
+      "embedding": "aa3719601f2e94ae1785ca18a32b2db2f1af611534d6f84486eefd938725bea9",
+      "sha256": "d4899f2b74d98e7d978fc05ed86753dcd427e2a477a208860de374beda22fd9c",
+      "source": "a.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 1,
+      "text": "Ligne 2 de a2 : le renard brun saute par-dessus le chien paresseux, 14 fois.\nLigne 3 de a2 : le renard brun saute par-dessus le chien paresseux, 21 fois.\n",
+      "dim": 16,
+      "embedding": "9165baadc0152dc14d50881fe7f918934b0fac93eb8c253b82c68ecf1843f08d",
+      "sha256": "d4899f2b74d98e7d978fc05ed86753dcd427e2a477a208860de374beda22fd9c",
+      "source": "a.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 2,
+      "text": "Ligne 4 de a2 : le renard brun saute par-dessus le chien paresseux, 28 fois.\nLigne 5 de a2 : le renard brun saute par-dessus le chien paresseux, 35 fois.\n",
+      "dim": 16,
+      "embedding": "827cdc423de5458f389c98ddf75529cc68a7a03a07410cd30f74488cca7b1df9",
+      "sha256": "d4899f2b74d98e7d978fc05ed86753dcd427e2a477a208860de374beda22fd9c",
+      "source": "a.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 3,
+      "text": "Ligne 6 de a2 : le renard brun saute par-dessus le chien paresseux, 42 fois.\nLigne 7 de a2 : le renard brun saute par-dessus le chien paresseux, 49 fois.\n",
+      "dim": 16,
+      "embedding": "19a161fe9d5c2354b42cc75c455ab8e818aaef82b38eb12bc39118d0415d1201",
+      "sha256": "d4899f2b74d98e7d978fc05ed86753dcd427e2a477a208860de374beda22fd9c",
+      "source": "a.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 4,
+      "text": "Ligne 8 de a2 : le renard brun saute par-dessus le chien paresseux, 56 fois.",
+      "dim": 16,
+      "embedding": "071b56922bc5e3cafc38153b7df8491b28024bc171bc65595b0b0b63a9ce456d",
+      "sha256": "d4899f2b74d98e7d978fc05ed86753dcd427e2a477a208860de374beda22fd9c",
+      "source": "a.md",
+      "model": null
+     }
+    ]
+   },
+   {
+    "stage": "texte blanc",
+    "result": {
+     "error": "RAG_EMPTY_TEXT: rien à indexer."
+    },
+    "rows": [
+     {
+      "doc_id": "335bf8d698105c87",
+      "ord": 0,
+      "text": "Ligne 0 de b : le renard brun saute par-dessus le chien paresseux, 0 fois.\nLigne 1 de b : le renard brun saute par-dessus le chien paresseux, 7 fois.\n",
+      "dim": 16,
+      "embedding": "f9ae9f7fd92d0a58ca335a26d5a81a83f59381a36c5bb347566e4694c5e4e860",
+      "sha256": "335bf8d698105c87e3772f49325c3326d628541f05bc7f409753dd1900fb16c3",
+      "source": "b.md",
+      "model": null
+     },
+     {
+      "doc_id": "335bf8d698105c87",
+      "ord": 1,
+      "text": "Ligne 2 de b : le renard brun saute par-dessus le chien paresseux, 14 fois.\nLigne 3 de b : le renard brun saute par-dessus le chien paresseux, 21 fois.\n",
+      "dim": 16,
+      "embedding": "8ce40e1d8ee7d8ea5c1dfca89838c78a40b6325619bdc411e3e446135770e43c",
+      "sha256": "335bf8d698105c87e3772f49325c3326d628541f05bc7f409753dd1900fb16c3",
+      "source": "b.md",
+      "model": null
+     },
+     {
+      "doc_id": "335bf8d698105c87",
+      "ord": 2,
+      "text": "Ligne 4 de b : le renard brun saute par-dessus le chien paresseux, 28 fois.\nLigne 5 de b : le renard brun saute par-dessus le chien paresseux, 35 fois.",
+      "dim": 16,
+      "embedding": "d80041afc6bc11a1eb3cef4de119aff37edcc4c583f7ee2f8dbee188a1238ab5",
+      "sha256": "335bf8d698105c87e3772f49325c3326d628541f05bc7f409753dd1900fb16c3",
+      "source": "b.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 0,
+      "text": "Ligne 0 de a2 : le renard brun saute par-dessus le chien paresseux, 0 fois.\nLigne 1 de a2 : le renard brun saute par-dessus le chien paresseux, 7 fois.\n",
+      "dim": 16,
+      "embedding": "aa3719601f2e94ae1785ca18a32b2db2f1af611534d6f84486eefd938725bea9",
+      "sha256": "d4899f2b74d98e7d978fc05ed86753dcd427e2a477a208860de374beda22fd9c",
+      "source": "a.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 1,
+      "text": "Ligne 2 de a2 : le renard brun saute par-dessus le chien paresseux, 14 fois.\nLigne 3 de a2 : le renard brun saute par-dessus le chien paresseux, 21 fois.\n",
+      "dim": 16,
+      "embedding": "9165baadc0152dc14d50881fe7f918934b0fac93eb8c253b82c68ecf1843f08d",
+      "sha256": "d4899f2b74d98e7d978fc05ed86753dcd427e2a477a208860de374beda22fd9c",
+      "source": "a.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 2,
+      "text": "Ligne 4 de a2 : le renard brun saute par-dessus le chien paresseux, 28 fois.\nLigne 5 de a2 : le renard brun saute par-dessus le chien paresseux, 35 fois.\n",
+      "dim": 16,
+      "embedding": "827cdc423de5458f389c98ddf75529cc68a7a03a07410cd30f74488cca7b1df9",
+      "sha256": "d4899f2b74d98e7d978fc05ed86753dcd427e2a477a208860de374beda22fd9c",
+      "source": "a.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 3,
+      "text": "Ligne 6 de a2 : le renard brun saute par-dessus le chien paresseux, 42 fois.\nLigne 7 de a2 : le renard brun saute par-dessus le chien paresseux, 49 fois.\n",
+      "dim": 16,
+      "embedding": "19a161fe9d5c2354b42cc75c455ab8e818aaef82b38eb12bc39118d0415d1201",
+      "sha256": "d4899f2b74d98e7d978fc05ed86753dcd427e2a477a208860de374beda22fd9c",
+      "source": "a.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 4,
+      "text": "Ligne 8 de a2 : le renard brun saute par-dessus le chien paresseux, 56 fois.",
+      "dim": 16,
+      "embedding": "071b56922bc5e3cafc38153b7df8491b28024bc171bc65595b0b0b63a9ce456d",
+      "sha256": "d4899f2b74d98e7d978fc05ed86753dcd427e2a477a208860de374beda22fd9c",
+      "source": "a.md",
+      "model": null
+     }
+    ]
+   },
+   {
+    "stage": "dossier",
+    "result": {
+     "files": 3,
+     "chunks": 10,
+     "deduped": 0
+    },
+    "rows": [
+     {
+      "doc_id": "335bf8d698105c87",
+      "ord": 0,
+      "text": "Ligne 0 de b : le renard brun saute par-dessus le chien paresseux, 0 fois.\nLigne 1 de b : le renard brun saute par-dessus le chien paresseux, 7 fois.\n",
+      "dim": 16,
+      "embedding": "f9ae9f7fd92d0a58ca335a26d5a81a83f59381a36c5bb347566e4694c5e4e860",
+      "sha256": "335bf8d698105c87e3772f49325c3326d628541f05bc7f409753dd1900fb16c3",
+      "source": "b.md",
+      "model": null
+     },
+     {
+      "doc_id": "335bf8d698105c87",
+      "ord": 1,
+      "text": "Ligne 2 de b : le renard brun saute par-dessus le chien paresseux, 14 fois.\nLigne 3 de b : le renard brun saute par-dessus le chien paresseux, 21 fois.\n",
+      "dim": 16,
+      "embedding": "8ce40e1d8ee7d8ea5c1dfca89838c78a40b6325619bdc411e3e446135770e43c",
+      "sha256": "335bf8d698105c87e3772f49325c3326d628541f05bc7f409753dd1900fb16c3",
+      "source": "b.md",
+      "model": null
+     },
+     {
+      "doc_id": "335bf8d698105c87",
+      "ord": 2,
+      "text": "Ligne 4 de b : le renard brun saute par-dessus le chien paresseux, 28 fois.\nLigne 5 de b : le renard brun saute par-dessus le chien paresseux, 35 fois.",
+      "dim": 16,
+      "embedding": "d80041afc6bc11a1eb3cef4de119aff37edcc4c583f7ee2f8dbee188a1238ab5",
+      "sha256": "335bf8d698105c87e3772f49325c3326d628541f05bc7f409753dd1900fb16c3",
+      "source": "b.md",
+      "model": null
+     },
+     {
+      "doc_id": "<dir>/sub/y.ts",
+      "ord": 0,
+      "text": "export const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\n",
+      "dim": 16,
+      "embedding": "c228da3e1c976ee12ff9d4451cb37d49a70d598bdffbdf468b3fd57ed299113f",
+      "sha256": "0f06181d9c66d070afdb9d1b3246cf08660f99988aba78888da7d6a61114d75b",
+      "source": "sub/y.ts",
+      "model": null
+     },
+     {
+      "doc_id": "<dir>/sub/y.ts",
+      "ord": 1,
+      "text": "export const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\n",
+      "dim": 16,
+      "embedding": "c228da3e1c976ee12ff9d4451cb37d49a70d598bdffbdf468b3fd57ed299113f",
+      "sha256": "0f06181d9c66d070afdb9d1b3246cf08660f99988aba78888da7d6a61114d75b",
+      "source": "sub/y.ts",
+      "model": null
+     },
+     {
+      "doc_id": "<dir>/sub/y.ts",
+      "ord": 2,
+      "text": "export const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\n",
+      "dim": 16,
+      "embedding": "c228da3e1c976ee12ff9d4451cb37d49a70d598bdffbdf468b3fd57ed299113f",
+      "sha256": "0f06181d9c66d070afdb9d1b3246cf08660f99988aba78888da7d6a61114d75b",
+      "source": "sub/y.ts",
+      "model": null
+     },
+     {
+      "doc_id": "<dir>/sub/y.ts",
+      "ord": 3,
+      "text": "export const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\n",
+      "dim": 16,
+      "embedding": "c228da3e1c976ee12ff9d4451cb37d49a70d598bdffbdf468b3fd57ed299113f",
+      "sha256": "0f06181d9c66d070afdb9d1b3246cf08660f99988aba78888da7d6a61114d75b",
+      "source": "sub/y.ts",
+      "model": null
+     },
+     {
+      "doc_id": "<dir>/x.md",
+      "ord": 0,
+      "text": "Ligne 0 de x : le renard brun saute par-dessus le chien paresseux, 0 fois.\nLigne 1 de x : le renard brun saute par-dessus le chien paresseux, 7 fois.\n",
+      "dim": 16,
+      "embedding": "e490b4f2cd70f4f643bdf6ac2abac67cbfd0e243594d57c6e70f4aeda84ebf95",
+      "sha256": "733fd24ce3f50dfcf811d86c91c15d1b15880a3404ea1129a646a8264608693e",
+      "source": "x.md",
+      "model": null
+     },
+     {
+      "doc_id": "<dir>/x.md",
+      "ord": 1,
+      "text": "Ligne 2 de x : le renard brun saute par-dessus le chien paresseux, 14 fois.\nLigne 3 de x : le renard brun saute par-dessus le chien paresseux, 21 fois.\n",
+      "dim": 16,
+      "embedding": "1b4467169f4a661aef912e3995b4dcb5351ea09d4d923225026085bd6e46c7e1",
+      "sha256": "733fd24ce3f50dfcf811d86c91c15d1b15880a3404ea1129a646a8264608693e",
+      "source": "x.md",
+      "model": null
+     },
+     {
+      "doc_id": "<dir>/x.md",
+      "ord": 2,
+      "text": "Ligne 4 de x : le renard brun saute par-dessus le chien paresseux, 28 fois.\nLigne 5 de x : le renard brun saute par-dessus le chien paresseux, 35 fois.\n",
+      "dim": 16,
+      "embedding": "b4aebdb926b1195d02c4000757411478bff7339f49166204b513fd52327633d0",
+      "sha256": "733fd24ce3f50dfcf811d86c91c15d1b15880a3404ea1129a646a8264608693e",
+      "source": "x.md",
+      "model": null
+     },
+     {
+      "doc_id": "<dir>/x.md",
+      "ord": 3,
+      "text": "Ligne 6 de x : le renard brun saute par-dessus le chien paresseux, 42 fois.\nLigne 7 de x : le renard brun saute par-dessus le chien paresseux, 49 fois.\n",
+      "dim": 16,
+      "embedding": "35b243be2f00b4410fc3ff8507d8cde31ba1a22ab33c32a266b37056c7e130d1",
+      "sha256": "733fd24ce3f50dfcf811d86c91c15d1b15880a3404ea1129a646a8264608693e",
+      "source": "x.md",
+      "model": null
+     },
+     {
+      "doc_id": "<dir>/x.md",
+      "ord": 4,
+      "text": "Ligne 8 de x : le renard brun saute par-dessus le chien paresseux, 56 fois.\nLigne 9 de x : le renard brun saute par-dessus le chien paresseux, 63 fois.\n",
+      "dim": 16,
+      "embedding": "8d3bccd4451aa7baed8d863222ca58d7d6bfa112bd32f43353cc3eef4f3905f8",
+      "sha256": "733fd24ce3f50dfcf811d86c91c15d1b15880a3404ea1129a646a8264608693e",
+      "source": "x.md",
+      "model": null
+     },
+     {
+      "doc_id": "<dir>/x.md",
+      "ord": 5,
+      "text": "Ligne 10 de x : le renard brun saute par-dessus le chien paresseux, 70 fois.\nLigne 11 de x : le renard brun saute par-dessus le chien paresseux, 77 fois.",
+      "dim": 16,
+      "embedding": "f1cde146902d5e0d259c3eb72cdc39c50fc9fac92f5cce9dbde392906487e68e",
+      "sha256": "733fd24ce3f50dfcf811d86c91c15d1b15880a3404ea1129a646a8264608693e",
+      "source": "x.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 0,
+      "text": "Ligne 0 de a2 : le renard brun saute par-dessus le chien paresseux, 0 fois.\nLigne 1 de a2 : le renard brun saute par-dessus le chien paresseux, 7 fois.\n",
+      "dim": 16,
+      "embedding": "aa3719601f2e94ae1785ca18a32b2db2f1af611534d6f84486eefd938725bea9",
+      "sha256": "d4899f2b74d98e7d978fc05ed86753dcd427e2a477a208860de374beda22fd9c",
+      "source": "a.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 1,
+      "text": "Ligne 2 de a2 : le renard brun saute par-dessus le chien paresseux, 14 fois.\nLigne 3 de a2 : le renard brun saute par-dessus le chien paresseux, 21 fois.\n",
+      "dim": 16,
+      "embedding": "9165baadc0152dc14d50881fe7f918934b0fac93eb8c253b82c68ecf1843f08d",
+      "sha256": "d4899f2b74d98e7d978fc05ed86753dcd427e2a477a208860de374beda22fd9c",
+      "source": "a.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 2,
+      "text": "Ligne 4 de a2 : le renard brun saute par-dessus le chien paresseux, 28 fois.\nLigne 5 de a2 : le renard brun saute par-dessus le chien paresseux, 35 fois.\n",
+      "dim": 16,
+      "embedding": "827cdc423de5458f389c98ddf75529cc68a7a03a07410cd30f74488cca7b1df9",
+      "sha256": "d4899f2b74d98e7d978fc05ed86753dcd427e2a477a208860de374beda22fd9c",
+      "source": "a.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 3,
+      "text": "Ligne 6 de a2 : le renard brun saute par-dessus le chien paresseux, 42 fois.\nLigne 7 de a2 : le renard brun saute par-dessus le chien paresseux, 49 fois.\n",
+      "dim": 16,
+      "embedding": "19a161fe9d5c2354b42cc75c455ab8e818aaef82b38eb12bc39118d0415d1201",
+      "sha256": "d4899f2b74d98e7d978fc05ed86753dcd427e2a477a208860de374beda22fd9c",
+      "source": "a.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 4,
+      "text": "Ligne 8 de a2 : le renard brun saute par-dessus le chien paresseux, 56 fois.",
+      "dim": 16,
+      "embedding": "071b56922bc5e3cafc38153b7df8491b28024bc171bc65595b0b0b63a9ce456d",
+      "sha256": "d4899f2b74d98e7d978fc05ed86753dcd427e2a477a208860de374beda22fd9c",
+      "source": "a.md",
+      "model": null
+     }
+    ]
+   },
+   {
+    "stage": "dossier relancé",
+    "result": {
+     "files": 3,
+     "chunks": 0,
+     "deduped": 2
+    },
+    "rows": [
+     {
+      "doc_id": "335bf8d698105c87",
+      "ord": 0,
+      "text": "Ligne 0 de b : le renard brun saute par-dessus le chien paresseux, 0 fois.\nLigne 1 de b : le renard brun saute par-dessus le chien paresseux, 7 fois.\n",
+      "dim": 16,
+      "embedding": "f9ae9f7fd92d0a58ca335a26d5a81a83f59381a36c5bb347566e4694c5e4e860",
+      "sha256": "335bf8d698105c87e3772f49325c3326d628541f05bc7f409753dd1900fb16c3",
+      "source": "b.md",
+      "model": null
+     },
+     {
+      "doc_id": "335bf8d698105c87",
+      "ord": 1,
+      "text": "Ligne 2 de b : le renard brun saute par-dessus le chien paresseux, 14 fois.\nLigne 3 de b : le renard brun saute par-dessus le chien paresseux, 21 fois.\n",
+      "dim": 16,
+      "embedding": "8ce40e1d8ee7d8ea5c1dfca89838c78a40b6325619bdc411e3e446135770e43c",
+      "sha256": "335bf8d698105c87e3772f49325c3326d628541f05bc7f409753dd1900fb16c3",
+      "source": "b.md",
+      "model": null
+     },
+     {
+      "doc_id": "335bf8d698105c87",
+      "ord": 2,
+      "text": "Ligne 4 de b : le renard brun saute par-dessus le chien paresseux, 28 fois.\nLigne 5 de b : le renard brun saute par-dessus le chien paresseux, 35 fois.",
+      "dim": 16,
+      "embedding": "d80041afc6bc11a1eb3cef4de119aff37edcc4c583f7ee2f8dbee188a1238ab5",
+      "sha256": "335bf8d698105c87e3772f49325c3326d628541f05bc7f409753dd1900fb16c3",
+      "source": "b.md",
+      "model": null
+     },
+     {
+      "doc_id": "<dir>/sub/y.ts",
+      "ord": 0,
+      "text": "export const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\n",
+      "dim": 16,
+      "embedding": "c228da3e1c976ee12ff9d4451cb37d49a70d598bdffbdf468b3fd57ed299113f",
+      "sha256": "0f06181d9c66d070afdb9d1b3246cf08660f99988aba78888da7d6a61114d75b",
+      "source": "sub/y.ts",
+      "model": null
+     },
+     {
+      "doc_id": "<dir>/sub/y.ts",
+      "ord": 1,
+      "text": "export const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\n",
+      "dim": 16,
+      "embedding": "c228da3e1c976ee12ff9d4451cb37d49a70d598bdffbdf468b3fd57ed299113f",
+      "sha256": "0f06181d9c66d070afdb9d1b3246cf08660f99988aba78888da7d6a61114d75b",
+      "source": "sub/y.ts",
+      "model": null
+     },
+     {
+      "doc_id": "<dir>/sub/y.ts",
+      "ord": 2,
+      "text": "export const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\n",
+      "dim": 16,
+      "embedding": "c228da3e1c976ee12ff9d4451cb37d49a70d598bdffbdf468b3fd57ed299113f",
+      "sha256": "0f06181d9c66d070afdb9d1b3246cf08660f99988aba78888da7d6a61114d75b",
+      "source": "sub/y.ts",
+      "model": null
+     },
+     {
+      "doc_id": "<dir>/sub/y.ts",
+      "ord": 3,
+      "text": "export const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\n",
+      "dim": 16,
+      "embedding": "c228da3e1c976ee12ff9d4451cb37d49a70d598bdffbdf468b3fd57ed299113f",
+      "sha256": "0f06181d9c66d070afdb9d1b3246cf08660f99988aba78888da7d6a61114d75b",
+      "source": "sub/y.ts",
+      "model": null
+     },
+     {
+      "doc_id": "<dir>/x.md",
+      "ord": 0,
+      "text": "Ligne 0 de x : le renard brun saute par-dessus le chien paresseux, 0 fois.\nLigne 1 de x : le renard brun saute par-dessus le chien paresseux, 7 fois.\n",
+      "dim": 16,
+      "embedding": "e490b4f2cd70f4f643bdf6ac2abac67cbfd0e243594d57c6e70f4aeda84ebf95",
+      "sha256": "733fd24ce3f50dfcf811d86c91c15d1b15880a3404ea1129a646a8264608693e",
+      "source": "x.md",
+      "model": null
+     },
+     {
+      "doc_id": "<dir>/x.md",
+      "ord": 1,
+      "text": "Ligne 2 de x : le renard brun saute par-dessus le chien paresseux, 14 fois.\nLigne 3 de x : le renard brun saute par-dessus le chien paresseux, 21 fois.\n",
+      "dim": 16,
+      "embedding": "1b4467169f4a661aef912e3995b4dcb5351ea09d4d923225026085bd6e46c7e1",
+      "sha256": "733fd24ce3f50dfcf811d86c91c15d1b15880a3404ea1129a646a8264608693e",
+      "source": "x.md",
+      "model": null
+     },
+     {
+      "doc_id": "<dir>/x.md",
+      "ord": 2,
+      "text": "Ligne 4 de x : le renard brun saute par-dessus le chien paresseux, 28 fois.\nLigne 5 de x : le renard brun saute par-dessus le chien paresseux, 35 fois.\n",
+      "dim": 16,
+      "embedding": "b4aebdb926b1195d02c4000757411478bff7339f49166204b513fd52327633d0",
+      "sha256": "733fd24ce3f50dfcf811d86c91c15d1b15880a3404ea1129a646a8264608693e",
+      "source": "x.md",
+      "model": null
+     },
+     {
+      "doc_id": "<dir>/x.md",
+      "ord": 3,
+      "text": "Ligne 6 de x : le renard brun saute par-dessus le chien paresseux, 42 fois.\nLigne 7 de x : le renard brun saute par-dessus le chien paresseux, 49 fois.\n",
+      "dim": 16,
+      "embedding": "35b243be2f00b4410fc3ff8507d8cde31ba1a22ab33c32a266b37056c7e130d1",
+      "sha256": "733fd24ce3f50dfcf811d86c91c15d1b15880a3404ea1129a646a8264608693e",
+      "source": "x.md",
+      "model": null
+     },
+     {
+      "doc_id": "<dir>/x.md",
+      "ord": 4,
+      "text": "Ligne 8 de x : le renard brun saute par-dessus le chien paresseux, 56 fois.\nLigne 9 de x : le renard brun saute par-dessus le chien paresseux, 63 fois.\n",
+      "dim": 16,
+      "embedding": "8d3bccd4451aa7baed8d863222ca58d7d6bfa112bd32f43353cc3eef4f3905f8",
+      "sha256": "733fd24ce3f50dfcf811d86c91c15d1b15880a3404ea1129a646a8264608693e",
+      "source": "x.md",
+      "model": null
+     },
+     {
+      "doc_id": "<dir>/x.md",
+      "ord": 5,
+      "text": "Ligne 10 de x : le renard brun saute par-dessus le chien paresseux, 70 fois.\nLigne 11 de x : le renard brun saute par-dessus le chien paresseux, 77 fois.",
+      "dim": 16,
+      "embedding": "f1cde146902d5e0d259c3eb72cdc39c50fc9fac92f5cce9dbde392906487e68e",
+      "sha256": "733fd24ce3f50dfcf811d86c91c15d1b15880a3404ea1129a646a8264608693e",
+      "source": "x.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 0,
+      "text": "Ligne 0 de a2 : le renard brun saute par-dessus le chien paresseux, 0 fois.\nLigne 1 de a2 : le renard brun saute par-dessus le chien paresseux, 7 fois.\n",
+      "dim": 16,
+      "embedding": "aa3719601f2e94ae1785ca18a32b2db2f1af611534d6f84486eefd938725bea9",
+      "sha256": "d4899f2b74d98e7d978fc05ed86753dcd427e2a477a208860de374beda22fd9c",
+      "source": "a.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 1,
+      "text": "Ligne 2 de a2 : le renard brun saute par-dessus le chien paresseux, 14 fois.\nLigne 3 de a2 : le renard brun saute par-dessus le chien paresseux, 21 fois.\n",
+      "dim": 16,
+      "embedding": "9165baadc0152dc14d50881fe7f918934b0fac93eb8c253b82c68ecf1843f08d",
+      "sha256": "d4899f2b74d98e7d978fc05ed86753dcd427e2a477a208860de374beda22fd9c",
+      "source": "a.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 2,
+      "text": "Ligne 4 de a2 : le renard brun saute par-dessus le chien paresseux, 28 fois.\nLigne 5 de a2 : le renard brun saute par-dessus le chien paresseux, 35 fois.\n",
+      "dim": 16,
+      "embedding": "827cdc423de5458f389c98ddf75529cc68a7a03a07410cd30f74488cca7b1df9",
+      "sha256": "d4899f2b74d98e7d978fc05ed86753dcd427e2a477a208860de374beda22fd9c",
+      "source": "a.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 3,
+      "text": "Ligne 6 de a2 : le renard brun saute par-dessus le chien paresseux, 42 fois.\nLigne 7 de a2 : le renard brun saute par-dessus le chien paresseux, 49 fois.\n",
+      "dim": 16,
+      "embedding": "19a161fe9d5c2354b42cc75c455ab8e818aaef82b38eb12bc39118d0415d1201",
+      "sha256": "d4899f2b74d98e7d978fc05ed86753dcd427e2a477a208860de374beda22fd9c",
+      "source": "a.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 4,
+      "text": "Ligne 8 de a2 : le renard brun saute par-dessus le chien paresseux, 56 fois.",
+      "dim": 16,
+      "embedding": "071b56922bc5e3cafc38153b7df8491b28024bc171bc65595b0b0b63a9ce456d",
+      "sha256": "d4899f2b74d98e7d978fc05ed86753dcd427e2a477a208860de374beda22fd9c",
+      "source": "a.md",
+      "model": null
+     }
+    ]
+   },
+   {
+    "stage": "forget b.md",
+    "result": {
+     "removed": 3
+    },
+    "rows": [
+     {
+      "doc_id": "<dir>/sub/y.ts",
+      "ord": 0,
+      "text": "export const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\n",
+      "dim": 16,
+      "embedding": "c228da3e1c976ee12ff9d4451cb37d49a70d598bdffbdf468b3fd57ed299113f",
+      "sha256": "0f06181d9c66d070afdb9d1b3246cf08660f99988aba78888da7d6a61114d75b",
+      "source": "sub/y.ts",
+      "model": null
+     },
+     {
+      "doc_id": "<dir>/sub/y.ts",
+      "ord": 1,
+      "text": "export const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\n",
+      "dim": 16,
+      "embedding": "c228da3e1c976ee12ff9d4451cb37d49a70d598bdffbdf468b3fd57ed299113f",
+      "sha256": "0f06181d9c66d070afdb9d1b3246cf08660f99988aba78888da7d6a61114d75b",
+      "source": "sub/y.ts",
+      "model": null
+     },
+     {
+      "doc_id": "<dir>/sub/y.ts",
+      "ord": 2,
+      "text": "export const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\n",
+      "dim": 16,
+      "embedding": "c228da3e1c976ee12ff9d4451cb37d49a70d598bdffbdf468b3fd57ed299113f",
+      "sha256": "0f06181d9c66d070afdb9d1b3246cf08660f99988aba78888da7d6a61114d75b",
+      "source": "sub/y.ts",
+      "model": null
+     },
+     {
+      "doc_id": "<dir>/sub/y.ts",
+      "ord": 3,
+      "text": "export const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\n",
+      "dim": 16,
+      "embedding": "c228da3e1c976ee12ff9d4451cb37d49a70d598bdffbdf468b3fd57ed299113f",
+      "sha256": "0f06181d9c66d070afdb9d1b3246cf08660f99988aba78888da7d6a61114d75b",
+      "source": "sub/y.ts",
+      "model": null
+     },
+     {
+      "doc_id": "<dir>/x.md",
+      "ord": 0,
+      "text": "Ligne 0 de x : le renard brun saute par-dessus le chien paresseux, 0 fois.\nLigne 1 de x : le renard brun saute par-dessus le chien paresseux, 7 fois.\n",
+      "dim": 16,
+      "embedding": "e490b4f2cd70f4f643bdf6ac2abac67cbfd0e243594d57c6e70f4aeda84ebf95",
+      "sha256": "733fd24ce3f50dfcf811d86c91c15d1b15880a3404ea1129a646a8264608693e",
+      "source": "x.md",
+      "model": null
+     },
+     {
+      "doc_id": "<dir>/x.md",
+      "ord": 1,
+      "text": "Ligne 2 de x : le renard brun saute par-dessus le chien paresseux, 14 fois.\nLigne 3 de x : le renard brun saute par-dessus le chien paresseux, 21 fois.\n",
+      "dim": 16,
+      "embedding": "1b4467169f4a661aef912e3995b4dcb5351ea09d4d923225026085bd6e46c7e1",
+      "sha256": "733fd24ce3f50dfcf811d86c91c15d1b15880a3404ea1129a646a8264608693e",
+      "source": "x.md",
+      "model": null
+     },
+     {
+      "doc_id": "<dir>/x.md",
+      "ord": 2,
+      "text": "Ligne 4 de x : le renard brun saute par-dessus le chien paresseux, 28 fois.\nLigne 5 de x : le renard brun saute par-dessus le chien paresseux, 35 fois.\n",
+      "dim": 16,
+      "embedding": "b4aebdb926b1195d02c4000757411478bff7339f49166204b513fd52327633d0",
+      "sha256": "733fd24ce3f50dfcf811d86c91c15d1b15880a3404ea1129a646a8264608693e",
+      "source": "x.md",
+      "model": null
+     },
+     {
+      "doc_id": "<dir>/x.md",
+      "ord": 3,
+      "text": "Ligne 6 de x : le renard brun saute par-dessus le chien paresseux, 42 fois.\nLigne 7 de x : le renard brun saute par-dessus le chien paresseux, 49 fois.\n",
+      "dim": 16,
+      "embedding": "35b243be2f00b4410fc3ff8507d8cde31ba1a22ab33c32a266b37056c7e130d1",
+      "sha256": "733fd24ce3f50dfcf811d86c91c15d1b15880a3404ea1129a646a8264608693e",
+      "source": "x.md",
+      "model": null
+     },
+     {
+      "doc_id": "<dir>/x.md",
+      "ord": 4,
+      "text": "Ligne 8 de x : le renard brun saute par-dessus le chien paresseux, 56 fois.\nLigne 9 de x : le renard brun saute par-dessus le chien paresseux, 63 fois.\n",
+      "dim": 16,
+      "embedding": "8d3bccd4451aa7baed8d863222ca58d7d6bfa112bd32f43353cc3eef4f3905f8",
+      "sha256": "733fd24ce3f50dfcf811d86c91c15d1b15880a3404ea1129a646a8264608693e",
+      "source": "x.md",
+      "model": null
+     },
+     {
+      "doc_id": "<dir>/x.md",
+      "ord": 5,
+      "text": "Ligne 10 de x : le renard brun saute par-dessus le chien paresseux, 70 fois.\nLigne 11 de x : le renard brun saute par-dessus le chien paresseux, 77 fois.",
+      "dim": 16,
+      "embedding": "f1cde146902d5e0d259c3eb72cdc39c50fc9fac92f5cce9dbde392906487e68e",
+      "sha256": "733fd24ce3f50dfcf811d86c91c15d1b15880a3404ea1129a646a8264608693e",
+      "source": "x.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 0,
+      "text": "Ligne 0 de a2 : le renard brun saute par-dessus le chien paresseux, 0 fois.\nLigne 1 de a2 : le renard brun saute par-dessus le chien paresseux, 7 fois.\n",
+      "dim": 16,
+      "embedding": "aa3719601f2e94ae1785ca18a32b2db2f1af611534d6f84486eefd938725bea9",
+      "sha256": "d4899f2b74d98e7d978fc05ed86753dcd427e2a477a208860de374beda22fd9c",
+      "source": "a.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 1,
+      "text": "Ligne 2 de a2 : le renard brun saute par-dessus le chien paresseux, 14 fois.\nLigne 3 de a2 : le renard brun saute par-dessus le chien paresseux, 21 fois.\n",
+      "dim": 16,
+      "embedding": "9165baadc0152dc14d50881fe7f918934b0fac93eb8c253b82c68ecf1843f08d",
+      "sha256": "d4899f2b74d98e7d978fc05ed86753dcd427e2a477a208860de374beda22fd9c",
+      "source": "a.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 2,
+      "text": "Ligne 4 de a2 : le renard brun saute par-dessus le chien paresseux, 28 fois.\nLigne 5 de a2 : le renard brun saute par-dessus le chien paresseux, 35 fois.\n",
+      "dim": 16,
+      "embedding": "827cdc423de5458f389c98ddf75529cc68a7a03a07410cd30f74488cca7b1df9",
+      "sha256": "d4899f2b74d98e7d978fc05ed86753dcd427e2a477a208860de374beda22fd9c",
+      "source": "a.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 3,
+      "text": "Ligne 6 de a2 : le renard brun saute par-dessus le chien paresseux, 42 fois.\nLigne 7 de a2 : le renard brun saute par-dessus le chien paresseux, 49 fois.\n",
+      "dim": 16,
+      "embedding": "19a161fe9d5c2354b42cc75c455ab8e818aaef82b38eb12bc39118d0415d1201",
+      "sha256": "d4899f2b74d98e7d978fc05ed86753dcd427e2a477a208860de374beda22fd9c",
+      "source": "a.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 4,
+      "text": "Ligne 8 de a2 : le renard brun saute par-dessus le chien paresseux, 56 fois.",
+      "dim": 16,
+      "embedding": "071b56922bc5e3cafc38153b7df8491b28024bc171bc65595b0b0b63a9ce456d",
+      "sha256": "d4899f2b74d98e7d978fc05ed86753dcd427e2a477a208860de374beda22fd9c",
+      "source": "a.md",
+      "model": null
+     }
+    ]
+   },
+   {
+    "stage": "forget inconnu",
+    "result": {
+     "removed": 0
+    },
+    "rows": [
+     {
+      "doc_id": "<dir>/sub/y.ts",
+      "ord": 0,
+      "text": "export const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\n",
+      "dim": 16,
+      "embedding": "c228da3e1c976ee12ff9d4451cb37d49a70d598bdffbdf468b3fd57ed299113f",
+      "sha256": "0f06181d9c66d070afdb9d1b3246cf08660f99988aba78888da7d6a61114d75b",
+      "source": "sub/y.ts",
+      "model": null
+     },
+     {
+      "doc_id": "<dir>/sub/y.ts",
+      "ord": 1,
+      "text": "export const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\n",
+      "dim": 16,
+      "embedding": "c228da3e1c976ee12ff9d4451cb37d49a70d598bdffbdf468b3fd57ed299113f",
+      "sha256": "0f06181d9c66d070afdb9d1b3246cf08660f99988aba78888da7d6a61114d75b",
+      "source": "sub/y.ts",
+      "model": null
+     },
+     {
+      "doc_id": "<dir>/sub/y.ts",
+      "ord": 2,
+      "text": "export const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\n",
+      "dim": 16,
+      "embedding": "c228da3e1c976ee12ff9d4451cb37d49a70d598bdffbdf468b3fd57ed299113f",
+      "sha256": "0f06181d9c66d070afdb9d1b3246cf08660f99988aba78888da7d6a61114d75b",
+      "source": "sub/y.ts",
+      "model": null
+     },
+     {
+      "doc_id": "<dir>/sub/y.ts",
+      "ord": 3,
+      "text": "export const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\n",
+      "dim": 16,
+      "embedding": "c228da3e1c976ee12ff9d4451cb37d49a70d598bdffbdf468b3fd57ed299113f",
+      "sha256": "0f06181d9c66d070afdb9d1b3246cf08660f99988aba78888da7d6a61114d75b",
+      "source": "sub/y.ts",
+      "model": null
+     },
+     {
+      "doc_id": "<dir>/x.md",
+      "ord": 0,
+      "text": "Ligne 0 de x : le renard brun saute par-dessus le chien paresseux, 0 fois.\nLigne 1 de x : le renard brun saute par-dessus le chien paresseux, 7 fois.\n",
+      "dim": 16,
+      "embedding": "e490b4f2cd70f4f643bdf6ac2abac67cbfd0e243594d57c6e70f4aeda84ebf95",
+      "sha256": "733fd24ce3f50dfcf811d86c91c15d1b15880a3404ea1129a646a8264608693e",
+      "source": "x.md",
+      "model": null
+     },
+     {
+      "doc_id": "<dir>/x.md",
+      "ord": 1,
+      "text": "Ligne 2 de x : le renard brun saute par-dessus le chien paresseux, 14 fois.\nLigne 3 de x : le renard brun saute par-dessus le chien paresseux, 21 fois.\n",
+      "dim": 16,
+      "embedding": "1b4467169f4a661aef912e3995b4dcb5351ea09d4d923225026085bd6e46c7e1",
+      "sha256": "733fd24ce3f50dfcf811d86c91c15d1b15880a3404ea1129a646a8264608693e",
+      "source": "x.md",
+      "model": null
+     },
+     {
+      "doc_id": "<dir>/x.md",
+      "ord": 2,
+      "text": "Ligne 4 de x : le renard brun saute par-dessus le chien paresseux, 28 fois.\nLigne 5 de x : le renard brun saute par-dessus le chien paresseux, 35 fois.\n",
+      "dim": 16,
+      "embedding": "b4aebdb926b1195d02c4000757411478bff7339f49166204b513fd52327633d0",
+      "sha256": "733fd24ce3f50dfcf811d86c91c15d1b15880a3404ea1129a646a8264608693e",
+      "source": "x.md",
+      "model": null
+     },
+     {
+      "doc_id": "<dir>/x.md",
+      "ord": 3,
+      "text": "Ligne 6 de x : le renard brun saute par-dessus le chien paresseux, 42 fois.\nLigne 7 de x : le renard brun saute par-dessus le chien paresseux, 49 fois.\n",
+      "dim": 16,
+      "embedding": "35b243be2f00b4410fc3ff8507d8cde31ba1a22ab33c32a266b37056c7e130d1",
+      "sha256": "733fd24ce3f50dfcf811d86c91c15d1b15880a3404ea1129a646a8264608693e",
+      "source": "x.md",
+      "model": null
+     },
+     {
+      "doc_id": "<dir>/x.md",
+      "ord": 4,
+      "text": "Ligne 8 de x : le renard brun saute par-dessus le chien paresseux, 56 fois.\nLigne 9 de x : le renard brun saute par-dessus le chien paresseux, 63 fois.\n",
+      "dim": 16,
+      "embedding": "8d3bccd4451aa7baed8d863222ca58d7d6bfa112bd32f43353cc3eef4f3905f8",
+      "sha256": "733fd24ce3f50dfcf811d86c91c15d1b15880a3404ea1129a646a8264608693e",
+      "source": "x.md",
+      "model": null
+     },
+     {
+      "doc_id": "<dir>/x.md",
+      "ord": 5,
+      "text": "Ligne 10 de x : le renard brun saute par-dessus le chien paresseux, 70 fois.\nLigne 11 de x : le renard brun saute par-dessus le chien paresseux, 77 fois.",
+      "dim": 16,
+      "embedding": "f1cde146902d5e0d259c3eb72cdc39c50fc9fac92f5cce9dbde392906487e68e",
+      "sha256": "733fd24ce3f50dfcf811d86c91c15d1b15880a3404ea1129a646a8264608693e",
+      "source": "x.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 0,
+      "text": "Ligne 0 de a2 : le renard brun saute par-dessus le chien paresseux, 0 fois.\nLigne 1 de a2 : le renard brun saute par-dessus le chien paresseux, 7 fois.\n",
+      "dim": 16,
+      "embedding": "aa3719601f2e94ae1785ca18a32b2db2f1af611534d6f84486eefd938725bea9",
+      "sha256": "d4899f2b74d98e7d978fc05ed86753dcd427e2a477a208860de374beda22fd9c",
+      "source": "a.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 1,
+      "text": "Ligne 2 de a2 : le renard brun saute par-dessus le chien paresseux, 14 fois.\nLigne 3 de a2 : le renard brun saute par-dessus le chien paresseux, 21 fois.\n",
+      "dim": 16,
+      "embedding": "9165baadc0152dc14d50881fe7f918934b0fac93eb8c253b82c68ecf1843f08d",
+      "sha256": "d4899f2b74d98e7d978fc05ed86753dcd427e2a477a208860de374beda22fd9c",
+      "source": "a.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 2,
+      "text": "Ligne 4 de a2 : le renard brun saute par-dessus le chien paresseux, 28 fois.\nLigne 5 de a2 : le renard brun saute par-dessus le chien paresseux, 35 fois.\n",
+      "dim": 16,
+      "embedding": "827cdc423de5458f389c98ddf75529cc68a7a03a07410cd30f74488cca7b1df9",
+      "sha256": "d4899f2b74d98e7d978fc05ed86753dcd427e2a477a208860de374beda22fd9c",
+      "source": "a.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 3,
+      "text": "Ligne 6 de a2 : le renard brun saute par-dessus le chien paresseux, 42 fois.\nLigne 7 de a2 : le renard brun saute par-dessus le chien paresseux, 49 fois.\n",
+      "dim": 16,
+      "embedding": "19a161fe9d5c2354b42cc75c455ab8e818aaef82b38eb12bc39118d0415d1201",
+      "sha256": "d4899f2b74d98e7d978fc05ed86753dcd427e2a477a208860de374beda22fd9c",
+      "source": "a.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 4,
+      "text": "Ligne 8 de a2 : le renard brun saute par-dessus le chien paresseux, 56 fois.",
+      "dim": 16,
+      "embedding": "071b56922bc5e3cafc38153b7df8491b28024bc171bc65595b0b0b63a9ce456d",
+      "sha256": "d4899f2b74d98e7d978fc05ed86753dcd427e2a477a208860de374beda22fd9c",
+      "source": "a.md",
+      "model": null
+     }
+    ]
+   },
+   {
+    "stage": "forget tout",
+    "result": {
+     "removed": 15
+    },
+    "rows": []
+   }
+  ],
+  "hits": {
+   "le renard brun": [
+    {
+     "docId": "335bf8d698105c87",
+     "ord": 0,
+     "source": "b.md",
+     "score": 0.558593386675,
+     "text": "Ligne 0 de b : le renard brun saute par-dessus le chien paresseux, 0 fois.\nLigne 1 de b : le renard brun saute par-dessus le chien paresseux, 7 fois.\n"
+    },
+    {
+     "docId": "<dir>/x.md",
+     "ord": 0,
+     "source": "x.md",
+     "score": 0.353006201508,
+     "text": "Ligne 0 de x : le renard brun saute par-dessus le chien paresseux, 0 fois.\nLigne 1 de x : le renard brun saute par-dessus le chien paresseux, 7 fois.\n"
+    },
+    {
+     "docId": "<dir>/x.md",
+     "ord": 5,
+     "source": "x.md",
+     "score": 0.277811427068,
+     "text": "Ligne 10 de x : le renard brun saute par-dessus le chien paresseux, 70 fois.\nLigne 11 de x : le renard brun saute par-dessus le chien paresseux, 77 fois."
+    },
+    {
+     "docId": "<dir>/sub/y.ts",
+     "ord": 0,
+     "source": "sub/y.ts",
+     "score": 0.120604322565,
+     "text": "export const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\n"
+    }
+   ],
+   "Ligne 4 de x": [
+    {
+     "docId": "335bf8d698105c87",
+     "ord": 0,
+     "source": "b.md",
+     "score": 0.404431163037,
+     "text": "Ligne 0 de b : le renard brun saute par-dessus le chien paresseux, 0 fois.\nLigne 1 de b : le renard brun saute par-dessus le chien paresseux, 7 fois.\n"
+    },
+    {
+     "docId": "a",
+     "ord": 1,
+     "source": "a.md",
+     "score": 0.339465742276,
+     "text": "Ligne 2 de a2 : le renard brun saute par-dessus le chien paresseux, 14 fois.\nLigne 3 de a2 : le renard brun saute par-dessus le chien paresseux, 21 fois.\n"
+    },
+    {
+     "docId": "a",
+     "ord": 0,
+     "source": "a.md",
+     "score": 0.204913930501,
+     "text": "Ligne 0 de a2 : le renard brun saute par-dessus le chien paresseux, 0 fois.\nLigne 1 de a2 : le renard brun saute par-dessus le chien paresseux, 7 fois.\n"
+    },
+    {
+     "docId": "<dir>/x.md",
+     "ord": 5,
+     "source": "x.md",
+     "score": 0.155424911681,
+     "text": "Ligne 10 de x : le renard brun saute par-dessus le chien paresseux, 70 fois.\nLigne 11 de x : le renard brun saute par-dessus le chien paresseux, 77 fois."
+    }
+   ],
+   "export const": [
+    {
+     "docId": "335bf8d698105c87",
+     "ord": 2,
+     "source": "b.md",
+     "score": 0.33249502936,
+     "text": "Ligne 4 de b : le renard brun saute par-dessus le chien paresseux, 28 fois.\nLigne 5 de b : le renard brun saute par-dessus le chien paresseux, 35 fois."
+    },
+    {
+     "docId": "<dir>/sub/y.ts",
+     "ord": 0,
+     "source": "sub/y.ts",
+     "score": 0.215464005184,
+     "text": "export const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\n"
+    },
+    {
+     "docId": "<dir>/sub/y.ts",
+     "ord": 1,
+     "source": "sub/y.ts",
+     "score": 0.215464005184,
+     "text": "export const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\n"
+    },
+    {
+     "docId": "<dir>/x.md",
+     "ord": 1,
+     "source": "x.md",
+     "score": 0.215157373148,
+     "text": "Ligne 2 de x : le renard brun saute par-dessus le chien paresseux, 14 fois.\nLigne 3 de x : le renard brun saute par-dessus le chien paresseux, 21 fois.\n"
+    }
+   ],
+   "chien paresseux fois": [
+    {
+     "docId": "335bf8d698105c87",
+     "ord": 0,
+     "source": "b.md",
+     "score": 0.608139371564,
+     "text": "Ligne 0 de b : le renard brun saute par-dessus le chien paresseux, 0 fois.\nLigne 1 de b : le renard brun saute par-dessus le chien paresseux, 7 fois.\n"
+    },
+    {
+     "docId": "<dir>/x.md",
+     "ord": 1,
+     "source": "x.md",
+     "score": 0.169975986913,
+     "text": "Ligne 2 de x : le renard brun saute par-dessus le chien paresseux, 14 fois.\nLigne 3 de x : le renard brun saute par-dessus le chien paresseux, 21 fois.\n"
+    },
+    {
+     "docId": "335bf8d698105c87",
+     "ord": 2,
+     "source": "b.md",
+     "score": 0.100548401304,
+     "text": "Ligne 4 de b : le renard brun saute par-dessus le chien paresseux, 28 fois.\nLigne 5 de b : le renard brun saute par-dessus le chien paresseux, 35 fois."
+    },
+    {
+     "docId": "a",
+     "ord": 2,
+     "source": "a.md",
+     "score": 0.0342900453673,
+     "text": "Ligne 4 de a2 : le renard brun saute par-dessus le chien paresseux, 28 fois.\nLigne 5 de a2 : le renard brun saute par-dessus le chien paresseux, 35 fois.\n"
+    }
+   ],
+   "a2": [
+    {
+     "docId": "a",
+     "ord": 4,
+     "source": "a.md",
+     "score": 0.515663270581,
+     "text": "Ligne 8 de a2 : le renard brun saute par-dessus le chien paresseux, 56 fois."
+    },
+    {
+     "docId": "a",
+     "ord": 0,
+     "source": "a.md",
+     "score": 0.297371818915,
+     "text": "Ligne 0 de a2 : le renard brun saute par-dessus le chien paresseux, 0 fois.\nLigne 1 de a2 : le renard brun saute par-dessus le chien paresseux, 7 fois.\n"
+    },
+    {
+     "docId": "<dir>/sub/y.ts",
+     "ord": 0,
+     "source": "sub/y.ts",
+     "score": 0.214874070448,
+     "text": "export const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\n"
+    },
+    {
+     "docId": "<dir>/sub/y.ts",
+     "ord": 1,
+     "source": "sub/y.ts",
+     "score": 0.214874070448,
+     "text": "export const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\n"
+    }
+   ]
+  }
+ },
+ "overlap40": {
+  "stages": [
+   {
+    "stage": "ingest a",
+    "result": {
+     "docId": "a",
+     "chunks": 7,
+     "deduped": false
+    },
+    "rows": [
+     {
+      "doc_id": "a",
+      "ord": 0,
+      "text": "Ligne 0 de a : le renard brun saute par-dessus le chien paresseux, 0 fois.\nLigne 1 de a : le renard brun saute par-dessus le chien paresseux, 7 fois.\nLigne 2 de a : le renard brun saute par-dessus le chien paresseux, 14 fois.\n",
+      "dim": 16,
+      "embedding": "4fe97bba1664740b0a34ab4082fa4ee97df7ab60f652eee5db12558b0d349729",
+      "sha256": "0a055309ae638d5fd83f6adbcf7e9d3223c064db542d80fc1037960c38c5f1c9",
+      "source": "a.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 1,
+      "text": "e renard brun saute par-dessus le chien paresseux, 14 fois.\nLigne 3 de a : le renard brun saute par-dessus le chien paresseux, 21 fois.\nLigne 4 de a : le renard brun saute par-dessus le chien paresseux, 28 fois.\nLigne 5 de a : le renard brun saute par-dessus le chien paresseux, 35 fois.\n",
+      "dim": 16,
+      "embedding": "4fd5312cfb3c39a7098d1beb09313b1769fce961aad77205b349c3a03263e8ec",
+      "sha256": "0a055309ae638d5fd83f6adbcf7e9d3223c064db542d80fc1037960c38c5f1c9",
+      "source": "a.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 2,
+      "text": "e renard brun saute par-dessus le chien paresseux, 35 fois.\nLigne 6 de a : le renard brun saute par-dessus le chien paresseux, 42 fois.\nLigne 7 de a : le renard brun saute par-dessus le chien paresseux, 49 fois.\nLigne 8 de a : le renard brun saute par-dessus le chien paresseux, 56 fois.\n",
+      "dim": 16,
+      "embedding": "7288bfbc02c8d6404aed270d987e40a877d19b8bfcd34c79e2f12d7f36398496",
+      "sha256": "0a055309ae638d5fd83f6adbcf7e9d3223c064db542d80fc1037960c38c5f1c9",
+      "source": "a.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 3,
+      "text": "e renard brun saute par-dessus le chien paresseux, 56 fois.\nLigne 9 de a : le renard brun saute par-dessus le chien paresseux, 63 fois.\nLigne 10 de a : le renard brun saute par-dessus le chien paresseux, 70 fois.\nLigne 11 de a : le renard brun saute par-dessus le chien paresseux, 77 fois.\n",
+      "dim": 16,
+      "embedding": "fb33b7a8832213d4e82a5d65917eab93e3ad040e49760e69de9a4587907212ba",
+      "sha256": "0a055309ae638d5fd83f6adbcf7e9d3223c064db542d80fc1037960c38c5f1c9",
+      "source": "a.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 4,
+      "text": "e renard brun saute par-dessus le chien paresseux, 77 fois.\nLigne 12 de a : le renard brun saute par-dessus le chien paresseux, 84 fois.\nLigne 13 de a : le renard brun saute par-dessus le chien paresseux, 91 fois.\nLigne 14 de a : le renard brun saute par-dessus le chien paresseux, 98 fois.\n",
+      "dim": 16,
+      "embedding": "b667ec15a99db5178538e02670b2b29ef27003cffbb5dd179e8e3205fcfa4b31",
+      "sha256": "0a055309ae638d5fd83f6adbcf7e9d3223c064db542d80fc1037960c38c5f1c9",
+      "source": "a.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 5,
+      "text": "e renard brun saute par-dessus le chien paresseux, 98 fois.\nLigne 15 de a : le renard brun saute par-dessus le chien paresseux, 105 fois.\nLigne 16 de a : le renard brun saute par-dessus le chien paresseux, 112 fois.\nLigne 17 de a : le renard brun saute par-dessus le chien paresseux, 119 fois.\n",
+      "dim": 16,
+      "embedding": "505f559e8be233d5747c74bb8181de070bea28fd444ad6259535dc06e7beb1c8",
+      "sha256": "0a055309ae638d5fd83f6adbcf7e9d3223c064db542d80fc1037960c38c5f1c9",
+      "source": "a.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 6,
+      "text": " renard brun saute par-dessus le chien paresseux, 119 fois.\nLigne 18 de a : le renard brun saute par-dessus le chien paresseux, 126 fois.\nLigne 19 de a : le renard brun saute par-dessus le chien paresseux, 133 fois.",
+      "dim": 16,
+      "embedding": "1a75367317fdd7f12aa20a6d7a0c246d5b15d53a8d6d2155b3c8723f5fa035ed",
+      "sha256": "0a055309ae638d5fd83f6adbcf7e9d3223c064db542d80fc1037960c38c5f1c9",
+      "source": "a.md",
+      "model": null
+     }
+    ]
+   },
+   {
+    "stage": "ingest sans docId",
+    "result": {
+     "docId": "335bf8d698105c87",
+     "chunks": 2,
+     "deduped": false
+    },
+    "rows": [
+     {
+      "doc_id": "335bf8d698105c87",
+      "ord": 0,
+      "text": "Ligne 0 de b : le renard brun saute par-dessus le chien paresseux, 0 fois.\nLigne 1 de b : le renard brun saute par-dessus le chien paresseux, 7 fois.\nLigne 2 de b : le renard brun saute par-dessus le chien paresseux, 14 fois.\n",
+      "dim": 16,
+      "embedding": "8d2ed03878f06ec5a5362ea0e5156c0f4244c619e21bfb7a053e8a760224890f",
+      "sha256": "335bf8d698105c87e3772f49325c3326d628541f05bc7f409753dd1900fb16c3",
+      "source": "b.md",
+      "model": null
+     },
+     {
+      "doc_id": "335bf8d698105c87",
+      "ord": 1,
+      "text": "e renard brun saute par-dessus le chien paresseux, 14 fois.\nLigne 3 de b : le renard brun saute par-dessus le chien paresseux, 21 fois.\nLigne 4 de b : le renard brun saute par-dessus le chien paresseux, 28 fois.\nLigne 5 de b : le renard brun saute par-dessus le chien paresseux, 35 fois.",
+      "dim": 16,
+      "embedding": "2536966101d7891a6af116b3ecc473ec6f54c975aac038e4e8a5693dbf5798f9",
+      "sha256": "335bf8d698105c87e3772f49325c3326d628541f05bc7f409753dd1900fb16c3",
+      "source": "b.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 0,
+      "text": "Ligne 0 de a : le renard brun saute par-dessus le chien paresseux, 0 fois.\nLigne 1 de a : le renard brun saute par-dessus le chien paresseux, 7 fois.\nLigne 2 de a : le renard brun saute par-dessus le chien paresseux, 14 fois.\n",
+      "dim": 16,
+      "embedding": "4fe97bba1664740b0a34ab4082fa4ee97df7ab60f652eee5db12558b0d349729",
+      "sha256": "0a055309ae638d5fd83f6adbcf7e9d3223c064db542d80fc1037960c38c5f1c9",
+      "source": "a.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 1,
+      "text": "e renard brun saute par-dessus le chien paresseux, 14 fois.\nLigne 3 de a : le renard brun saute par-dessus le chien paresseux, 21 fois.\nLigne 4 de a : le renard brun saute par-dessus le chien paresseux, 28 fois.\nLigne 5 de a : le renard brun saute par-dessus le chien paresseux, 35 fois.\n",
+      "dim": 16,
+      "embedding": "4fd5312cfb3c39a7098d1beb09313b1769fce961aad77205b349c3a03263e8ec",
+      "sha256": "0a055309ae638d5fd83f6adbcf7e9d3223c064db542d80fc1037960c38c5f1c9",
+      "source": "a.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 2,
+      "text": "e renard brun saute par-dessus le chien paresseux, 35 fois.\nLigne 6 de a : le renard brun saute par-dessus le chien paresseux, 42 fois.\nLigne 7 de a : le renard brun saute par-dessus le chien paresseux, 49 fois.\nLigne 8 de a : le renard brun saute par-dessus le chien paresseux, 56 fois.\n",
+      "dim": 16,
+      "embedding": "7288bfbc02c8d6404aed270d987e40a877d19b8bfcd34c79e2f12d7f36398496",
+      "sha256": "0a055309ae638d5fd83f6adbcf7e9d3223c064db542d80fc1037960c38c5f1c9",
+      "source": "a.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 3,
+      "text": "e renard brun saute par-dessus le chien paresseux, 56 fois.\nLigne 9 de a : le renard brun saute par-dessus le chien paresseux, 63 fois.\nLigne 10 de a : le renard brun saute par-dessus le chien paresseux, 70 fois.\nLigne 11 de a : le renard brun saute par-dessus le chien paresseux, 77 fois.\n",
+      "dim": 16,
+      "embedding": "fb33b7a8832213d4e82a5d65917eab93e3ad040e49760e69de9a4587907212ba",
+      "sha256": "0a055309ae638d5fd83f6adbcf7e9d3223c064db542d80fc1037960c38c5f1c9",
+      "source": "a.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 4,
+      "text": "e renard brun saute par-dessus le chien paresseux, 77 fois.\nLigne 12 de a : le renard brun saute par-dessus le chien paresseux, 84 fois.\nLigne 13 de a : le renard brun saute par-dessus le chien paresseux, 91 fois.\nLigne 14 de a : le renard brun saute par-dessus le chien paresseux, 98 fois.\n",
+      "dim": 16,
+      "embedding": "b667ec15a99db5178538e02670b2b29ef27003cffbb5dd179e8e3205fcfa4b31",
+      "sha256": "0a055309ae638d5fd83f6adbcf7e9d3223c064db542d80fc1037960c38c5f1c9",
+      "source": "a.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 5,
+      "text": "e renard brun saute par-dessus le chien paresseux, 98 fois.\nLigne 15 de a : le renard brun saute par-dessus le chien paresseux, 105 fois.\nLigne 16 de a : le renard brun saute par-dessus le chien paresseux, 112 fois.\nLigne 17 de a : le renard brun saute par-dessus le chien paresseux, 119 fois.\n",
+      "dim": 16,
+      "embedding": "505f559e8be233d5747c74bb8181de070bea28fd444ad6259535dc06e7beb1c8",
+      "sha256": "0a055309ae638d5fd83f6adbcf7e9d3223c064db542d80fc1037960c38c5f1c9",
+      "source": "a.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 6,
+      "text": " renard brun saute par-dessus le chien paresseux, 119 fois.\nLigne 18 de a : le renard brun saute par-dessus le chien paresseux, 126 fois.\nLigne 19 de a : le renard brun saute par-dessus le chien paresseux, 133 fois.",
+      "dim": 16,
+      "embedding": "1a75367317fdd7f12aa20a6d7a0c246d5b15d53a8d6d2155b3c8723f5fa035ed",
+      "sha256": "0a055309ae638d5fd83f6adbcf7e9d3223c064db542d80fc1037960c38c5f1c9",
+      "source": "a.md",
+      "model": null
+     }
+    ]
+   },
+   {
+    "stage": "doublon de a",
+    "result": {
+     "docId": "a",
+     "chunks": 0,
+     "deduped": true
+    },
+    "rows": [
+     {
+      "doc_id": "335bf8d698105c87",
+      "ord": 0,
+      "text": "Ligne 0 de b : le renard brun saute par-dessus le chien paresseux, 0 fois.\nLigne 1 de b : le renard brun saute par-dessus le chien paresseux, 7 fois.\nLigne 2 de b : le renard brun saute par-dessus le chien paresseux, 14 fois.\n",
+      "dim": 16,
+      "embedding": "8d2ed03878f06ec5a5362ea0e5156c0f4244c619e21bfb7a053e8a760224890f",
+      "sha256": "335bf8d698105c87e3772f49325c3326d628541f05bc7f409753dd1900fb16c3",
+      "source": "b.md",
+      "model": null
+     },
+     {
+      "doc_id": "335bf8d698105c87",
+      "ord": 1,
+      "text": "e renard brun saute par-dessus le chien paresseux, 14 fois.\nLigne 3 de b : le renard brun saute par-dessus le chien paresseux, 21 fois.\nLigne 4 de b : le renard brun saute par-dessus le chien paresseux, 28 fois.\nLigne 5 de b : le renard brun saute par-dessus le chien paresseux, 35 fois.",
+      "dim": 16,
+      "embedding": "2536966101d7891a6af116b3ecc473ec6f54c975aac038e4e8a5693dbf5798f9",
+      "sha256": "335bf8d698105c87e3772f49325c3326d628541f05bc7f409753dd1900fb16c3",
+      "source": "b.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 0,
+      "text": "Ligne 0 de a : le renard brun saute par-dessus le chien paresseux, 0 fois.\nLigne 1 de a : le renard brun saute par-dessus le chien paresseux, 7 fois.\nLigne 2 de a : le renard brun saute par-dessus le chien paresseux, 14 fois.\n",
+      "dim": 16,
+      "embedding": "4fe97bba1664740b0a34ab4082fa4ee97df7ab60f652eee5db12558b0d349729",
+      "sha256": "0a055309ae638d5fd83f6adbcf7e9d3223c064db542d80fc1037960c38c5f1c9",
+      "source": "a.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 1,
+      "text": "e renard brun saute par-dessus le chien paresseux, 14 fois.\nLigne 3 de a : le renard brun saute par-dessus le chien paresseux, 21 fois.\nLigne 4 de a : le renard brun saute par-dessus le chien paresseux, 28 fois.\nLigne 5 de a : le renard brun saute par-dessus le chien paresseux, 35 fois.\n",
+      "dim": 16,
+      "embedding": "4fd5312cfb3c39a7098d1beb09313b1769fce961aad77205b349c3a03263e8ec",
+      "sha256": "0a055309ae638d5fd83f6adbcf7e9d3223c064db542d80fc1037960c38c5f1c9",
+      "source": "a.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 2,
+      "text": "e renard brun saute par-dessus le chien paresseux, 35 fois.\nLigne 6 de a : le renard brun saute par-dessus le chien paresseux, 42 fois.\nLigne 7 de a : le renard brun saute par-dessus le chien paresseux, 49 fois.\nLigne 8 de a : le renard brun saute par-dessus le chien paresseux, 56 fois.\n",
+      "dim": 16,
+      "embedding": "7288bfbc02c8d6404aed270d987e40a877d19b8bfcd34c79e2f12d7f36398496",
+      "sha256": "0a055309ae638d5fd83f6adbcf7e9d3223c064db542d80fc1037960c38c5f1c9",
+      "source": "a.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 3,
+      "text": "e renard brun saute par-dessus le chien paresseux, 56 fois.\nLigne 9 de a : le renard brun saute par-dessus le chien paresseux, 63 fois.\nLigne 10 de a : le renard brun saute par-dessus le chien paresseux, 70 fois.\nLigne 11 de a : le renard brun saute par-dessus le chien paresseux, 77 fois.\n",
+      "dim": 16,
+      "embedding": "fb33b7a8832213d4e82a5d65917eab93e3ad040e49760e69de9a4587907212ba",
+      "sha256": "0a055309ae638d5fd83f6adbcf7e9d3223c064db542d80fc1037960c38c5f1c9",
+      "source": "a.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 4,
+      "text": "e renard brun saute par-dessus le chien paresseux, 77 fois.\nLigne 12 de a : le renard brun saute par-dessus le chien paresseux, 84 fois.\nLigne 13 de a : le renard brun saute par-dessus le chien paresseux, 91 fois.\nLigne 14 de a : le renard brun saute par-dessus le chien paresseux, 98 fois.\n",
+      "dim": 16,
+      "embedding": "b667ec15a99db5178538e02670b2b29ef27003cffbb5dd179e8e3205fcfa4b31",
+      "sha256": "0a055309ae638d5fd83f6adbcf7e9d3223c064db542d80fc1037960c38c5f1c9",
+      "source": "a.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 5,
+      "text": "e renard brun saute par-dessus le chien paresseux, 98 fois.\nLigne 15 de a : le renard brun saute par-dessus le chien paresseux, 105 fois.\nLigne 16 de a : le renard brun saute par-dessus le chien paresseux, 112 fois.\nLigne 17 de a : le renard brun saute par-dessus le chien paresseux, 119 fois.\n",
+      "dim": 16,
+      "embedding": "505f559e8be233d5747c74bb8181de070bea28fd444ad6259535dc06e7beb1c8",
+      "sha256": "0a055309ae638d5fd83f6adbcf7e9d3223c064db542d80fc1037960c38c5f1c9",
+      "source": "a.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 6,
+      "text": " renard brun saute par-dessus le chien paresseux, 119 fois.\nLigne 18 de a : le renard brun saute par-dessus le chien paresseux, 126 fois.\nLigne 19 de a : le renard brun saute par-dessus le chien paresseux, 133 fois.",
+      "dim": 16,
+      "embedding": "1a75367317fdd7f12aa20a6d7a0c246d5b15d53a8d6d2155b3c8723f5fa035ed",
+      "sha256": "0a055309ae638d5fd83f6adbcf7e9d3223c064db542d80fc1037960c38c5f1c9",
+      "source": "a.md",
+      "model": null
+     }
+    ]
+   },
+   {
+    "stage": "a modifié",
+    "result": {
+     "docId": "a",
+     "chunks": 3,
+     "deduped": false
+    },
+    "rows": [
+     {
+      "doc_id": "335bf8d698105c87",
+      "ord": 0,
+      "text": "Ligne 0 de b : le renard brun saute par-dessus le chien paresseux, 0 fois.\nLigne 1 de b : le renard brun saute par-dessus le chien paresseux, 7 fois.\nLigne 2 de b : le renard brun saute par-dessus le chien paresseux, 14 fois.\n",
+      "dim": 16,
+      "embedding": "8d2ed03878f06ec5a5362ea0e5156c0f4244c619e21bfb7a053e8a760224890f",
+      "sha256": "335bf8d698105c87e3772f49325c3326d628541f05bc7f409753dd1900fb16c3",
+      "source": "b.md",
+      "model": null
+     },
+     {
+      "doc_id": "335bf8d698105c87",
+      "ord": 1,
+      "text": "e renard brun saute par-dessus le chien paresseux, 14 fois.\nLigne 3 de b : le renard brun saute par-dessus le chien paresseux, 21 fois.\nLigne 4 de b : le renard brun saute par-dessus le chien paresseux, 28 fois.\nLigne 5 de b : le renard brun saute par-dessus le chien paresseux, 35 fois.",
+      "dim": 16,
+      "embedding": "2536966101d7891a6af116b3ecc473ec6f54c975aac038e4e8a5693dbf5798f9",
+      "sha256": "335bf8d698105c87e3772f49325c3326d628541f05bc7f409753dd1900fb16c3",
+      "source": "b.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 0,
+      "text": "Ligne 0 de a2 : le renard brun saute par-dessus le chien paresseux, 0 fois.\nLigne 1 de a2 : le renard brun saute par-dessus le chien paresseux, 7 fois.\nLigne 2 de a2 : le renard brun saute par-dessus le chien paresseux, 14 fois.\n",
+      "dim": 16,
+      "embedding": "a2a3ddd5eb545de1194d0064e36822896675c30425aa2629a0cb60b752dd09b8",
+      "sha256": "d4899f2b74d98e7d978fc05ed86753dcd427e2a477a208860de374beda22fd9c",
+      "source": "a.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 1,
+      "text": "e renard brun saute par-dessus le chien paresseux, 14 fois.\nLigne 3 de a2 : le renard brun saute par-dessus le chien paresseux, 21 fois.\nLigne 4 de a2 : le renard brun saute par-dessus le chien paresseux, 28 fois.\nLigne 5 de a2 : le renard brun saute par-dessus le chien paresseux, 35 fois.\n",
+      "dim": 16,
+      "embedding": "d3f57b78e904b436f43c37d8ba27118fe073ce0f967c13b1c7d1d9a528781064",
+      "sha256": "d4899f2b74d98e7d978fc05ed86753dcd427e2a477a208860de374beda22fd9c",
+      "source": "a.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 2,
+      "text": "e renard brun saute par-dessus le chien paresseux, 35 fois.\nLigne 6 de a2 : le renard brun saute par-dessus le chien paresseux, 42 fois.\nLigne 7 de a2 : le renard brun saute par-dessus le chien paresseux, 49 fois.\nLigne 8 de a2 : le renard brun saute par-dessus le chien paresseux, 56 fois.",
+      "dim": 16,
+      "embedding": "82b3773bb40514978ef08c680fb6a3c3053f9eaece4924a09ab4a920d87486f8",
+      "sha256": "d4899f2b74d98e7d978fc05ed86753dcd427e2a477a208860de374beda22fd9c",
+      "source": "a.md",
+      "model": null
+     }
+    ]
+   },
+   {
+    "stage": "texte blanc",
+    "result": {
+     "error": "RAG_EMPTY_TEXT: rien à indexer."
+    },
+    "rows": [
+     {
+      "doc_id": "335bf8d698105c87",
+      "ord": 0,
+      "text": "Ligne 0 de b : le renard brun saute par-dessus le chien paresseux, 0 fois.\nLigne 1 de b : le renard brun saute par-dessus le chien paresseux, 7 fois.\nLigne 2 de b : le renard brun saute par-dessus le chien paresseux, 14 fois.\n",
+      "dim": 16,
+      "embedding": "8d2ed03878f06ec5a5362ea0e5156c0f4244c619e21bfb7a053e8a760224890f",
+      "sha256": "335bf8d698105c87e3772f49325c3326d628541f05bc7f409753dd1900fb16c3",
+      "source": "b.md",
+      "model": null
+     },
+     {
+      "doc_id": "335bf8d698105c87",
+      "ord": 1,
+      "text": "e renard brun saute par-dessus le chien paresseux, 14 fois.\nLigne 3 de b : le renard brun saute par-dessus le chien paresseux, 21 fois.\nLigne 4 de b : le renard brun saute par-dessus le chien paresseux, 28 fois.\nLigne 5 de b : le renard brun saute par-dessus le chien paresseux, 35 fois.",
+      "dim": 16,
+      "embedding": "2536966101d7891a6af116b3ecc473ec6f54c975aac038e4e8a5693dbf5798f9",
+      "sha256": "335bf8d698105c87e3772f49325c3326d628541f05bc7f409753dd1900fb16c3",
+      "source": "b.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 0,
+      "text": "Ligne 0 de a2 : le renard brun saute par-dessus le chien paresseux, 0 fois.\nLigne 1 de a2 : le renard brun saute par-dessus le chien paresseux, 7 fois.\nLigne 2 de a2 : le renard brun saute par-dessus le chien paresseux, 14 fois.\n",
+      "dim": 16,
+      "embedding": "a2a3ddd5eb545de1194d0064e36822896675c30425aa2629a0cb60b752dd09b8",
+      "sha256": "d4899f2b74d98e7d978fc05ed86753dcd427e2a477a208860de374beda22fd9c",
+      "source": "a.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 1,
+      "text": "e renard brun saute par-dessus le chien paresseux, 14 fois.\nLigne 3 de a2 : le renard brun saute par-dessus le chien paresseux, 21 fois.\nLigne 4 de a2 : le renard brun saute par-dessus le chien paresseux, 28 fois.\nLigne 5 de a2 : le renard brun saute par-dessus le chien paresseux, 35 fois.\n",
+      "dim": 16,
+      "embedding": "d3f57b78e904b436f43c37d8ba27118fe073ce0f967c13b1c7d1d9a528781064",
+      "sha256": "d4899f2b74d98e7d978fc05ed86753dcd427e2a477a208860de374beda22fd9c",
+      "source": "a.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 2,
+      "text": "e renard brun saute par-dessus le chien paresseux, 35 fois.\nLigne 6 de a2 : le renard brun saute par-dessus le chien paresseux, 42 fois.\nLigne 7 de a2 : le renard brun saute par-dessus le chien paresseux, 49 fois.\nLigne 8 de a2 : le renard brun saute par-dessus le chien paresseux, 56 fois.",
+      "dim": 16,
+      "embedding": "82b3773bb40514978ef08c680fb6a3c3053f9eaece4924a09ab4a920d87486f8",
+      "sha256": "d4899f2b74d98e7d978fc05ed86753dcd427e2a477a208860de374beda22fd9c",
+      "source": "a.md",
+      "model": null
+     }
+    ]
+   },
+   {
+    "stage": "dossier",
+    "result": {
+     "files": 3,
+     "chunks": 8,
+     "deduped": 0
+    },
+    "rows": [
+     {
+      "doc_id": "335bf8d698105c87",
+      "ord": 0,
+      "text": "Ligne 0 de b : le renard brun saute par-dessus le chien paresseux, 0 fois.\nLigne 1 de b : le renard brun saute par-dessus le chien paresseux, 7 fois.\nLigne 2 de b : le renard brun saute par-dessus le chien paresseux, 14 fois.\n",
+      "dim": 16,
+      "embedding": "8d2ed03878f06ec5a5362ea0e5156c0f4244c619e21bfb7a053e8a760224890f",
+      "sha256": "335bf8d698105c87e3772f49325c3326d628541f05bc7f409753dd1900fb16c3",
+      "source": "b.md",
+      "model": null
+     },
+     {
+      "doc_id": "335bf8d698105c87",
+      "ord": 1,
+      "text": "e renard brun saute par-dessus le chien paresseux, 14 fois.\nLigne 3 de b : le renard brun saute par-dessus le chien paresseux, 21 fois.\nLigne 4 de b : le renard brun saute par-dessus le chien paresseux, 28 fois.\nLigne 5 de b : le renard brun saute par-dessus le chien paresseux, 35 fois.",
+      "dim": 16,
+      "embedding": "2536966101d7891a6af116b3ecc473ec6f54c975aac038e4e8a5693dbf5798f9",
+      "sha256": "335bf8d698105c87e3772f49325c3326d628541f05bc7f409753dd1900fb16c3",
+      "source": "b.md",
+      "model": null
+     },
+     {
+      "doc_id": "<dir>/sub/y.ts",
+      "ord": 0,
+      "text": "export const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\n",
+      "dim": 16,
+      "embedding": "436e2eb14d62de326d310c26d8dd903f6782f9a7580ccec728bb98677610da21",
+      "sha256": "0f06181d9c66d070afdb9d1b3246cf08660f99988aba78888da7d6a61114d75b",
+      "source": "sub/y.ts",
+      "model": null
+     },
+     {
+      "doc_id": "<dir>/sub/y.ts",
+      "ord": 1,
+      "text": "export const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\n",
+      "dim": 16,
+      "embedding": "436e2eb14d62de326d310c26d8dd903f6782f9a7580ccec728bb98677610da21",
+      "sha256": "0f06181d9c66d070afdb9d1b3246cf08660f99988aba78888da7d6a61114d75b",
+      "source": "sub/y.ts",
+      "model": null
+     },
+     {
+      "doc_id": "<dir>/sub/y.ts",
+      "ord": 2,
+      "text": "export const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\n",
+      "dim": 16,
+      "embedding": "436e2eb14d62de326d310c26d8dd903f6782f9a7580ccec728bb98677610da21",
+      "sha256": "0f06181d9c66d070afdb9d1b3246cf08660f99988aba78888da7d6a61114d75b",
+      "source": "sub/y.ts",
+      "model": null
+     },
+     {
+      "doc_id": "<dir>/sub/y.ts",
+      "ord": 3,
+      "text": "export const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\n",
+      "dim": 16,
+      "embedding": "2b729d9876ca17a0e207430960e29f070e59807ec9951972c18cda2f7b603363",
+      "sha256": "0f06181d9c66d070afdb9d1b3246cf08660f99988aba78888da7d6a61114d75b",
+      "source": "sub/y.ts",
+      "model": null
+     },
+     {
+      "doc_id": "<dir>/x.md",
+      "ord": 0,
+      "text": "Ligne 0 de x : le renard brun saute par-dessus le chien paresseux, 0 fois.\nLigne 1 de x : le renard brun saute par-dessus le chien paresseux, 7 fois.\nLigne 2 de x : le renard brun saute par-dessus le chien paresseux, 14 fois.\n",
+      "dim": 16,
+      "embedding": "003ea2fc2be6a3bef7864a2ad7fd33c80dfaa635f171d4e3f96990e84dfd3a16",
+      "sha256": "733fd24ce3f50dfcf811d86c91c15d1b15880a3404ea1129a646a8264608693e",
+      "source": "x.md",
+      "model": null
+     },
+     {
+      "doc_id": "<dir>/x.md",
+      "ord": 1,
+      "text": "e renard brun saute par-dessus le chien paresseux, 14 fois.\nLigne 3 de x : le renard brun saute par-dessus le chien paresseux, 21 fois.\nLigne 4 de x : le renard brun saute par-dessus le chien paresseux, 28 fois.\nLigne 5 de x : le renard brun saute par-dessus le chien paresseux, 35 fois.\n",
+      "dim": 16,
+      "embedding": "d46ba99796412062b0c876adaa30af7f575ef0ebffe5f972d21f5df83b2072e2",
+      "sha256": "733fd24ce3f50dfcf811d86c91c15d1b15880a3404ea1129a646a8264608693e",
+      "source": "x.md",
+      "model": null
+     },
+     {
+      "doc_id": "<dir>/x.md",
+      "ord": 2,
+      "text": "e renard brun saute par-dessus le chien paresseux, 35 fois.\nLigne 6 de x : le renard brun saute par-dessus le chien paresseux, 42 fois.\nLigne 7 de x : le renard brun saute par-dessus le chien paresseux, 49 fois.\nLigne 8 de x : le renard brun saute par-dessus le chien paresseux, 56 fois.\n",
+      "dim": 16,
+      "embedding": "21a574935fc1c529054e78847e5eb9cd6d113189383f9e5eca73240243c5d542",
+      "sha256": "733fd24ce3f50dfcf811d86c91c15d1b15880a3404ea1129a646a8264608693e",
+      "source": "x.md",
+      "model": null
+     },
+     {
+      "doc_id": "<dir>/x.md",
+      "ord": 3,
+      "text": "e renard brun saute par-dessus le chien paresseux, 56 fois.\nLigne 9 de x : le renard brun saute par-dessus le chien paresseux, 63 fois.\nLigne 10 de x : le renard brun saute par-dessus le chien paresseux, 70 fois.\nLigne 11 de x : le renard brun saute par-dessus le chien paresseux, 77 fois.",
+      "dim": 16,
+      "embedding": "8838c6c20e98ea41682730fb913857c33e1d509cadeed238319375ce9d6e589b",
+      "sha256": "733fd24ce3f50dfcf811d86c91c15d1b15880a3404ea1129a646a8264608693e",
+      "source": "x.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 0,
+      "text": "Ligne 0 de a2 : le renard brun saute par-dessus le chien paresseux, 0 fois.\nLigne 1 de a2 : le renard brun saute par-dessus le chien paresseux, 7 fois.\nLigne 2 de a2 : le renard brun saute par-dessus le chien paresseux, 14 fois.\n",
+      "dim": 16,
+      "embedding": "a2a3ddd5eb545de1194d0064e36822896675c30425aa2629a0cb60b752dd09b8",
+      "sha256": "d4899f2b74d98e7d978fc05ed86753dcd427e2a477a208860de374beda22fd9c",
+      "source": "a.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 1,
+      "text": "e renard brun saute par-dessus le chien paresseux, 14 fois.\nLigne 3 de a2 : le renard brun saute par-dessus le chien paresseux, 21 fois.\nLigne 4 de a2 : le renard brun saute par-dessus le chien paresseux, 28 fois.\nLigne 5 de a2 : le renard brun saute par-dessus le chien paresseux, 35 fois.\n",
+      "dim": 16,
+      "embedding": "d3f57b78e904b436f43c37d8ba27118fe073ce0f967c13b1c7d1d9a528781064",
+      "sha256": "d4899f2b74d98e7d978fc05ed86753dcd427e2a477a208860de374beda22fd9c",
+      "source": "a.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 2,
+      "text": "e renard brun saute par-dessus le chien paresseux, 35 fois.\nLigne 6 de a2 : le renard brun saute par-dessus le chien paresseux, 42 fois.\nLigne 7 de a2 : le renard brun saute par-dessus le chien paresseux, 49 fois.\nLigne 8 de a2 : le renard brun saute par-dessus le chien paresseux, 56 fois.",
+      "dim": 16,
+      "embedding": "82b3773bb40514978ef08c680fb6a3c3053f9eaece4924a09ab4a920d87486f8",
+      "sha256": "d4899f2b74d98e7d978fc05ed86753dcd427e2a477a208860de374beda22fd9c",
+      "source": "a.md",
+      "model": null
+     }
+    ]
+   },
+   {
+    "stage": "dossier relancé",
+    "result": {
+     "files": 3,
+     "chunks": 0,
+     "deduped": 2
+    },
+    "rows": [
+     {
+      "doc_id": "335bf8d698105c87",
+      "ord": 0,
+      "text": "Ligne 0 de b : le renard brun saute par-dessus le chien paresseux, 0 fois.\nLigne 1 de b : le renard brun saute par-dessus le chien paresseux, 7 fois.\nLigne 2 de b : le renard brun saute par-dessus le chien paresseux, 14 fois.\n",
+      "dim": 16,
+      "embedding": "8d2ed03878f06ec5a5362ea0e5156c0f4244c619e21bfb7a053e8a760224890f",
+      "sha256": "335bf8d698105c87e3772f49325c3326d628541f05bc7f409753dd1900fb16c3",
+      "source": "b.md",
+      "model": null
+     },
+     {
+      "doc_id": "335bf8d698105c87",
+      "ord": 1,
+      "text": "e renard brun saute par-dessus le chien paresseux, 14 fois.\nLigne 3 de b : le renard brun saute par-dessus le chien paresseux, 21 fois.\nLigne 4 de b : le renard brun saute par-dessus le chien paresseux, 28 fois.\nLigne 5 de b : le renard brun saute par-dessus le chien paresseux, 35 fois.",
+      "dim": 16,
+      "embedding": "2536966101d7891a6af116b3ecc473ec6f54c975aac038e4e8a5693dbf5798f9",
+      "sha256": "335bf8d698105c87e3772f49325c3326d628541f05bc7f409753dd1900fb16c3",
+      "source": "b.md",
+      "model": null
+     },
+     {
+      "doc_id": "<dir>/sub/y.ts",
+      "ord": 0,
+      "text": "export const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\n",
+      "dim": 16,
+      "embedding": "436e2eb14d62de326d310c26d8dd903f6782f9a7580ccec728bb98677610da21",
+      "sha256": "0f06181d9c66d070afdb9d1b3246cf08660f99988aba78888da7d6a61114d75b",
+      "source": "sub/y.ts",
+      "model": null
+     },
+     {
+      "doc_id": "<dir>/sub/y.ts",
+      "ord": 1,
+      "text": "export const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\n",
+      "dim": 16,
+      "embedding": "436e2eb14d62de326d310c26d8dd903f6782f9a7580ccec728bb98677610da21",
+      "sha256": "0f06181d9c66d070afdb9d1b3246cf08660f99988aba78888da7d6a61114d75b",
+      "source": "sub/y.ts",
+      "model": null
+     },
+     {
+      "doc_id": "<dir>/sub/y.ts",
+      "ord": 2,
+      "text": "export const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\n",
+      "dim": 16,
+      "embedding": "436e2eb14d62de326d310c26d8dd903f6782f9a7580ccec728bb98677610da21",
+      "sha256": "0f06181d9c66d070afdb9d1b3246cf08660f99988aba78888da7d6a61114d75b",
+      "source": "sub/y.ts",
+      "model": null
+     },
+     {
+      "doc_id": "<dir>/sub/y.ts",
+      "ord": 3,
+      "text": "export const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\n",
+      "dim": 16,
+      "embedding": "2b729d9876ca17a0e207430960e29f070e59807ec9951972c18cda2f7b603363",
+      "sha256": "0f06181d9c66d070afdb9d1b3246cf08660f99988aba78888da7d6a61114d75b",
+      "source": "sub/y.ts",
+      "model": null
+     },
+     {
+      "doc_id": "<dir>/x.md",
+      "ord": 0,
+      "text": "Ligne 0 de x : le renard brun saute par-dessus le chien paresseux, 0 fois.\nLigne 1 de x : le renard brun saute par-dessus le chien paresseux, 7 fois.\nLigne 2 de x : le renard brun saute par-dessus le chien paresseux, 14 fois.\n",
+      "dim": 16,
+      "embedding": "003ea2fc2be6a3bef7864a2ad7fd33c80dfaa635f171d4e3f96990e84dfd3a16",
+      "sha256": "733fd24ce3f50dfcf811d86c91c15d1b15880a3404ea1129a646a8264608693e",
+      "source": "x.md",
+      "model": null
+     },
+     {
+      "doc_id": "<dir>/x.md",
+      "ord": 1,
+      "text": "e renard brun saute par-dessus le chien paresseux, 14 fois.\nLigne 3 de x : le renard brun saute par-dessus le chien paresseux, 21 fois.\nLigne 4 de x : le renard brun saute par-dessus le chien paresseux, 28 fois.\nLigne 5 de x : le renard brun saute par-dessus le chien paresseux, 35 fois.\n",
+      "dim": 16,
+      "embedding": "d46ba99796412062b0c876adaa30af7f575ef0ebffe5f972d21f5df83b2072e2",
+      "sha256": "733fd24ce3f50dfcf811d86c91c15d1b15880a3404ea1129a646a8264608693e",
+      "source": "x.md",
+      "model": null
+     },
+     {
+      "doc_id": "<dir>/x.md",
+      "ord": 2,
+      "text": "e renard brun saute par-dessus le chien paresseux, 35 fois.\nLigne 6 de x : le renard brun saute par-dessus le chien paresseux, 42 fois.\nLigne 7 de x : le renard brun saute par-dessus le chien paresseux, 49 fois.\nLigne 8 de x : le renard brun saute par-dessus le chien paresseux, 56 fois.\n",
+      "dim": 16,
+      "embedding": "21a574935fc1c529054e78847e5eb9cd6d113189383f9e5eca73240243c5d542",
+      "sha256": "733fd24ce3f50dfcf811d86c91c15d1b15880a3404ea1129a646a8264608693e",
+      "source": "x.md",
+      "model": null
+     },
+     {
+      "doc_id": "<dir>/x.md",
+      "ord": 3,
+      "text": "e renard brun saute par-dessus le chien paresseux, 56 fois.\nLigne 9 de x : le renard brun saute par-dessus le chien paresseux, 63 fois.\nLigne 10 de x : le renard brun saute par-dessus le chien paresseux, 70 fois.\nLigne 11 de x : le renard brun saute par-dessus le chien paresseux, 77 fois.",
+      "dim": 16,
+      "embedding": "8838c6c20e98ea41682730fb913857c33e1d509cadeed238319375ce9d6e589b",
+      "sha256": "733fd24ce3f50dfcf811d86c91c15d1b15880a3404ea1129a646a8264608693e",
+      "source": "x.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 0,
+      "text": "Ligne 0 de a2 : le renard brun saute par-dessus le chien paresseux, 0 fois.\nLigne 1 de a2 : le renard brun saute par-dessus le chien paresseux, 7 fois.\nLigne 2 de a2 : le renard brun saute par-dessus le chien paresseux, 14 fois.\n",
+      "dim": 16,
+      "embedding": "a2a3ddd5eb545de1194d0064e36822896675c30425aa2629a0cb60b752dd09b8",
+      "sha256": "d4899f2b74d98e7d978fc05ed86753dcd427e2a477a208860de374beda22fd9c",
+      "source": "a.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 1,
+      "text": "e renard brun saute par-dessus le chien paresseux, 14 fois.\nLigne 3 de a2 : le renard brun saute par-dessus le chien paresseux, 21 fois.\nLigne 4 de a2 : le renard brun saute par-dessus le chien paresseux, 28 fois.\nLigne 5 de a2 : le renard brun saute par-dessus le chien paresseux, 35 fois.\n",
+      "dim": 16,
+      "embedding": "d3f57b78e904b436f43c37d8ba27118fe073ce0f967c13b1c7d1d9a528781064",
+      "sha256": "d4899f2b74d98e7d978fc05ed86753dcd427e2a477a208860de374beda22fd9c",
+      "source": "a.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 2,
+      "text": "e renard brun saute par-dessus le chien paresseux, 35 fois.\nLigne 6 de a2 : le renard brun saute par-dessus le chien paresseux, 42 fois.\nLigne 7 de a2 : le renard brun saute par-dessus le chien paresseux, 49 fois.\nLigne 8 de a2 : le renard brun saute par-dessus le chien paresseux, 56 fois.",
+      "dim": 16,
+      "embedding": "82b3773bb40514978ef08c680fb6a3c3053f9eaece4924a09ab4a920d87486f8",
+      "sha256": "d4899f2b74d98e7d978fc05ed86753dcd427e2a477a208860de374beda22fd9c",
+      "source": "a.md",
+      "model": null
+     }
+    ]
+   },
+   {
+    "stage": "forget b.md",
+    "result": {
+     "removed": 2
+    },
+    "rows": [
+     {
+      "doc_id": "<dir>/sub/y.ts",
+      "ord": 0,
+      "text": "export const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\n",
+      "dim": 16,
+      "embedding": "436e2eb14d62de326d310c26d8dd903f6782f9a7580ccec728bb98677610da21",
+      "sha256": "0f06181d9c66d070afdb9d1b3246cf08660f99988aba78888da7d6a61114d75b",
+      "source": "sub/y.ts",
+      "model": null
+     },
+     {
+      "doc_id": "<dir>/sub/y.ts",
+      "ord": 1,
+      "text": "export const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\n",
+      "dim": 16,
+      "embedding": "436e2eb14d62de326d310c26d8dd903f6782f9a7580ccec728bb98677610da21",
+      "sha256": "0f06181d9c66d070afdb9d1b3246cf08660f99988aba78888da7d6a61114d75b",
+      "source": "sub/y.ts",
+      "model": null
+     },
+     {
+      "doc_id": "<dir>/sub/y.ts",
+      "ord": 2,
+      "text": "export const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\n",
+      "dim": 16,
+      "embedding": "436e2eb14d62de326d310c26d8dd903f6782f9a7580ccec728bb98677610da21",
+      "sha256": "0f06181d9c66d070afdb9d1b3246cf08660f99988aba78888da7d6a61114d75b",
+      "source": "sub/y.ts",
+      "model": null
+     },
+     {
+      "doc_id": "<dir>/sub/y.ts",
+      "ord": 3,
+      "text": "export const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\n",
+      "dim": 16,
+      "embedding": "2b729d9876ca17a0e207430960e29f070e59807ec9951972c18cda2f7b603363",
+      "sha256": "0f06181d9c66d070afdb9d1b3246cf08660f99988aba78888da7d6a61114d75b",
+      "source": "sub/y.ts",
+      "model": null
+     },
+     {
+      "doc_id": "<dir>/x.md",
+      "ord": 0,
+      "text": "Ligne 0 de x : le renard brun saute par-dessus le chien paresseux, 0 fois.\nLigne 1 de x : le renard brun saute par-dessus le chien paresseux, 7 fois.\nLigne 2 de x : le renard brun saute par-dessus le chien paresseux, 14 fois.\n",
+      "dim": 16,
+      "embedding": "003ea2fc2be6a3bef7864a2ad7fd33c80dfaa635f171d4e3f96990e84dfd3a16",
+      "sha256": "733fd24ce3f50dfcf811d86c91c15d1b15880a3404ea1129a646a8264608693e",
+      "source": "x.md",
+      "model": null
+     },
+     {
+      "doc_id": "<dir>/x.md",
+      "ord": 1,
+      "text": "e renard brun saute par-dessus le chien paresseux, 14 fois.\nLigne 3 de x : le renard brun saute par-dessus le chien paresseux, 21 fois.\nLigne 4 de x : le renard brun saute par-dessus le chien paresseux, 28 fois.\nLigne 5 de x : le renard brun saute par-dessus le chien paresseux, 35 fois.\n",
+      "dim": 16,
+      "embedding": "d46ba99796412062b0c876adaa30af7f575ef0ebffe5f972d21f5df83b2072e2",
+      "sha256": "733fd24ce3f50dfcf811d86c91c15d1b15880a3404ea1129a646a8264608693e",
+      "source": "x.md",
+      "model": null
+     },
+     {
+      "doc_id": "<dir>/x.md",
+      "ord": 2,
+      "text": "e renard brun saute par-dessus le chien paresseux, 35 fois.\nLigne 6 de x : le renard brun saute par-dessus le chien paresseux, 42 fois.\nLigne 7 de x : le renard brun saute par-dessus le chien paresseux, 49 fois.\nLigne 8 de x : le renard brun saute par-dessus le chien paresseux, 56 fois.\n",
+      "dim": 16,
+      "embedding": "21a574935fc1c529054e78847e5eb9cd6d113189383f9e5eca73240243c5d542",
+      "sha256": "733fd24ce3f50dfcf811d86c91c15d1b15880a3404ea1129a646a8264608693e",
+      "source": "x.md",
+      "model": null
+     },
+     {
+      "doc_id": "<dir>/x.md",
+      "ord": 3,
+      "text": "e renard brun saute par-dessus le chien paresseux, 56 fois.\nLigne 9 de x : le renard brun saute par-dessus le chien paresseux, 63 fois.\nLigne 10 de x : le renard brun saute par-dessus le chien paresseux, 70 fois.\nLigne 11 de x : le renard brun saute par-dessus le chien paresseux, 77 fois.",
+      "dim": 16,
+      "embedding": "8838c6c20e98ea41682730fb913857c33e1d509cadeed238319375ce9d6e589b",
+      "sha256": "733fd24ce3f50dfcf811d86c91c15d1b15880a3404ea1129a646a8264608693e",
+      "source": "x.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 0,
+      "text": "Ligne 0 de a2 : le renard brun saute par-dessus le chien paresseux, 0 fois.\nLigne 1 de a2 : le renard brun saute par-dessus le chien paresseux, 7 fois.\nLigne 2 de a2 : le renard brun saute par-dessus le chien paresseux, 14 fois.\n",
+      "dim": 16,
+      "embedding": "a2a3ddd5eb545de1194d0064e36822896675c30425aa2629a0cb60b752dd09b8",
+      "sha256": "d4899f2b74d98e7d978fc05ed86753dcd427e2a477a208860de374beda22fd9c",
+      "source": "a.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 1,
+      "text": "e renard brun saute par-dessus le chien paresseux, 14 fois.\nLigne 3 de a2 : le renard brun saute par-dessus le chien paresseux, 21 fois.\nLigne 4 de a2 : le renard brun saute par-dessus le chien paresseux, 28 fois.\nLigne 5 de a2 : le renard brun saute par-dessus le chien paresseux, 35 fois.\n",
+      "dim": 16,
+      "embedding": "d3f57b78e904b436f43c37d8ba27118fe073ce0f967c13b1c7d1d9a528781064",
+      "sha256": "d4899f2b74d98e7d978fc05ed86753dcd427e2a477a208860de374beda22fd9c",
+      "source": "a.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 2,
+      "text": "e renard brun saute par-dessus le chien paresseux, 35 fois.\nLigne 6 de a2 : le renard brun saute par-dessus le chien paresseux, 42 fois.\nLigne 7 de a2 : le renard brun saute par-dessus le chien paresseux, 49 fois.\nLigne 8 de a2 : le renard brun saute par-dessus le chien paresseux, 56 fois.",
+      "dim": 16,
+      "embedding": "82b3773bb40514978ef08c680fb6a3c3053f9eaece4924a09ab4a920d87486f8",
+      "sha256": "d4899f2b74d98e7d978fc05ed86753dcd427e2a477a208860de374beda22fd9c",
+      "source": "a.md",
+      "model": null
+     }
+    ]
+   },
+   {
+    "stage": "forget inconnu",
+    "result": {
+     "removed": 0
+    },
+    "rows": [
+     {
+      "doc_id": "<dir>/sub/y.ts",
+      "ord": 0,
+      "text": "export const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\n",
+      "dim": 16,
+      "embedding": "436e2eb14d62de326d310c26d8dd903f6782f9a7580ccec728bb98677610da21",
+      "sha256": "0f06181d9c66d070afdb9d1b3246cf08660f99988aba78888da7d6a61114d75b",
+      "source": "sub/y.ts",
+      "model": null
+     },
+     {
+      "doc_id": "<dir>/sub/y.ts",
+      "ord": 1,
+      "text": "export const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\n",
+      "dim": 16,
+      "embedding": "436e2eb14d62de326d310c26d8dd903f6782f9a7580ccec728bb98677610da21",
+      "sha256": "0f06181d9c66d070afdb9d1b3246cf08660f99988aba78888da7d6a61114d75b",
+      "source": "sub/y.ts",
+      "model": null
+     },
+     {
+      "doc_id": "<dir>/sub/y.ts",
+      "ord": 2,
+      "text": "export const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\n",
+      "dim": 16,
+      "embedding": "436e2eb14d62de326d310c26d8dd903f6782f9a7580ccec728bb98677610da21",
+      "sha256": "0f06181d9c66d070afdb9d1b3246cf08660f99988aba78888da7d6a61114d75b",
+      "source": "sub/y.ts",
+      "model": null
+     },
+     {
+      "doc_id": "<dir>/sub/y.ts",
+      "ord": 3,
+      "text": "export const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\n",
+      "dim": 16,
+      "embedding": "2b729d9876ca17a0e207430960e29f070e59807ec9951972c18cda2f7b603363",
+      "sha256": "0f06181d9c66d070afdb9d1b3246cf08660f99988aba78888da7d6a61114d75b",
+      "source": "sub/y.ts",
+      "model": null
+     },
+     {
+      "doc_id": "<dir>/x.md",
+      "ord": 0,
+      "text": "Ligne 0 de x : le renard brun saute par-dessus le chien paresseux, 0 fois.\nLigne 1 de x : le renard brun saute par-dessus le chien paresseux, 7 fois.\nLigne 2 de x : le renard brun saute par-dessus le chien paresseux, 14 fois.\n",
+      "dim": 16,
+      "embedding": "003ea2fc2be6a3bef7864a2ad7fd33c80dfaa635f171d4e3f96990e84dfd3a16",
+      "sha256": "733fd24ce3f50dfcf811d86c91c15d1b15880a3404ea1129a646a8264608693e",
+      "source": "x.md",
+      "model": null
+     },
+     {
+      "doc_id": "<dir>/x.md",
+      "ord": 1,
+      "text": "e renard brun saute par-dessus le chien paresseux, 14 fois.\nLigne 3 de x : le renard brun saute par-dessus le chien paresseux, 21 fois.\nLigne 4 de x : le renard brun saute par-dessus le chien paresseux, 28 fois.\nLigne 5 de x : le renard brun saute par-dessus le chien paresseux, 35 fois.\n",
+      "dim": 16,
+      "embedding": "d46ba99796412062b0c876adaa30af7f575ef0ebffe5f972d21f5df83b2072e2",
+      "sha256": "733fd24ce3f50dfcf811d86c91c15d1b15880a3404ea1129a646a8264608693e",
+      "source": "x.md",
+      "model": null
+     },
+     {
+      "doc_id": "<dir>/x.md",
+      "ord": 2,
+      "text": "e renard brun saute par-dessus le chien paresseux, 35 fois.\nLigne 6 de x : le renard brun saute par-dessus le chien paresseux, 42 fois.\nLigne 7 de x : le renard brun saute par-dessus le chien paresseux, 49 fois.\nLigne 8 de x : le renard brun saute par-dessus le chien paresseux, 56 fois.\n",
+      "dim": 16,
+      "embedding": "21a574935fc1c529054e78847e5eb9cd6d113189383f9e5eca73240243c5d542",
+      "sha256": "733fd24ce3f50dfcf811d86c91c15d1b15880a3404ea1129a646a8264608693e",
+      "source": "x.md",
+      "model": null
+     },
+     {
+      "doc_id": "<dir>/x.md",
+      "ord": 3,
+      "text": "e renard brun saute par-dessus le chien paresseux, 56 fois.\nLigne 9 de x : le renard brun saute par-dessus le chien paresseux, 63 fois.\nLigne 10 de x : le renard brun saute par-dessus le chien paresseux, 70 fois.\nLigne 11 de x : le renard brun saute par-dessus le chien paresseux, 77 fois.",
+      "dim": 16,
+      "embedding": "8838c6c20e98ea41682730fb913857c33e1d509cadeed238319375ce9d6e589b",
+      "sha256": "733fd24ce3f50dfcf811d86c91c15d1b15880a3404ea1129a646a8264608693e",
+      "source": "x.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 0,
+      "text": "Ligne 0 de a2 : le renard brun saute par-dessus le chien paresseux, 0 fois.\nLigne 1 de a2 : le renard brun saute par-dessus le chien paresseux, 7 fois.\nLigne 2 de a2 : le renard brun saute par-dessus le chien paresseux, 14 fois.\n",
+      "dim": 16,
+      "embedding": "a2a3ddd5eb545de1194d0064e36822896675c30425aa2629a0cb60b752dd09b8",
+      "sha256": "d4899f2b74d98e7d978fc05ed86753dcd427e2a477a208860de374beda22fd9c",
+      "source": "a.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 1,
+      "text": "e renard brun saute par-dessus le chien paresseux, 14 fois.\nLigne 3 de a2 : le renard brun saute par-dessus le chien paresseux, 21 fois.\nLigne 4 de a2 : le renard brun saute par-dessus le chien paresseux, 28 fois.\nLigne 5 de a2 : le renard brun saute par-dessus le chien paresseux, 35 fois.\n",
+      "dim": 16,
+      "embedding": "d3f57b78e904b436f43c37d8ba27118fe073ce0f967c13b1c7d1d9a528781064",
+      "sha256": "d4899f2b74d98e7d978fc05ed86753dcd427e2a477a208860de374beda22fd9c",
+      "source": "a.md",
+      "model": null
+     },
+     {
+      "doc_id": "a",
+      "ord": 2,
+      "text": "e renard brun saute par-dessus le chien paresseux, 35 fois.\nLigne 6 de a2 : le renard brun saute par-dessus le chien paresseux, 42 fois.\nLigne 7 de a2 : le renard brun saute par-dessus le chien paresseux, 49 fois.\nLigne 8 de a2 : le renard brun saute par-dessus le chien paresseux, 56 fois.",
+      "dim": 16,
+      "embedding": "82b3773bb40514978ef08c680fb6a3c3053f9eaece4924a09ab4a920d87486f8",
+      "sha256": "d4899f2b74d98e7d978fc05ed86753dcd427e2a477a208860de374beda22fd9c",
+      "source": "a.md",
+      "model": null
+     }
+    ]
+   },
+   {
+    "stage": "forget tout",
+    "result": {
+     "removed": 11
+    },
+    "rows": []
+   }
+  ],
+  "hits": {
+   "le renard brun": [
+    {
+     "docId": "<dir>/x.md",
+     "ord": 3,
+     "source": "x.md",
+     "score": 0.542383214868,
+     "text": "e renard brun saute par-dessus le chien paresseux, 56 fois.\nLigne 9 de x : le renard brun saute par-dessus le chien paresseux, 63 fois.\nLigne 10 de x : le renard brun saute par-dessus le chien paresseux, 70 fois.\nLigne 11 de x : le renard brun saute par-dessus le chien paresseux, 77 fois."
+    },
+    {
+     "docId": "335bf8d698105c87",
+     "ord": 1,
+     "source": "b.md",
+     "score": 0.261799023726,
+     "text": "e renard brun saute par-dessus le chien paresseux, 14 fois.\nLigne 3 de b : le renard brun saute par-dessus le chien paresseux, 21 fois.\nLigne 4 de b : le renard brun saute par-dessus le chien paresseux, 28 fois.\nLigne 5 de b : le renard brun saute par-dessus le chien paresseux, 35 fois."
+    },
+    {
+     "docId": "a",
+     "ord": 2,
+     "source": "a.md",
+     "score": 0.210858293869,
+     "text": "e renard brun saute par-dessus le chien paresseux, 35 fois.\nLigne 6 de a2 : le renard brun saute par-dessus le chien paresseux, 42 fois.\nLigne 7 de a2 : le renard brun saute par-dessus le chien paresseux, 49 fois.\nLigne 8 de a2 : le renard brun saute par-dessus le chien paresseux, 56 fois."
+    },
+    {
+     "docId": "<dir>/x.md",
+     "ord": 2,
+     "source": "x.md",
+     "score": 0.0659299163482,
+     "text": "e renard brun saute par-dessus le chien paresseux, 35 fois.\nLigne 6 de x : le renard brun saute par-dessus le chien paresseux, 42 fois.\nLigne 7 de x : le renard brun saute par-dessus le chien paresseux, 49 fois.\nLigne 8 de x : le renard brun saute par-dessus le chien paresseux, 56 fois.\n"
+    }
+   ],
+   "Ligne 4 de x": [
+    {
+     "docId": "<dir>/x.md",
+     "ord": 1,
+     "source": "x.md",
+     "score": 0.15021775987,
+     "text": "e renard brun saute par-dessus le chien paresseux, 14 fois.\nLigne 3 de x : le renard brun saute par-dessus le chien paresseux, 21 fois.\nLigne 4 de x : le renard brun saute par-dessus le chien paresseux, 28 fois.\nLigne 5 de x : le renard brun saute par-dessus le chien paresseux, 35 fois.\n"
+    },
+    {
+     "docId": "<dir>/sub/y.ts",
+     "ord": 0,
+     "source": "sub/y.ts",
+     "score": 0.13156785693,
+     "text": "export const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\n"
+    },
+    {
+     "docId": "<dir>/sub/y.ts",
+     "ord": 1,
+     "source": "sub/y.ts",
+     "score": 0.13156785693,
+     "text": "export const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\n"
+    },
+    {
+     "docId": "<dir>/x.md",
+     "ord": 2,
+     "source": "x.md",
+     "score": 0.131398070026,
+     "text": "e renard brun saute par-dessus le chien paresseux, 35 fois.\nLigne 6 de x : le renard brun saute par-dessus le chien paresseux, 42 fois.\nLigne 7 de x : le renard brun saute par-dessus le chien paresseux, 49 fois.\nLigne 8 de x : le renard brun saute par-dessus le chien paresseux, 56 fois.\n"
+    }
+   ],
+   "export const": [
+    {
+     "docId": "a",
+     "ord": 1,
+     "source": "a.md",
+     "score": 0.483679287946,
+     "text": "e renard brun saute par-dessus le chien paresseux, 14 fois.\nLigne 3 de a2 : le renard brun saute par-dessus le chien paresseux, 21 fois.\nLigne 4 de a2 : le renard brun saute par-dessus le chien paresseux, 28 fois.\nLigne 5 de a2 : le renard brun saute par-dessus le chien paresseux, 35 fois.\n"
+    },
+    {
+     "docId": "a",
+     "ord": 0,
+     "source": "a.md",
+     "score": 0.352701298665,
+     "text": "Ligne 0 de a2 : le renard brun saute par-dessus le chien paresseux, 0 fois.\nLigne 1 de a2 : le renard brun saute par-dessus le chien paresseux, 7 fois.\nLigne 2 de a2 : le renard brun saute par-dessus le chien paresseux, 14 fois.\n"
+    },
+    {
+     "docId": "<dir>/x.md",
+     "ord": 1,
+     "source": "x.md",
+     "score": 0.319069100319,
+     "text": "e renard brun saute par-dessus le chien paresseux, 14 fois.\nLigne 3 de x : le renard brun saute par-dessus le chien paresseux, 21 fois.\nLigne 4 de x : le renard brun saute par-dessus le chien paresseux, 28 fois.\nLigne 5 de x : le renard brun saute par-dessus le chien paresseux, 35 fois.\n"
+    },
+    {
+     "docId": "<dir>/sub/y.ts",
+     "ord": 0,
+     "source": "sub/y.ts",
+     "score": 0.265623997676,
+     "text": "export const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\n"
+    }
+   ],
+   "chien paresseux fois": [
+    {
+     "docId": "335bf8d698105c87",
+     "ord": 1,
+     "source": "b.md",
+     "score": 0.43590957564,
+     "text": "e renard brun saute par-dessus le chien paresseux, 14 fois.\nLigne 3 de b : le renard brun saute par-dessus le chien paresseux, 21 fois.\nLigne 4 de b : le renard brun saute par-dessus le chien paresseux, 28 fois.\nLigne 5 de b : le renard brun saute par-dessus le chien paresseux, 35 fois."
+    },
+    {
+     "docId": "a",
+     "ord": 0,
+     "source": "a.md",
+     "score": 0.370342918,
+     "text": "Ligne 0 de a2 : le renard brun saute par-dessus le chien paresseux, 0 fois.\nLigne 1 de a2 : le renard brun saute par-dessus le chien paresseux, 7 fois.\nLigne 2 de a2 : le renard brun saute par-dessus le chien paresseux, 14 fois.\n"
+    },
+    {
+     "docId": "<dir>/x.md",
+     "ord": 2,
+     "source": "x.md",
+     "score": 0.35268237903,
+     "text": "e renard brun saute par-dessus le chien paresseux, 35 fois.\nLigne 6 de x : le renard brun saute par-dessus le chien paresseux, 42 fois.\nLigne 7 de x : le renard brun saute par-dessus le chien paresseux, 49 fois.\nLigne 8 de x : le renard brun saute par-dessus le chien paresseux, 56 fois.\n"
+    },
+    {
+     "docId": "<dir>/sub/y.ts",
+     "ord": 0,
+     "source": "sub/y.ts",
+     "score": 0.0686994139088,
+     "text": "export const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\n"
+    }
+   ],
+   "a2": [
+    {
+     "docId": "<dir>/sub/y.ts",
+     "ord": 3,
+     "source": "sub/y.ts",
+     "score": 0.319747106901,
+     "text": "export const y = 1;\nexport const y = 1;\nexport const y = 1;\nexport const y = 1;\n"
+    },
+    {
+     "docId": "<dir>/x.md",
+     "ord": 2,
+     "source": "x.md",
+     "score": 0.185435589657,
+     "text": "e renard brun saute par-dessus le chien paresseux, 35 fois.\nLigne 6 de x : le renard brun saute par-dessus le chien paresseux, 42 fois.\nLigne 7 de x : le renard brun saute par-dessus le chien paresseux, 49 fois.\nLigne 8 de x : le renard brun saute par-dessus le chien paresseux, 56 fois.\n"
+    },
+    {
+     "docId": "a",
+     "ord": 0,
+     "source": "a.md",
+     "score": 0.170181118517,
+     "text": "Ligne 0 de a2 : le renard brun saute par-dessus le chien paresseux, 0 fois.\nLigne 1 de a2 : le renard brun saute par-dessus le chien paresseux, 7 fois.\nLigne 2 de a2 : le renard brun saute par-dessus le chien paresseux, 14 fois.\n"
+    },
+    {
+     "docId": "<dir>/x.md",
+     "ord": 3,
+     "source": "x.md",
+     "score": 0.1684577824,
+     "text": "e renard brun saute par-dessus le chien paresseux, 56 fois.\nLigne 9 de x : le renard brun saute par-dessus le chien paresseux, 63 fois.\nLigne 10 de x : le renard brun saute par-dessus le chien paresseux, 70 fois.\nLigne 11 de x : le renard brun saute par-dessus le chien paresseux, 77 fois."
+    }
+   ]
+  }
+ }
+}

@@ -1,0 +1,29 @@
+{
+  "name": "@jarod/plugin-workflows",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "jarod": {
+    "plugin": "workflows",
+    "order": 90
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "cordis": "4.0.0-rc.10",
+    "@jarod/contracts": "workspace:*",
+    "@jarod/plugin-agent": "workspace:*",
+    "@jarod/plugin-llm": "workspace:*",
+    "@jarod/plugin-storage": "workspace:*",
+    "@jarod/plugin-tools": "workspace:*"
+  },
+  "devDependencies": {
+    "@jarod/kernel": "workspace:*",
+    "@jarod/plugin-scheduler": "workspace:*"
+  }
+}

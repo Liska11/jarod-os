@@ -1,0 +1,37 @@
+{
+  "_statut": "VALIDÉ TEL QUEL par l'utilisateur le 2026-10-01 (proposé par l'agent le même jour). Cibles au niveau du PASSAGE (document#ordre), choisies après lecture des candidats (union des 6 premiers du dense et de FTS5) et recherche par mots-clés pour les questions sans candidat net. Aucun texte de document dans ce fichier. 'answer' = passage qui contient la réponse ; 'partial' = contient une partie de la réponse. confidence : sure | probable | weak | none.",
+  "docs": {
+    "RMP": "Présentation du réseau RMP - 16-09-2024_PJ1.pptx",
+    "PROC": "Procédure GLOBALE GSMR (export OneNote).pdf",
+    "MATRICE": "workspace/GSM-R_MATRICE_ESCALADE.xlsx",
+    "GTB": "Formations SNCF - Module 84 - GTB_PJ1.pptx",
+    "FORM": "Formation_Presentation_GSMR.pdf"
+  },
+  "questions": [
+    { "n": 1, "confidence": "sure", "answer": ["RMP#1"], "partial": [] },
+    { "n": 2, "confidence": "sure", "answer": ["RMP#7"], "partial": [] },
+    { "n": 3, "confidence": "sure", "answer": ["RMP#11"], "partial": [] },
+    { "n": 4, "confidence": "sure", "answer": ["RMP#12"], "partial": ["RMP#20"] },
+    { "n": 5, "confidence": "sure", "answer": ["RMP#10"], "partial": ["PROC#72"] },
+    { "n": 6, "confidence": "sure", "answer": ["RMP#9"], "partial": ["RMP#10"], "note": "le nommage du code est donné, la valeur du code ne doit jamais être reproduite" },
+    { "n": 7, "confidence": "sure", "answer": ["RMP#16"], "partial": ["RMP#17"] },
+    { "n": 8, "confidence": "sure", "answer": ["RMP#1"], "partial": [] },
+    { "n": 9, "confidence": "probable", "answer": ["RMP#14"], "partial": ["RMP#15"], "note": "l'arborescence elle-même est une image : seule l'introduction est du texte" },
+    { "n": 10, "confidence": "sure", "answer": ["RMP#19"], "partial": [] },
+    { "n": 11, "confidence": "probable", "answer": ["PROC#154", "PROC#155", "PROC#156"], "partial": ["MATRICE#133", "MATRICE#142"], "note": "niveaux dans la procédure, délais dans la matrice" },
+    { "n": 12, "confidence": "weak", "answer": ["PROC#155"], "partial": ["PROC#101", "MATRICE#133"], "note": "pas de définition explicite de 'ICR 2.0' trouvée" },
+    { "n": 13, "confidence": "weak", "answer": [], "partial": ["MATRICE#133", "MATRICE#134", "MATRICE#145", "PROC#156"], "note": "aucun passage ne parle d'impact client ; seuls les délais par niveau d'ICR existent" },
+    { "n": 14, "confidence": "sure", "answer": ["MATRICE#8"], "partial": ["MATRICE#9", "MATRICE#10"], "note": "contenu = coordonnées personnelles/professionnelles : ne jamais les reproduire" },
+    { "n": 15, "confidence": "probable", "answer": ["MATRICE#133", "MATRICE#142"], "partial": ["MATRICE#130", "MATRICE#131"] },
+    { "n": 16, "confidence": "sure", "answer": ["GTB#3", "GTB#2"], "partial": [] },
+    { "n": 17, "confidence": "sure", "answer": ["GTB#3", "GTB#2"], "partial": [], "note": "deux passages donnent deux URL différentes (http 8080 et https 8443) : les deux sont valides" },
+    { "n": 18, "confidence": "sure", "answer": ["GTB#0", "GTB#1"], "partial": [] },
+    { "n": 19, "confidence": "sure", "answer": ["GTB#0"], "partial": [] },
+    { "n": 20, "confidence": "sure", "answer": ["MATRICE#8"], "partial": [], "note": "coordonnées : ne jamais les reproduire" },
+    { "n": 21, "confidence": "sure", "answer": ["PROC#50"], "partial": ["PROC#54"], "note": "PROC#55 contient des identifiants de connexion : à ne jamais reproduire" },
+    { "n": 22, "confidence": "none", "answer": [], "partial": ["PROC#2"], "note": "seul le titre 'Réversibilité' apparaît dans le sommaire ; le corps de la procédure n'est pas dans l'export PDF (page OneNote vide ou image)" },
+    { "n": 23, "confidence": "weak", "answer": [], "partial": ["MATRICE#130", "MATRICE#128"], "note": "la matrice est là, aucune date de mise à jour trouvée par mots-clés" },
+    { "n": 24, "confidence": "sure", "answer": ["PROC#0"], "partial": [] },
+    { "n": 25, "confidence": "sure", "answer": ["PROC#17", "PROC#18"], "partial": ["PROC#3", "PROC#4"] }
+  ]
+}

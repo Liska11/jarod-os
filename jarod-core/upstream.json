@@ -1,0 +1,53 @@
+[
+  {
+    "repo": "NousResearch/hermes-agent",
+    "branche": "main",
+    "dernierShaVu": null,
+    "cheminsSurveillés": [
+      "hermes_state_*.py",
+      "hermes_state.py",
+      "skills/",
+      "gateway/",
+      "cron/"
+    ],
+    "dernièreExécution": null
+  },
+  {
+    "repo": "fathah/hermes-desktop",
+    "branche": "main",
+    "dernierShaVu": "2ed89070bc6c9e8231a37bb55df8a7722a3776b8",
+    "cheminsSurveillés": [
+      "*"
+    ],
+    "dernièreExécution": "2026-10-05T11:44:46.369Z",
+    "dernierShaVuDate": "2026-09-24T14:32:34Z",
+    "portage": "autorisé"
+  },
+  {
+    "repo": "anywhere-labs/dsh-desktop",
+    "branche": "master",
+    "dernierShaVu": "a1ff68b2960753ab1f6c90565bf3d9e3f3b7ae91",
+    "cheminsSurveillés": [
+      "upstream.json",
+      "scripts/",
+      ".github/workflows/"
+    ],
+    "dernièreExécution": "2026-10-05T11:44:50.430Z",
+    "dernierShaVuDate": "2026-10-03T09:44:59Z",
+    "portage": "autorisé"
+  },
+  {
+    "repo": "co-l/openfox",
+    "branche": "develop",
+    "dernierShaVu": "3b434db5f3722db6314eed600d7d3fb835c3b425",
+    "cheminsSurveillés": [
+      "src/",
+      "plugins/",
+      "plugins-registry.json"
+    ],
+    "dernièreExécution": "2026-10-05T11:44:56.139Z",
+    "dernierShaVuDate": "2026-09-29T11:55:58Z",
+    "licenceSource": "readme",
+    "portage": "autorisé"
+  }
+]

@@ -1,0 +1,24 @@
+{
+  "name": "@jarod/plugin-persona",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "jarod": {
+    "plugin": "persona",
+    "order": 25
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "cordis": "4.0.0-rc.10",
+    "@jarod/plugin-storage": "workspace:*"
+  },
+  "devDependencies": {
+    "@jarod/kernel": "workspace:*"
+  }
+}

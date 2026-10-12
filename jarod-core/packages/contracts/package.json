@@ -1,0 +1,23 @@
+{
+  "name": "@jarod/contracts",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./settings": "./src/settings.ts",
+    "./ipc": "./src/ipc.ts",
+    "./hermes-types": "./src/hermes-types.ts",
+    "./ecosystem": "./src/ecosystem.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "vitest": "5.0.2"
+  }
+}

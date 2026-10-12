@@ -1,0 +1,261 @@
+{
+ "status": "ÉCRIT PAR CLAUDE LE 2026-10-02, VALIDÉ TEL QUEL PAR L'UTILISATEUR LE 2026-10-02 (« validé tel quel ») AVANT toute mesure de V2 (SPECS-P5-HYBRID-V2.md §4). Cible = passages du document visé contenant la chaîne-preuve ; aucun passage commun avec A' ni avec le jeu n° 1.",
+ "validated": true,
+ "docs": {
+  "RMP": "Présentation du réseau RMP - 16-09-2024_PJ1.pptx",
+  "GTB": "Formations SNCF - Module 84 - GTB_PJ1.pptx",
+  "FORM": "Formation_Presentation_GSMR.pdf",
+  "PROC": "Procédure GLOBALE GSMR (export OneNote).pdf",
+  "MATRICE": "workspace/GSM-R_MATRICE_ESCALADE.xlsx"
+ },
+ "composition": {
+  "ordinaire": 14,
+  "rare": 10
+ },
+ "questions": [
+  {
+   "n": 1,
+   "kind": "ordinaire",
+   "q": "Quelles zones confinées sont couvertes par le RMP dans la région PAK ?",
+   "evidence": "Marseille Chartreux, Avignon",
+   "answer": [
+    "RMP#2"
+   ],
+   "partial": []
+  },
+  {
+   "n": 2,
+   "kind": "ordinaire",
+   "q": "Combien de répéteurs et d'antennes diffusent les émissions RMP ?",
+   "evidence": "567 répéteurs",
+   "answer": [
+    "RMP#2",
+    "RMP#3"
+   ],
+   "partial": []
+  },
+  {
+   "n": 3,
+   "kind": "ordinaire",
+   "q": "Qui choisit les tunnels à couvrir en émissions RMP ?",
+   "evidence": "en concertation avec les 4 opérateurs publics",
+   "answer": [
+    "RMP#3"
+   ],
+   "partial": []
+  },
+  {
+   "n": 4,
+   "kind": "ordinaire",
+   "q": "L'alimentation électrique des sites RMP est-elle secourue ?",
+   "evidence": "n'est pas secourue",
+   "answer": [
+    "RMP#8"
+   ],
+   "partial": []
+  },
+  {
+   "n": 5,
+   "kind": "ordinaire",
+   "q": "Pourquoi réalise-t-on des mesures de non-régression GSM-R à la fin des travaux ?",
+   "evidence": "mesures de non-régression GSM-R",
+   "answer": [
+    "RMP#4"
+   ],
+   "partial": []
+  },
+  {
+   "n": 6,
+   "kind": "ordinaire",
+   "q": "Où le webservice récupère-t-il les alarmes historiques ?",
+   "evidence": "unité d'archivage de PcVue",
+   "answer": [
+    "GTB#4"
+   ],
+   "partial": []
+  },
+  {
+   "n": 7,
+   "kind": "ordinaire",
+   "q": "À quoi sert la BTS dans le réseau ?",
+   "evidence": "liaison entre le mobile (Radio) et le BSC",
+   "answer": [
+    "FORM#7"
+   ],
+   "partial": []
+  },
+  {
+   "n": 8,
+   "kind": "ordinaire",
+   "q": "Quel équipement gère la carte SIM des abonnés ?",
+   "evidence": "gestion de la carte SIM",
+   "answer": [
+    "FORM#9"
+   ],
+   "partial": []
+  },
+  {
+   "n": 9,
+   "kind": "ordinaire",
+   "q": "Quelles fonctionnalités permettent les appels prioritaires et l'alerte ?",
+   "evidence": "appels prioritaires et des appels de groupe",
+   "answer": [
+    "FORM#27"
+   ],
+   "partial": []
+  },
+  {
+   "n": 10,
+   "kind": "ordinaire",
+   "q": "De quoi se compose l'ERTMS ?",
+   "evidence": "ERTMS = ETCS + GSM-R",
+   "answer": [
+    "FORM#32"
+   ],
+   "partial": []
+  },
+  {
+   "n": 11,
+   "kind": "ordinaire",
+   "q": "Par combien d'étapes passe le traitement d'une demande de rapport d'alerte radio ?",
+   "evidence": "passe par 4 étapes",
+   "answer": [
+    "PROC#130"
+   ],
+   "partial": []
+  },
+  {
+   "n": 12,
+   "kind": "ordinaire",
+   "q": "Que faire si le PCTF demande une coupure avant l'heure planifiée ?",
+   "evidence": "coupure en amont de l'heure planifiée",
+   "answer": [
+    "PROC#64"
+   ],
+   "partial": []
+  },
+  {
+   "n": 13,
+   "kind": "ordinaire",
+   "q": "Que faire si le délai d'intervention dépasse huit heures ?",
+   "evidence": "excèderai 8h",
+   "answer": [
+    "PROC#90"
+   ],
+   "partial": []
+  },
+  {
+   "n": 14,
+   "kind": "ordinaire",
+   "q": "Quels types de TowerCo apparaissent dans la matrice d'escalade ?",
+   "evidence": "TowerCo Cellnex/Hivory/OnTower",
+   "answer": [
+    "MATRICE#46",
+    "MATRICE#47"
+   ],
+   "partial": []
+  },
+  {
+   "n": 15,
+   "kind": "rare",
+   "q": "Comment les antennes mutualisées sont-elles notées dans les outils de l'ANFR ?",
+   "evidence": "notées comme leader SNCF",
+   "answer": [
+    "RMP#13"
+   ],
+   "partial": []
+  },
+  {
+   "n": 16,
+   "kind": "rare",
+   "q": "À quoi correspond le code court 1300 ?",
+   "evidence": "1300 appel gare par défaut",
+   "answer": [
+    "FORM#30"
+   ],
+   "partial": []
+  },
+  {
+   "n": 17,
+   "kind": "rare",
+   "q": "À quoi servent les champs TI, GCA et GID de la numérotation en CT5 ?",
+   "evidence": "5 + TI + GCA + GID",
+   "answer": [
+    "FORM#37"
+   ],
+   "partial": []
+  },
+  {
+   "n": 18,
+   "kind": "rare",
+   "q": "Qu'est-ce qu'un appel ZAL et quelle est sa priorité ?",
+   "evidence": "Appel ZAL (Priorité 3)",
+   "answer": [
+    "FORM#30",
+    "FORM#31"
+   ],
+   "partial": []
+  },
+  {
+   "n": 19,
+   "kind": "rare",
+   "q": "Combien de serveurs C-NMS sont en redondance et sur quels sites ?",
+   "evidence": "2 Serveurs C-NMS en redondance",
+   "answer": [
+    "FORM#13"
+   ],
+   "partial": []
+  },
+  {
+   "n": 20,
+   "kind": "rare",
+   "q": "Comment s'appelle un GOP côté SNCF ?",
+   "evidence": "AT (Avis travaux)",
+   "answer": [
+    "PROC#59",
+    "PROC#60"
+   ],
+   "partial": []
+  },
+  {
+   "n": 21,
+   "kind": "rare",
+   "q": "Quel site porte le numéro 359301 ?",
+   "evidence": "359301",
+   "answer": [
+    "MATRICE#96"
+   ],
+   "partial": []
+  },
+  {
+   "n": 22,
+   "kind": "rare",
+   "q": "Qui est le Directeur Adjoint Infrastructure de l'escalade niveau 4 ?",
+   "evidence": "Directeur Adjoint Infrastructure",
+   "answer": [
+    "MATRICE#21"
+   ],
+   "partial": []
+  },
+  {
+   "n": 23,
+   "kind": "rare",
+   "q": "À quoi sert le jeton dans un appel de groupe ?",
+   "evidence": "libération du jeton",
+   "answer": [
+    "FORM#19"
+   ],
+   "partial": []
+  },
+  {
+   "n": 24,
+   "kind": "rare",
+   "q": "Que faut-il identifier d'abord en cas d'alarme RF/FO ?",
+   "evidence": "Identifier l'équipement RFFO ou IANA",
+   "answer": [
+    "PROC#23"
+   ],
+   "partial": []
+  }
+ ]
+}

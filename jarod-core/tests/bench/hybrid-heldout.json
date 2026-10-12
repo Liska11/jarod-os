@@ -1,0 +1,148 @@
+{
+ "status": "ÉCRIT PAR CLAUDE LE 2026-10-02, VALIDÉ TEL QUEL PAR L'UTILISATEUR LE 2026-10-02 (« validé tel quel ») AVANT toute mesure (barre (f), SPECS-P5-HYBRID.md §3.1). Aucun passage n'est une cible de A'.",
+ "validated": true,
+ "docs": {
+  "FORM": "Formation_Presentation_GSMR.pdf",
+  "PROC": "Procédure GLOBALE GSMR (export OneNote).pdf"
+ },
+ "questions": [
+  {
+   "n": 1,
+   "q": "Combien de fréquences radio sont disponibles pour le GSM-R et quelle est la largeur de bande ?",
+   "answer": [
+    "FORM#2"
+   ],
+   "partial": [
+    "FORM#3"
+   ]
+  },
+  {
+   "n": 2,
+   "q": "Quelle est la durée d'une trame TDMA et combien de canaux contient-elle ?",
+   "answer": [
+    "FORM#4"
+   ],
+   "partial": []
+  },
+  {
+   "n": 3,
+   "q": "Que signifie eMLPP et quels sont les deux services qu'il regroupe ?",
+   "answer": [
+    "FORM#18"
+   ],
+   "partial": [
+    "FORM#15"
+   ]
+  },
+  {
+   "n": 4,
+   "q": "Quelle priorité a une alerte ferroviaire par rapport aux autres types d'appel ?",
+   "answer": [
+    "FORM#29"
+   ],
+   "partial": []
+  },
+  {
+   "n": 5,
+   "q": "Quel numéro fonctionnel permet d'atteindre le mécanicien du train 87970 ?",
+   "answer": [
+    "FORM#35"
+   ],
+   "partial": [
+    "FORM#36"
+   ]
+  },
+  {
+   "n": 6,
+   "q": "Comment est construite la numérotation fonctionnelle qui commence par 2 ?",
+   "answer": [
+    "FORM#36"
+   ],
+   "partial": [
+    "FORM#35"
+   ]
+  },
+  {
+   "n": 7,
+   "q": "À quoi sert l'IANA ?",
+   "answer": [
+    "FORM#26"
+   ],
+   "partial": []
+  },
+  {
+   "n": 8,
+   "q": "Que se passe-t-il dans la cabine de conduite quand le conducteur appuie sur le bouton rouge de l'alerte radio ?",
+   "answer": [
+    "FORM#46"
+   ],
+   "partial": [
+    "FORM#47"
+   ]
+  },
+  {
+   "n": 9,
+   "q": "Sur quels sites sont installés les serveurs redondés du CSAM ?",
+   "answer": [
+    "FORM#11"
+   ],
+   "partial": [
+    "FORM#12"
+   ]
+  },
+  {
+   "n": 10,
+   "q": "Comment retrouver le numéro GSM-R à dix chiffres associé à un numéro de train (NUTRA) ?",
+   "answer": [
+    "FORM#43"
+   ],
+   "partial": [
+    "FORM#42"
+   ]
+  },
+  {
+   "n": 11,
+   "q": "À combien de BSC peut-on accéder dans la vue générale du réseau opérationnel ?",
+   "answer": [
+    "FORM#48"
+   ],
+   "partial": []
+  },
+  {
+   "n": 12,
+   "q": "De quoi est composé l'IMSI d'un abonné ?",
+   "answer": [
+    "FORM#21"
+   ],
+   "partial": []
+  },
+  {
+   "n": 13,
+   "q": "Quels équipements relèvent du domaine NSS du point de vue de la supervision ?",
+   "answer": [
+    "PROC#110"
+   ],
+   "partial": []
+  },
+  {
+   "n": 14,
+   "q": "Que se passe-t-il quand les deux SMS-C sont indisponibles ?",
+   "answer": [
+    "PROC#112"
+   ],
+   "partial": [
+    "PROC#111"
+   ]
+  },
+  {
+   "n": 15,
+   "q": "Quelles alarmes d'énergie apparaissent dans l'onglet 230 ET 48V STD de l'hyperviseur ?",
+   "answer": [
+    "PROC#91"
+   ],
+   "partial": [
+    "PROC#92"
+   ]
+  }
+ ]
+}

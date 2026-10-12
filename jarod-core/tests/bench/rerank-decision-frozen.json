@@ -1,0 +1,46 @@
+{
+  "frozenAt": "2026-10-02T18:04:41.847Z",
+  "headAtFreeze": "7a41c8bd04f0804289ae55f4630abbac4a874350",
+  "bars": {
+    "aGainAt1": 3,
+    "bGainAt1": 2,
+    "cMaxLossesS1": 1,
+    "dMinLines": 30,
+    "dMinOkRate": 0.95,
+    "dMaxP95Ms": 4000
+  },
+  "cutMs": 1790953306008,
+  "topN": 16,
+  "deadlineMs": 4000,
+  "corpus": {
+    "passages": 395,
+    "fingerprint": "0ad51d10e87a9b4e8a9e8ab31a8553e36d91f7d07676a03844ec125c9a1864c3",
+    "perSource": {
+      "Formation_Presentation_GSMR.pdf": 53,
+      "Formations SNCF - Module 84 - GTB_PJ1.pptx": 5,
+      "Procédure GLOBALE GSMR (export OneNote).pdf": 160,
+      "Présentation du réseau RMP - 16-09-2024_PJ1.pptx": 21,
+      "QUERYBSS08h00.docx": 1,
+      "QUERYSS.xlsx": 3,
+      "SCREEN12H.docx": 1,
+      "screen08h00.docx": 1,
+      "screen14h00.docx": 1,
+      "workspace/GSM-R_MATRICE_ESCALADE.xlsx": 149
+    }
+  },
+  "shadowAtFreeze": {
+    "postCutLines": 36,
+    "ok": 36,
+    "errors": 0,
+    "p95Ms": 3256
+  },
+  "files": {
+    "tests/bench/rerank-decision.ts": "cfac8c23299d43573d19197759cce726176f403f09f1352fb14a90862c8d8107",
+    "tests/bench/rerank-decision-verdict.ts": "a0a1a2c4fdf62f3172b775e979e9e6ec09fd28253cf8e8f32e0fe1ea78a90126",
+    "tests/bench/bench-state.ts": "1dbf341e907402d434b4b294aba7ea3a7d13ce2b542ac45dbeaac5710f46d021",
+    "tests/bench/a-prime-targets.json": "6327b7f784f13d9a923f9d4991b7547ea5cbcf6a5853b3c59425aadee4d7419b",
+    "tests/bench/hybrid-heldout.json": "e87b5265e90ef1ae070a9126bfb80946b70109cd367cf083e143823e3facc0dd",
+    "tests/bench/hybrid-heldout-2.json": "eeeed9ae3c14c9cb06944081c24213fc446d7e7810aaf306cc425c3639ba46f5",
+    "question test rag.txt": "bc138dce808f9000d961940bbc8065b1bfb71fe354f42439ab6344809b809190"
+  }
+}

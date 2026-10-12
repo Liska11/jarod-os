@@ -1,0 +1,19 @@
+--- index.js.bak	2026-09-29 23:47:20.515001100 +0200
++++ index.js	2026-09-30 21:40:12.910545000 +0200
+@@ -60,7 +60,7 @@
+         const batches = [];
+         for (let i = 0; i < items.length; i += batchSize) {
+             const batch = items.slice(i, i + batchSize);
+-            batches.push(Promise.all(batch.map(item => this.enqueue(() => fn(item), operation))));
++            batches.push(Promise.all(batch.map(item => fn(item)))); // PATCH LOCAL jarod-cordis (DECISIONS 2026-09-30) : fn appelle deja enqueue ; l'empiler ici = interblocage
+         }
+         const results = await Promise.all(batches);
+         return results.flat();
+@@ -116,6 +116,7 @@
+         };
+     }
+     addMetricsToResponse(response) {
++        if (Array.isArray(response)) return response; // PATCH LOCAL jarod-cordis (DECISIONS 2026-09-30) : etaler un tableau dans un objet cassait .map/.length
+         const metrics = this.rateLimiter.getMetrics();
+         return {
+             ...response,
