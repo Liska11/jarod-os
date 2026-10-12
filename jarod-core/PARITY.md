@@ -23,12 +23,12 @@ Légende : ✅ fait et vérifié en fenêtre · 🟡 partiel · ⬜ à faire · 
 | 13 | Messageries : configuration (jetons Telegram, Discord, Slack, WhatsApp, e-mail) | ✅ | Réglages → « Messaging » : champs, jetons au coffre (jamais relus), interrupteurs, démarrer/arrêter. Jeton enregistré vérifié en fenêtre ; aucune passerelle activée (pas de connexion réelle essayée) |
 | 14 | Règles d'accord (« Toujours » par outil, politiques) | ✅ | Réglages → « Agent & security » : règles ordonnées, outils « toujours », garde du shell, budget, mode, repli de modèles |
 | 15 | Kanban | ⬜ | plugin `kanban` |
-| 16 | RAG : indexation et documents | ⬜ | plugin `rag` |
-| 17 | Automatisations avancées : webhooks, déclencheurs, workflows | ⬜ | plugins `scheduler`, `automation`, `workflows` |
-| 18 | Agents / sous-agents | ⬜ | |
-| 19 | Sauvegarde / restauration, portabilité | ⬜ | plugin `memory` (portability) |
-| 20 | Mises à jour du noyau | ⬜ | plugin `updates` |
-| 21 | Hôtes SSH, serveur API compatible OpenAI, appairage mobile / distant | ⬜ | |
+| 16 | RAG : indexation et documents | ✅ | Réglages → « Documents » : interrupteur, serveur et modèle d'embeddings (un modèle local de LM Studio/Ollama convient), tailles, état de l'index, réindexation avec confirmation. Réglage vérifié en fenêtre ; réindexation non essayée |
+| 17 | Automatisations avancées : webhooks, déclencheurs, workflows | ✅ | Réglages → « Automation rules » : règles (déclencheur cron / webhook / manuel, actions agent / notification / appel web), exécuter, activer, plugins utilisateur (activer, classer les outils). Règle créée en fenêtre. Le serveur de webhooks entrants n'a pas de réglage dans le noyau : un déclencheur webhook ne tire que s'il est activé dans le profil |
+| 18 | Agents / sous-agents | ✅ | Les « agents » de cordis sont les profils : voir « Persona & profiles » |
+| 19 | Sauvegarde / restauration, portabilité | ✅ | Réglages → « Data & folders » : sauvegarde vérifiée, import (fusion) ou restauration dans un profil neuf, dossier de travail (choisi en boîte native ; l'emporte sur `JAROD_WORKSPACE`). Boîtes natives non essayées en fenêtre |
+| 20 | Mises à jour du noyau | ⛔ | Le plugin `updates` interroge le canal de Jarod-One ; Jarod-OS n'a pas encore de canal de publication. Les canaux sont servis par le pont mais aucun écran ne les montre (une page qui proposerait de mettre à jour vers un autre produit serait fausse) |
+| 21 | Hôtes SSH, serveur API compatible OpenAI, appairage mobile / distant | ✅ | Réglages → « Devices & API » (API : clé montrée une fois, hôte, port ; pont téléphone : code d'appairage, révocation ; adb ; hôtes SSH par clé choisie en boîte native), « Secrets » (coffre de l'agent), « MCP servers » (ajouter / modifier). Clé d'API vérifiée en fenêtre ; ouverture de ports et boîtes natives non essayées |
 | 22 | Embeddings, reranker, OpenVINO / NPU, onnxruntime, node-pty | ⛔ | non embarqués (décision d'indépendance) ; reprise possible plus tard |
 | 23 | Authentification Nous native (device-code) | ⛔ | reportée, avec audit de sécurité ; clé API en attendant |
 

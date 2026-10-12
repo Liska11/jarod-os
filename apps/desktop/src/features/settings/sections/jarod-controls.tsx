@@ -129,6 +129,56 @@ export function NumberRow({ value, format, validate, onSave, disabled, hint, ...
   )
 }
 
+/** A text value shown in the description, edited inline; Save sends the trimmed text (empty allowed when `allowEmpty`). */
+export function TextRow({ value, validate, onSave, disabled, placeholder, mono, allowEmpty, ...row }: RowShell & { value: string; validate?: (text: string) => string | null; onSave: (value: string) => Promise<boolean>; disabled?: boolean; placeholder?: string; mono?: boolean; allowEmpty?: boolean }) {
+  const [editing, setEditing] = useState(false)
+  const [text, setText] = useState('')
+  const problem = editing ? (!text.trim() && !allowEmpty ? 'Required.' : (validate?.(text.trim()) ?? null)) : null
+
+  return (
+    <SettingsRow
+      {...row}
+      description={
+        <>
+          {row.description} <span className="text-fg-2">Now: {value ? <span className={mono ? 'font-mono' : ''}>{value}</span> : 'not set'}.</span>
+        </>
+      }
+      below={
+        editing && (
+          <form
+            className="flex flex-col gap-2 pt-1"
+            onSubmit={event => {
+              event.preventDefault()
+
+              if (!problem) {
+                void onSave(text.trim()).then(ok => ok && setEditing(false))
+              }
+            }}
+          >
+            <label className="glass-input flex h-9 items-center rounded-lg px-3">
+              <span className="sr-only">{row.label}</span>
+              <input autoFocus value={text} onChange={event => setText(event.target.value)} placeholder={placeholder} spellCheck={false} className={`min-w-0 flex-1 bg-transparent text-[12.5px] outline-none placeholder:text-fg-4 ${mono ? 'font-mono' : ''}`} />
+            </label>
+            {problem && <InlineNote tone="warn">{problem}</InlineNote>}
+            <div className="flex justify-end gap-2">
+              <GlassButton type="button" size="sm" variant="ghost" onClick={() => setEditing(false)}>
+                Cancel
+              </GlassButton>
+              <GlassButton type="submit" size="sm" variant="primary" disabled={Boolean(problem) || disabled}>
+                Save
+              </GlassButton>
+            </div>
+          </form>
+        )
+      }
+    >
+      <GlassButton size="sm" variant="secondary" disabled={disabled} onClick={() => (setText(value), setEditing(true))} aria-label={`Change ${row.label}`}>
+        Change
+      </GlassButton>
+    </SettingsRow>
+  )
+}
+
 /** A list of short strings (programs, folders, tool names): remove with the cross, add through the field. `validate` answers instantly; the engine decides. */
 export function ChipsEditor({ items, validate, onChange, disabled, placeholder, label }: { items: readonly string[]; validate: (item: string) => string | null; onChange: (items: string[]) => Promise<boolean>; disabled?: boolean; placeholder: string; label: string }) {
   const [draft, setDraft] = useState('')

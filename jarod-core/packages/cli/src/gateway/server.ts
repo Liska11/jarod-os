@@ -4,6 +4,7 @@
 //   *    /api/…               REST : jeton `X-Hermes-Session-Token` exigé ; tout ce qui n'est pas servi répond 404 ET est consigné
 // Ce qui n'est pas servi est le résultat de l'essai : `unhandled()` le liste, il alimente le plan de portage.
 import { randomBytes } from "node:crypto";
+import { statSync } from "node:fs";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
 import type { Message, Session, SessionContext } from "@jarod/contracts";
@@ -132,6 +133,19 @@ export function createGateway(opts: GatewayOptions): Gateway {
     return isApproved(answer);
   };
 
+  /** Le dossier de travail : celui que l'utilisateur a choisi dans les réglages (boîte native) s'il existe, sinon celui de la passerelle (`--workspace`, `JAROD_WORKSPACE`). */
+  const currentWorkspace = (): string | undefined => {
+    const chosen = core.settings.get("workspace");
+    if (typeof chosen === "string" && chosen) {
+      try {
+        if (statSync(chosen).isDirectory()) return chosen;
+      } catch {
+        // un dossier disparu : on retombe sur celui de la passerelle
+      }
+    }
+    return opts.workspace;
+  };
+
   const info = (id: string): Record<string, unknown> => {
     const session = core.sessions.get(id);
     if (!session) throw new RpcError(RPC.params, `unknown session ${id}`);
@@ -189,7 +203,7 @@ export function createGateway(opts: GatewayOptions): Gateway {
     "session.create": (p) => {
       const title = str(p.title).trim();
       const session = core.sessions.create(title || undefined);
-      const cwd = chooseWorkspace(str(p.cwd).trim(), opts.workspace);
+      const cwd = chooseWorkspace(str(p.cwd).trim(), currentWorkspace());
       if (cwd) core.updateSessionContext(session.id, { workspace: cwd });
       return { session_id: session.id, stored_session_id: session.id, message_count: 0, messages: [], info: info(session.id) };
     },

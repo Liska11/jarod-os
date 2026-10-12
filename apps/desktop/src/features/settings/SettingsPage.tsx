@@ -1,5 +1,5 @@
 import { useStore } from '@nanostores/react'
-import { IconAccessible, IconApps, IconBell, IconCircleCheckFilled, IconPuzzle, IconDatabase, IconGauge, IconBrain, IconMessages, IconShieldCog, IconSparkles, IconUserCircle, IconInfoCircle, IconKey, IconListDetails, IconMicrophone, IconPalette, IconPlayerPause, IconRobot, IconSettings, IconShield, IconWifi } from '@tabler/icons-react'
+import { IconAccessible, IconApps, IconBell, IconCircleCheckFilled, IconPuzzle, IconDatabase, IconGauge, IconArchive, IconBolt, IconBrain, IconDeviceMobile, IconFileSearch, IconLock, IconMessages, IconPlug, IconShieldCog, IconSparkles, IconUserCircle, IconInfoCircle, IconKey, IconListDetails, IconMicrophone, IconPalette, IconPlayerPause, IconRobot, IconSettings, IconShield, IconWifi } from '@tabler/icons-react'
 import { type ComponentType, useEffect, useState } from 'react'
 import { GlassButton, PageHeader, SearchField } from '../../components/ui/glass.tsx'
 import { cn } from '../../lib/cn.ts'
@@ -18,6 +18,12 @@ import { JarodAgentSection } from './sections/JarodAgentSection.tsx'
 import { LocalModelsSection } from './sections/LocalModelsSection.tsx'
 import { ProvidersSection } from './sections/ProvidersSection.tsx'
 import { PluginsSection } from './sections/PluginsSection.tsx'
+import { DataSection } from './sections/DataSection.tsx'
+import { DevicesSection } from './sections/DevicesSection.tsx'
+import { DocumentsSection } from './sections/DocumentsSection.tsx'
+import { McpSection } from './sections/McpSection.tsx'
+import { RulesSection } from './sections/RulesSection.tsx'
+import { VaultSection } from './sections/VaultSection.tsx'
 import { MessagingSection } from './sections/MessagingSection.tsx'
 import { PersonaSection } from './sections/PersonaSection.tsx'
 import { SkillsSection } from './sections/SkillsSection.tsx'
@@ -44,6 +50,12 @@ const SECTIONS: { id: SectionId; label: string; icon: ComponentType<{ size?: num
   { id: 'skills', label: 'Skills', icon: IconSparkles, view: SkillsSection },
   { id: 'persona', label: 'Persona & profiles', icon: IconUserCircle, view: PersonaSection },
   { id: 'messaging', label: 'Messaging', icon: IconMessages, view: MessagingSection },
+  { id: 'mcp', label: 'MCP servers', icon: IconPlug, view: McpSection },
+  { id: 'devices', label: 'Devices & API', icon: IconDeviceMobile, view: DevicesSection },
+  { id: 'vault', label: 'Secrets', icon: IconLock, view: VaultSection },
+  { id: 'documents', label: 'Documents', icon: IconFileSearch, view: DocumentsSection },
+  { id: 'rules', label: 'Automation rules', icon: IconBolt, view: RulesSection },
+  { id: 'data', label: 'Data & folders', icon: IconArchive, view: DataSection },
   { id: 'jarod', label: 'Agent & security', icon: IconShieldCog, view: JarodAgentSection },
   { id: 'usage', label: 'Usage', icon: IconGauge, view: UsageSection },
   { id: 'voice', label: 'Voice', icon: IconMicrophone, view: VoiceSection },

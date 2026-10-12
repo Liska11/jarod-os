@@ -1,6 +1,6 @@
 // Passerelle compatible Hermes : le pont vers les canaux de pilotage (`POST /api/jarod/invoke`), les événements poussés (`jarod.event`) et les gestes natifs
 // demandés à la fenêtre (`jarod.shell`). Le VRAI noyau et les VRAIS handlers de @jarod/bridge ; la fenêtre est un client WebSocket de test.
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { assertOneaiChannel, createHandlers, desktopKernelOf } from "@jarod/bridge";
@@ -147,6 +147,49 @@ describe("POST /api/jarod/invoke (vrai noyau, vrais handlers)", () => {
     const r = await invoke("get-app-version");
     expect(r.status).toBe(404);
     expect(r.json.detail).toMatch(/pas branchés/);
+  });
+});
+
+describe("le dossier de travail choisi dans les réglages", () => {
+  it("l'emporte sur celui de la passerelle pour une nouvelle conversation, tant qu'il existe ; sinon on retombe sur celui de la passerelle", async () => {
+    const root = mkdtempSync(join(tmpdir(), "jarod-gw-ws-"));
+    dirs.push(root);
+    const base = join(root, "base");
+    const chosen = join(root, "choisi");
+    mkdirSync(base);
+    mkdirSync(chosen);
+    const pm = new ProfileManager(root);
+    pm.create("travail");
+    pm.setActive("travail");
+    const { core } = await openCore({ env: { JAROD_HOME: root } });
+    const gw = createGateway({ core, version: "t", workspace: base });
+    const port = await gw.listen(0);
+    closers.push(async () => {
+      await gw.close();
+      await core.dispose();
+    });
+    const ws = new WebSocket(`ws://127.0.0.1:${port}/api/ws?token=${gw.token}`);
+    closers.push(() => ws.close());
+    const answers = new Map<number, (f: any) => void>();
+    ws.addEventListener("message", (m) => {
+      const f = JSON.parse(String(m.data));
+      if (typeof f.id === "number") answers.get(f.id)?.(f);
+    });
+    await new Promise<void>((ok) => ws.addEventListener("open", () => ok()));
+    let n = 0;
+    const cwdOfNewSession = async () => {
+      const id = ++n;
+      const f = await new Promise<any>((ok) => {
+        answers.set(id, ok);
+        ws.send(JSON.stringify({ jsonrpc: "2.0", id, method: "session.create", params: { cwd: "" } }));
+      });
+      return f.result.info.cwd;
+    };
+    expect(await cwdOfNewSession()).toBe(base);
+    core.settings.patch({ workspace: chosen });
+    expect(await cwdOfNewSession()).toBe(chosen);
+    core.settings.patch({ workspace: join(root, "disparu") });
+    expect(await cwdOfNewSession()).toBe(base);
   });
 });
 
