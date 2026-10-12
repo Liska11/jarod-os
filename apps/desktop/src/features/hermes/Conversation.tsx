@@ -10,6 +10,7 @@ import { $activeSpace } from '../../store/spaces.ts'
 import { Markdown } from '../chat/Markdown.tsx'
 import { $chatArtifacts, $selectedArtifact, artifactsInWindow, dayLabel, formatTime, selectArtifact } from './artifact-store.ts'
 import { ArtifactCard } from './ArtifactCard.tsx'
+import { ComposerBar } from './ComposerBar.tsx'
 import { HermesComposer } from './HermesComposer.tsx'
 import { SuggestionChips } from './SuggestionChips.tsx'
 import { ToolSummaryRow } from './ToolSummaryRow.tsx'
@@ -88,6 +89,7 @@ export function Conversation({ chat, online }: { chat: ChatState | null; online:
 
       <div className="shrink-0 px-4 pb-4 pt-2">
         <HermesComposer autoFocus disabled={!online} streaming={chat?.streaming} placeholder={online ? 'Ask Hermes anything…' : 'Connecting to Hermes…'} onSubmit={submit} onInterrupt={() => void interruptChat()} />
+        <ComposerBar chat={chat} online={online} />
       </div>
     </div>
   )

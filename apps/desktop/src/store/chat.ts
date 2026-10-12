@@ -210,6 +210,35 @@ export async function interruptChat(sessionId?: string): Promise<void> {
   await gatewayRequest('session.interrupt', { session_id: sid })
 }
 
+/** The conversation being compacted now: its button shows it, and a second press waits. */
+export const $compacting = atom<string | null>(null)
+
+/** Summarise the old exchanges to free context (the core's `/compact`), and say what came of it in the conversation. */
+export async function compactChat(sessionId?: string): Promise<void> {
+  const sid = sessionId ?? $activeChatId.get()
+  const chat = sid ? $chats.get()[sid] : null
+
+  if (!sid || !chat || chat.streaming || $compacting.get()) {
+    return
+  }
+
+  $compacting.set(sid)
+
+  try {
+    const result = await gatewayRequest('slash.exec', { session_id: sid, command: '/compact' })
+    const current = $chats.get()[sid]
+    const text = [result.display ?? result.output ?? '', result.notice ?? '', result.warning ?? ''].filter(Boolean).join('\n\n')
+
+    if (current) {
+      $chats.setKey(sid, appendSystem(current, text || 'Context compacted.'))
+    }
+  } catch (error) {
+    notify({ title: 'Could not compact the context', body: error instanceof Error ? error.message : String(error), level: 'error', surface: 'hermes' })
+  } finally {
+    $compacting.set(null)
+  }
+}
+
 export function forgetChat(sessionId: string): void {
   const next = { ...$chats.get() }
   delete next[sessionId]
