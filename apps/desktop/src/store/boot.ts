@@ -15,6 +15,7 @@ import { bindMissionEvents } from './missions.ts'
 import { bindSidebarPrefs } from './sidebar.ts'
 import { bindNotificationEvents, bindNotificationHistory } from './notifications.ts'
 import { bindOsControl } from './os-control.ts'
+import { bindJarod } from '../lib/jarod.ts'
 import { bindServerRequests } from './requests.ts'
 import { refreshSessions } from './sessions.ts'
 import { bindShell } from './shell.ts'
@@ -45,6 +46,7 @@ export function bootRenderer(): void {
   bindGatewayToBackend()
   bindChatEvents()
   bindServerRequests()
+  bindJarod()
   bindNotificationEvents()
   bindAgentEvents()
   bindMissionEvents()

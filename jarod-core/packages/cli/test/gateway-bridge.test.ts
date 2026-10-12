@@ -120,6 +120,28 @@ describe("POST /api/jarod/invoke (vrai noyau, vrais handlers)", () => {
     expect(r.json.detail).toMatch(/moteur attendu/);
   });
 
+  it("le même appel par le WebSocket (`jarod.invoke`), sans le délai de l'HTTP", async () => {
+    const { gw, port } = await rig();
+    const ws = new WebSocket(`ws://127.0.0.1:${port}/api/ws?token=${gw.token}`);
+    closers.push(() => ws.close());
+    const answers = new Map<number, (f: any) => void>();
+    ws.addEventListener("message", (m) => {
+      const f = JSON.parse(String(m.data));
+      if (typeof f.id === "number") answers.get(f.id)?.(f);
+    });
+    await new Promise<void>((ok) => ws.addEventListener("open", () => ok()));
+    let n = 0;
+    const rpc = (params: unknown) => new Promise<any>((ok) => {
+      const id = ++n;
+      answers.set(id, ok);
+      ws.send(JSON.stringify({ jsonrpc: "2.0", id, method: "jarod.invoke", params }));
+    });
+    expect((await rpc({ channel: "get-app-version" })).result).toEqual({ result: "9.9.9-test" });
+    expect((await rpc({ channel: "rm-rf" })).error.message).toMatch(/refus|canal|autoris/i);
+    expect((await rpc({ channel: "terminal-open" })).error.message).toMatch(/non porté/);
+    expect((await rpc({})).error.message).toMatch(/channel/);
+  });
+
   it("sans pont branché : 404", async () => {
     const { invoke } = await rig({ bridge: false });
     const r = await invoke("get-app-version");
@@ -139,7 +161,7 @@ describe("événements et gestes natifs, par la fenêtre connectée", () => {
       if (f.method === "event") events.push(f.params);
       else if (f.method === "jarod.shell") {
         asked.push(f.params);
-        ws.send(JSON.stringify({ jsonrpc: "2.0", id: f.id, result: answer(f.params) }));
+        ws.send(JSON.stringify({ jsonrpc: "2.0", id: f.id, result: { value: answer(f.params) } }));
       }
     });
     await new Promise<void>((ok, bad) => {

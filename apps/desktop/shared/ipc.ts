@@ -855,6 +855,9 @@ export const IPC = {
 
   shellOpenExternal: 'herald-os:shell:open-external',
 
+  /** Native gestures the Jarod engine asks for (pickers, confirmations, notices): kind + params in, the user's answer out. */
+  jarodShell: 'herald-os:jarod:shell',
+
   // Embedded web views: http(s) pages rendered inside a Jarod-OS window, never the system browser.
   /** Perform an `EditAction` in this window (or in one of its web views). */
   editAction: 'herald-os:edit:action',

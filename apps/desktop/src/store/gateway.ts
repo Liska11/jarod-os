@@ -106,6 +106,11 @@ export function gatewayRequest<M extends keyof RpcMethods>(
   return client.request<RpcMethods[M]['result']>(method, params as Record<string, unknown>, timeoutMs)
 }
 
+/** An RPC the typed contract does not know (the Jarod engine's own methods), with its own timeout. */
+export function gatewayCall<T>(method: string, params: Record<string, unknown>, timeoutMs?: number): Promise<T> {
+  return client.request<T>(method, params, timeoutMs)
+}
+
 export function onGatewayEvent<K extends GatewayEventName>(type: K, handler: (event: GatewayEvent<K>) => void): () => void {
   return client.on(type, handler)
 }

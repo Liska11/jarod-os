@@ -1,5 +1,5 @@
 import { useStore } from '@nanostores/react'
-import { IconAccessible, IconApps, IconBell, IconCircleCheckFilled, IconPuzzle, IconDatabase, IconGauge, IconInfoCircle, IconKey, IconListDetails, IconMicrophone, IconPalette, IconPlayerPause, IconRobot, IconSettings, IconShield, IconWifi } from '@tabler/icons-react'
+import { IconAccessible, IconApps, IconBell, IconCircleCheckFilled, IconPuzzle, IconDatabase, IconGauge, IconBrain, IconInfoCircle, IconKey, IconListDetails, IconMicrophone, IconPalette, IconPlayerPause, IconRobot, IconSettings, IconShield, IconWifi } from '@tabler/icons-react'
 import { type ComponentType, useEffect, useState } from 'react'
 import { GlassButton, PageHeader, SearchField } from '../../components/ui/glass.tsx'
 import { cn } from '../../lib/cn.ts'
@@ -14,6 +14,7 @@ import { NetworkSection } from './sections/NetworkSection.tsx'
 import { NotificationsSection } from './sections/NotificationsSection.tsx'
 import { PrivacySection } from './sections/PrivacySection.tsx'
 import { $settingsFocus, $settingsSavedAt, type SectionId, SettingsFilterContext } from './sections/shared.tsx'
+import { LocalModelsSection } from './sections/LocalModelsSection.tsx'
 import { ProvidersSection } from './sections/ProvidersSection.tsx'
 import { PluginsSection } from './sections/PluginsSection.tsx'
 import { SoftwareSection } from './sections/SoftwareSection.tsx'
@@ -35,6 +36,7 @@ const SECTIONS: { id: SectionId; label: string; icon: ComponentType<{ size?: num
   { id: 'plugins', label: 'Plugins', icon: IconPuzzle, view: PluginsSection },
   { id: 'agents', label: 'Hermes & agents', icon: IconRobot, view: AgentsSection },
   { id: 'providers', label: 'Providers & keys', icon: IconKey, view: ProvidersSection },
+  { id: 'models', label: 'Local models', icon: IconBrain, view: LocalModelsSection },
   { id: 'usage', label: 'Usage', icon: IconGauge, view: UsageSection },
   { id: 'voice', label: 'Voice', icon: IconMicrophone, view: VoiceSection },
   { id: 'commands', label: 'Voice commands', icon: IconListDetails, view: VoiceCommandsSection },

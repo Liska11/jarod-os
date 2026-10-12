@@ -174,6 +174,18 @@ export function createGateway(opts: GatewayOptions): Gateway {
   const methods: Record<string, Method> = {
     "gateway.ping": () => ({}),
 
+    // Les canaux de pilotage (@jarod/bridge) par le WebSocket : sans le délai de 60 s de l'HTTP du shell (installer un moteur, télécharger un modèle).
+    "jarod.invoke": async (p) => {
+      if (!bridge) throw new RpcError(RPC.notFound, "les canaux de pilotage ne sont pas branchés");
+      try {
+        const call = parseInvokeBody(p);
+        return { result: (await bridge.invoke(call.channel, call.args)) ?? null };
+      } catch (e) {
+        if (e instanceof BridgeError) throw new RpcError(e.status === 404 ? RPC.notFound : RPC.params, e.message);
+        throw e;
+      }
+    },
+
     "session.create": (p) => {
       const title = str(p.title).trim();
       const session = core.sessions.create(title || undefined);
@@ -758,9 +770,12 @@ export function createGateway(opts: GatewayOptions): Gateway {
         for (const c of conns) send(c, eventFrame("jarod.event", undefined, { channel, args }));
       },
       // La demande va à la fenêtre la plus récemment connectée ; sans fenêtre, `null` (refus).
-      ask: (kind, params = {}) => {
+      ask: async (kind, params = {}) => {
         const conn = [...conns].at(-1);
-        return conn ? askClient(conn, "jarod.shell", { kind, ...params }) : Promise.resolve(null);
+        if (!conn) return null;
+        // La fenêtre répond par un objet (contrat des requêtes serveur → client) : la valeur est dans `value`.
+        const answer = await askClient(conn, "jarod.shell", { kind, ...params });
+        return answer && typeof answer === "object" ? ((answer as { value?: unknown }).value ?? null) : null;
       },
     },
   };

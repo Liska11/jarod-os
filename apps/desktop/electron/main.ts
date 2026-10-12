@@ -20,6 +20,7 @@ import { PluginHost } from './plugins/host.ts'
 import { registerDictationIpc } from './ipc/dictation.ts'
 import { registerContextIpc } from './ipc/context.ts'
 import { registerFsIpc } from './ipc/fs.ts'
+import { registerJarodShellIpc } from './ipc/jarod-shell.ts'
 import { registerSystemIpc } from './ipc/system.ts'
 import { registerTerminalIpc } from './ipc/terminal.ts'
 import { registerThemeIpc, syncHermesSkin } from './ipc/theme.ts'
@@ -283,6 +284,7 @@ function registerCoreIpc(): void {
   )
 
   registerFsIpc(() => mainWindow)
+  registerJarodShellIpc(() => mainWindow)
   registerAppsIpc()
   registerBridgeIpc()
   registerServiceIpc()

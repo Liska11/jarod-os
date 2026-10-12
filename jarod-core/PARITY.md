@@ -15,7 +15,7 @@ Légende : ✅ fait et vérifié en fenêtre · 🟡 partiel · ⬜ à faire · 
 | 5 | Usage, serveurs MCP (liste, activer, tester, retirer) | ✅ | `/api/analytics/usage`, `/api/mcp/*` |
 | 6 | Sélecteur de modèle (+ découverte LM Studio / Ollama) | ✅ | `model.options`, `config.set` |
 | 7 | **Fournisseurs et clés API** (coffre, source env, clés de secours, adresse, test) | ✅ | `/api/jarod/providers*`, Réglages → « Providers & keys » (`gateway/providers.ts`) |
-| 8 | Modèles locaux : moteur llama.cpp, préréglages, téléchargement Hugging Face, charger/décharger LM Studio | ⬜ | plugin `llm` (`engine`, `localModels`, `huggingface`) |
+| 8 | Modèles locaux : moteur llama.cpp, préréglages, téléchargement Hugging Face, charger/décharger LM Studio | ✅ | Réglages → « Local models » ; canaux `local-models-*`, `local-engine-*`, `hf-*` du pont. Vérifié en fenêtre : liste réelle de LM Studio, recherche et « tient-il ? » sur huggingface.co. Non essayés en fenêtre (boîtes natives, téléchargements) : installation du moteur, chargement, téléchargement ; couverts par les tests du pont |
 | 9 | Navigateur de l'agent (`browser_*`) | ⬜ | hôte Electron à écrire (`BrowserPort`) |
 | 10 | Voix : micro, mot d'éveil, STT/TTS locaux | ⬜ | plugin `voice` ; routes `/api/audio/*`, `wake.*` |
 | 11 | Skills (écran, hub d'installation) | ⬜ | plugin `skills` |
@@ -31,6 +31,10 @@ Légende : ✅ fait et vérifié en fenêtre · 🟡 partiel · ⬜ à faire · 
 | 21 | Hôtes SSH, serveur API compatible OpenAI, appairage mobile / distant | ⬜ | |
 | 22 | Embeddings, reranker, OpenVINO / NPU, onnxruntime, node-pty | ⛔ | non embarqués (décision d'indépendance) ; reprise possible plus tard |
 | 23 | Authentification Nous native (device-code) | ⛔ | reportée, avec audit de sécurité ; clé API en attendant |
+
+## Architecture du pont
+
+`packages/bridge` (`@jarod/bridge`) reprend les handlers de l'application jarod-cordis (mêmes validations, mêmes refus) ; la passerelle les sert par `jarod.invoke` (WebSocket, sans le délai de 60 s de l'HTTP) et `POST /api/jarod/invoke`. Les événements des handlers arrivent à la fenêtre en `jarod.event`, les gestes natifs (boîte « Ouvrir », confirmation) sont des requêtes `jarod.shell` que la fenêtre fait exécuter par le processus principal (`electron/ipc/jarod-shell*.ts`). Chaque fonction restante du tableau est donc surtout un écran du shell sur des canaux qui existent déjà.
 
 ## Écarts voulus par rapport à jarod-cordis
 

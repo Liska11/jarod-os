@@ -345,6 +345,10 @@ const api = {
     /** The global voice hotkey was pressed (fires in every window; the main surface acts). */
     onHotkey: (listener: () => void): Unsubscribe => subscribe<void>(IPC.voiceHotkey, () => listener())
   },
+  jarod: {
+    /** Perform a native gesture the Jarod engine asked for (see electron/ipc/jarod-shell-gestures.ts). */
+    shell: (kind: string, params: Record<string, unknown> = {}): Promise<unknown> => ipcRenderer.invoke(IPC.jarodShell, kind, params)
+  },
   bridge: {
     readPolicy: (): Promise<string> => ipcRenderer.invoke(IPC.bridgePolicyRead),
     writePolicy: (text: string): Promise<void> => ipcRenderer.invoke(IPC.bridgePolicyWrite, text),
