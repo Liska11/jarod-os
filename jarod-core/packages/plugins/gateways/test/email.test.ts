@@ -189,4 +189,50 @@ describe("email gateway", () => {
     await gw.poll();
     expect(gw.status).toMatchObject({ id: "email", state: "error", error: "Invalid credentials" });
   });
+
+  it("abandonne une relève qui pend au lieu de bloquer toutes les suivantes", async () => {
+    const sent: Record<string, unknown>[] = [];
+    let calls = 0;
+    const gw = new EmailGateway(
+      () => CFG,
+      "x",
+      async (m: { text: string }) => `Réponse à : ${m.text}`,
+      {
+        // Premier tour : le serveur ne dit plus rien. Second tour : il répond de nouveau.
+        fetchUnread: () =>
+          ++calls === 1
+            ? new Promise<Buffer[]>(() => {})
+            : Promise.resolve([mail({ from: "alice@gmail.com", body: "Toujours là ?", auth: PASS })]),
+        transport: async (m) => {
+          sent.push(m as Record<string, unknown>);
+        },
+        pollTimeoutMs: 30,
+      },
+    );
+    const stuck = gw.poll(); // ne rend jamais la main : c'est le délai qui doit trancher
+    for (let i = 0; i < 100 && gw.status.state !== "error"; i++) await new Promise((r) => setTimeout(r, 20));
+    void stuck;
+    expect(gw.status).toMatchObject({ state: "error" });
+    expect(gw.status.error).toMatch(/Relève IMAP : aucune réponse après 30 ms/);
+    // Le drapeau `polling` est retombé : le tour suivant a bien lieu.
+    await gw.poll();
+    expect(sent.at(-1)).toMatchObject({ to: "alice@gmail.com", text: "Réponse à : Toujours là ?" });
+  });
+
+  it("signale l'erreur de traitement d'un message au lieu de l'avaler", async () => {
+    const gw = new EmailGateway(
+      () => CFG,
+      "x",
+      async () => {
+        throw new Error("le modèle a refusé");
+      },
+      {
+        fetchUnread: async () => [mail({ from: "alice@gmail.com", auth: PASS })],
+        transport: async () => {},
+      },
+    );
+    await gw.poll();
+    expect(gw.status).toMatchObject({ id: "email", state: "error" });
+    expect(gw.status.error).toMatch(/Message ignoré après erreur : le modèle a refusé/);
+  });
 });

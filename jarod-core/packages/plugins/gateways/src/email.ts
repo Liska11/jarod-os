@@ -44,6 +44,34 @@ export const DEFAULT_EMAIL_CONFIG: EmailConfig = {
   folder: "INBOX",
 };
 
+/** Délai d'inactivité du socket IMAP : sans lui, un serveur muet retient la relève pour toujours. */
+const IMAP_SOCKET_TIMEOUT_MS = 60_000;
+/** Délai maximal du `logout` IMAP : la déconnexion d'un serveur muet ne doit pas retenir la relève. */
+const LOGOUT_TIMEOUT_MS = 5_000;
+/** Délai maximal d'une relève entière : au-delà, on abandonne pour que le drapeau `polling` retombe. */
+const POLL_TIMEOUT_MS = 120_000;
+
+/** Rejette si `p` ne s'est pas résolu dans `ms` : borne un appel qui ne reçoit jamais de réponse. */
+function withTimeout<T>(p: Promise<T>, ms: number, what: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(
+      () => reject(new Error(`${what} : aucune réponse après ${ms} ms`)),
+      ms,
+    );
+    timer.unref?.();
+    p.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (e: unknown) => {
+        clearTimeout(timer);
+        reject(e);
+      },
+    );
+  });
+}
+
 export interface IncomingEmail {
   from: string;
   name: string;
@@ -140,6 +168,8 @@ export class EmailGateway extends Emitter<{ status: GatewayStatus }> {
       fetchUnread?: () => Promise<Buffer[]>;
       transport?: (mail: nodemailer.SendMailOptions) => Promise<unknown>;
       onIgnored?: (from: string, why: string) => void;
+      /** Test seam: délai maximal d'une relève (défaut `POLL_TIMEOUT_MS`). */
+      pollTimeoutMs?: number;
     } = {},
   ) {
     super();
@@ -174,6 +204,8 @@ export class EmailGateway extends Emitter<{ status: GatewayStatus }> {
       secure: cfg.imapPort === 993,
       auth: { user: cfg.user, pass: this.password },
       logger: false,
+      // Un serveur qui ne dit plus rien est coupé au lieu de laisser la relève en suspens.
+      socketTimeout: IMAP_SOCKET_TIMEOUT_MS,
     });
     await client.connect();
     const sources: Buffer[] = [];
@@ -187,7 +219,8 @@ export class EmailGateway extends Emitter<{ status: GatewayStatus }> {
       if (uids.length) await client.messageFlagsAdd(uids, ["\\Seen"], { uid: true });
     } finally {
       lock.release();
-      await client.logout().catch(() => {});
+      // `logout` borné : passé le délai, on ferme le socket sans attendre la réponse d'un serveur muet.
+      await withTimeout(client.logout(), LOGOUT_TIMEOUT_MS, "Déconnexion IMAP (logout)").catch(() => client.close());
     }
     return sources;
   }
@@ -196,10 +229,22 @@ export class EmailGateway extends Emitter<{ status: GatewayStatus }> {
     if (this.polling) return;
     this.polling = true;
     try {
-      const sources = await this.fetchUnread();
+      // Relève bornée : si `fetchUnread` ne rend jamais la main, le drapeau `polling` resterait levé
+      // et plus aucune relève n'aurait lieu — un serveur muet arrêterait tout, sans trace.
+      const sources = await withTimeout(
+        this.fetchUnread(),
+        this.opts.pollTimeoutMs ?? POLL_TIMEOUT_MS,
+        "Relève IMAP",
+      );
       if (this.status.state !== "running")
         this.setStatus({ state: "running", botName: this.config().from || this.config().user });
-      for (const source of sources) await this.handle(source).catch(() => {});
+      for (const source of sources) {
+        // Une erreur de traitement est signalée dans le statut (→ journal de `jarod serve`) au lieu
+        // d'être avalée : sans trace, le correspondant ne reçoit rien et personne ne le sait.
+        await this.handle(source).catch((e: unknown) => {
+          this.setStatus({ state: "error", error: `Message ignoré après erreur : ${(e as Error).message}` });
+        });
+      }
     } catch (e) {
       this.setStatus({ state: "error", error: (e as Error).message });
     } finally {
