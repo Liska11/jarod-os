@@ -1,15 +1,11 @@
 import { atom, computed } from 'nanostores'
 import { appById, type FloatingAppId, type HermesAppId, type PageId } from '../shell/apps.ts'
 import { afterExit, motion } from '../lib/motion.ts'
+import { type Bounds, clampBounds, DEFAULT_MIN_SIZE, type Size } from '../lib/window-geometry.ts'
 import { $prefs, updatePrefs } from './backend.ts'
 import { isMainSurface, isPanels, relayToMain } from './shell.ts'
 
-export interface Bounds {
-  x: number
-  y: number
-  width: number
-  height: number
-}
+export type { Bounds }
 
 export type WindowPhase = 'opening' | 'open' | 'minimizing' | 'minimized' | 'closing'
 
@@ -17,7 +13,10 @@ export interface OSWindow {
   id: string
   appId: HermesAppId
   title: string
+  /** Where the window is drawn now: the person's choice, brought inside the desktop. */
   bounds: Bounds
+  /** The size and place the person chose; `bounds` follows it again when the desktop grows back. */
+  preferred?: Bounds
   z: number
   phase: WindowPhase
   maximized: boolean
@@ -59,32 +58,31 @@ export function desktopArea(): Bounds {
   return { x: MARGIN, y: MENUBAR + MARGIN, width: window.innerWidth - MARGIN * 2, height: window.innerHeight - MENUBAR - dock - MARGIN }
 }
 
-function clamp(bounds: Bounds): Bounds {
-  const area = desktopArea()
-  const width = Math.min(bounds.width, area.width)
-  const height = Math.min(bounds.height, area.height)
-  const x = Math.max(area.x, Math.min(bounds.x, area.x + area.width - width))
-  const y = Math.max(area.y, Math.min(bounds.y, area.y + area.height - height))
+/** What the app's window may shrink to. */
+export function minSizeOf(appId: HermesAppId): Size {
+  return appById(appId).minSize ?? DEFAULT_MIN_SIZE
+}
 
-  return { x, y, width, height }
+function clamp(appId: HermesAppId, bounds: Bounds): Bounds {
+  return clampBounds(bounds, desktopArea(), minSizeOf(appId))
 }
 
 function nextBounds(appId: HermesAppId, preferred?: Bounds): Bounds {
   const saved = $prefs.get().windowBounds?.[appId]
 
   if (preferred) {
-    return clamp(preferred)
+    return clamp(appId, preferred)
   }
 
   if (saved) {
-    return clamp(saved)
+    return clamp(appId, saved)
   }
 
   const size = appById(appId).defaultSize ?? { width: 900, height: 600 }
   const area = desktopArea()
   const offset = (Object.keys($windows.get()).length % 5) * 28
 
-  return clamp({ x: area.x + (area.width - size.width) / 2 + offset, y: area.y + (area.height - size.height) / 2 + offset, ...size })
+  return clamp(appId, { x: area.x + (area.width - size.width) / 2 + offset, y: area.y + (area.height - size.height) / 2 + offset, ...size })
 }
 
 function update(id: string, patch: Partial<OSWindow>): void {
@@ -201,11 +199,13 @@ export function openApp(appId: HermesAppId, options: { payload?: Record<string, 
   }
 
   const id = `w${idCounter++}`
+  const opened = nextBounds(appId, options.bounds)
   const win: OSWindow = {
     id,
     appId,
     title: options.title ?? def.name,
-    bounds: nextBounds(appId, options.bounds),
+    bounds: opened,
+    preferred: opened,
     z: ++zCounter,
     phase: 'opening',
     maximized: false,
@@ -276,9 +276,10 @@ export function toggleMaximize(id: string): void {
   }
 
   if (win.maximized) {
-    update(id, { maximized: false, bounds: clamp(win.restoreBounds ?? nextBounds(win.appId)) })
+    const restored = clamp(win.appId, win.restoreBounds ?? nextBounds(win.appId))
+    update(id, { maximized: false, bounds: restored, preferred: restored })
   } else {
-    update(id, { maximized: true, restoreBounds: win.bounds, bounds: desktopArea() })
+    update(id, { maximized: true, restoreBounds: win.preferred ?? win.bounds, bounds: desktopArea() })
   }
 }
 
@@ -289,21 +290,24 @@ export function setBounds(id: string, bounds: Bounds, persist = false): void {
     return
   }
 
-  const clamped = clamp({ ...bounds, width: Math.max(360, bounds.width), height: Math.max(240, bounds.height) })
-  update(id, { bounds: clamped, maximized: false })
+  const clamped = clamp(win.appId, bounds)
+  update(id, { bounds: clamped, preferred: clamped, maximized: false })
 
   if (persist && id !== MAIN_WINDOW_ID) {
     void updatePrefs({ windowBounds: { ...($prefs.get().windowBounds ?? {}), [win.appId]: clamped } })
   }
 }
 
-/** Keep maximized windows (and the main window) glued to the desktop area on resize. */
+/**
+ * Keep maximized windows (and the main window) glued to the desktop area on resize. The others are drawn
+ * from the size the person chose, so a desktop that shrinks and grows back gives their size back.
+ */
 export function relayoutOnResize(): void {
   const area = desktopArea()
   const next: Record<string, OSWindow> = {}
 
   for (const [id, win] of Object.entries($windows.get())) {
-    next[id] = win.maximized ? { ...win, bounds: area } : { ...win, bounds: clamp(win.bounds) }
+    next[id] = win.maximized ? { ...win, bounds: area } : { ...win, bounds: clamp(win.appId, win.preferred ?? win.bounds) }
   }
 
   $windows.set(next)

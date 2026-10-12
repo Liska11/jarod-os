@@ -21,6 +21,8 @@ export interface HermesAppDef<Id extends HermesAppId = HermesAppId> {
   /** Codicon-free inline SVG icon id rendered by AppIcon. */
   icon: AppIconId
   defaultSize?: { width: number; height: number }
+  /** What the window may shrink to; windows without one use the shell's default minimum. */
+  minSize?: { width: number; height: number }
   shortcut?: string
 }
 
@@ -64,9 +66,9 @@ export const FLOATING_APPS: readonly HermesAppDef<FloatingAppId>[] = [
   { id: 'studio', name: 'Studio', tagline: 'Watch Hermes build.', category: 'development', kind: 'window', icon: 'studio', defaultSize: { width: 1280, height: 800 } },
   // Opens on a screenshot (the capture preview's Edit).
   { id: 'capture-editor', name: 'Markup', tagline: 'Draw on a screenshot, hide what is private.', category: 'creative', kind: 'window', icon: 'documents', defaultSize: { width: 960, height: 680 } },
-  { id: 'camera', name: 'Camera', tagline: 'Your camera in a bubble, for screen recordings.', category: 'creative', kind: 'window', icon: 'system', defaultSize: { width: 260, height: 290 } },
+  { id: 'camera', name: 'Camera', tagline: 'Your camera in a bubble, for screen recordings.', category: 'creative', kind: 'window', icon: 'system', defaultSize: { width: 260, height: 290 }, minSize: { width: 200, height: 230 } },
   // A widget plugin in its own window (its `panel` placement); opened with plugin.open.
-  { id: 'widget', name: 'Widget', tagline: 'A widget plugin in a window.', category: 'productivity', kind: 'window', icon: 'grid', defaultSize: { width: 360, height: 280 } }
+  { id: 'widget', name: 'Widget', tagline: 'A widget plugin in a window.', category: 'productivity', kind: 'window', icon: 'grid', defaultSize: { width: 360, height: 280 }, minSize: { width: 240, height: 160 } }
 ]
 
 /** Floating apps the launcher and command bar offer; the rest open only with a payload. */

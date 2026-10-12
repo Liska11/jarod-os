@@ -2,19 +2,21 @@ import { useStore } from '@nanostores/react'
 import { memo, useCallback, useEffect, useRef } from 'react'
 import { SurfaceErrorBoundary } from '../../components/error-boundary.tsx'
 import { cn } from '../../lib/cn.ts'
-import { $focusedWindowId, closeWindow, focusWindow, MAIN_WINDOW_ID, minimizeWindow, type OSWindow, setBounds, toggleMaximize } from '../../store/windows.ts'
+import { type Edge, resizeBounds } from '../../lib/window-geometry.ts'
+import { $focusedWindowId, closeWindow, desktopArea, focusWindow, MAIN_WINDOW_ID, minimizeWindow, minSizeOf, type OSWindow, setBounds, toggleMaximize } from '../../store/windows.ts'
 
-type Edge = 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw'
 const EDGES: Edge[] = ['n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw']
+// The handles sit on the frame's outline, 4px outside it: the frame clips its children to its rounded corners,
+// which left the corner handles almost out of reach. The corners come last so they win over the edges.
 const EDGE_CLASS: Record<Edge, string> = {
-  n: 'top-0 left-3 right-3 h-1.5 cursor-ns-resize',
-  s: 'bottom-0 left-3 right-3 h-1.5 cursor-ns-resize',
-  e: 'right-0 top-3 bottom-3 w-1.5 cursor-ew-resize',
-  w: 'left-0 top-3 bottom-3 w-1.5 cursor-ew-resize',
-  ne: 'top-0 right-0 size-3 cursor-nesw-resize',
-  nw: 'top-0 left-0 size-3 cursor-nwse-resize',
-  se: 'bottom-0 right-0 size-3 cursor-nwse-resize',
-  sw: 'bottom-0 left-0 size-3 cursor-nesw-resize'
+  n: '-top-1 left-5 right-5 h-2 cursor-ns-resize',
+  s: '-bottom-1 left-5 right-5 h-2 cursor-ns-resize',
+  e: '-right-1 top-5 bottom-5 w-2 cursor-ew-resize',
+  w: '-left-1 top-5 bottom-5 w-2 cursor-ew-resize',
+  ne: '-top-1 -right-1 size-6 cursor-nesw-resize',
+  nw: '-top-1 -left-1 size-6 cursor-nwse-resize',
+  se: '-right-1 -bottom-1 size-6 cursor-nwse-resize',
+  sw: '-bottom-1 -left-1 size-6 cursor-nesw-resize'
 }
 
 /**
@@ -27,52 +29,42 @@ export const Window = memo(function Window({ win, children, chrome = true }: { w
   const frame = useRef<HTMLDivElement>(null)
   const gesture = useRef<{ kind: 'move' | 'resize'; edge?: Edge; startX: number; startY: number; start: OSWindow['bounds']; raf: number; pending: OSWindow['bounds'] | null } | null>(null)
 
-  const onPointerMove = useCallback((event: PointerEvent) => {
-    const g = gesture.current
+  const onPointerMove = useCallback(
+    (event: PointerEvent) => {
+      const g = gesture.current
 
-    if (!g) {
-      return
-    }
-
-    const dx = event.clientX - g.startX
-    const dy = event.clientY - g.startY
-    let next = { ...g.start }
-
-    if (g.kind === 'move') {
-      next = { ...g.start, x: g.start.x + dx, y: g.start.y + dy }
-    } else if (g.edge) {
-      if (g.edge.includes('e')) next.width = g.start.width + dx
-      if (g.edge.includes('s')) next.height = g.start.height + dy
-      if (g.edge.includes('w')) {
-        next.x = g.start.x + dx
-        next.width = g.start.width - dx
+      if (!g) {
+        return
       }
-      if (g.edge.includes('n')) {
-        next.y = g.start.y + dy
-        next.height = g.start.height - dy
+
+      const dx = event.clientX - g.startX
+      const dy = event.clientY - g.startY
+      // A resize keeps the edge opposite the one held where it is; a move keeps the size (the store brings it back inside the desktop).
+      const next = g.kind === 'move' || !g.edge ? { ...g.start, x: g.start.x + dx, y: g.start.y + dy } : resizeBounds(g.start, g.edge, dx, dy, desktopArea(), minSizeOf(win.appId))
+
+      g.pending = next
+
+      if (!g.raf) {
+        g.raf = requestAnimationFrame(() => {
+          if (gesture.current?.pending) {
+            setBounds(win.id, gesture.current.pending)
+          }
+
+          if (gesture.current) {
+            gesture.current.raf = 0
+          }
+        })
       }
-    }
-
-    g.pending = next
-
-    if (!g.raf) {
-      g.raf = requestAnimationFrame(() => {
-        if (gesture.current?.pending) {
-          setBounds(win.id, gesture.current.pending)
-        }
-
-        if (gesture.current) {
-          gesture.current.raf = 0
-        }
-      })
-    }
-  }, [win.id])
+    },
+    [win.id, win.appId]
+  )
 
   const endGesture = useCallback(() => {
     const g = gesture.current
     gesture.current = null
     window.removeEventListener('pointermove', onPointerMove)
     window.removeEventListener('pointerup', endGesture)
+    window.removeEventListener('pointercancel', endGesture)
     document.body.style.cursor = ''
 
     if (g?.pending) {
@@ -81,14 +73,17 @@ export const Window = memo(function Window({ win, children, chrome = true }: { w
   }, [onPointerMove, win.id])
 
   const startGesture = (event: React.PointerEvent, kind: 'move' | 'resize', edge?: Edge) => {
-    if (event.button !== 0 || win.maximized && kind === 'resize') {
+    if (event.button !== 0 || (win.maximized && kind === 'resize')) {
       return
     }
 
     focusWindow(win.id)
     gesture.current = { kind, edge, startX: event.clientX, startY: event.clientY, start: win.bounds, raf: 0, pending: null }
+    // Held by the element that started it: the gesture follows the pointer over the page, and ends if the system takes the pointer away.
+    event.currentTarget.setPointerCapture?.(event.pointerId)
     window.addEventListener('pointermove', onPointerMove)
     window.addEventListener('pointerup', endGesture)
+    window.addEventListener('pointercancel', endGesture)
     event.preventDefault()
   }
 
@@ -99,54 +94,56 @@ export const Window = memo(function Window({ win, children, chrome = true }: { w
 
   return (
     <div
-      ref={frame}
-      role="dialog"
-      aria-label={win.title}
-      data-window-id={win.id}
-      onPointerDownCapture={() => {
-        if (!focused) {
-          focusWindow(win.id)
-        }
-      }}
-      className={cn(
-        'glass absolute flex flex-col overflow-hidden rounded-2xl',
-        win.phase === 'opening' && 'window-enter',
-        win.phase === 'closing' && 'window-leave',
-        win.phase === 'minimizing' && 'window-minimize',
-        hidden && 'invisible pointer-events-none',
-        !focused && !hidden && 'opacity-95',
-        focused ? 'border-line-strong' : 'border-line'
-      )}
+      className={cn('absolute', hidden && 'invisible pointer-events-none')}
       style={{ left: win.bounds.x, top: win.bounds.y, width: win.bounds.width, height: win.bounds.height, zIndex: win.z, willChange: gesture.current ? 'left, top, width, height' : undefined }}
     >
-      {chrome && (
-        <div
-          className="flex h-10 shrink-0 items-center gap-3 px-3 select-none"
-          onPointerDown={event => {
-            if ((event.target as HTMLElement).closest('button')) {
-              return
-            }
+      <div
+        ref={frame}
+        role="dialog"
+        aria-label={win.title}
+        data-window-id={win.id}
+        onPointerDownCapture={() => {
+          if (!focused) {
+            focusWindow(win.id)
+          }
+        }}
+        className={cn(
+          'glass absolute inset-0 flex flex-col overflow-hidden rounded-2xl',
+          win.phase === 'opening' && 'window-enter',
+          win.phase === 'closing' && 'window-leave',
+          win.phase === 'minimizing' && 'window-minimize',
+          !focused && !hidden && 'opacity-95',
+          focused ? 'border-line-strong' : 'border-line'
+        )}
+      >
+        {chrome && (
+          <div
+            className="flex h-10 shrink-0 items-center gap-3 px-3 select-none"
+            onPointerDown={event => {
+              if ((event.target as HTMLElement).closest('button')) {
+                return
+              }
 
-            if (!win.maximized || main) {
-              startGesture(event, 'move')
-            }
-          }}
-          onDoubleClick={() => toggleMaximize(win.id)}
-        >
-          <div className="group flex items-center gap-2">
-            <TrafficLight color="#ff5f57" label={main ? 'Hide' : 'Close'} onClick={() => closeWindow(win.id)} glyph="×" />
-            <TrafficLight color="#febc2e" label="Minimize" onClick={() => minimizeWindow(win.id)} glyph="–" />
-            <TrafficLight color="#28c840" label="Zoom" onClick={() => toggleMaximize(win.id)} glyph="+" />
+              if (!win.maximized || main) {
+                startGesture(event, 'move')
+              }
+            }}
+            onDoubleClick={() => toggleMaximize(win.id)}
+          >
+            <div className="group flex items-center gap-2">
+              <TrafficLight color="#ff5f57" label={main ? 'Hide' : 'Close'} onClick={() => closeWindow(win.id)} glyph="×" />
+              <TrafficLight color="#febc2e" label="Minimize" onClick={() => minimizeWindow(win.id)} glyph="–" />
+              <TrafficLight color="#28c840" label="Zoom" onClick={() => toggleMaximize(win.id)} glyph="+" />
+            </div>
+            <div className={cn('min-w-0 flex-1 truncate text-center text-[12.5px] font-medium', focused ? 'text-fg' : 'text-fg-3')}>{win.title}</div>
+            <div className="w-[62px]" />
           </div>
-          <div className={cn('min-w-0 flex-1 truncate text-center text-[12.5px] font-medium', focused ? 'text-fg' : 'text-fg-3')}>{win.title}</div>
-          <div className="w-[62px]" />
+        )}
+        <div className="relative min-h-0 flex-1">
+          <SurfaceErrorBoundary label={win.title}>{children}</SurfaceErrorBoundary>
         </div>
-      )}
-      <div className="relative min-h-0 flex-1">
-        <SurfaceErrorBoundary label={win.title}>{children}</SurfaceErrorBoundary>
       </div>
-      {!win.maximized &&
-        EDGES.map(edge => <div key={edge} className={cn('absolute z-10', EDGE_CLASS[edge])} onPointerDown={event => startGesture(event, 'resize', edge)} />)}
+      {!win.maximized && win.phase !== 'closing' && EDGES.map(edge => <div key={edge} data-resize-edge={edge} className={cn('absolute z-10', EDGE_CLASS[edge])} onPointerDown={event => startGesture(event, 'resize', edge)} />)}
     </div>
   )
 })
