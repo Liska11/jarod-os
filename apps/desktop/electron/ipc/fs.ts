@@ -6,7 +6,7 @@ import path from 'node:path'
 import { type DirEntry, type FilePreview, IPC, type TreeEntry } from '../../shared/ipc.ts'
 import { run } from '../platform/exec.ts'
 import { type EditorTarget, hostPlatform } from '../platform/index.ts'
-import { assertWritablePath, isProjectLocation } from './path-guard.ts'
+import { assertOpenablePath, assertReadablePath, assertWritablePath, isProjectLocation } from './path-guard.ts'
 
 const TEXT_LIMIT = 2 * 1024 * 1024
 const IMAGE_LIMIT = 24 * 1024 * 1024
@@ -39,7 +39,7 @@ export function normalizeUserPath(input: string): string {
 }
 
 async function readDir(target: string): Promise<DirEntry[]> {
-  const dir = normalizeUserPath(target)
+  const dir = assertReadable(target)
   const dirents = await fs.readdir(dir, { withFileTypes: true })
   const entries = await Promise.all(
     dirents.map(async dirent => {
@@ -84,7 +84,7 @@ async function readDir(target: string): Promise<DirEntry[]> {
 }
 
 async function readFile(target: string): Promise<FilePreview> {
-  const file = normalizeUserPath(target)
+  const file = assertReadable(target)
   const stat = await fs.stat(file)
 
   if (stat.isDirectory()) {
@@ -131,8 +131,18 @@ function assertWritable(target: string): string {
   return assertWritablePath(normalizeUserPath(target))
 }
 
+/** Paths the window may read or show: allowed outside home, never a protected location and never through a name trick. */
+function assertReadable(target: string): string {
+  return assertReadablePath(normalizeUserPath(target))
+}
+
+/** Paths the default action may open: documents and folders, never a program, a script or a shortcut. */
+function assertOpenable(target: string): string {
+  return assertOpenablePath(normalizeUserPath(target))
+}
+
 async function dirSize(target: string, budgetMs = 4000): Promise<{ bytes: number; files: number; complete: boolean }> {
-  const root = normalizeUserPath(target)
+  const root = assertReadable(target)
   const deadline = Date.now() + budgetMs
   let bytes = 0
   let files = 0
@@ -183,7 +193,7 @@ const skipped = (relative: string): boolean => relative.split(path.sep).some(par
 
 /** Project folders must be real directories inside the home folder. */
 async function projectRoot(target: string): Promise<string> {
-  const root = normalizeUserPath(target)
+  const root = assertReadable(target)
 
   if (!isProjectLocation(root)) {
     throw new Error('project folders must be inside your home folder')
@@ -305,12 +315,12 @@ export function registerFsIpc(getWindow: () => BrowserWindow | null): void {
   ipcMain.handle(IPC.fsRecent, (_event, limit: number) => hostPlatform().recentFiles(Math.max(1, Math.min(200, Number(limit) || 30))))
   ipcMain.handle(IPC.fsFind, (_event, query: string, limit: number) => hostPlatform().findFiles(String(query ?? '').slice(0, 200), Math.max(1, Math.min(50, Number(limit) || 10))))
   ipcMain.handle(IPC.fsThumbnail, async (_event, target: string, size: number) => {
-    const png = await hostPlatform().thumbnail(normalizeUserPath(target), Math.max(64, Math.min(1024, Number(size) || 512)))
+    const png = await hostPlatform().thumbnail(assertReadable(target), Math.max(64, Math.min(1024, Number(size) || 512)))
 
     return png ? `data:image/png;base64,${png.toString('base64')}` : null
   })
   ipcMain.handle(IPC.fsImageInfo, async (_event, target: string) => {
-    const file = normalizeUserPath(target)
+    const file = assertReadable(target)
     // sips is the macOS image tool; elsewhere Chromium's own decoder reads the size (PNG, JPEG, BMP, ICO).
     if (process.platform !== 'darwin') {
       const size = nativeImage.createFromPath(file).getSize()
@@ -391,13 +401,13 @@ export function registerFsIpc(getWindow: () => BrowserWindow | null): void {
   ipcMain.handle(IPC.fsDirSize, (_event, target: string) => dirSize(target))
   ipcMain.handle(IPC.fsReadDir, (_event, target: string) => readDir(target))
   ipcMain.handle(IPC.fsReadFile, (_event, target: string) => readFile(target))
-  ipcMain.handle(IPC.fsReveal, (_event, target: string) => hostPlatform().revealPath(normalizeUserPath(target)))
+  ipcMain.handle(IPC.fsReveal, (_event, target: string) => hostPlatform().revealPath(assertReadable(target)))
   ipcMain.handle(IPC.fsOpenPath, async (_event, target: string) => {
-    const error = await shell.openPath(normalizeUserPath(target))
+    const error = await shell.openPath(assertOpenable(target))
 
     if (error) {
       throw new Error(error)
     }
   })
-  ipcMain.handle(IPC.fsOpenIn, (_event, editor: EditorTarget, target: string) => hostPlatform().openIn(editor, normalizeUserPath(target)))
+  ipcMain.handle(IPC.fsOpenIn, (_event, editor: EditorTarget, target: string) => hostPlatform().openIn(editor, assertReadable(target)))
 }
