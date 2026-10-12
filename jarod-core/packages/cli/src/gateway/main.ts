@@ -1,8 +1,8 @@
 // Point d'entrée de l'essai : `pnpm --filter @jarod/cli exec tsx src/gateway/main.ts`.
 // Ouvre le noyau de Jarod sur un profil ISOLÉ (`JAROD_HOME` obligatoire : l'essai n'écrit jamais dans le profil réel sans `--real-profile`)
 // et le sert comme un `hermes serve`. Écrit `HERMES_BACKEND_READY port=N` (la ligne que le shell sait lire) et un fichier
-// `gateway.json` (url + jeton, 0600) dans le dossier du profil ; Ctrl-C affiche ce que le shell a demandé sans l'obtenir.
-import { chmodSync, existsSync, realpathSync, statSync, writeFileSync } from "node:fs";
+// `gateway.json` (url + jeton, 0600 et restriction `icacls` sous Windows, effacé à l'arrêt) dans le dossier du profil ; Ctrl-C affiche ce que le shell a demandé sans l'obtenir.
+import { existsSync, realpathSync, statSync } from "node:fs";
 import { isAbsolute, join } from "node:path";
 import { assertOneaiChannel, bindLocalModelsEvents, bindUpdateEvents, bindVoiceEvents, closeAllApiServers, createHandlers, desktopKernelOf, HERMES_REGISTRY, RegistryClient, startRememberedApiServers } from "@jarod/bridge";
 import { ProfileManager } from "@jarod/plugin-persona";
@@ -10,6 +10,7 @@ import { defaultDataRoot, openCore } from "../context.js";
 import { createBridgePort } from "./bridge.js";
 import { createRemoteBrowser } from "./browser.js";
 import { createBridgeShell } from "./bridge-shell.js";
+import { removeSecretFile, writeSecretFile } from "./secret-file.js";
 import { createGateway } from "./server.js";
 
 const env = process.env;
@@ -80,12 +81,9 @@ const unbindEvents = [bindLocalModelsEvents(kernel.localEngine?.models, pushEven
 await startRememberedApiServers().catch((e: unknown) => console.error(`[passerelle] serveur d'API non rallumé : ${e instanceof Error ? e.message : String(e)}`));
 const port = await gateway.listen(env.JAROD_GATEWAY_PORT ? Number(env.JAROD_GATEWAY_PORT) : 0);
 const file = join(dataDir, "gateway.json");
-writeFileSync(file, JSON.stringify({ url: `http://127.0.0.1:${port}`, token: gateway.token }), { mode: 0o600 });
-try {
-  chmodSync(file, 0o600);
-} catch {
-  // Windows : les droits POSIX n'y ont pas de sens.
-}
+// Le fichier porte le jeton en clair : écrit par `writeSecretFile` (0o600, plus `icacls` sous Windows), effacé à l'arrêt.
+const hardened = writeSecretFile(file, JSON.stringify({ url: `http://127.0.0.1:${port}`, token: gateway.token }));
+if (hardened.error) console.error(`[passerelle] jeton en clair non restreint : ${hardened.error}`);
 console.log(`HERMES_BACKEND_READY port=${port}`);
 // Où lire l'adresse et le jeton : le jeton n'est jamais imprimé, il est dans ce fichier (réservé à l'utilisateur).
 console.log(`JAROD_GATEWAY_FILE ${file}`);
@@ -101,6 +99,7 @@ const stop = async () => {
   detachBrowser?.();
   closeAllApiServers();
   await gateway.close();
+  removeSecretFile(file); // un jeton ne survit pas à la passerelle qui l'a produit
   await core.dispose().catch(() => {});
   process.exit(0);
 };

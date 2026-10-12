@@ -20,13 +20,22 @@ export interface BackendState {
   phase: BackendPhase
   attempt: number
   runtime?: BackendRuntime
+  /** URL du WebSocket JSON-RPC, **sans** jeton (voir `wsToken` et `src/lib/ws-auth.ts`). */
   wsUrl?: string
+  /** Jeton de la passerelle : la fenêtre le présente en sous-protocole WebSocket, jamais dans une URL. */
+  wsToken?: string
   baseUrl?: string
   port?: number
   error?: string
   logTail: string[]
   /** Another app's messaging gateway on this Hermes home (Hermes Desktop, say): its pid. */
   sharedGateway?: number
+}
+
+/** Cible d'un WebSocket authentifié de la passerelle : le jeton va en sous-protocole, pas dans l'URL. */
+export interface AudioWsTarget {
+  url: string
+  token: string
 }
 
 export interface RestRequest {

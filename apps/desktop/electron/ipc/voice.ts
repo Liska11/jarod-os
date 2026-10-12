@@ -8,8 +8,8 @@ import { isShellPage } from '../paths.ts'
 const MEDIA_PERMISSIONS = new Set(['media', 'audioCapture', 'speaker-selection'])
 
 /**
- * Voice plumbing owned by main: the microphone permission gate, tokenized audio WebSocket URLs
- * (so the renderer can dial `/api/audio/speak-stream` the same way it dials the gateway), and the
+ * Voice plumbing owned by main: the microphone permission gate, audio WebSocket targets (token offered
+ * as a subprotocol, never in the URL — see `src/lib/ws-auth.ts`), and the
  * global hotkey that toggles a conversation from any app.
  */
 export function registerVoiceIpc(backend: BackendManager): void {

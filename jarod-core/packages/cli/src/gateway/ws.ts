@@ -25,6 +25,41 @@ export function acceptKey(clientKey: string): string {
   return createHash("sha1").update(clientKey + GUID).digest("base64");
 }
 
+/**
+ * Sous-protocoles de la passerelle : `jarod-gw` dit « je parle le protocole de la passerelle », puis
+ * `jarod.token.<jeton>`. Un navigateur ne peut pas poser d'en-tête sur un WebSocket, donc c'est la
+ * seule place où notre jeton peut voyager sans être dans l'URL (qui finit dans les journaux, l'historique
+ * du navigateur et les messages d'erreur). `Sec-WebSocket-Protocol` est une liste de jetons RFC 7230 :
+ * le base64url du jeton y passe tel quel.
+ *
+ * Doit rester aligné sur `apps/desktop/src/lib/ws-auth.ts` côté fenêtre.
+ */
+export const WS_PROTOCOL = "jarod-gw";
+export const WS_TOKEN_PREFIX = "jarod.token.";
+
+/** Les sous-protocoles offerts par la requête, dans l'ordre, sans espaces. */
+export function wsOfferedProtocols(req: IncomingMessage): string[] {
+  const header = req.headers["sec-websocket-protocol"];
+  return typeof header === "string" ? header.split(",").map((p) => p.trim()).filter(Boolean) : [];
+}
+
+/** Le jeton présenté en sous-protocole, `null` si le client n'en a pas offert (il passe alors par l'URL). */
+export function wsProtocolToken(req: IncomingMessage): string | null {
+  const offered = wsOfferedProtocols(req);
+  const protocol = offered.find((p) => p.startsWith(WS_TOKEN_PREFIX));
+  return protocol ? protocol.slice(WS_TOKEN_PREFIX.length) : null;
+}
+
+/**
+ * Le sous-protocole à renvoyer dans le 101 : un client qui en a offert un refuse la connexion si le
+ * serveur n'en choisit aucun. On préfère `jarod-gw`, pour ne pas renvoyer le jeton dans une réponse.
+ */
+export function wsSelectedProtocol(req: IncomingMessage): string | null {
+  const offered = wsOfferedProtocols(req);
+  if (offered.includes(WS_PROTOCOL)) return WS_PROTOCOL;
+  return offered.find((p) => p.startsWith(WS_TOKEN_PREFIX)) ?? null;
+}
+
 /** Une trame sortante, sans masque (pur). */
 export function encodeFrame(opcode: number, payload: Buffer): Buffer {
   const n = payload.length;
@@ -84,17 +119,18 @@ export function decodeFrame(buf: Buffer): { frame: DecodedFrame; used: number } 
 
 /**
  * Termine la poignée de main et branche les gestionnaires. `null` (et le socket est fermé avec un 400) si la requête n'est pas une
- * mise à niveau WebSocket valide.
+ * mise à niveau WebSocket valide. `subprotocol` est celui choisi par l'appelant (voir `wsSelectedProtocol`) : il est renvoyé dans le 101,
+ * ce qu'un client exige dès qu'il en a offert un.
  */
-export function acceptUpgrade(req: IncomingMessage, socket: Duplex, head: Buffer, handlers: WsHandlers): WsConnection | null {
+export function acceptUpgrade(req: IncomingMessage, socket: Duplex, head: Buffer, handlers: WsHandlers, subprotocol: string | null = null): WsConnection | null {
   const key = req.headers["sec-websocket-key"];
   if (req.headers.upgrade?.toLowerCase() !== "websocket" || typeof key !== "string" || req.headers["sec-websocket-version"] !== "13") {
     socket.end("HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n");
     return null;
   }
-  socket.write(
-    ["HTTP/1.1 101 Switching Protocols", "Upgrade: websocket", "Connection: Upgrade", `Sec-WebSocket-Accept: ${acceptKey(key)}`, "", ""].join("\r\n"),
-  );
+  const headers = ["HTTP/1.1 101 Switching Protocols", "Upgrade: websocket", "Connection: Upgrade", `Sec-WebSocket-Accept: ${acceptKey(key)}`];
+  if (subprotocol) headers.push(`Sec-WebSocket-Protocol: ${subprotocol}`);
+  socket.write([...headers, "", ""].join("\r\n"));
 
   let closed = false;
   let pending: Buffer = Buffer.alloc(0);

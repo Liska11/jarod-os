@@ -2,6 +2,7 @@
 // int16 PCM out, scheduled gaplessly on a WebAudio context. One instance is one spoken reply.
 import { atom } from 'nanostores'
 import { rest } from '../rest.ts'
+import { gatewayProtocols } from '../ws-auth.ts'
 import { int16ToFloat } from './pcm.ts'
 
 /** Output level 0..1 while Hermes speaks, for the orb. */
@@ -54,10 +55,20 @@ export class SpeakStream {
   }
 
   private async open(): Promise<void> {
-    let url: string
+    const target = await window.heraldOS.voice.audioWsUrl('speak-stream').catch(error => {
+      this.finish('error', error instanceof Error ? error.message : String(error))
+
+      return null
+    })
+
+    if (!target) {
+      return
+    }
+
+    let protocols: string[]
 
     try {
-      url = await window.heraldOS.voice.audioWsUrl('speak-stream')
+      protocols = gatewayProtocols(target.token)
     } catch (error) {
       this.finish('error', error instanceof Error ? error.message : String(error))
 
@@ -65,7 +76,7 @@ export class SpeakStream {
     }
 
     await new Promise<void>(resolve => {
-      const socket = new WebSocket(url)
+      const socket = new WebSocket(target.url, protocols)
       socket.binaryType = 'arraybuffer'
       this.socket = socket
       socket.onopen = () => {

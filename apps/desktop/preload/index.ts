@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import {
   type AudioWsKind,
+  type AudioWsTarget,
   type AuditEntry,
   type BackendState,
   type CalendarResult,
@@ -340,8 +341,8 @@ const api = {
     microphoneStatus: (): Promise<MicPermission> => ipcRenderer.invoke(IPC.voiceMicrophoneStatus),
     /** Prompt the OS for microphone access when it has not been decided yet. */
     requestMicrophone: (): Promise<MicPermission> => ipcRenderer.invoke(IPC.voiceRequestMicrophone),
-    /** Tokenized URL for an authenticated audio WebSocket (speak-stream). */
-    audioWsUrl: (kind: AudioWsKind): Promise<string> => ipcRenderer.invoke(IPC.voiceAudioWsUrl, kind),
+    /** Audio WebSocket target for the shell (speak-stream): token as a subprotocol, never in the URL. */
+    audioWsUrl: (kind: AudioWsKind): Promise<AudioWsTarget> => ipcRenderer.invoke(IPC.voiceAudioWsUrl, kind),
     /** The global voice hotkey was pressed (fires in every window; the main surface acts). */
     onHotkey: (listener: () => void): Unsubscribe => subscribe<void>(IPC.voiceHotkey, () => listener())
   },

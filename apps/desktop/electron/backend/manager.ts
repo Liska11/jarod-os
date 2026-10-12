@@ -3,7 +3,7 @@ import crypto from 'node:crypto'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import type { AudioWsKind, BackendRuntime, BackendState, RestRequest } from '../../shared/ipc.ts'
+import type { AudioWsKind, AudioWsTarget, BackendRuntime, BackendState, RestRequest } from '../../shared/ipc.ts'
 import { osEnv } from '../env.ts'
 import { log } from '../log.ts'
 import { hermesHome, heraldOsDataDir } from '../paths.ts'
@@ -86,14 +86,14 @@ export class BackendManager {
     this.stopping = true
     this.clearRestartTimer()
     await this.killChild()
-    this.update({ phase: 'stopped', wsUrl: undefined, baseUrl: undefined, port: undefined })
+    this.update({ phase: 'stopped', wsUrl: undefined, wsToken: undefined, baseUrl: undefined, port: undefined })
   }
 
   /**
-   * Tokenized URL for an authenticated audio WebSocket. The renderer already receives the gateway
-   * `wsUrl` with the same loopback token, so this widens nothing (ADR-007 amendment).
+   * Authenticated audio WebSocket target: the URL carries no token, the renderer offers it as a
+   * WebSocket subprotocol (see `src/lib/ws-auth.ts`), exactly like the gateway socket.
    */
-  audioWsUrl(kind: AudioWsKind): string {
+  audioWsUrl(kind: AudioWsKind): AudioWsTarget {
     const { port, phase } = this.state
 
     if (!port || phase !== 'ready') {
@@ -102,7 +102,7 @@ export class BackendManager {
 
     const paths: Record<AudioWsKind, string> = { 'speak-stream': '/api/audio/speak-stream' }
 
-    return `ws://127.0.0.1:${port}${paths[kind]}?token=${encodeURIComponent(this.token)}`
+    return { url: `ws://127.0.0.1:${port}${paths[kind]}`, token: this.token }
   }
 
   async rest<T>(request: RestRequest): Promise<T> {
@@ -217,8 +217,8 @@ export class BackendManager {
         return
       }
 
-      const wsUrl = `ws://127.0.0.1:${port}/api/ws?token=${encodeURIComponent(this.token)}`
-      this.update({ phase: 'ready', port, baseUrl, wsUrl, error: undefined, sharedGateway: this.sharedGateway()?.pid })
+      const wsUrl = `ws://127.0.0.1:${port}/api/ws`
+      this.update({ phase: 'ready', port, baseUrl, wsUrl, wsToken: this.token, error: undefined, sharedGateway: this.sharedGateway()?.pid })
       log('backend', `ready on ${baseUrl} via ${runtime.label}`)
     } catch (error) {
       if (generation !== this.startGeneration) {
@@ -254,7 +254,7 @@ export class BackendManager {
 
       const url = new URL(target.baseUrl)
       const port = Number(url.port) || 80
-      this.update({ phase: 'ready', port, baseUrl: target.baseUrl, wsUrl: `ws://${url.host}/api/ws?token=${encodeURIComponent(this.token)}`, error: undefined, sharedGateway: undefined })
+      this.update({ phase: 'ready', port, baseUrl: target.baseUrl, wsUrl: `ws://${url.host}/api/ws`, wsToken: this.token, error: undefined, sharedGateway: undefined })
       log('backend', `attached to ${target.baseUrl}`)
     } catch (error) {
       if (generation === this.startGeneration) {
@@ -403,14 +403,14 @@ export class BackendManager {
     const next = previousAttempt + 1
 
     if (next > MAX_RESTARTS) {
-      this.update({ phase: 'failed', error: reason, wsUrl: undefined, baseUrl: undefined, port: undefined })
+      this.update({ phase: 'failed', error: reason, wsUrl: undefined, wsToken: undefined, baseUrl: undefined, port: undefined })
 
       return
     }
 
     const delay = BACKOFF_MS[Math.min(next - 1, BACKOFF_MS.length - 1)]
     log('backend', `restart ${next}/${MAX_RESTARTS} in ${delay}ms: ${reason}`)
-    this.update({ phase: 'restarting', attempt: next, error: reason, wsUrl: undefined, baseUrl: undefined, port: undefined })
+    this.update({ phase: 'restarting', attempt: next, error: reason, wsUrl: undefined, wsToken: undefined, baseUrl: undefined, port: undefined })
     this.clearRestartTimer()
     this.restartTimer = setTimeout(() => void this.launch(next), delay)
   }

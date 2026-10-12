@@ -3,6 +3,7 @@ import type { Message, Session, SessionContext } from "@jarod/contracts";
 import type { AgentHooks } from "@jarod/plugin-agent";
 import { afterEach, describe, expect, it } from "vitest";
 import { createGateway, type Gateway, type GatewayCore } from "../src/gateway/server.js";
+import { WS_PROTOCOL, WS_TOKEN_PREFIX } from "../src/gateway/ws.js";
 
 function fakeCore(script: (sessionId: string, text: string, hooks: AgentHooks) => Promise<void>) {
   const sessions = new Map<string, Session>();
@@ -41,13 +42,19 @@ interface Client {
   call(method: string, params?: Record<string, unknown>): Promise<{ result?: any; error?: { code: number; message: string } }>;
   events: { type: string; session_id?: string; payload?: any }[];
   requests: { id: string; method: string; params: any }[];
+  /** Sous-protocole négocié (vide si le serveur n'en a choisi aucun). */
+  protocol: string;
   reply(id: string, result: unknown): void;
   waitFor(pred: () => boolean, ms?: number): Promise<void>;
   close(): void;
 }
 
-async function connect(gw: Gateway, port: number, token = gw.token): Promise<Client> {
-  const ws = new WebSocket(`ws://127.0.0.1:${port}/api/ws?token=${token}`);
+async function connect(gw: Gateway, port: number, token = gw.token, via: "url" | "protocol" = "url"): Promise<Client> {
+  // `protocol` = la fenêtre : jeton en sous-protocole, URL sans jeton. `url` = les clients Hermes existants.
+  const ws =
+    via === "protocol"
+      ? new WebSocket(`ws://127.0.0.1:${port}/api/ws`, [WS_PROTOCOL, `${WS_TOKEN_PREFIX}${token}`])
+      : new WebSocket(`ws://127.0.0.1:${port}/api/ws?token=${token}`);
   const events: Client["events"] = [];
   const requests: Client["requests"] = [];
   const waiting = new Map<number, (frame: any) => void>();
@@ -73,6 +80,7 @@ async function connect(gw: Gateway, port: number, token = gw.token): Promise<Cli
   return {
     events,
     requests,
+    protocol: ws.protocol,
     waitFor,
     close: () => ws.close(),
     reply: (id, result) => ws.send(JSON.stringify({ jsonrpc: "2.0", id, result })),
@@ -141,6 +149,17 @@ describe("passerelle compatible Hermes", () => {
     expect(c.events[0]).toMatchObject({ type: "gateway.ready", payload: { change_events: false, heartbeat: false } });
     expect(typeof c.events[0]!.payload.replay_epoch).toBe("string");
     c.close();
+  });
+
+  it("authentifie le jeton par sous-protocole : il ne figure alors dans aucune URL, et le 101 en choisit un", async () => {
+    const { gw, port } = await start(fakeCore(async () => {}).core);
+    const c = await connect(gw, port, gw.token, "protocol");
+    // Un client qui a offert un sous-protocole refuse la connexion si le serveur n'en choisit aucun :
+    // la connexion ouverte ET ce nom prouvent que le 101 a bien écho `jarod-gw`.
+    expect(c.protocol).toBe(WS_PROTOCOL);
+    expect(c.events[0]).toMatchObject({ type: "gateway.ready" });
+    c.close();
+    await expect(connect(gw, port, "mauvais", "protocol")).rejects.toThrow();
   });
 
   it("crée, liste, reprend et supprime une session", async () => {

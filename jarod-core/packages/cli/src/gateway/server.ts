@@ -4,6 +4,7 @@
 //   *    /api/…               REST : jeton `X-Hermes-Session-Token` exigé ; tout ce qui n'est pas servi répond 404 ET est consigné
 // Ce qui n'est pas servi est le résultat de l'essai : `unhandled()` le liste, il alimente le plan de portage.
 import { redactText } from "@jarod/kernel/redact";
+import { sameSecret } from "@jarod/kernel/secret";
 import { randomBytes } from "node:crypto";
 import { statSync } from "node:fs";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
@@ -22,7 +23,7 @@ import { analytics, parseDays, periodStart, type UsageRow, USAGE_SQL } from "./u
 import { checkTexts, MEMORY_FILE_NAMES, type MemoryFileName, type MemoryServiceLike, memoryFiles, type ProfileLike, writeMemoryFile } from "./memory.js";
 import { cronJobs, memoryStatus, type SchedulerLike } from "./rest.js";
 import { parseScheduleText, ScheduleTextError } from "./schedule-text.js";
-import { acceptUpgrade, type WsConnection } from "./ws.js";
+import { acceptUpgrade, type WsConnection, wsProtocolToken, wsSelectedProtocol } from "./ws.js";
 
 /** Ce que la passerelle demande au noyau : le strict nécessaire, pour qu'un faux noyau suffise aux tests. */
 export interface GatewayCore {
@@ -688,7 +689,7 @@ export function createGateway(opts: GatewayOptions): Gateway {
     const url = new URL(req.url ?? "/", "http://127.0.0.1");
     if (req.method === "GET" && url.pathname === "/api/status") return json(res, 200, { status: "ok", version, backend: "jarod" });
     if (!url.pathname.startsWith("/api/")) return json(res, 404, { detail: "not found" });
-    if (req.headers["x-hermes-session-token"] !== token) {
+    if (!sameSecret(req.headers["x-hermes-session-token"], token)) {
       req.resume();
       return json(res, 401, { detail: "invalid session token" });
     }
@@ -790,15 +791,18 @@ export function createGateway(opts: GatewayOptions): Gateway {
 
   server.on("upgrade", (req, socket, head) => {
     const url = new URL(req.url ?? "/", "http://127.0.0.1");
-    const supplied = url.searchParams.get("token") ?? req.headers["x-hermes-session-token"];
+    // Le jeton vient d'abord du sous-protocole (notre fenêtre : il ne traîne alors dans aucune URL), puis de la query string
+    // et de l'en-tête, que les clients Hermes existants utilisent (`hermes` en ligne de commande, une autre fenêtre).
+    const supplied = wsProtocolToken(req) ?? url.searchParams.get("token") ?? req.headers["x-hermes-session-token"];
+    const authed = sameSecret(supplied, token);
     // Le flux de voix phrase par phrase n'est pas servi : on répond « repli » tout de suite, la fenêtre dit alors la réponse entière par `/api/audio/speak`.
-    if (url.pathname === "/api/audio/speak-stream" && supplied === token) {
-      const stream = acceptUpgrade(req, socket, head, { onText: () => {}, onClose: () => {} });
+    if (url.pathname === "/api/audio/speak-stream" && authed) {
+      const stream = acceptUpgrade(req, socket, head, { onText: () => {}, onClose: () => {} }, wsSelectedProtocol(req));
       stream?.send(JSON.stringify({ type: "fallback" }));
       stream?.close();
       return;
     }
-    if (url.pathname !== "/api/ws" || supplied !== token) {
+    if (url.pathname !== "/api/ws" || !authed) {
       socket.end(`HTTP/1.1 ${url.pathname === "/api/ws" ? "401 Unauthorized" : "404 Not Found"}\r\nConnection: close\r\n\r\n`);
       return;
     }
@@ -811,7 +815,7 @@ export function createGateway(opts: GatewayOptions): Gateway {
         for (const resolve of conn.pending.values()) resolve(null);
         conn.pending.clear();
       },
-    });
+    }, wsSelectedProtocol(req));
     if (!ws) return;
     conn.ws = ws;
     conns.add(conn);
