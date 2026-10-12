@@ -41,6 +41,9 @@ export const $webWindows = atom<Record<string, WebWindow>>({})
  * (command bar, launcher, notifications panel, pending Hermes requests) the views hide and their
  * frames show a placeholder instead.
  */
+/** A pointer gesture is under way (a divider held): native views hide, they would swallow the pointer. */
+export const $webViewsPaused = atom(false)
+
 export const $webViewsCovered = computed([$commandBarOpen, $applicationsOpen, $notificationsOpen, $pendingRequests], (command, apps, notifications, pending) => command || apps || notifications || pending.length > 0)
 
 function patch(id: string, next: Partial<WebWindow>): void {

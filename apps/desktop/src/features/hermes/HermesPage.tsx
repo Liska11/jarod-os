@@ -2,6 +2,7 @@ import { useStore } from '@nanostores/react'
 import { IconArrowUpRight, IconHistory, IconPencil, IconPlus, IconTrash, IconX } from '@tabler/icons-react'
 import { useEffect, useRef, useState } from 'react'
 import { GlassButton, GlassCard, MoreButton } from '../../components/ui/glass.tsx'
+import { SplitRow } from '../../components/ui/split-row.tsx'
 import { $activeChat, $activeChatId, $chats, createChat, forgetChat } from '../../store/chat.ts'
 import { $connection } from '../../store/gateway.ts'
 import { notify } from '../../store/notifications.ts'
@@ -12,9 +13,13 @@ import { ArtifactPane } from './ArtifactPane.tsx'
 import { Conversation } from './Conversation.tsx'
 import { MenuDivider, MenuItem, PopMenu } from './Menu.tsx'
 
+/** The conversation never gets narrower than a readable column; the preview can be pulled away altogether. */
+const SPLIT_LIMITS = { minLeft: 380, minRight: 280, snapRight: 160 }
+
 /*
- * The Hermes page: a conversation on the left, what Hermes produced on the right. Chat state is
- * the shared store/chat.ts pipeline; this page only lays it out and adds the artifact pane.
+ * The Hermes page: a conversation on the left, what Hermes produced on the right, a divider between them
+ * that can be dragged (the preview can be hidden to give the chat the whole width). Chat state is the shared
+ * store/chat.ts pipeline; this page only lays it out and adds the artifact pane.
  */
 export function HermesPage() {
   const chat = useStore($activeChat)
@@ -151,14 +156,21 @@ export function HermesPage() {
         </PopMenu>
       </div>
 
-      <div className="flex min-h-0 flex-1 gap-4 px-6 pb-6">
-        <GlassCard className="flex min-w-[380px] basis-[45%] flex-col overflow-hidden">
-          <Conversation chat={chat} online={online} />
-        </GlassCard>
-        <GlassCard className="flex min-w-0 flex-1 flex-col overflow-hidden">
-          <ArtifactPane chat={chat} />
-        </GlassCard>
-      </div>
+      <SplitRow
+        storageKey="jarod.hermes.split"
+        limits={SPLIT_LIMITS}
+        rightLabel="preview"
+        left={
+          <GlassCard className="flex min-h-0 flex-1 flex-col overflow-hidden">
+            <Conversation chat={chat} online={online} />
+          </GlassCard>
+        }
+        right={
+          <GlassCard className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+            <ArtifactPane chat={chat} />
+          </GlassCard>
+        }
+      />
 
       {sessionsOpen && (
         <div className="absolute inset-0 z-10 flex" role="dialog" aria-label="Sessions">

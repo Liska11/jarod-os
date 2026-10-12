@@ -1,7 +1,7 @@
 import { useStore } from '@nanostores/react'
 import { type RefObject, useLayoutEffect, useMemo } from 'react'
 import { $viewAvoid, trimAround } from '../../store/view-avoid.ts'
-import { $webViewsCovered } from '../../store/web-windows.ts'
+import { $webViewsCovered, $webViewsPaused } from '../../store/web-windows.ts'
 import { $windows, type Bounds, type OSWindow } from '../../store/windows.ts'
 
 const intersects = (a: Bounds, b: Bounds): boolean => a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height
@@ -25,10 +25,11 @@ export interface NativeViewState {
 export function useNativeView(viewId: string | null, element: RefObject<HTMLElement | null>, win: OSWindow, options: { active?: boolean; followFrameRadius?: boolean } = {}): NativeViewState {
   const windows = useStore($windows)
   const covered = useStore($webViewsCovered)
+  const paused = useStore($webViewsPaused)
   const avoid = useStore($viewAvoid)
   const occluded = useMemo(() => isOccluded(win, windows), [win, windows])
   const active = options.active ?? true
-  const visible = Boolean(viewId) && active && win.phase === 'open' && !covered && !occluded
+  const visible = Boolean(viewId) && active && win.phase === 'open' && !covered && !occluded && !paused
   const followFrameRadius = options.followFrameRadius ?? true
 
   useLayoutEffect(() => {
