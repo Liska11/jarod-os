@@ -81,17 +81,18 @@ async function rig(opts: { bridge?: boolean } = {}) {
     await gw.close();
     await core.dispose();
   });
-  const call = async (path: string, body: unknown, token: string | null = gw.token) => {
+  const request = async (method: string, path: string, body: unknown, token: string | null = gw.token) => {
     const res = await fetch(`http://127.0.0.1:${port}${path}`, {
-      method: "POST",
+      method,
       headers: { "content-type": "application/json", ...(token ? { "x-hermes-session-token": token } : {}) },
       body: JSON.stringify(body),
     });
     const text = await res.text();
     return { status: res.status, json: text ? JSON.parse(text) : null };
   };
+  const call = (path: string, body: unknown, token: string | null = gw.token) => request("POST", path, body, token);
   const invoke = (channel: string, args: unknown[] = []) => call("/api/jarod/invoke", { channel, args });
-  return { gw, port, call, invoke };
+  return { gw, port, call, invoke, request };
 }
 
 describe("POST /api/jarod/invoke (vrai noyau, vrais handlers)", () => {
@@ -140,6 +141,21 @@ describe("POST /api/jarod/invoke (vrai noyau, vrais handlers)", () => {
     expect((await rpc({ channel: "rm-rf" })).error.message).toMatch(/refus|canal|autoris/i);
     expect((await rpc({ channel: "terminal-open" })).error.message).toMatch(/non porté/);
     expect((await rpc({})).error.message).toMatch(/channel/);
+  });
+
+  it("la page Connexions (PUT /api/messaging/platforms/:id) fait la même chose que Réglages › Messaging, et un canal sans jetons ne s'allume pas", async () => {
+    const { request, invoke } = await rig();
+    const put = (id: string, body: unknown) => request("PUT", `/api/messaging/platforms/${id}`, body);
+    const refused = await put("telegram", { enabled: true });
+    expect(refused.status).toBe(400);
+    expect(refused.json.detail).toMatch(/pas encore configuré/);
+    expect((await put("telegram", { enabled: "oui" })).status).toBe(400);
+    expect((await put("inconnu", { enabled: true })).status).toBe(404);
+    expect((await invoke("update-messaging-platform", ["telegram", { env: { TELEGRAM_BOT_TOKEN: "123456:TEST-token_abcdefghijk" } }])).status).toBe(200);
+    expect((await put("telegram", { enabled: true })).status).toBe(200);
+    expect((await invoke("get-platform-enabled")).json.result.telegram).toBe(true);
+    expect((await put("telegram", { enabled: false })).status).toBe(200);
+    expect((await invoke("get-platform-enabled")).json.result.telegram).toBe(false);
   });
 
   it("sans pont branché : 404", async () => {

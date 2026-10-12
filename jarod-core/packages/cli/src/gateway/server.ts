@@ -654,8 +654,25 @@ export function createGateway(opts: GatewayOptions): Gateway {
     }
     const p = /^\/api\/messaging\/platforms\/([^/]+)$/.exec(path);
     if (p && method === "PUT") {
-      await readJson(req);
-      asHttp(() => refusePlatformToggle(decodeURIComponent(p[1]!)));
+      const body = await readJson(req);
+      const id = decodeURIComponent(p[1]!);
+      // Sans le pont (faux noyau), l'activation reste refusée. Avec lui, la page Connexions fait la même chose que Réglages › Messaging — jamais plus : un canal sans
+      // ses jetons ne s'allume pas (c'est l'écran de réglage qui les demande).
+      if (!bridge) asHttp(() => refusePlatformToggle(id));
+      if (typeof body.enabled !== "boolean") throw new HttpError(400, "enabled must be true or false");
+      try {
+        if (body.enabled) {
+          const all = (await bridge!.invoke("get-messaging-platforms", [])) as { platforms: { id: string; configured: boolean }[] };
+          const platform = all.platforms.find((x) => x.id === id);
+          if (!platform) throw new HttpError(404, `${id} : canal inconnu`);
+          if (!platform.configured) throw new HttpError(400, `${id} : pas encore configuré — saisissez ses jetons dans Réglages › Messaging`);
+        }
+        await bridge!.invoke("set-platform-enabled", [id, body.enabled]);
+      } catch (e) {
+        if (e instanceof BridgeError) throw new HttpError(e.status, e.message);
+        throw e;
+      }
+      return done(200, { ok: true });
     }
     return false;
   };

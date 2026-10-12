@@ -153,7 +153,7 @@ export function moveItem<T>(items: readonly T[], from: number, to: number): T[] 
 
 /** "[oneai] réglage « x » : …" and transport prefixes dropped: what is left is the sentence for the user. */
 export function settingErrorText(message: string): string {
-  return message.replace(/^.*?\[oneai\]\s*/, '').replace(/^set-jarod-settings\s*:\s*/, '')
+  return message.replace(/^.*?\[oneai\]\s*/, '').replace(/^(set-jarod-settings|coffre)\s*:\s*/, '')
 }
 
 /** The user pressed Cancel on the native confirmation: not an error worth a red banner. */

@@ -8,6 +8,7 @@ import { $connectionsTick, setConnectionEnabled } from '../../store/connections-
 import { $activity } from '../../store/missions.ts'
 import { notify } from '../../store/notifications.ts'
 import { showPage } from '../../store/windows.ts'
+import { focusSettings } from '../settings/sections/shared.tsx'
 import { AddConnection } from './AddConnection.tsx'
 import { type ConnectionActions, ConnectionCard, ConnectionCardSkeleton } from './ConnectionCard.tsx'
 import { ConnectionDetail, ConnectionDetailSkeleton, type ProbeState } from './ConnectionDetail.tsx'
@@ -125,6 +126,12 @@ export function ConnectionsPage() {
     void sendPrompt(`Help me set up the ${name} integration in Hermes.`)
   }
 
+  /** Channel tokens and MCP servers are edited in one place: Settings (this page only switches them on and off). */
+  const openSettings = (section: 'messaging' | 'mcp') => {
+    showPage('settings')
+    focusSettings({ section })
+  }
+
   const setEnabled = (connection: Connection, enabled: boolean) => {
     void withBusy(connection.id, async () => {
       if (connection.source.kind === 'provider') {
@@ -168,7 +175,7 @@ export function ConnectionsPage() {
         }
         case 'messaging':
           if (!source.platform.configured) {
-            openHermesFor(connection.name)
+            openSettings('messaging')
           } else {
             await api.setPlatformEnabled(source.platform.id, true)
             notify({ title: `${connection.name} enabled`, body: 'Restart the gateway to reconnect the channel.', level: 'success' })
@@ -285,8 +292,10 @@ export function ConnectionsPage() {
           setSelectedId(`mcp:${install.entry.name}`)
           break
         }
-        case 'toolset':
         case 'messaging':
+          openSettings('messaging')
+          break
+        case 'toolset':
           openHermesFor(item.name)
           break
         case 'provider':
@@ -316,6 +325,9 @@ export function ConnectionsPage() {
             <div ref={searchRef}>
               <SearchField value={query} onChange={setQuery} placeholder="Find a connection" className="w-56" />
             </div>
+            <GlassButton variant="ghost" onClick={() => openSettings('mcp')} aria-label="Add or edit MCP servers">
+              MCP servers…
+            </GlassButton>
             <GlassButton variant="primary" onClick={openBrowse} aria-label="Add connection">
               <IconPlus />
               Add connection

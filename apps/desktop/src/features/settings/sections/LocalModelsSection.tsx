@@ -70,7 +70,7 @@ function ModelsInMemory() {
         </SettingsGroup>
       )}
       {data &&
-        (Object.keys(BACKEND_TITLE) as LocalBackend[]).map(backend => (
+        (Object.keys(BACKEND_TITLE) as LocalBackend[]).filter(backend => backend !== 'llamacpp' || data.backends.llamacpp.available).map(backend => (
           <BackendGroup key={backend} backend={backend} view={data.backends[backend]} onChanged={reload} />
         ))}
       {view.loading && !data && <div className="px-1 text-[12px] text-fg-4">Looking at what is loaded…</div>}

@@ -4,7 +4,7 @@ import { GlassButton, Pill, Toggle } from '../../../components/ui/glass.tsx'
 import { jarod } from '../../../lib/jarod.ts'
 import { useBackendData } from '../../../lib/use-async.ts'
 import { notify } from '../../../store/notifications.ts'
-import { useJarodSettings } from './jarod-controls.tsx'
+import { reportEngineError, useJarodSettings } from './jarod-controls.tsx'
 import { androidSummary, apiAddress, type ApiServerStatus, apiSummary, baseName, emptySsh, type PairingInfo, type PhoneStatus, phoneSummary, secondsLeft, type SshDraft, type SshHost, sshLine, sshProblems, type SshTest, timeLeftText } from './devices-model.ts'
 import { intProblem } from './jarod-settings-model.ts'
 import { isUnsupported } from './providers-model.ts'
@@ -50,9 +50,7 @@ function ApiBlock() {
       markSaved()
       notify({ title, level: 'success' })
     } catch (error) {
-      const message = errorText(error)
-
-      notify(/refusé par l.utilisateur/.test(message) ? { title: 'Not changed', body: 'You cancelled the confirmation.', level: 'info' } : { title: 'API', body: message.replace(/^.*?\[oneai\]\s*/, ''), level: 'error' })
+      reportEngineError('API', error)
     } finally {
       setBusy(false)
       status.reload()
@@ -159,9 +157,7 @@ function PhoneBlock() {
       markSaved()
       notify({ title, level: 'success' })
     } catch (error) {
-      const message = errorText(error)
-
-      notify(/refusé par l.utilisateur/.test(message) ? { title: 'Not changed', body: 'You cancelled the confirmation.', level: 'info' } : { title: 'Phone', body: message.replace(/^.*?\[oneai\]\s*/, ''), level: 'error' })
+      reportEngineError('Phone', error)
     } finally {
       setBusy(false)
       status.reload()

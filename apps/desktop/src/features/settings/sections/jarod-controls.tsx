@@ -21,6 +21,17 @@ export interface JarodSettingsApi {
   save: (patch: Record<string, unknown>, title?: string) => Promise<boolean>
 }
 
+/** One way to report a refused or failed engine call: a Cancel on the engine's native confirmation is "not changed", anything else is the engine's own sentence. */
+export function reportEngineError(title: string, error: unknown): void {
+  const message = error instanceof Error ? error.message : String(error)
+
+  if (isUserRefusal(message)) {
+    notify({ title: 'Not changed', body: 'You cancelled the confirmation.', level: 'info' })
+  } else {
+    notify({ title, body: settingErrorText(message), level: 'error' })
+  }
+}
+
 export function useJarodSettings(): JarodSettingsApi {
   const data = useBackendData(() => jarod<JarodSettings>('get-jarod-settings'))
   const [saving, setSaving] = useState(false)
@@ -36,13 +47,7 @@ export function useJarodSettings(): JarodSettingsApi {
 
       return true
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error)
-
-      if (isUserRefusal(message)) {
-        notify({ title: 'Not changed', body: 'You cancelled the confirmation.', level: 'info' })
-      } else {
-        notify({ title: 'Could not save the setting', body: settingErrorText(message), level: 'error' })
-      }
+      reportEngineError('Could not save the setting', error)
 
       return false
     } finally {

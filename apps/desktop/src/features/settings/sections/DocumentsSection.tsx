@@ -3,12 +3,11 @@ import { useEffect, useState } from 'react'
 import { GlassButton, ProgressBar } from '../../../components/ui/glass.tsx'
 import { jarod } from '../../../lib/jarod.ts'
 import { useBackendData } from '../../../lib/use-async.ts'
-import { notify } from '../../../store/notifications.ts'
-import { NumberRow, SwitchRow, TextRow, useJarodSettings } from './jarod-controls.tsx'
+import { NumberRow, reportEngineError, SwitchRow, TextRow, useJarodSettings } from './jarod-controls.tsx'
 import { intProblem } from './jarod-settings-model.ts'
 import { isUnsupported } from './providers-model.ts'
 import { embeddingsUrlProblem, indexSummary, overlapProblem, type RagIndexStatus, reindexAdvice, runPercent, runText } from './rag-model.ts'
-import { errorText, InlineNote, markSaved, SectionTitle, SettingsGroup, SettingsRow } from './shared.tsx'
+import { InlineNote, markSaved, SectionTitle, SettingsGroup, SettingsRow } from './shared.tsx'
 
 /*
  * Documents: search inside your documents. The agent indexes a file (the `rag_index` tool), cuts it into passages and asks an embeddings server to turn each into
@@ -60,11 +59,7 @@ export function DocumentsSection() {
       await jarod('rag-reindex')
       markSaved()
     } catch (error) {
-      const message = errorText(error)
-
-      if (!/refusé par l.utilisateur/.test(message)) {
-        notify({ title: 'Reindex', body: message.replace(/^.*?\[oneai\]\s*/, ''), level: 'error' })
-      }
+      reportEngineError('Reindex', error)
     } finally {
       setBusy(false)
       reload()

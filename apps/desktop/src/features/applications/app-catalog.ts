@@ -58,6 +58,7 @@ const ORDER: readonly Slot[] = [
   { kind: 'native', label: 'Studio', names: STUDIO_NAMES, category: 'creative' },
   { kind: 'hermes', appId: 'files', label: 'Documents', icon: 'documents' },
   { kind: 'hermes', appId: 'automations' },
+  { kind: 'hermes', appId: 'kanban' },
   { kind: 'hermes', appId: 'connections' },
   { kind: 'hermes', appId: 'terminal' },
   { kind: 'featured', label: 'Code' },

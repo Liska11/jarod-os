@@ -32,6 +32,13 @@ const PATHS: Record<AppIconId, React.ReactNode> = {
       <path d="M20 4v4h-4" />
     </>
   ),
+  kanban: (
+    <>
+      <rect x="4" y="4.5" width="4.6" height="15" rx="1.2" />
+      <rect x="9.7" y="4.5" width="4.6" height="9" rx="1.2" />
+      <rect x="15.4" y="4.5" width="4.6" height="12" rx="1.2" />
+    </>
+  ),
   connections: (
     <>
       <path d="M10 14 14 10" />

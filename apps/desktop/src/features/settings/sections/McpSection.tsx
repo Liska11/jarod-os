@@ -5,6 +5,7 @@ import { jarod } from '../../../lib/jarod.ts'
 import { useBackendData } from '../../../lib/use-async.ts'
 import { notify } from '../../../store/notifications.ts'
 import { describeServer, draftOf, draftProblems, emptyDraft, envNames, inputOf, type McpDraft, type McpServer } from './mcp-model.ts'
+import { reportEngineError } from './jarod-controls.tsx'
 import { isUnsupported } from './providers-model.ts'
 import { errorText, InlineNote, markSaved, SectionTitle, SettingsGroup, SettingsRow } from './shared.tsx'
 
@@ -48,7 +49,7 @@ export function McpSection() {
 
       return true
     } catch (error) {
-      notify({ title: 'MCP servers', body: errorText(error), level: 'error' })
+      reportEngineError('MCP servers', error)
 
       return false
     } finally {

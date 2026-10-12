@@ -13,6 +13,7 @@ const PAGE_VIEW: Record<PageId, ComponentType> = {
   memory: lazy(() => import('../features/memory/MemoryPage.tsx').then(m => ({ default: m.MemoryPage }))),
   files: lazy(() => import('../features/files/FilesPage.tsx').then(m => ({ default: m.FilesPage }))),
   automations: lazy(() => import('../features/automations/AutomationsPage.tsx').then(m => ({ default: m.AutomationsPage }))),
+  kanban: lazy(() => import('../features/kanban/KanbanPage.tsx').then(m => ({ default: m.KanbanPage }))),
   connections: lazy(() => import('../features/connections/ConnectionsPage.tsx').then(m => ({ default: m.ConnectionsPage }))),
   settings: lazy(() => import('../features/settings/SettingsPage.tsx').then(m => ({ default: m.SettingsPage })))
 }
@@ -24,6 +25,7 @@ const PAGE_LABEL: Record<PageId, string> = {
   memory: 'Memory',
   files: 'Files',
   automations: 'Automations',
+  kanban: 'Kanban',
   connections: 'Connections',
   settings: 'Settings'
 }

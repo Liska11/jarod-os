@@ -2,7 +2,7 @@ import type { ComponentType } from 'react'
 import type { InstalledApp } from '../../shared/ipc.ts'
 
 /** Pages inside the main Hermes window (sidebar navigation). */
-export type PageId = 'overview' | 'hermes' | 'missions' | 'memory' | 'files' | 'automations' | 'connections' | 'settings'
+export type PageId = 'overview' | 'hermes' | 'missions' | 'memory' | 'files' | 'automations' | 'kanban' | 'connections' | 'settings'
 
 /** Apps that open in their own floating window. */
 export type FloatingAppId = 'terminal' | 'system' | 'chat-popout' | 'web' | 'studio' | 'capture-editor' | 'camera' | 'widget'
@@ -31,6 +31,7 @@ export type AppIconId =
   | 'memory'
   | 'files'
   | 'automations'
+  | 'kanban'
   | 'connections'
   | 'settings'
   | 'terminal'
@@ -48,6 +49,7 @@ export const PAGES: readonly HermesAppDef<PageId>[] = [
   { id: 'memory', name: 'Memory', tagline: 'What Hermes knows, and why.', category: 'productivity', kind: 'page', icon: 'memory', shortcut: '4' },
   { id: 'files', name: 'Files', tagline: 'Everything on this Mac.', category: 'productivity', kind: 'page', icon: 'files', shortcut: '5' },
   { id: 'automations', name: 'Automations', tagline: 'Good routines, handled.', category: 'productivity', kind: 'page', icon: 'automations', shortcut: '6' },
+  { id: 'kanban', name: 'Kanban', tagline: 'Tasks the agent can pick up.', category: 'productivity', kind: 'page', icon: 'kanban' },
   { id: 'connections', name: 'Connections', tagline: 'Bring your tools into one workspace.', category: 'system', kind: 'page', icon: 'connections', shortcut: '7' },
   { id: 'settings', name: 'Settings', tagline: 'Choose how Hermes works with you.', category: 'system', kind: 'page', icon: 'settings', shortcut: ',' }
 ]

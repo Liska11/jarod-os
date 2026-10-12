@@ -4,8 +4,9 @@ import { GlassButton, Pill, Toggle } from '../../../components/ui/glass.tsx'
 import { jarod } from '../../../lib/jarod.ts'
 import { useBackendData } from '../../../lib/use-async.ts'
 import { notify } from '../../../store/notifications.ts'
+import { reportEngineError } from './jarod-controls.tsx'
 import { isUnsupported } from './providers-model.ts'
-import { errorText, InlineNote, markSaved, SectionTitle, SettingsGroup, SettingsRow } from './shared.tsx'
+import { InlineNote, markSaved, SectionTitle, SettingsGroup, SettingsRow } from './shared.tsx'
 import { draftOf, emptyVault, reachText, savePayload, type VaultDraft, type VaultEntry, vaultProblems } from './vault-model.ts'
 
 /*
@@ -41,9 +42,7 @@ export function VaultSection() {
 
       return true
     } catch (error) {
-      const message = errorText(error)
-
-      notify(/refusé par l.utilisateur/.test(message) ? { title: 'Not changed', body: 'You cancelled the confirmation.', level: 'info' } : { title: 'Secrets', body: message.replace(/^.*?\[oneai\]\s*(coffre\s*:\s*)?/, ''), level: 'error' })
+      reportEngineError('Secrets', error)
 
       return false
     } finally {

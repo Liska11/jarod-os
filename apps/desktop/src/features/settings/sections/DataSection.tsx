@@ -4,8 +4,9 @@ import { GlassButton } from '../../../components/ui/glass.tsx'
 import { jarod } from '../../../lib/jarod.ts'
 import { useBackendData } from '../../../lib/use-async.ts'
 import { notify } from '../../../store/notifications.ts'
+import { reportEngineError } from './jarod-controls.tsx'
 import { isUnsupported } from './providers-model.ts'
-import { errorText, InlineNote, markSaved, SectionTitle, SettingsGroup, SettingsRow } from './shared.tsx'
+import { InlineNote, markSaved, SectionTitle, SettingsGroup, SettingsRow } from './shared.tsx'
 
 /*
  * Data & folders: where the agent works, and your data.
@@ -30,7 +31,7 @@ export function DataSection() {
     )
   }
 
-  const fail = (error: unknown) => notify({ title: 'Data', body: errorText(error).replace(/^.*?\[oneai\]\s*/, ''), level: 'error' })
+  const fail = (error: unknown) => reportEngineError('Data', error)
 
   const chooseFolder = async () => {
     setBusy(true)

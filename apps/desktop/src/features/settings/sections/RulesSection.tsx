@@ -4,9 +4,10 @@ import { GlassButton, Pill, Toggle } from '../../../components/ui/glass.tsx'
 import { jarod } from '../../../lib/jarod.ts'
 import { useBackendData } from '../../../lib/use-async.ts'
 import { notify } from '../../../store/notifications.ts'
+import { reportEngineError } from './jarod-controls.tsx'
 import { isUnsupported } from './providers-model.ts'
 import { type ActionDraft, draftProblems, emptyAction, emptyRule, inputOf, type Plugin, pluginSummary, type Rule, type RuleDraft, ruleSummary, untrustedTools } from './rules-model.ts'
-import { errorText, InlineNote, markSaved, SectionTitle, SettingsGroup, SettingsRow } from './shared.tsx'
+import { InlineNote, markSaved, SectionTitle, SettingsGroup, SettingsRow } from './shared.tsx'
 
 /*
  * Automation rules and user plugins.
@@ -42,9 +43,7 @@ function useRun(onDone: () => void) {
 
       return true
     } catch (error) {
-      const message = errorText(error)
-
-      notify(/refusé par l.utilisateur/.test(message) ? { title: 'Not changed', body: 'You cancelled the confirmation.', level: 'info' } : { title: 'Automation', body: message.replace(/^.*?\[oneai\]\s*/, ''), level: 'error' })
+      reportEngineError('Automation', error)
 
       return false
     } finally {
