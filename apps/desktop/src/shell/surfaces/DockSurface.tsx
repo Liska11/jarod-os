@@ -8,6 +8,7 @@ import { $env } from '../../store/backend.ts'
 import { useNativeApps } from '../../store/native-apps.ts'
 import { notify } from '../../store/notifications.ts'
 import { $wm, openSurface, wmAction } from '../../store/shell.ts'
+import { trashTarget } from '../../../shared/trash.ts'
 import { showPage } from '../../store/windows.ts'
 import { appById, distinctAppLabel, type FloatingAppId } from '../apps.ts'
 import { NativeIcon, pinnedFor, useDockMagnification } from '../Dock.tsx'
@@ -75,7 +76,7 @@ export function DockSurface() {
   const lastFocused = useRef<Record<string, number>>({})
   const barRef = useRef<HTMLDivElement>(null)
   const { onMove, onLeave } = useDockMagnification(barRef, PANELS_MAGNIFY_MAX)
-  const trashPath = platform === 'darwin' ? '~/.Trash' : '~/.local/share/Trash/files'
+  const trashPath = trashTarget(platform)
 
   useEffect(() => {
     if (!menu) {

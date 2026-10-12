@@ -4,6 +4,8 @@ import type { InstalledApp } from '../../shared/ipc.ts'
 import { AppGlyph, HermesAvatar } from '../components/app-icon.tsx'
 import { cn } from '../lib/cn.ts'
 import { reducedMotion } from '../lib/motion.ts'
+import { trashTarget } from '../../shared/trash.ts'
+import { hostPlatform } from '../lib/platform-labels.ts'
 import { $env, $prefs } from '../store/backend.ts'
 import { notify } from '../store/notifications.ts'
 import { $applicationsOpen } from '../store/surface.ts'
@@ -85,8 +87,9 @@ export function Dock() {
   const [bouncing, setBouncing] = useState<string | null>(null)
   const autoHide = prefs.dockAutoHide !== false
   const revealed = useDockReveal(autoHide)
-  const platform = useStore($env)?.platform ?? 'darwin'
-  const trashPath = platform === 'darwin' ? '~/.Trash' : '~/.local/share/Trash/files'
+  const envPlatform = useStore($env)?.platform
+  const platform = envPlatform ?? hostPlatform()
+  const trashPath = trashTarget(platform)
 
   const main = windows[MAIN_WINDOW_ID]
   const openHermes = () => {

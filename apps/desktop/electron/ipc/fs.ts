@@ -4,8 +4,10 @@ import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 import { type DirEntry, type FilePreview, IPC, type TreeEntry } from '../../shared/ipc.ts'
+import { isRecycleBin } from '../../shared/trash.ts'
 import { run } from '../platform/exec.ts'
 import { type EditorTarget, hostPlatform } from '../platform/index.ts'
+import { openRecycleBin } from './recycle-bin.ts'
 import { assertOpenablePath, assertReadablePath, assertWritablePath, isProjectLocation } from './path-guard.ts'
 
 const TEXT_LIMIT = 2 * 1024 * 1024
@@ -403,6 +405,11 @@ export function registerFsIpc(getWindow: () => BrowserWindow | null): void {
   ipcMain.handle(IPC.fsReadFile, (_event, target: string) => readFile(target))
   ipcMain.handle(IPC.fsReveal, (_event, target: string) => hostPlatform().revealPath(assertReadable(target)))
   ipcMain.handle(IPC.fsOpenPath, async (_event, target: string) => {
+    // The Windows Recycle Bin is a shell location, not a folder: only Explorer can show it.
+    if (isRecycleBin(target, process.platform)) {
+      return openRecycleBin()
+    }
+
     const error = await shell.openPath(assertOpenable(target))
 
     if (error) {
