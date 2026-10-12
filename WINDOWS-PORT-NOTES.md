@@ -487,3 +487,13 @@ blockmap (11 Oct, before the rename), the top-level `win-unpacked` and `win-unpa
   so it is estimated from the text still sent and flagged "(estimated)".
 - **Icon**: `build/icon.png`, `public/brand/herald-icon.png` and the appx tiles come from `Pictures\Jarod.png`. `build/icon.icns` (macOS) is not regenerated (needs macOS); the menu-bar wings and the Hermes avatar inside the UI are unchanged.
 - **Test hygiene**: a second instance of the dev shell quits at once when the installed Jarod-OS runs (same instance lock): test runs now pass their own `--user-data-dir`.
+
+## Import des skills et des MCP de Hermes (12 oct. 2026)
+
+- Outil : `jarod-core/packages/cli/src/hermes-import-main.ts` (logique et tests : `hermes-import.ts`, `test/hermes-import.test.ts`).
+  `JAROD_HOME=%LOCALAPPDATA%\Jarod-OS\profile`, application FERMÉE ; simulation par défaut, `--apply` pour écrire (sauvegarde `jarod.db*.avant-import-hermes`).
+- Skills : tout dossier avec `SKILL.md` de `%LOCALAPPDATA%\hermes\skills` et `~\.hermes\skills` (hors dossiers pointés `.archive`, `.hub`, `.curator_backups`),
+  copié avec ses catégories ; rien d'existant n'est écrasé ; tout est ajouté à `disabledSkills` (activation à la demande dans l'écran Skills).
+- MCP : `mcp_servers` de `config.yaml` → `mcpServers`, tous `enabled: false`. Le jeton d'accès OAuth de `mcp-tokens/<nom>.json` devient l'en-tête
+  `Authorization: Bearer …` (Jarod n'a pas de flux OAuth ni de renouvellement : le jeton expire). Les filtres `tools.include/exclude` et les délais ne sont pas repris.
+- Constaté sur ce poste : 394 skills copiés (396 avec les 2 skills d'exemple), 9 serveurs MCP.
