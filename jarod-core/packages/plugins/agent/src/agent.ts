@@ -145,6 +145,43 @@ export interface AgentDeps {
 }
 
 const MAX_HISTORY_CHARS = 600_000;
+/** Estimation grossière de caractères par jeton (~4), la borne usuelle des fournisseurs. */
+export const CHARS_PER_TOKEN = 4;
+
+/**
+ * Budget de caractères de l'historique envoyé au modèle. La fenêtre du modèle (`settings.contextWindow`,
+ * en jetons) le resserre quand elle est connue : le dépassement est alors traité ici, avant l'envoi, au
+ * lieu d'être découvert par l'erreur du fournisseur. Inconnue (0) : le plafond d'historique, qui reste la
+ * borne haute dans tous les cas.
+ */
+export function historyBudget(windowTokens: number): number {
+  if (!(windowTokens > 0)) return MAX_HISTORY_CHARS;
+  return Math.min(MAX_HISTORY_CHARS, Math.floor(windowTokens * CHARS_PER_TOKEN));
+}
+
+/**
+ * Fenêtre du modèle actif, en jetons, quand le noyau la connaît DÉJÀ : `contextWindow` (posé par
+ * l'interface, prioritaire), sinon ce que la machine charge réellement — la longueur de contexte
+ * demandée à LM Studio pour ce modèle, ou le `ctxSize` du préréglage llama.cpp actif. 0 : inconnue,
+ * et on retombe sur le plafond d'historique. Aucune fenêtre n'est inventée pour un fournisseur distant.
+ */
+export function contextWindowFor(
+  s: Pick<Settings, "contextWindow" | "localModels" | "localEngine">,
+  provider: string,
+  model: string,
+): number {
+  if (s.contextWindow > 0) return s.contextWindow;
+  if (provider === "lmstudio") {
+    const n = s.localModels?.lmstudioContext?.[model];
+    return typeof n === "number" && n > 0 ? n : 0;
+  }
+  if (provider === "llamacpp") {
+    const preset = s.localEngine?.presets.find((p) => p.id === s.localEngine?.activePreset);
+    return preset && preset.ctxSize > 0 ? preset.ctxSize : 0;
+  }
+  return 0;
+}
+
 /** Project instruction files read from the workspace root, first found wins. */
 export const PROJECT_FILES = ["JAROD.md", "AGENTS.md", "CLAUDE.md"];
 const MAX_PROJECT_CHARS = 20_000;
@@ -615,6 +652,9 @@ ${project.text}`);
         return { limits, list, usage, ratio: budgetRatio(usage, limits) };
       };
       let overBudget = false;
+      // L'avis de troncature est PAR TOUR : le contexte est réévalué à chaque étape, mais l'utilisateur
+      // n'a pas à relire la même phrase à chaque outil appelé.
+      let truncationWarned = false;
       for (let step = 0; step < s.maxAgentSteps; step++) {
         if (signal.aborted) break;
         {
@@ -629,7 +669,28 @@ ${project.text}`);
         let partialText = "";
         let partialThinking = "";
 
-        let history = trimHistory(this.turns(sessionId));
+        const window = contextWindowFor(s, cible.provider, cible.model);
+        const tools = this.toolSpecs(s, lean);
+        const full = this.turns(sessionId);
+        // Recomputed each step: a tool_search call activates tools for the next one.
+        const systemText = lean
+          ? [system, this.d.toolSearch.indexSection(sessionId, this.allSpecs(s), this.extraCoreTools())].filter(Boolean).join("\n\n")
+          : system;
+        // La fenêtre borne TOUT ce qui part : prompt système, outils, historique et réponse. L'historique
+        // n'a donc droit qu'à ce qui reste une fois le prompt et les outils décomptés (marge ≈ 1 000 jetons).
+        const reserve = systemText.length + JSON.stringify(tools).length + 4_000;
+        const budgetChars = window > 0 ? Math.max(2_000, historyBudget(window) - reserve) : historyBudget(0);
+        let history = trimHistory(full, budgetChars);
+        if (history.length < full.length && !truncationWarned) {
+          truncationWarned = true;
+          const reason =
+            window > 0 ? `la fenêtre du modèle (${window} jetons)` : "la taille maximale de l'historique";
+          emit({
+            type: "status",
+            sessionId,
+            status: `Contexte trop large pour ${reason} : ${full.length - history.length} message(s) ancien(s) écarté(s).`,
+          });
+        }
         let result: Awaited<ReturnType<typeof client.chat>>;
         try {
           if (this.d.vision?.needed(cible)) {
@@ -641,12 +702,9 @@ ${project.text}`);
             client.chat(
               {
                 model: cible.model,
-                // Recomputed each step: a tool_search call activates tools for the next one.
-                system: lean
-                  ? [system, this.d.toolSearch.indexSection(sessionId, this.allSpecs(s), this.extraCoreTools())].filter(Boolean).join("\n\n")
-                  : system,
+                system: systemText,
                 messages: history,
-                tools: this.toolSpecs(s, lean),
+                tools,
                 signal,
                 thinking: s.thinking,
                 effort: s.effort,

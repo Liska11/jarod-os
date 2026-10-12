@@ -450,6 +450,13 @@ export interface Settings {
   autoTitle: boolean;
   /** History size (characters) above which older turns are summarized automatically; 0 = never. */
   compactThreshold: number;
+  /**
+   * Fenêtre du modèle actif, en jetons (0 = inconnue). Elle sert à refuser AVANT l'envoi : au-delà,
+   * les messages les plus anciens sont écartés et l'utilisateur est prévenu, au lieu de découvrir le
+   * dépassement par l'erreur du fournisseur. L'interface la renseigne quand elle la connaît
+   * (`get-model-context-window`) ; un modèle local a la longueur de contexte qu'on lui a chargée.
+   */
+  contextWindow: number;
   /** Jarod-cordis (G4) : plafond de tokens/coût par conversation ; voir `SessionBudgetConfig`. */
   sessionBudget: SessionBudgetConfig;
   telegram: TelegramConfig;
@@ -620,6 +627,8 @@ export const DEFAULT_SETTINGS: Settings = {
   agentMode: "build",
   autoTitle: true,
   compactThreshold: 240_000,
+  // Inconnue par défaut : le noyau n'invente aucune fenêtre, il garde son plafond d'historique.
+  contextWindow: 0,
   // Éteint par défaut : une installation qui ne dit rien n'est jamais arrêtée en cours de conversation.
   sessionBudget: { maxTokens: 0, maxCostUsd: 0, perSession: {} },
   telegram: { enabled: false, allowedChatIds: [] },

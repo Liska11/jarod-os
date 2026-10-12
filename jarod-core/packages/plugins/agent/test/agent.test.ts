@@ -3,9 +3,10 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { AgentEvent, AgentHooks } from "../src/agent.js";
-import { trimHistory } from "../src/agent.js";
+import { contextWindowFor, historyBudget, trimHistory } from "../src/agent.js";
 import type { TestCore as JarodCore } from "./helpers.js";
 import type { ChatRequest, ChatResult, ProviderClient, StreamHandlers } from "@jarod/contracts";
+import { DEFAULT_SETTINGS } from "@jarod/contracts";
 import { makeCore, tempDir } from "./helpers.js";
 
 type Step = Partial<ChatResult> | ((req: ChatRequest, h: StreamHandlers) => Promise<ChatResult>);
@@ -220,6 +221,86 @@ describe("agent loop", () => {
     const out = trimHistory(turns, 150);
     expect(out[0]!.role).toBe("user");
     expect(out.at(-1)!.content).toBe("latest");
+  });
+
+  it("resserre le budget d'historique sur la fenêtre du modèle, jamais au-delà du plafond", () => {
+    // Inconnue : le plafond d'historique, comme avant.
+    expect(historyBudget(0)).toBe(600_000);
+    expect(historyBudget(-1)).toBe(600_000);
+    // Connue : ~4 caractères par jeton.
+    expect(historyBudget(1_000)).toBe(4_000);
+    // Une fenêtre énorme ne fait pas dépasser le plafond.
+    expect(historyBudget(10_000_000)).toBe(600_000);
+  });
+
+  it("prend la fenêtre que le noyau connaît déjà : le réglage, sinon ce que la machine a chargé", () => {
+    const base = DEFAULT_SETTINGS;
+    // Un fournisseur distant : aucune fenêtre inventée (le noyau ne la connaît pas).
+    expect(contextWindowFor(base, "anthropic", "claude-opus-5")).toBe(0);
+    // Le réglage posé par l'interface a la priorité, même sur une fenêtre locale connue.
+    expect(contextWindowFor({ ...base, contextWindow: 32_000 }, "lmstudio", "jean")).toBe(32_000);
+    // LM Studio : la longueur demandée pour CE modèle.
+    const lm = { ...base, localModels: { ...base.localModels, lmstudioContext: { jean: 16_384 } } };
+    expect(contextWindowFor(lm, "lmstudio", "jean")).toBe(16_384);
+    expect(contextWindowFor(lm, "lmstudio", "autre")).toBe(0);
+    // llama.cpp : le préréglage actif, pas un autre.
+    const preset = {
+      id: "b",
+      name: "b",
+      model: "m.gguf",
+      draftModel: "",
+      ctxSize: 131_072,
+      gpuLayers: -1,
+      flashAttn: "auto" as const,
+      cacheType: "f16" as const,
+      temperature: null,
+      topP: null,
+      topK: null,
+      minP: null,
+      reasoning: "auto" as const,
+      extraArgs: [],
+    };
+    const engine = {
+      ...base,
+      localEngine: { ...base.localEngine, presets: [{ ...preset, id: "a", ctxSize: 8_192 }, preset], activePreset: "b" },
+    };
+    expect(contextWindowFor(engine, "llamacpp", "m")).toBe(131_072);
+  });
+
+  it("un modèle local chargé par LM Studio a sa fenêtre, sans aucun réglage de fenêtre", async () => {
+    const core = await makeCore();
+    const s = core.sessions.create();
+    const long = "x".repeat(40_000);
+    core.messages.add(s.id, { role: "user", content: long });
+    core.messages.add(s.id, { role: "assistant", content: long });
+    core.settings.set("activeProvider", "lmstudio");
+    core.settings.set("activeModel", "jean");
+    core.settings.set("localModels", { hotswap: false, lmstudioContext: { jean: 1_000 } });
+    const reqs = fakeProvider(core, [{ text: "ok" }]);
+
+    const { events } = await run(core, s.id, "et maintenant ?");
+
+    expect(reqs[0]!.messages.map((m) => m.content)).toEqual(["et maintenant ?"]);
+    expect(events.some((e) => e.type === "status" && /\(1000 jetons\)/.test(e.status))).toBe(true);
+  });
+
+  it("écarte l'historique qui dépasse la fenêtre du modèle, et le dit", async () => {
+    const core = await makeCore();
+    const s = core.sessions.create();
+    const long = "x".repeat(40_000);
+    core.messages.add(s.id, { role: "user", content: long });
+    core.messages.add(s.id, { role: "assistant", content: long });
+    core.settings.set("contextWindow", 1_000); // ≈ 4 000 caractères
+    const reqs = fakeProvider(core, [{ text: "ok" }]);
+
+    const { events } = await run(core, s.id, "et maintenant ?");
+
+    // Le long échange est parti, la question du jour est restée : le dépassement est traité ici,
+    // pas par une erreur du fournisseur.
+    expect(reqs[0]!.messages.map((m) => m.content)).toEqual(["et maintenant ?"]);
+    const status = events.find((e) => e.type === "status" && /écarté/.test(e.status));
+    expect(status).toBeDefined();
+    expect(status?.type === "status" ? status.status : "").toMatch(/\(1000 jetons\)/);
   });
 });
 
