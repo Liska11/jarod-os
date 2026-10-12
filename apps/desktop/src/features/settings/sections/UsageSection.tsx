@@ -2,7 +2,7 @@ import { useStore } from '@nanostores/react'
 import { IconCalendarStats, IconChartBar, IconCoin, IconCreditCard, IconGauge, IconLayoutNavbar, IconRefresh } from '@tabler/icons-react'
 import { useEffect, useState } from 'react'
 import { GlassButton, ProgressBar, Toggle } from '../../../components/ui/glass.tsx'
-import { formatDollars, formatTokens, planPercent, type UsageSummary } from '../../../lib/usage.ts'
+import { formatDollars, formatTokens, planNote, planPercent, type UsageSummary } from '../../../lib/usage.ts'
 import { $prefs, updatePrefs } from '../../../store/backend.ts'
 import { $usage, loadUsage } from '../../../store/usage.ts'
 import { openWebWindow } from '../../../store/web-windows.ts'
@@ -65,7 +65,7 @@ export function UsageSection() {
           <SettingsRow
             icon={<IconGauge />}
             label="Plan limits"
-            description={billing?.logged_in ? 'Your provider does not report plan limits.' : 'Plan limits appear here when Hermes is signed in to Nous Portal; other providers show their usage on their own site.'}
+            description={planNote({ unavailable: Boolean(usage?.planUnavailable), loggedIn: Boolean(billing?.logged_in) })}
             keywords="limit quota subscription plan"
           />
         )}

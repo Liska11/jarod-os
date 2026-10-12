@@ -19,6 +19,7 @@ import { BridgeError, type BridgePort, parseInvokeBody } from "./bridge.js";
 import type { ShellLink } from "./bridge-shell.js";
 import { ModelDiscovery } from "./discovery.js";
 import { clearProviderKey, type KeySources, providerRows, setExtraProviderKeys, setProviderKey, setProviderOverride, testProvider } from "./providers.js";
+import { isUnavailableRest, NOT_AVAILABLE, UNAVAILABLE_RPC } from "./unavailable.js";
 import { analytics, parseDays, periodStart, type UsageRow, USAGE_SQL } from "./usage.js";
 import { checkTexts, MEMORY_FILE_NAMES, type MemoryFileName, type MemoryServiceLike, memoryFiles, type ProfileLike, writeMemoryFile } from "./memory.js";
 import { cronJobs, memoryStatus, type SchedulerLike } from "./rest.js";
@@ -399,7 +400,7 @@ export function createGateway(opts: GatewayOptions): Gateway {
     if (!fn) {
       bump(unhandled, `rpc ${frame.method}`);
       log(`rpc non servi : ${frame.method}`);
-      if (id !== undefined) send(conn, { jsonrpc: "2.0", id, error: { code: RPC.notFound, message: `method not found: ${frame.method}` } });
+      if (id !== undefined) send(conn, { jsonrpc: "2.0", id, error: { code: RPC.notFound, message: UNAVAILABLE_RPC.has(frame.method) ? NOT_AVAILABLE : `method not found: ${frame.method}` } });
       return;
     }
     try {
@@ -835,7 +836,7 @@ export function createGateway(opts: GatewayOptions): Gateway {
     log(`REST non servi : ${key}`);
     // On vide le corps avant de répondre, pour ne pas laisser la connexion en suspens.
     req.resume();
-    return json(res, 404, { detail: `not implemented by the Jarod gateway: ${key}` });
+    return json(res, 404, { detail: isUnavailableRest(req.method ?? "GET", url.pathname) ? NOT_AVAILABLE : `not implemented by the Jarod gateway: ${key}` });
   };
 
   const server: Server = createServer((req: IncomingMessage, res: ServerResponse) => {

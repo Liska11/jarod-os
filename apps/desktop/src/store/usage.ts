@@ -2,6 +2,7 @@ import type { BillingStateResult, UsageModel } from '@herald-os/client'
 import { atom } from 'nanostores'
 import { type AnalyticsResponse, limitAlertKey, planPercent, summariseUsage, type UsageSummary } from '../lib/usage.ts'
 import { rest } from '../lib/rest.ts'
+import { isNotAvailable } from '../lib/unavailable.ts'
 import { $connectionEpoch, gatewayRequest } from './gateway.ts'
 import { notify } from './notifications.ts'
 import { isMainSurface } from './shell.ts'
@@ -10,6 +11,8 @@ export interface UsageSnapshot {
   /** The model provider's plan and top-up bars (Nous Portal); unavailable for other providers. */
   plan: UsageModel | null
   billing: BillingStateResult | null
+  /** The engine says it reports neither plan bars nor billing in this version (a state, not a failure). */
+  planUnavailable: boolean
   week: UsageSummary | null
   month: UsageSummary | null
   loadedAt: number
@@ -26,13 +29,19 @@ async function analytics(days: number): Promise<UsageSummary | null> {
 }
 
 export async function loadUsage(): Promise<UsageSnapshot> {
+  let planUnavailable = false
+  const quiet = () => (error: unknown) => {
+    planUnavailable ||= isNotAvailable(error)
+
+    return null
+  }
   const [plan, billing, week, month] = await Promise.all([
-    gatewayRequest('usage.bars', {}).catch(() => null),
-    gatewayRequest('billing.state', {}).catch(() => null),
+    gatewayRequest('usage.bars', {}).catch(quiet()),
+    gatewayRequest('billing.state', {}).catch(quiet()),
     analytics(7),
     analytics(30)
   ])
-  const snapshot: UsageSnapshot = { plan, billing, week, month, loadedAt: Date.now() }
+  const snapshot: UsageSnapshot = { plan, billing, planUnavailable, week, month, loadedAt: Date.now() }
   $usage.set(snapshot)
 
   return snapshot

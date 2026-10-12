@@ -326,9 +326,28 @@ describe("passerelle compatible Hermes", () => {
   it("répond -32601 à une méthode non servie et la consigne", async () => {
     const { gw, port } = await start(fakeCore(async () => {}).core);
     const c = await connect(gw, port);
-    expect((await c.call("usage.bars", { key: "model" })).error).toMatchObject({ code: -32601 });
+    expect((await c.call("usage.bars", { key: "model" })).error).toMatchObject({ code: -32601, message: "Not available in this version" });
     expect((await c.call("usage.bars", {})).error).toMatchObject({ code: -32601 });
-    expect(gw.unhandled()).toEqual({ "rpc usage.bars": 2 });
+    expect((await c.call("inconnue.totalement", {})).error).toMatchObject({ code: -32601, message: "method not found: inconnue.totalement" });
+    expect(gw.unhandled()).toEqual({ "rpc usage.bars": 2, "rpc inconnue.totalement": 1 });
+    c.close();
+  });
+
+  it("les fonctions connues et non portées répondent toutes la même phrase, en RPC comme en REST (et restent consignées)", async () => {
+    const { gw, port } = await start(fakeCore(async () => {}).core);
+    const c = await connect(gw, port);
+    for (const method of ["usage.bars", "billing.state", "wake.start", "wake.stop", "wake.pause", "wake.resume", "wake.feed", "client.capabilities"]) {
+      expect((await c.call(method, {})).error, method).toMatchObject({ code: -32601, message: "Not available in this version" });
+    }
+    const call = (method: string, path: string) => fetch(`http://127.0.0.1:${port}${path}`, { method, headers: { "x-hermes-session-token": gw.token, "content-type": "application/json" }, ...(method === "GET" ? {} : { body: "{}" }) });
+    for (const [method, path] of [["GET", "/api/audio/voice-live/status"], ["POST", "/api/audio/voice-live/session"], ["POST", "/api/mcp/servers/x/auth"], ["POST", "/api/providers/oauth/nous/start"], ["DELETE", "/api/providers/oauth/nous"]] as const) {
+      const r = await call(method, path);
+      expect([r.status, ((await r.json()) as { detail: string }).detail], `${method} ${path}`).toEqual([404, "Not available in this version"]);
+    }
+    // une route vraiment inconnue garde son message d'origine : seule la liste connue parle d'une version
+    const other = await call("GET", "/api/rien/du/tout");
+    expect(((await other.json()) as { detail: string }).detail).toContain("not implemented by the Jarod gateway");
+    expect(gw.unhandled()["GET /api/audio/voice-live/status"]).toBe(1);
     c.close();
   });
 

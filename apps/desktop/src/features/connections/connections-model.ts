@@ -1,5 +1,6 @@
 import { rest } from '../../lib/rest.ts'
 import type { ActivityEntry } from '../../store/missions.ts'
+import { failureText, isNotAvailable } from '../../lib/unavailable.ts'
 
 /*
  * A Connection is a uniform view over three upstream things the Hermes runtime exposes over REST:
@@ -193,7 +194,10 @@ async function settle<T>(label: string, promise: Promise<T>, fallback: T, warnin
   try {
     return await promise
   } catch (error) {
-    warnings.push(`${label}: ${error instanceof Error ? error.message : String(error)}`)
+    // A call the engine says it does not do in this version is a state, not a source that failed to load.
+    if (!isNotAvailable(error)) {
+      warnings.push(`${label}: ${error instanceof Error ? error.message : String(error)}`)
+    }
 
     return fallback
   }
@@ -613,5 +617,5 @@ export const api = {
 }
 
 export function errorText(error: unknown): string {
-  return error instanceof Error ? error.message : String(error)
+  return failureText(error)
 }

@@ -1,6 +1,6 @@
 import type { UsageModel } from '@herald-os/client'
 import { describe, expect, it } from 'vitest'
-import { formatDollars, formatTokens, limitAlertKey, planPercent, summariseUsage } from './usage.ts'
+import { formatDollars, formatTokens, limitAlertKey, planNote, planPercent, summariseUsage } from './usage.ts'
 
 describe('summariseUsage', () => {
   it('adds up tokens, picks the busiest model and prefers the actual cost', () => {
@@ -50,5 +50,14 @@ describe('plan limits', () => {
     expect(limitAlertKey(plan(92), 90, null)).toBe('2026-11-01:90')
     expect(limitAlertKey(plan(95), 90, '2026-11-01:90')).toBeNull()
     expect(limitAlertKey(plan(91, '2026-12-01'), 90, '2026-11-01:90')).toBe('2026-12-01:90')
+  })
+})
+
+describe('planNote', () => {
+  it('says the engine has no plan reporting before suggesting a sign-in', () => {
+    expect(planNote({ unavailable: true, loggedIn: false })).toBe('Not available in this version.')
+    expect(planNote({ unavailable: true, loggedIn: true })).toBe('Not available in this version.')
+    expect(planNote({ unavailable: false, loggedIn: true })).toBe('Your provider does not report plan limits.')
+    expect(planNote({ unavailable: false, loggedIn: false })).toContain('Nous Portal')
   })
 })

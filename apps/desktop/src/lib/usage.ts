@@ -75,3 +75,12 @@ export function limitAlertKey(plan: UsageModel | null | undefined, threshold: nu
 
   return key === lastKey ? null : key
 }
+
+/** What the "Plan limits" row says when the plan reports nothing: the engine's own gap, a provider that reports none, or the Nous Portal hint. */
+export function planNote(state: { unavailable: boolean; loggedIn: boolean }): string {
+  if (state.unavailable) {
+    return 'Not available in this version.'
+  }
+
+  return state.loggedIn ? 'Your provider does not report plan limits.' : 'Plan limits appear here when Hermes is signed in to Nous Portal; other providers show their usage on their own site.'
+}

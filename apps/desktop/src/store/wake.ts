@@ -2,6 +2,7 @@ import { atom } from 'nanostores'
 import { MicrophoneUnavailableError, subscribeMicrophone } from '../lib/voice/audio-capture.ts'
 import { earcons } from '../lib/voice/earcons.ts'
 import { FrameSlicer, int16ToBase64, TARGET_SAMPLE_RATE } from '../lib/voice/pcm.ts'
+import { failureText } from '../lib/unavailable.ts'
 import { $prefs, updatePrefs } from './backend.ts'
 import { $gatewayReady, gatewayRequest, onGatewayEvent } from './gateway.ts'
 import { notify } from './notifications.ts'
@@ -64,19 +65,30 @@ function stopFeeding(): void {
   stopFeed = null
 }
 
+const startDetector = () => gatewayRequest('wake.start', { surface: 'gui', client_capture: true, persist: true })
+
 async function arm(): Promise<void> {
   if (armed || arming) {
     return arming ?? undefined
   }
 
   arming = (async () => {
-    let result = await gatewayRequest('wake.start', { surface: 'gui', client_capture: true, persist: true })
+    let result: Awaited<ReturnType<typeof startDetector>>
 
-    // A previous renderer (reload, crash) may still be recorded as owner until the backend notices
-    // its transport is gone; give it a moment and try again before reporting the conflict.
-    for (let attempt = 0; !result.started && result.reason === 'owned' && attempt < 3; attempt++) {
-      await new Promise(resolve => setTimeout(resolve, 1500))
-      result = await gatewayRequest('wake.start', { surface: 'gui', client_capture: true, persist: true })
+    try {
+      result = await startDetector()
+
+      // A previous renderer (reload, crash) may still be recorded as owner until the backend notices
+      // its transport is gone; give it a moment and try again before reporting the conflict.
+      for (let attempt = 0; !result.started && result.reason === 'owned' && attempt < 3; attempt++) {
+        await new Promise(resolve => setTimeout(resolve, 1500))
+        result = await startDetector()
+      }
+    } catch (error) {
+      // The engine may not do wake words at all ("Not available in this version"), or the call failed: say so on the indicator, never as an unhandled rejection.
+      patch({ listening: false, error: failureText(error) })
+
+      return
     }
 
     if (!result.started) {

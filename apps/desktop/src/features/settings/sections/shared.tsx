@@ -4,6 +4,7 @@ import type React from 'react'
 import { createContext, useContext, useEffect, useRef, useState } from 'react'
 import { Dropdown, GlassCard } from '../../../components/ui/glass.tsx'
 import { cn } from '../../../lib/cn.ts'
+import { failureText } from '../../../lib/unavailable.ts'
 
 /*
  * Building blocks shared by every Settings section: the row/group vocabulary from the mockup,
@@ -33,7 +34,7 @@ export function markSaved(): void {
 }
 
 export function errorText(error: unknown): string {
-  return error instanceof Error ? error.message : String(error)
+  return failureText(error)
 }
 
 // ---- Search filter -------------------------------------------------------------------------
