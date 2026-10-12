@@ -439,3 +439,27 @@ imports, SSH keys, confirmations), installing the llama.cpp engine, downloading 
 
 **Duplicates removed:** the Connections page and Settings both used to set up messaging channels and MCP servers; Connections now switches channels through the same engine handler (a channel without tokens does
 not switch on) and sends setup to Settings. Local models shows the llama.cpp engine once.
+
+## Hardening after the owner's review (lots 4 and 5)
+
+**Lot 4 (P0 closure).** A request from the engine to the window (a tool approval, a native gesture such as a file picker) now has a deadline: 10 minutes for an approval, 1 hour for a gesture
+(`approvalTimeoutMs`, `shellTimeoutMs`). At the deadline the request leaves `conn.pending`, is answered as a refusal, and the window gets a `status.update` saying the approval was refused for lack
+of an answer; a late reply finds nothing. Before, a window that stayed silent froze the turn for good (`gateway-server.test.ts`).
+
+**Lot 5 (P1).**
+- *B2:* `llm.oneshot` (active model, no tools, no template; 200 000 characters, 8192 tokens and 120 s at most; failures redacted) and `GET /api/sessions/{id}/messages` are served, so the Catch-up
+  panel works. The functions that are not served (`usage.bars`, `billing.state`, the wake word, GPT-Live, MCP and provider sign-in, `client.capabilities`) all answer the same sentence, "Not available
+  in this version" (`gateway/unavailable.ts`); the window recognises it (`lib/unavailable.ts`) and shows a state instead of an error: Usage, the wake-word indicator, the Live note, and Connections
+  (no more "Some sources did not load" for a known gap).
+- *G11:* a profile that never wrote a provider and a model has not chosen. The engine announces no current model (`model.options` says `needs_choice`), lists the local servers it detected
+  (LM Studio, Ollama...) first, and refuses an ordinary first message with the path to follow ("Settings → Hermes & agents → Preferred model"). Slash commands (how one chooses) and conversations
+  that already carry their own model go through. The existing "Preferred model" row reads "Choose a model"; there is no new screen. `SettingsService.isSet` tells a written setting from a default.
+- *G7:* no more macOS default before main reports the platform (the window reads its user agent); the Dock's Trash opens the Windows Recycle Bin (`explorer.exe shell:RecycleBinFolder`, only
+  that location, only on Windows); the power menu runs `shutdown.exe` / `rundll32` on Windows (no `/f`); names and folders are read with `/` and `\` (`shared/path-names.ts`): the "Pick up where
+  you left off" noise filter used to match nothing under a Windows home, and an excluded Windows folder was treated as a word, so the exclusion hid nothing; pages built on `useBackendData` say
+  "connecting" before the first `gateway.ready` instead of looking empty; user-initiated native calls (`openExternal`, `openPath`, `reveal`, restart) report a refusal as a notification.
+
+**Still Mac/POSIX-shaped (not part of this lot):** the Files page's path arithmetic (breadcrumbs "Macintosh HD", `resolvePath`, `landingPath`, `joinPath`), the Linux crash-report parsing, and the
+plugins folder `~/.config/herald-os/plugins` offered by Settings → Plugins.
+
+**Known flake, not mine:** `scripts/verify-windows.ps1` can exit 1 with all six steps passing when its final `taskkill` finds the process already gone (seen once in four runs).
