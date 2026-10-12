@@ -306,9 +306,11 @@ on purpose, which is why it needed no change.
 | Left behind | `%APPDATA%\Jarod-OS` (user data), as NSIS does by default (`deleteAppDataOnUninstall` is not set). It was created by this test only (it did not exist before), so I deleted it, together with the throwaway data folder |
 | Neighbours | the existing Jarod-One and JAROD apps, shortcuts and uninstall entries were not touched (they have their own ids) |
 
-Observations, not fixed: the installer and the uninstaller are unsigned (`Get-AuthenticodeSignature`: NotSigned), so SmartScreen will warn. The Add/Remove Programs
-**Publisher** reads "Luke The Dev", taken from the `author` field of `apps/desktop/package.json`; I left it because it is the upstream attribution, but it is what a user
-will see. **Not tested:** the interactive wizard (folder choice, "run after install"), installing the `.appx`, upgrading over an older Jarod-OS, pinning to the taskbar.
+Observations: the installer and the uninstaller are unsigned (`Get-AuthenticodeSignature`: NotSigned), so SmartScreen will warn — left as is by choice (there is no
+certificate). The Add/Remove Programs **Publisher** read "Luke The Dev", taken from the `author` field of `apps/desktop/package.json`; since 2026-10-12 it reads
+"Jarod-OS" (`author` plus an explicit `copyright`), the upstream attribution staying in LICENSE and NOTICE, where the MIT licence requires it. An installer built
+before that change still shows the old value. **Not tested:** the interactive wizard (folder choice, "run after install"), installing the `.appx`, upgrading over an
+older Jarod-OS, pinning to the taskbar.
 
 **3. `%APPDATA%\Herald OS`** (read only, nothing changed or moved). It exists: created 2026-10-11 03:13, last written 20:28, 1 075 files in 26 folders, 140 MB. It holds
 only Chromium/Electron state (`Cache`, `Code Cache`, `GPUCache`, `Local Storage`, `Session Storage`, `Network`, `blob_storage`, shader caches, `DIPS`, `Local State`,
