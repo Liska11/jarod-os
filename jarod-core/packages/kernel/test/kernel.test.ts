@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { JarodApp } from "../src/app.js";
 import { start, stop } from "../src/lifecycle.js";
-import { discoverPlugins } from "../src/registry.js";
+import { discoverPlugins, setBundledPlugins } from "../src/registry.js";
 import { cleanup, tempDir } from "../src/testing.js";
 
 afterEach(cleanup);
@@ -133,5 +133,32 @@ export function apply(ctx) { globalThis.__log.push("opt=" + (ctx.get("opt") ?? "
     expect(ctx.get("a")).toBeUndefined(); // a non chargé
     expect(ctx.get("b")).toBeTruthy(); // b chargé
     await stop(started);
+  });
+});
+
+describe("plugins empaquetés (application installée)", () => {
+  afterEach(() => setBundledPlugins(null));
+
+  it("la liste déclarée remplace la découverte de dossiers, dans l'ordre, et les modules déjà chargés démarrent", async () => {
+    const log: string[] = [];
+    setBundledPlugins([
+      { name: "b", pkg: "@x/b", order: 2, entry: "(empaqueté)", module: { default: { name: "b", apply: () => void log.push("b") } } },
+      { name: "a", pkg: "@x/a", order: 1, entry: "(empaqueté)", module: { name: "a", apply: () => void log.push("a") } },
+    ]);
+    // Aucun dossier de plugins n'existe : seule la liste déclarée compte.
+    expect(discoverPlugins("/dossier/qui/n/existe/pas").map((p) => p.name)).toEqual(["a", "b"]);
+    const started = await start(new JarodApp({ pluginsDir: "/dossier/qui/n/existe/pas", plugins: { a: {}, b: {} } }));
+    expect(started.loaded.map((p) => p.name)).toEqual(["a", "b"]);
+    expect(log).toEqual(["a", "b"]);
+    await stop(started);
+  });
+
+  it("une section désactivée n'est pas chargée ; sans déclaration, retour à la découverte des dossiers", async () => {
+    setBundledPlugins([{ name: "a", pkg: "@x/a", order: 1, entry: "(empaqueté)", module: { name: "a", apply: () => {} } }]);
+    const started = await start(new JarodApp({ pluginsDir: "/dossier/qui/n/existe/pas", plugins: { a: false } }));
+    expect(started.loaded).toEqual([]);
+    await stop(started);
+    setBundledPlugins(null);
+    expect(discoverPlugins().map((p) => p.name).slice(0, 2)).toEqual(["storage", "scheduler"]);
   });
 });

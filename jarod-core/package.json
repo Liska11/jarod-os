@@ -14,10 +14,12 @@
     "skills:count": "tsx scripts/skills-count.ts",
     "check:ignored": "tsx scripts/check-ignored.ts",
     "decisions:index": "tsx scripts/decisions-index.ts",
-    "check:staged": "tsx scripts/check-staged-files.ts"
+    "check:staged": "tsx scripts/check-staged-files.ts",
+    "bundle:gateway": "node scripts/bundle-gateway.mjs --out dist/gateway"
   },
   "devDependencies": {
     "@types/node": "^24.13.6",
+    "esbuild": "0.28.2",
     "tsx": "^4.23.15",
     "typescript": "7.0.2",
     "vitest": "5.0.2"

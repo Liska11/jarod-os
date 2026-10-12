@@ -17,12 +17,26 @@ export interface PluginEntry {
   order: number;
   /** Fichier d'entrée résolu (`exports["."]`). */
   entry: string;
+  /** Plugin déjà chargé : application empaquetée, où il n'y a ni dossier `plugins/` ni TypeScript à importer (voir `setBundledPlugins`). */
+  module?: unknown;
+}
+
+let bundled: PluginEntry[] | null = null;
+
+/**
+ * Application empaquetée (Jarod-OS installé) : le gabarit de compilation (`scripts/bundle-gateway.mjs`) importe chaque plugin statiquement et les déclare ici.
+ * `discoverPlugins` rend alors CETTE liste, sans lire de dossier, et `loadPlugin` rend le module déjà chargé. Sans appel à cette fonction (développement, tests),
+ * rien ne change : découverte des dossiers de `packages/plugins`.
+ */
+export function setBundledPlugins(entries: PluginEntry[] | null): void {
+  bundled = entries && [...entries].sort((a, b) => a.order - b.order || a.name.localeCompare(b.name));
 }
 
 /** `packages/plugins` du dépôt, vu depuis `packages/kernel/src`. */
 export const DEFAULT_PLUGINS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "../../plugins");
 
 export function discoverPlugins(dir = DEFAULT_PLUGINS_DIR): PluginEntry[] {
+  if (bundled) return [...bundled];
   if (!existsSync(dir)) return [];
   const found: PluginEntry[] = [];
   for (const d of readdirSync(dir, { withFileTypes: true })) {
@@ -43,6 +57,10 @@ export function discoverPlugins(dir = DEFAULT_PLUGINS_DIR): PluginEntry[] {
 
 /** Charge le module d'un plugin : export `default`, sinon le module lui-même (forme `apply`). */
 export async function loadPlugin(entry: PluginEntry): Promise<Plugin> {
+  if (entry.module !== undefined) {
+    const loaded = entry.module as { default?: Plugin } & Plugin;
+    return (loaded.default ?? loaded) as Plugin;
+  }
   const mod = (await import(pathToFileURL(entry.entry).href)) as { default?: Plugin } & Plugin;
   return (mod.default ?? mod) as Plugin;
 }
