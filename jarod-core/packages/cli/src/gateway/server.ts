@@ -10,8 +10,8 @@ import { statSync } from "node:fs";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
 import type { Message, Session, SessionContext } from "@jarod/contracts";
-import type { AgentHooks } from "@jarod/plugin-agent";
-import { approvalParams, chooseWorkspace, eventFrame, isApproved, promptText, RPC, readyFrame, sessionInfo, sessionRow, storedMessages, toTranscript, TurnTranslator } from "./protocol.js";
+import { type AgentHooks, contextWindowFor } from "@jarod/plugin-agent";
+import { approvalParams, chooseWorkspace, eventFrame, isApproved, promptText, RPC, readyFrame, sessionInfo, sessionRow, sessionUsage, storedMessages, toTranscript, TurnTranslator } from "./protocol.js";
 import { applyConfigPatch, CONFIG_RAW_READ_ONLY, modelChosen, configRaw, GUARDED_COMMANDS, type CommandResultLike, checkTerminalBackend, type CommandRegistryLike, commandCatalog, ConfigError, configGet, configSet, hermesConfig, modelOptions, normalizeModelCommand, type ProviderLike, setToolsetEnabled, slashResult, terminalBackends, type ToolLike, toolsets } from "./config.js";
 import { findMcp, type GatewayStatusLike, type McpConfigLike, type McpPort, mcpServers, messagingPlatforms, type PlatformId, probeResult, refusePlatformToggle, removeMcp, setMcpEnabled } from "./connections.js";
 import { AudioError, MAX_AUDIO_BODY, parseDataUrl, speakText, type VoicePort, wavDataUrl } from "./audio.js";
@@ -187,6 +187,30 @@ export function createGateway(opts: GatewayOptions): Gateway {
     return opts.workspace;
   };
 
+  /** Le fournisseur et le modèle d'une conversation : le sien s'il en porte un, sinon le choix fait ; vides tant qu'aucun choix n'a été fait. */
+  const modelOf = (id: string): { provider: string; model: string } => {
+    const own = core.sessions.get(id)?.context;
+    if (own?.provider && own?.model) return { provider: own.provider, model: own.model };
+    if (!modelChosen(core.settings)) return { provider: "", model: "" };
+    return { provider: str(core.settings.get("activeProvider")), model: str(core.settings.get("activeModel")) };
+  };
+  /** L'occupation du contexte de la conversation (`Usage` du contrat) ; la fenêtre est celle que le noyau connaît (réglage, LM Studio, llama.cpp). */
+  const usageFor = (id: string): Record<string, unknown> | undefined => {
+    const { provider, model } = modelOf(id);
+    const window = provider && model
+      ? contextWindowFor(
+          {
+            contextWindow: Number(core.settings.get("contextWindow")) || 0,
+            localModels: core.settings.get("localModels") as Parameters<typeof contextWindowFor>[0]["localModels"],
+            localEngine: core.settings.get("localEngine") as Parameters<typeof contextWindowFor>[0]["localEngine"],
+          },
+          provider,
+          model,
+        )
+      : 0;
+    return sessionUsage(core.messages.list(id), window, model || undefined) ?? undefined;
+  };
+
   const info = (id: string): Record<string, unknown> => {
     const session = core.sessions.get(id);
     if (!session) throw new RpcError(RPC.params, `unknown session ${id}`);
@@ -194,7 +218,9 @@ export function createGateway(opts: GatewayOptions): Gateway {
     const chosen = modelChosen(core.settings);
     const provider = chosen ? str(core.settings.get("activeProvider")) : "";
     const model = chosen ? str(core.settings.get("activeModel")) : "";
+    const usage = usageFor(id);
     return sessionInfo({
+      ...(usage ? { usage } : {}),
       session,
       running: turns.has(id),
       version,
@@ -324,9 +350,13 @@ export function createGateway(opts: GatewayOptions): Gateway {
       }
       // Avant de toucher à `turns` : un refus ne doit pas effacer le tour qui court (il ne pourrait plus être interrompu).
       if (turns.has(id)) throw new RpcError(-32000, "a turn is already running in this session");
-      const translator = new TurnTranslator(id, (frame) => {
-        if (!conn.ws.closed) send(conn, frame);
-      });
+      const translator = new TurnTranslator(
+        id,
+        (frame) => {
+          if (!conn.ws.closed) send(conn, frame);
+        },
+        () => usageFor(id),
+      );
       let lastTitle = core.sessions.get(id)?.title ?? "";
       // Le noyau pose le titre provisoire (le début du message) au PREMIER message du tour, avant tout `session-updated`, puis le remplace par un titre
       // généré après `done` : on regarde donc à chacun de ces trois événements, sinon l'interface garde « Nouvelle conversation ».
@@ -387,7 +417,13 @@ export function createGateway(opts: GatewayOptions): Gateway {
       // Le sélecteur de Herald écrit « fournisseur:modèle » ; la commande de Jarod lit « fournisseur/modèle ». Changer de modèle relit les modèles locaux.
       if (name === "model") discovery.invalidate();
       const effective = name === "model" ? normalizeModelCommand(command, providerList()) : command;
-      return slashResult(await core.commands.execute(effective, { sessionId: sid || null }), command);
+      const result = slashResult(await core.commands.execute(effective, { sessionId: sid || null }), command);
+      // Changer de modèle (une autre fenêtre) ou compacter le contexte change l'occupation : la jauge de la fenêtre la relit tout de suite.
+      if (sid && (name === "model" || name === "compact") && !conn.ws.closed) {
+        const usage = usageFor(sid);
+        if (usage) send(conn, eventFrame("session.usage", sid, { usage }));
+      }
+      return result;
     },
   };
 

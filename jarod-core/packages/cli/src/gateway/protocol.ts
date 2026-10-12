@@ -46,6 +46,8 @@ export class TurnTranslator {
   constructor(
     private readonly sessionId: string,
     private readonly out: (frame: GatewayEventFrame) => void,
+    /** L'occupation du contexte à la fin du tour (`Usage` du contrat), jointe à `message.complete`. */
+    private readonly usage?: () => Record<string, unknown> | undefined,
   ) {}
 
   private emit(type: string, payload?: unknown): void {
@@ -100,13 +102,16 @@ export class TurnTranslator {
         this.errorText = e.error;
         this.emit("error", { message: e.error });
         return;
-      case "done":
+      case "done": {
+        const usage = this.usage?.();
         this.emit("message.complete", {
           text: this.finalText,
           status: this.errorText ? "error" : this.aborted ? "interrupted" : "complete",
           ...(this.errorText ? { error: this.errorText } : {}),
+          ...(usage ? { usage } : {}),
         });
         return;
+      }
       default:
         this.ignored.set(e.type, (this.ignored.get(e.type) ?? 0) + 1);
     }
@@ -168,6 +173,55 @@ export interface SessionInfoInput {
   provider?: string;
   model?: string;
   cwd?: string | null;
+  /** `sessionUsage` : l'occupation du contexte, pour que la jauge existe dès l'ouverture de la conversation. */
+  usage?: Record<string, unknown> | null;
+}
+
+/** Estimation grossière de caractères par jeton, la même que celle de l'agent pour borner l'historique. */
+const CHARS_PER_TOKEN = 4;
+
+/**
+ * `Usage` du contrat pour une conversation : la part de la fenêtre du modèle que le prochain appel va occuper.
+ * Source : les jetons que le fournisseur a RAPPORTÉS pour la dernière réponse (invite + réponse). Après un résumé du contexte (compactage) cette mesure est
+ * périmée jusqu'à la réponse suivante : on estime alors sur le texte encore envoyé (`context_estimated: true`). `windowTokens` à 0 : fenêtre inconnue,
+ * pas de pourcentage. Sans message, rien à dire (`null`).
+ */
+export function sessionUsage(messages: readonly Message[], windowTokens: number, model?: string): Record<string, unknown> | null {
+  if (messages.length === 0) return null;
+  let lastReported = -1;
+  let lastSummary = -1;
+  let calls = 0;
+  let summaries = 0;
+  messages.forEach((m, i) => {
+    if (m.role === "assistant" && typeof m.inputTokens === "number" && m.inputTokens > 0) {
+      lastReported = i;
+      calls++;
+    }
+    if (m.kind === "summary") {
+      lastSummary = i;
+      summaries++;
+    }
+  });
+  let used: number;
+  let estimated = false;
+  if (lastReported >= 0 && lastReported > lastSummary) {
+    const m = messages[lastReported]!;
+    used = (m.inputTokens ?? 0) + (m.outputTokens ?? 0);
+  } else {
+    const chars = messages.filter((m) => !m.compacted).reduce((n, m) => n + m.content.length, 0);
+    used = Math.ceil(chars / CHARS_PER_TOKEN);
+    estimated = true;
+  }
+  const max = windowTokens > 0 ? windowTokens : null;
+  return {
+    ...(model ? { model } : {}),
+    calls,
+    compressions: summaries,
+    context_used: used,
+    context_max: max,
+    context_percent: max ? Math.min(100, Math.round((used / max) * 1000) / 10) : null,
+    context_estimated: estimated,
+  };
 }
 
 /** `SessionLiveInfo` : ce que le shell affiche de la session (modèle, dossier, état). */
@@ -181,6 +235,7 @@ export function sessionInfo(i: SessionInfoInput): Record<string, unknown> {
     ...(i.provider ? { provider: i.provider } : {}),
     ...(i.model ? { model: i.model } : {}),
     ...(i.cwd ? { cwd: i.cwd } : {}),
+    ...(i.usage ? { usage: i.usage } : {}),
     tools: {},
     skills: {},
   };
