@@ -329,7 +329,21 @@ export function transcript(
     } else lines.push(`RÉSULTAT ${m.toolName ?? ""}${m.isError ? " (erreur)" : ""} : ${keep(m.content)}`);
   }
   const text = lines.join("\n");
-  return text.length > maxChars ? `…\n${text.slice(-maxChars)}` : text;
+  if (text.length <= maxChars) return text;
+  // Ce qui doit tomber en premier, ce sont les échanges les plus anciens — le milieu de
+  // l'historique —, pas la tête : le début porte l'instruction de départ et le « RÉSUMÉ PRÉCÉDENT »
+  // que `history()` place en tête. L'ancienne coupe (`text.slice(-maxChars)`) gardait la fin et
+  // perdait ce début sans le dire. On garde donc la tête ET la fin, et on ne retire que le milieu.
+  const head = Math.min(4_000, Math.floor(maxChars / 4));
+  // Place réservée au marqueur de coupe, retours à la ligne compris : le libellé fait une
+  // cinquantaine de caractères, le reste couvre un nombre omis de soixante-huit chiffres.
+  const markerRoom = 120;
+  const tail = Math.max(0, maxChars - head - markerRoom);
+  if (tail === 0) return text.slice(0, maxChars);
+  const kept = text.slice(text.length - tail);
+  const omitted = text.length - head - kept.length;
+  const marker = `… [${omitted} caractères omis : les échanges les plus anciens] …`;
+  return `${text.slice(0, head)}\n${marker}\n${kept}`;
 }
 
 import { budgetRatio, budgetStopMessage, budgetWarnMessage, crossedWarning, limitsFor, usageOf } from "./budget.js";
@@ -981,72 +995,85 @@ ${project.text}`);
       ? "avec tes outils, y compris l'écriture de fichiers dans ton dossier de travail"
       : "avec tes outils en lecture seule";
     const system = `${this.buildSystemPrompt(task, { ...s, workspace, agentMode: opts.write ? "build" : "plan", memoryInject: false })}\n\n## Sous-agent\nTu es un sous-agent chargé d'une tâche précise. Travaille de façon autonome ${how}, puis rends un compte rendu final complet et autonome : c'est la seule chose que l'agent principal verra.${role}`;
-    const ctrl = signal ?? new AbortController().signal;
-    for (let step = 0; step < maxSteps; step++) {
-      const r = await this.trace(cible, () =>
-        client.chat(
-          {
-            model: cible.model,
-            system,
-            messages: turns,
-            tools,
-            signal: ctrl,
-            thinking: s.thinking,
-            effort: s.effort,
-            anthropicFallbacks: s.anthropicFallbacks,
-          },
-          {},
-        ),
-      );
-      turns.push({
-        role: "assistant",
-        content: r.text,
-        ...(r.toolCalls.length ? { toolCalls: r.toolCalls } : {}),
-        provider: cible.provider,
-        model: r.servedModel ?? cible.model,
-        ...(r.raw !== undefined ? { raw: r.raw } : {}),
-      });
-      if (r.toolCalls.length === 0) return r.text || "(le sous-agent n'a rien renvoyé)";
-      for (const call of r.toolCalls) {
-        opts.hooks?.onTool?.(call);
-        const tool = this.d.tools.get(call.name);
-        let content: string;
-        let isError = false;
-        if (!tool || !tools.some((t) => t.name === call.name)) {
-          content = `Outil indisponible pour un sous-agent : ${call.name}`;
-          isError = true;
-        } else {
-          // Q19-1 : le même garde que le tour principal (règles de configuration, mode Plan, validation
-          // des arguments, accord, audit). Le filtre ci-dessus reste : il décide de ce qui est OFFERT ;
-          // le garde décide de ce qui s'EXÉCUTE. Un sous-agent en lecture seule n'a aucun accord à
-          // demander (refus) ; celui qui écrit passe par `opts.write` et ses outils déjà autorisés.
-          const write = opts.write;
-          const out = await this.executeTool(
-            sessionId,
-            call,
-            ctrl,
+    // Le contrôleur local est celui qu'on annule : il relaie le signal de l'appelant quand il y en a
+    // un, et il reste annulable même sans signal. Sinon le contrôleur fabriqué ici était jeté
+    // aussitôt, et plus rien en aval ne pouvait être interrompu.
+    const ctrl = new AbortController();
+    const onAbort = (): void => ctrl.abort();
+    if (signal?.aborted) ctrl.abort();
+    else signal?.addEventListener("abort", onAbort, { once: true });
+    try {
+      for (let step = 0; step < maxSteps; step++) {
+        const r = await this.trace(cible, () =>
+          client.chat(
             {
-              emit: () => {},
-              approve: (_sid, c, description) => (write ? write.approve(c, description) : Promise.resolve(false)),
+              model: cible.model,
+              system,
+              messages: turns,
+              tools,
+              signal: ctrl.signal,
+              thinking: s.thinking,
+              effort: s.effort,
+              anthropicFallbacks: s.anthropicFallbacks,
             },
-            { ...s, workspace, autoApproveTools: s.autoApproveTools || Boolean(write?.autoApproved.has(call.name)) },
-          );
-          content = truncate(out.content, 30_000);
-          isError = out.isError;
-        }
-        // Le crochet reçoit ce que le résumé reçoit : le nom, le contenu déjà tronqué, l'erreur.
-        opts.hooks?.onToolResult?.(call.name, content, isError);
+            {},
+          ),
+        );
         turns.push({
-          role: "tool",
-          content,
-          toolCallId: call.id,
-          toolName: call.name,
-          ...(isError ? { isError: true } : {}),
+          role: "assistant",
+          content: r.text,
+          ...(r.toolCalls.length ? { toolCalls: r.toolCalls } : {}),
+          provider: cible.provider,
+          model: r.servedModel ?? cible.model,
+          ...(r.raw !== undefined ? { raw: r.raw } : {}),
         });
+        if (r.toolCalls.length === 0) return r.text || "(le sous-agent n'a rien renvoyé)";
+        for (const call of r.toolCalls) {
+          opts.hooks?.onTool?.(call);
+          const tool = this.d.tools.get(call.name);
+          let content: string;
+          let isError = false;
+          if (!tool || !tools.some((t) => t.name === call.name)) {
+            content = `Outil indisponible pour un sous-agent : ${call.name}`;
+            isError = true;
+          } else {
+            // Q19-1 : le même garde que le tour principal (règles de configuration, mode Plan, validation
+            // des arguments, accord, audit). Le filtre ci-dessus reste : il décide de ce qui est OFFERT ;
+            // le garde décide de ce qui s'EXÉCUTE. Un sous-agent en lecture seule n'a aucun accord à
+            // demander (refus) ; celui qui écrit passe par `opts.write` et ses outils déjà autorisés.
+            const write = opts.write;
+            const out = await this.executeTool(
+              sessionId,
+              call,
+              ctrl.signal,
+              {
+                emit: () => {},
+                approve: (_sid, c, description) => (write ? write.approve(c, description) : Promise.resolve(false)),
+              },
+              { ...s, workspace, autoApproveTools: s.autoApproveTools || Boolean(write?.autoApproved.has(call.name)) },
+            );
+            content = truncate(out.content, 30_000);
+            isError = out.isError;
+          }
+          // Le crochet reçoit ce que le résumé reçoit : le nom, le contenu déjà tronqué, l'erreur.
+          opts.hooks?.onToolResult?.(call.name, content, isError);
+          turns.push({
+            role: "tool",
+            content,
+            toolCallId: call.id,
+            toolName: call.name,
+            ...(isError ? { isError: true } : {}),
+          });
+        }
       }
+      const last = [...turns].reverse().find((t) => t.role === "assistant" && t.content);
+      return `${last?.content ?? ""}\n\n[Sous-agent arrêté après ${maxSteps} étapes]`;
+    } finally {
+      // Sortie normale ou exception : on détache l'écouteur et on annule le contrôleur, pour que ce
+      // qui aurait survécu en aval soit interrompu.
+      signal?.removeEventListener("abort", onAbort);
+      ctrl.abort();
     }
-    const last = [...turns].reverse().find((t) => t.role === "assistant" && t.content);
-    return `${last?.content ?? ""}\n\n[Sous-agent arrêté après ${maxSteps} étapes]`;
   }
 }
 
