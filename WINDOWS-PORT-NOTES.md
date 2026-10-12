@@ -406,3 +406,29 @@ distribution is broken, macOS cannot be built here, and the Linux suite does not
 4. The `windows-latest` job with the new `JarodOS-*` artifact globs, and the unsigned appx install (needs a certificate whose subject is `CN=JarodOS`).
 5. `README.md` still links to the upstream releases and CI badges (lines with `iamlukethedev` are protected); it says so. Change them once this derivative is published.
 6. `dist:win` leaves the earlier `HeraldOS-*` files in `apps/desktop/release` (git-ignored build output); delete them by hand if wanted.
+
+## Parity with jarod-cordis
+
+The owner's goal is that Jarod-OS does everything the jarod-cordis application does, under the Herald shell. The list, with the state of each function, is `jarod-core/PARITY.md`.
+
+**How it was done.** The control channels of the cordis desktop app (the handlers behind its screens: providers, local models, Hugging Face, skills, profiles, messaging, Kanban, RAG,
+backup, SSH, API server, phone, vault, plugins, automation…) were copied with their tests into `jarod-core/packages/bridge` (`@jarod/bridge`, 270+ channels; the integrated terminal is left
+out: node-pty was ruled out). The gateway serves them (`jarod.invoke` over the WebSocket, `POST /api/jarod/invoke`), pushes their events (`jarod.event`) and turns the native gestures they need
+(file pickers, confirmations) into `jarod.shell` requests that the window has the Electron main process perform (`apps/desktop/electron/ipc/jarod-shell*.ts`). No window means refusal, never consent. Each
+screen of the shell is then a thin React page on those channels (Settings sections, plus a Kanban page). Every change that gives the agent more power still passes through the engine's own native
+confirmation.
+
+**Things the engine does that cordis's app did in its Electron host, now done here:** the agent's browser (an isolated Electron window in the shell's main process, driven by the core through the
+`browser` gesture); the voice (`/api/audio/transcribe`, `/api/audio/speak`: the machine's voice rendered to WAV by the new `SpeechService.synthesize`); the work folder chosen in Settings (wins over
+`JAROD_WORKSPACE`); profile switching (the shell restarts the engine on the new profile).
+
+**Verified in a real window** (isolated profile, real LM Studio and Hugging Face): every Settings section and the Kanban page open and read real data; keys, settings, vault entries, rules, tasks, a persona,
+a messaging token and skill switches were written and read back; a real conversation with Qwen3 Coder through the packaged app; the agent's browser opened a real page, followed a link and refused
+the machine's own addresses; the machine's voice was rendered to WAV. **Not tried in a window** (each is covered by tests): anything that opens a native dialog (folder and file pickers, backups,
+imports, SSH keys, confirmations), installing the llama.cpp engine, downloading a model, switching profile, a real transcription provider, opening the API or the phone bridge to the network.
+
+**Not done:** wake word and continuous capture (OpenVINO models are not embedded), streaming voice sentence by sentence (the window speaks the whole reply instead), GPT-Live, updates of the core
+(no release channel for Jarod-OS yet), embeddings/reranker workers, node-pty terminal.
+
+**Duplicates removed:** the Connections page and Settings both used to set up messaging channels and MCP servers; Connections now switches channels through the same engine handler (a channel without tokens does
+not switch on) and sends setup to Settings. Local models shows the llama.cpp engine once.
