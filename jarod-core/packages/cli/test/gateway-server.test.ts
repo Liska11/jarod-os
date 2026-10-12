@@ -97,8 +97,8 @@ const open: Gateway[] = [];
 afterEach(async () => {
   for (const g of open.splice(0)) await g.close();
 });
-async function start(core: GatewayCore) {
-  const gw = createGateway({ core, version: "test" });
+async function start(core: GatewayCore, extra: Partial<Parameters<typeof createGateway>[0]> = {}) {
+  const gw = createGateway({ core, version: "test", ...extra });
   open.push(gw);
   return { gw, port: await gw.listen(0) };
 }
@@ -216,6 +216,58 @@ describe("passerelle compatible Hermes", () => {
     c.reply(c.requests[1]!.id, { choice: "deny" });
     await c.waitFor(() => c.events.some((e) => e.type === "message.complete"));
     expect(answers).toEqual([true, false]);
+    c.close();
+  });
+
+  it("une fenêtre muette ne gèle pas le tour : l'accord est refusé à l'échéance, la fenêtre est prévenue, le tour finit", async () => {
+    let answer: boolean | undefined;
+    const f = fakeCore(async (id, _text, hooks) => {
+      answer = await hooks.approve(id, { id: "c1", name: "run_shell", args: {} }, "x");
+      hooks.emit({ type: "done", sessionId: id });
+    });
+    const { gw, port } = await start(f.core, { approvalTimeoutMs: 60 });
+    const c = await connect(gw, port);
+    await c.call("session.create", {});
+    await c.call("prompt.submit", { session_id: "s1", text: "go" });
+    await c.waitFor(() => c.requests.length === 1);
+    // la fenêtre ne répond pas
+    await c.waitFor(() => answer !== undefined && c.events.some((e) => e.type === "message.complete"));
+    expect(answer).toBe(false);
+    expect(c.events.find((e) => e.type === "status.update")).toMatchObject({ session_id: "s1", payload: { kind: "approval-timeout", text: expect.stringContaining("run_shell") } });
+    // une réponse tardive ne réveille personne et ne casse rien
+    c.reply(c.requests[0]!.id, { choice: "once" });
+    expect((await c.call("session.list", {})).error).toBeUndefined();
+    expect(answer).toBe(false);
+    c.close();
+  });
+
+  it("une réponse donnée à temps l'emporte sur l'échéance (pas de message, pas de refus)", async () => {
+    let answer: boolean | undefined;
+    const f = fakeCore(async (id, _text, hooks) => {
+      answer = await hooks.approve(id, { id: "c1", name: "run_shell", args: {} }, "x");
+      hooks.emit({ type: "done", sessionId: id });
+    });
+    const { gw, port } = await start(f.core, { approvalTimeoutMs: 150 });
+    const c = await connect(gw, port);
+    await c.call("session.create", {});
+    await c.call("prompt.submit", { session_id: "s1", text: "go" });
+    await c.waitFor(() => c.requests.length === 1);
+    c.reply(c.requests[0]!.id, { choice: "once" });
+    await c.waitFor(() => c.events.some((e) => e.type === "message.complete"));
+    await new Promise((r) => setTimeout(r, 250)); // l'échéance passe sans effet
+    expect(answer).toBe(true);
+    expect(c.events.some((e) => e.type === "status.update")).toBe(false);
+    c.close();
+  });
+
+  it("un geste natif sans réponse (boîte laissée ouverte) rend null à l'échéance", async () => {
+    const f = fakeCore(async () => {});
+    const { gw, port } = await start(f.core, { shellTimeoutMs: 60 });
+    const c = await connect(gw, port);
+    const asked = gw.link.ask("pickFile", { title: "x" });
+    await c.waitFor(() => c.requests.length === 1);
+    expect(c.requests[0]).toMatchObject({ method: "jarod.shell", params: { kind: "pickFile" } });
+    expect(await asked).toBeNull();
     c.close();
   });
 

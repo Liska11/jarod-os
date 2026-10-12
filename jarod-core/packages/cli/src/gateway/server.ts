@@ -64,6 +64,10 @@ export interface GatewayOptions {
   log?: (line: string) => void;
   /** « Run now » attend la fin de l'exécution au plus ce temps (ms) avant de répondre ; 30 s par défaut (Herald abandonne à 60 s). */
   triggerWaitMs?: number;
+  /** Une fenêtre qui ne répond pas à une demande d'accord au bout de ce temps (ms) : la demande est refusée et la fenêtre prévenue ; 10 min par défaut. */
+  approvalTimeoutMs?: number;
+  /** Idem pour un geste natif (sélecteur, confirmation) : 1 h par défaut, comme l'appel `jarod.invoke` du shell. */
+  shellTimeoutMs?: number;
   /** La voix (transcription, synthèse) : sans elle, `/api/audio/*` répond 404 et la fenêtre le dit. */
   voice?: VoicePort;
 }
@@ -112,6 +116,8 @@ export function createGateway(opts: GatewayOptions): Gateway {
   const token = opts.token ?? randomBytes(24).toString("base64url");
   const log = opts.log ?? (() => {});
   const triggerWaitMs = opts.triggerWaitMs ?? 30_000;
+  const approvalTimeoutMs = opts.approvalTimeoutMs ?? 10 * 60_000;
+  const shellTimeoutMs = opts.shellTimeoutMs ?? 60 * 60_000;
   const replayEpoch = randomBytes(6).toString("hex");
   const unhandled = new Map<string, number>();
   const ignored = new Map<string, number>();
@@ -123,18 +129,37 @@ export function createGateway(opts: GatewayOptions): Gateway {
 
   const send = (conn: Conn, frame: unknown) => conn.ws.send(JSON.stringify(frame));
 
-  /** Une requête du serveur vers le shell (l'accord d'un outil) ; sans réponse (connexion fermée) : `null`, donc refus. */
-  const askClient = (conn: Conn, method: string, params: Record<string, unknown>): Promise<unknown> =>
+  /**
+   * Une requête du serveur vers le shell (l'accord d'un outil) ; sans réponse (connexion fermée, ou fenêtre muette passé `timeoutMs`) : `null`, donc refus.
+   * À l'échéance la demande est retirée de `conn.pending` : une réponse tardive ne trouve plus rien et ne réveille personne, et `onTimeout` prévient la fenêtre.
+   */
+  const askClient = (conn: Conn, method: string, params: Record<string, unknown>, timeoutMs: number, onTimeout?: () => void): Promise<unknown> =>
     new Promise((resolve) => {
       if (conn.ws.closed) return resolve(null);
       const id = `srv-${++serverRequestSeq}`;
-      conn.pending.set(id, resolve);
+      const timer = setTimeout(() => {
+        if (!conn.pending.delete(id)) return;
+        resolve(null);
+        try {
+          onTimeout?.();
+        } catch {
+          // la fenêtre a disparu entre-temps : le refus suffit
+        }
+      }, timeoutMs);
+      timer.unref?.();
+      conn.pending.set(id, (result) => {
+        clearTimeout(timer);
+        resolve(result);
+      });
       send(conn, { jsonrpc: "2.0", id, method, params });
     });
 
   /** La demande d'accord d'un outil ou d'une commande, posée dans la carte de Herald ; sans réponse (connexion fermée) : refus. */
   const approveWith = async (conn: Conn, sessionId: string, call: { name: string; args: Record<string, unknown> }, description: string): Promise<boolean> => {
-    const answer = await askClient(conn, "approval", approvalParams(sessionId, `appr-${randomBytes(4).toString("hex")}`, call, description));
+    const answer = await askClient(conn, "approval", approvalParams(sessionId, `appr-${randomBytes(4).toString("hex")}`, call, description), approvalTimeoutMs, () => {
+      const waited = approvalTimeoutMs >= 60_000 ? `${Math.round(approvalTimeoutMs / 60_000)} min` : `${Math.max(1, Math.ceil(approvalTimeoutMs / 1000))} s`;
+      if (!conn.ws.closed) send(conn, eventFrame("status.update", sessionId, { kind: "approval-timeout", text: `Aucune réponse à la demande d'accord pour « ${call.name} » en ${waited} : refusée.` }));
+    });
     return isApproved(answer);
   };
 
@@ -850,7 +875,7 @@ export function createGateway(opts: GatewayOptions): Gateway {
         const conn = [...conns].at(-1);
         if (!conn) return null;
         // La fenêtre répond par un objet (contrat des requêtes serveur → client) : la valeur est dans `value`.
-        const answer = await askClient(conn, "jarod.shell", { kind, ...params });
+        const answer = await askClient(conn, "jarod.shell", { kind, ...params }, shellTimeoutMs);
         return answer && typeof answer === "object" ? ((answer as { value?: unknown }).value ?? null) : null;
       },
     },
