@@ -167,6 +167,25 @@ describe("AgentBrowser (faux Electron)", () => {
     }
   });
 
+  it("un nom que Node ne résout pas est refusé, avant la fenêtre comme pour chaque requête : Chromium, lui, sait interroger mDNS, LLMNR et le fichier hosts", async () => {
+    const f = fakeElectron();
+    const nasLookup = async (host: string) => {
+      if (host === "nas") throw new Error("ENOTFOUND");
+      if (host === "vide.example") return [];
+      return ["93.184.216.34"];
+    };
+    const refused = new AgentBrowser({ electron: f.electron, visible: () => true, lookup: nasLookup });
+    await expect(refused.open("http://nas/")).rejects.toThrow(/pointe vers une adresse locale/);
+    await expect(refused.open("http://vide.example/")).rejects.toThrow(/pointe vers une adresse locale/);
+    expect(f.log.windows).toHaveLength(0);
+
+    const b = new AgentBrowser({ electron: f.electron, visible: () => true, lookup: nasLookup });
+    await b.open("https://example.org");
+    expect(await f.request("http://nas/partage")).toBe(false);
+    expect(await f.request("http://vide.example/x")).toBe(false);
+    expect(await f.request("https://cdn.example.org/a.js")).toBe(true);
+  });
+
   it("permissions toutes refusées, téléchargements annulés, window.open ne crée pas de fenêtre (adresse chargée ici si permise, sinon ignorée)", async () => {
     const f = fakeElectron();
     const b = new AgentBrowser({ electron: f.electron, visible: () => true, lookup: publicLookup });

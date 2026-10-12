@@ -318,7 +318,9 @@ export class AgentBrowser implements BrowserPort {
       const addrs = this.d.lookup ? await this.d.lookup(host) : (await dnsLookup(host, { all: true })).map((a) => a.address);
       ok = addrs.length > 0 && addrs.every((a) => !isPrivateHost(a));
     } catch {
-      ok = true; // pas de résolution : Chromium échouera de lui-même ; rien n'est joint
+      // Un nom que Node ne peut pas résoudre doit être refusé : Chromium, lui, sait interroger mDNS, LLMNR,
+      // NetBIOS et le fichier hosts, donc « la résolution échoue ici » ne veut pas dire « rien n'est joint ».
+      ok = false;
     }
     this.dnsCache.set(host, { at: Date.now(), ok });
     return ok;
