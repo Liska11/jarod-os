@@ -51,8 +51,19 @@ function Invoke-Python([string[]]$Arguments) {
 }
 
 function Stop-Tree([System.Diagnostics.Process]$Process) {
-    if ($Process -and -not $Process.HasExited) {
-        & taskkill.exe /PID $Process.Id /T /F 2>&1 | Out-Null
+    # Cleanup only: a taskkill that fails (the tree is already gone, access denied) must never change the verdict.
+    # With $ErrorActionPreference = 'Stop', Windows PowerShell 5.1 turns the native tool's stderr into a terminating error,
+    # and thrown from the finally block it ended the script with exit code 1 after six passing steps.
+    $previous = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        if ($Process -and -not $Process.HasExited) {
+            & taskkill.exe /PID $Process.Id /T /F 2>&1 | Out-Null
+        }
+    } catch {
+        # The process is gone or cannot be stopped; nothing more to do here.
+    } finally {
+        $ErrorActionPreference = $previous
     }
 }
 
