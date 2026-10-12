@@ -2,6 +2,7 @@
 // Ouvre le noyau de Jarod sur un profil ISOLÉ (`JAROD_HOME` obligatoire : l'essai n'écrit jamais dans le profil réel sans `--real-profile`)
 // et le sert comme un `hermes serve`. Écrit `HERMES_BACKEND_READY port=N` (la ligne que le shell sait lire) et un fichier
 // `gateway.json` (url + jeton, 0600 et restriction `icacls` sous Windows, effacé à l'arrêt) dans le dossier du profil ; Ctrl-C affiche ce que le shell a demandé sans l'obtenir.
+// Sortie : 2 = arguments invalides, 3 = démarrage refusé (profil déjà servi, port occupé) — jamais une pile Node brute.
 import { existsSync, realpathSync, statSync } from "node:fs";
 import { isAbsolute, join } from "node:path";
 import { assertOneaiChannel, bindLocalModelsEvents, bindUpdateEvents, bindVoiceEvents, closeAllApiServers, createHandlers, desktopKernelOf, HERMES_REGISTRY, RegistryClient, startRememberedApiServers } from "@jarod/bridge";
@@ -12,8 +13,15 @@ import { createRemoteBrowser } from "./browser.js";
 import { createBridgeShell } from "./bridge-shell.js";
 import { removeSecretFile, writeSecretFile } from "./secret-file.js";
 import { createGateway } from "./server.js";
+import { startupFailure } from "./startup.js";
 
 const env = process.env;
+/** Refuse de démarrer en le disant clairement : la fenêtre n'affiche que ces lignes (voir `startup.ts`). */
+const fail = (e: unknown): never => {
+  const failure = startupFailure(e);
+  console.error(failure.message);
+  process.exit(failure.code);
+};
 if (!env.JAROD_HOME && !process.argv.includes("--real-profile")) {
   console.error("JAROD_HOME manquant : l'essai refuse de toucher au profil réel (passer --real-profile pour le faire exprès).");
   process.exit(2);
@@ -35,8 +43,14 @@ if (wsRaw) {
 // `--init` : le cœur complet (verrou du profil, tick du planificateur, MCP, passerelles de messagerie), pour une application qui reste ouverte ;
 // sans lui, le noyau minimal de l'essai (les planifications ne tirent que par « Run now »).
 const init = process.argv.includes("--init");
-const { core, dataDir, profile } = await openCore({ env, ...(init ? { init: true } : {}) });
-if (init) await core.init();
+const opened = await openCore({ env, ...(init ? { init: true } : {}) }).catch(fail);
+const { core, dataDir, profile } = opened;
+if (init) {
+  await core.init().catch(async (e: unknown) => {
+    await core.dispose().catch(() => {});
+    fail(e);
+  });
+}
 await core.skills.reload();
 const gatewayVersion = "0.1.5-gateway-spike";
 // La voix : transcription par le fournisseur des réglages, synthèse par la voix de la machine (WAV) ; la fenêtre joue le son.
@@ -79,7 +93,7 @@ const pushEvent = (channel: string, ...args: unknown[]) => gateway.link.send(cha
 const unbindEvents = [bindLocalModelsEvents(kernel.localEngine?.models, pushEvent), bindUpdateEvents(core.app as never, pushEvent), bindVoiceEvents(core.app as never, pushEvent)];
 // Le serveur d'API compatible OpenAI que l'utilisateur avait allumé revient avec le noyau.
 await startRememberedApiServers().catch((e: unknown) => console.error(`[passerelle] serveur d'API non rallumé : ${e instanceof Error ? e.message : String(e)}`));
-const port = await gateway.listen(env.JAROD_GATEWAY_PORT ? Number(env.JAROD_GATEWAY_PORT) : 0);
+const port = await gateway.listen(env.JAROD_GATEWAY_PORT ? Number(env.JAROD_GATEWAY_PORT) : 0).catch(fail);
 const file = join(dataDir, "gateway.json");
 // Le fichier porte le jeton en clair : écrit par `writeSecretFile` (0o600, plus `icacls` sous Windows), effacé à l'arrêt.
 const hardened = writeSecretFile(file, JSON.stringify({ url: `http://127.0.0.1:${port}`, token: gateway.token }));
