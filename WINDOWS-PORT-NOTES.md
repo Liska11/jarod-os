@@ -497,3 +497,10 @@ blockmap (11 Oct, before the rename), the top-level `win-unpacked` and `win-unpa
 - MCP : `mcp_servers` de `config.yaml` → `mcpServers`, tous `enabled: false`. Le jeton d'accès OAuth de `mcp-tokens/<nom>.json` devient l'en-tête
   `Authorization: Bearer …` (Jarod n'a pas de flux OAuth ni de renouvellement : le jeton expire). Les filtres `tools.include/exclude` et les délais ne sont pas repris.
 - Constaté sur ce poste : 394 skills copiés (396 avec les 2 skills d'exemple), 9 serveurs MCP.
+
+## Icône absente de la barre des tâches (12 oct. 2026)
+
+- Cause : un raccourci parasite `Start Menu\Programs\Electron.lnk` (créé par un lancement de développement) portait le même identifiant d'application
+  (`one.jarod.os`) que l'app installée et pointait vers `node_modules\electron\dist\electron.exe` : Windows en tirait l'icône (l'atome) pour le bouton de la barre des tâches,
+  alors que l'exécutable et la fenêtre portaient bien le robot.
+- Correctif : le raccourci a été mis de côté ; un lancement de développement utilise désormais l'identifiant `one.jarod.os.dev` (`electron/main.ts`).

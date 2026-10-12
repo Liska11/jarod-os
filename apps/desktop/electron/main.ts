@@ -368,9 +368,10 @@ app.whenReady().then(async () => {
     app.dock?.setIcon(icon)
   }
 
-  // Windows groups the taskbar button, jump list and toast notifications under this id.
+  // Windows groups the taskbar button, jump list and toast notifications under this id. A dev run (`electron .`) gets its own: it leaves a
+  // Start Menu shortcut to electron.exe under its id, and sharing the installed app's id made the taskbar show Electron's atom for Jarod-OS.
   if (process.platform === 'win32') {
-    app.setAppUserModelId('one.jarod.os')
+    app.setAppUserModelId(isDev ? 'one.jarod.os.dev' : 'one.jarod.os')
   }
 
   registerCoreIpc()
