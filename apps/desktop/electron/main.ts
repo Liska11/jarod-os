@@ -3,6 +3,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { type EnvInfo, type HeraldOSPrefs, IPC, type RestRequest, type ShellCommand, type WindowState } from '../shared/ipc.ts'
 import { BackendManager } from './backend/manager.ts'
+import { jarodDataDir, resolveJarodCore, selectBackend } from './backend/jarod-core.ts'
 import { CrashWatcher } from './crash/watch.ts'
 import { fireEventAutomations } from './events/automations.ts'
 import { events } from './events/bus.ts'
@@ -49,6 +50,14 @@ import { WallpaperService } from './shell/wallpaper.ts'
 import { appIconPath, createMainWindow } from './window.ts'
 
 app.setName('Jarod-OS')
+const coreLocation = { packaged: app.isPackaged, resourcesPath: process.resourcesPath, appPath: app.getAppPath() }
+
+// With the Jarod core as backend, the shell keeps its Hermes-style files (plugins, themes, audit, notes) in a home of its own, never in a Hermes install of this machine.
+// Left alone when the person set HERMES_HOME, or attached the shell to a backend they run themselves.
+if (!process.env.HERMES_HOME?.trim() && !process.env.HERALD_OS_BACKEND_URL?.trim() && selectBackend(process.env, resolveJarodCore({ ...coreLocation, env: process.env })) === 'jarod') {
+  process.env.HERMES_HOME = path.join(jarodDataDir(), 'herald-home')
+}
+
 // Widget plugins load from herald-plugin://<id>/ (registered before the app is ready, as Electron requires).
 protocol.registerSchemesAsPrivileged([{ scheme: 'herald-plugin', privileges: { standard: true, secure: true, supportFetchAPI: true } }])
 
@@ -60,7 +69,7 @@ for (const line of migrateLegacyData({ hermesHome: hermesHome(), appData: app.ge
   log('migrate', line)
 }
 
-const backend = new BackendManager()
+const backend = new BackendManager(coreLocation)
 let mainWindow: BrowserWindow | null = null
 const mode = shellMode()
 // Panels mode (niri): several surface windows, compositor state mirror, control socket for hotkeys.

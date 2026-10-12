@@ -9,6 +9,7 @@ import { log } from '../log.ts'
 import { hermesHome, heraldOsDataDir } from '../paths.ts'
 import { ensureBridgePlugin } from './bridge-plugin.ts'
 import { type AttachTarget, attachTarget, foreignGateway } from './coexist.ts'
+import { type CoreLocation, type JarodCore, jarodDataDir, jarodSpawnPlan, jarodWorkspace, resolveJarodCore, selectBackend } from './jarod-core.ts'
 import { waitForStatus } from './probe.ts'
 import { LineBuffer, parseReadyLine, readyFileName, staleReadyFiles } from './ready.ts'
 import { resolveBackendRuntime } from './resolve.ts'
@@ -20,6 +21,8 @@ const STATUS_TIMEOUT_MS = 60_000
 const MAX_RESTARTS = 4
 const BACKOFF_MS = [1_000, 3_000, 7_000, 15_000]
 const LOG_TAIL_LINES = 200
+/** The Jarod core stops by itself when its input closes; this long to do it before it is killed. */
+const GRACEFUL_STOP_MS = 8_000
 
 export type BackendListener = (state: BackendState) => void
 
@@ -35,11 +38,16 @@ export class BackendManager {
   private control: { endpoint: () => string; token: string } | null = null
   private listeners = new Set<BackendListener>()
 
+  /** `location` says where a packaged build keeps the Jarod core (see `resolveJarodCore`). */
+  constructor(private readonly location: Pick<CoreLocation, 'packaged' | 'resourcesPath' | 'appPath'> = { packaged: false }) {}
+
   /** `endpoint` is a Unix socket path or `tcp://127.0.0.1:<port>`; a function when it is only known once the server listens. */
   setControl(endpoint: string | (() => string), token: string): void {
     this.control = { endpoint: typeof endpoint === 'function' ? endpoint : () => endpoint, token }
   }
   private stopping = false
+  /** Whether the running child stops when its standard input closes (the Jarod core): it gets the chance to close its database first. */
+  private gracefulStdin = false
   private startGeneration = 0
   private restartTimer: ReturnType<typeof setTimeout> | null = null
   private readonly tail: string[] = []
@@ -164,13 +172,26 @@ export class BackendManager {
       return
     }
 
-    const runtime = resolveBackendRuntime()
+    const core = resolveJarodCore({ ...this.location, env: process.env })
+    let runtime: BackendRuntime | null
+
+    if (selectBackend(process.env, core) === 'jarod') {
+      if (!core) {
+        this.update({ phase: 'failed', error: 'HERALD_OS_BACKEND=jarod, but this build has no compiled Jarod core. Build it with `npm run bundle:core`, or unset HERALD_OS_BACKEND.' })
+
+        return
+      }
+
+      runtime = { kind: 'jarod', label: 'the Jarod core built into Jarod-OS', root: core.dir, command: [core.node, core.gateway] }
+    } else {
+      runtime = resolveBackendRuntime()
+    }
 
     if (!runtime) {
       this.update({
         phase: 'failed',
         error:
-          'No Hermes runtime found. Install Hermes Agent (curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash) or set HERALD_OS_HERMES_ROOT.'
+          'No backend found: this build has no Jarod core and no Hermes runtime was found. Install Hermes Agent (curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash) or set HERALD_OS_HERMES_ROOT.'
       })
 
       return
@@ -179,8 +200,11 @@ export class BackendManager {
     this.update({ runtime, phase: 'starting' })
 
     try {
-      await ensureBridgePlugin(runtime)
-      const port = await this.spawnServe(runtime, generation)
+      if (runtime.kind !== 'jarod') {
+        await ensureBridgePlugin(runtime)
+      }
+
+      const port = await this.spawnServe(runtime, generation, runtime.kind === 'jarod' ? core : null)
 
       if (generation !== this.startGeneration) {
         return
@@ -244,10 +268,8 @@ export class BackendManager {
     return foreignGateway(hermesHome(), { appPid: process.pid, backendPid: this.child?.pid ?? null }, { alive: isProcessAlive, parentOf: parentPid })
   }
 
-  private async spawnServe(runtime: BackendRuntime, generation: number): Promise<number> {
+  private async spawnServe(runtime: BackendRuntime, generation: number, core: JarodCore | null): Promise<number> {
     this.token = crypto.randomBytes(32).toString('base64url')
-    const [command, ...head] = runtime.command
-    const args = [...head, 'serve', '--host', '127.0.0.1', '--port', '0']
     const dataDir = heraldOsDataDir()
     const readyFile = path.join(dataDir, readyFileName(process.pid))
     fs.mkdirSync(dataDir, { recursive: true })
@@ -257,29 +279,52 @@ export class BackendManager {
       fs.rmSync(path.join(dataDir, name), { force: true })
     }
 
-    const env: NodeJS.ProcessEnv = {
-      ...process.env,
-      PATH: await loginShellPath(),
-      HERMES_HOME: hermesHome(),
-      // Sessions start in the user's world, not inside the runtime checkout.
-      TERMINAL_CWD: osEnv('DEFAULT_CWD') || os.homedir(),
-      HERMES_DASHBOARD_SESSION_TOKEN: this.token,
-      // The loopback token exemption, in-process cron ticker and orphan reaping upstream key on
-      // this flag; Jarod-OS spawns and owns the backend exactly the way Desktop does.
-      HERMES_DESKTOP: '1',
-      HERALD_OS: '1',
-      HERMES_PARENT_PID: String(process.pid),
-      HERMES_DESKTOP_READY_FILE: readyFile,
-      PYTHONUNBUFFERED: '1',
-      ...(this.control ? { HERALD_OS_CONTROL_SOCKET: this.control.endpoint(), HERALD_OS_CONTROL_TOKEN: this.control.token } : {})
-    }
-    delete env.ELECTRON_RUN_AS_NODE
+    let command: string
+    let args: string[]
+    let env: NodeJS.ProcessEnv
+    let cwd: string | undefined
 
-    log('backend', `spawning ${[command, ...args].join(' ')} (cwd ${runtime.root ?? process.cwd()})`)
+    if (core) {
+      // The Jarod core: its own profile and working folder, the token the shell will present, and an input that stays open (closing it is how it is stopped).
+      const jarodData = jarodDataDir()
+      const workspace = jarodWorkspace()
+      fs.mkdirSync(path.join(jarodData, 'profile'), { recursive: true })
+      fs.mkdirSync(workspace, { recursive: true })
+      const plan = jarodSpawnPlan(core, { token: this.token, dataDir: jarodData, workspace, env: process.env })
+      command = plan.command
+      args = plan.args
+      env = plan.env
+      cwd = plan.cwd
+    } else {
+      const [executable, ...head] = runtime.command
+      command = executable as string
+      args = [...head, 'serve', '--host', '127.0.0.1', '--port', '0']
+      cwd = runtime.root ?? undefined
+      env = {
+        ...process.env,
+        PATH: await loginShellPath(),
+        HERMES_HOME: hermesHome(),
+        // Sessions start in the user's world, not inside the runtime checkout.
+        TERMINAL_CWD: osEnv('DEFAULT_CWD') || os.homedir(),
+        HERMES_DASHBOARD_SESSION_TOKEN: this.token,
+        // The loopback token exemption, in-process cron ticker and orphan reaping upstream key on
+        // this flag; Jarod-OS spawns and owns the backend exactly the way Desktop does.
+        HERMES_DESKTOP: '1',
+        HERALD_OS: '1',
+        HERMES_PARENT_PID: String(process.pid),
+        HERMES_DESKTOP_READY_FILE: readyFile,
+        PYTHONUNBUFFERED: '1',
+        ...(this.control ? { HERALD_OS_CONTROL_SOCKET: this.control.endpoint(), HERALD_OS_CONTROL_TOKEN: this.control.token } : {})
+      }
+      delete env.ELECTRON_RUN_AS_NODE
+    }
+
+    this.gracefulStdin = Boolean(core)
+    log('backend', `spawning ${[command, ...args].join(' ')} (cwd ${cwd ?? process.cwd()})`)
     const child = spawn(command, args, {
-      cwd: runtime.root ?? undefined,
+      cwd,
       env,
-      stdio: ['ignore', 'pipe', 'pipe'],
+      stdio: [core ? 'pipe' : 'ignore', 'pipe', 'pipe'],
       detached: false,
       windowsHide: true
     })
@@ -298,7 +343,7 @@ export class BackendManager {
           fn()
         }
       }
-      const timer = setTimeout(() => settle(() => reject(new Error('timed out waiting for HERMES_BACKEND_READY'))), READY_TIMEOUT_MS)
+      const timer = setTimeout(() => settle(() => reject(new Error('timed out waiting for HERMES_BACKEND_READY from the backend'))), READY_TIMEOUT_MS)
       // Fallback for interpreters whose fd 1 is not our pipe: upstream also publishes the port in a ready file.
       const filePoll = setInterval(() => {
         try {
@@ -341,7 +386,7 @@ export class BackendManager {
           this.child = null
         }
 
-        settle(() => reject(new Error(`hermes serve exited early (code ${code ?? 'null'}, signal ${signal ?? 'none'})`)))
+        settle(() => reject(new Error(`the backend exited early (code ${code ?? 'null'}, signal ${signal ?? 'none'})`)))
 
         if (settled && generation === this.startGeneration && !this.stopping && this.state.phase === 'ready') {
           this.scheduleRestart(this.state.attempt, `backend exited unexpectedly (code ${code ?? 'null'})`)
@@ -387,6 +432,9 @@ export class BackendManager {
       return
     }
 
+    // The Jarod core closes its database when its input ends; killing it outright would not give it the chance.
+    const graceful = this.gracefulStdin && Boolean(child.stdin)
+
     await new Promise<void>(resolve => {
       const force = setTimeout(() => {
         try {
@@ -396,14 +444,18 @@ export class BackendManager {
         }
 
         resolve()
-      }, 4000)
+      }, graceful ? GRACEFUL_STOP_MS : 4000)
       child.once('exit', () => {
         clearTimeout(force)
         resolve()
       })
 
       try {
-        killProcessTree(child, 'SIGTERM')
+        if (graceful) {
+          child.stdin?.end()
+        } else {
+          killProcessTree(child, 'SIGTERM')
+        }
       } catch {
         clearTimeout(force)
         resolve()

@@ -17,11 +17,12 @@
     "dev:electron": "wait-on http://127.0.0.1:5180 && node scripts/bundle-electron.mjs --dev && node scripts/run-electron.mjs --dev-server http://127.0.0.1:5180",
     "build": "vite build && node scripts/bundle-electron.mjs",
     "start": "npm run build && electron .",
+    "bundle:core": "node scripts/bundle-core.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.electron.json --noEmit",
     "test": "vitest run",
-    "dist:mac": "npm run build && electron-builder --mac --arm64 -c.npmRebuild=false --publish never",
-    "dist:linux": "npm run build && electron-builder --linux --publish never",
-    "dist:win": "npm run build && electron-builder --win --x64 -c.npmRebuild=false --publish never"
+    "dist:mac": "npm run bundle:core && npm run build && electron-builder --mac --arm64 -c.npmRebuild=false --publish never",
+    "dist:linux": "npm run bundle:core && npm run build && electron-builder --linux --publish never",
+    "dist:win": "npm run bundle:core && npm run build && electron-builder --win --x64 -c.npmRebuild=false --publish never"
   },
   "dependencies": {
     "@herald-os/client": "*",
@@ -86,6 +87,10 @@
       {
         "from": "../../linux/catalog",
         "to": "catalog"
+      },
+      {
+        "from": "../../jarod-core/dist/gateway",
+        "to": "jarod-core"
       }
     ],
     "asar": true,
