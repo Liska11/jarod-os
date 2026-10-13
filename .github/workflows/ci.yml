@@ -33,6 +33,20 @@ jobs:
       - run: npm test
       - run: npm run build
 
+  lint:
+    name: Lint (Biome)
+    # Shell, client and core in one pass; the recommended rules fail the job, the debt that predates the
+    # linter is reported as warnings (biome.json) until it is paid down.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm run lint
+
   kernel:
     name: Kernel (${{ matrix.os }})
     # The core (`jarod-core`) is its own pnpm workspace: the shell's `npm ci` does not install it and

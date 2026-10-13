@@ -5,7 +5,7 @@ import type { CatalogEntryView } from '../../../../shared/ipc.ts'
 import { GlassButton, Pill } from '../../../components/ui/glass.tsx'
 import { Spinner } from '../../../components/ui/primitives.tsx'
 import { hostPlatform } from '../../../lib/platform-labels.ts'
-import { $catalog, loadCatalog, runCatalog, useWithHermes } from '../../../store/catalog.ts'
+import { $catalog, loadCatalog, runCatalog, switchHermesToLocalModel } from '../../../store/catalog.ts'
 import { notify } from '../../../store/notifications.ts'
 import { openTerminalProgram } from '../../../store/terminal.ts'
 import { errorText, InlineNote, MenuDropdown, SectionTitle, SettingsGroup, SettingsRow } from './shared.tsx'
@@ -128,7 +128,7 @@ function UseWithHermes({ kind, label }: { kind: 'ollama' | 'lmstudio'; label: st
 
   const choose = async (model: string) => {
     try {
-      await useWithHermes(kind, model)
+      await switchHermesToLocalModel(kind, model)
       notify({ title: `Hermes uses ${model}`, body: `Through ${label} on this computer; switch back in Settings > Hermes & agents.`, level: 'success' })
     } catch (error) {
       notify({ title: 'Could not switch Hermes', body: errorText(error), level: 'error' })

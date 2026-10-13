@@ -76,7 +76,7 @@ export function normaliseUtterance(text: string): string {
   return out.replace(/'/g, '').replace(/[.!?,;:]+$/g, '').trim()
 }
 
-const escape = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
 interface CompiledPhrase {
   command: CommandSummary
@@ -100,7 +100,7 @@ function compile(command: CommandSummary, phrase: CommandPhrase): CompiledPhrase
       return '(?:the |my |a |an )?(.+?)'
     }
 
-    return escape(part.toLowerCase()).replace(/\s+/g, '\\s+')
+    return escapeRegExp(part.toLowerCase()).replace(/\s+/g, '\\s+')
   })
   const literalWords = text
     .replace(/\{[a-zA-Z]+\}/g, '')

@@ -1,4 +1,4 @@
-import { $catalog, catalogEntries, findCatalogEntry, loadCatalog, runCatalog, useWithHermes } from '../store/catalog.ts'
+import { $catalog, catalogEntries, findCatalogEntry, loadCatalog, runCatalog, switchHermesToLocalModel } from '../store/catalog.ts'
 import { fail, ok, type OsCommand } from '../store/os-commands.ts'
 import { openTerminalProgram } from '../store/terminal.ts'
 
@@ -122,7 +122,7 @@ export const softwareCommands: readonly OsCommand[] = [
         return fail(`No model "${String(model)}" there. It has: ${models.join(', ')}.`)
       }
 
-      await useWithHermes(kind, chosen)
+      await switchHermesToLocalModel(kind, chosen)
 
       return ok(`Hermes now uses ${chosen} on this computer`)
     }

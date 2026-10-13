@@ -212,7 +212,8 @@ export class OsControlServer {
 
     if (this.loopback) {
       this.server.listen(0, '127.0.0.1', () => {
-        this.port = (this.server?.address() as net.AddressInfo).port
+        // stop() may have run before the listen completed.
+        this.port = (this.server?.address() as net.AddressInfo | null)?.port ?? 0
         log('os-control', `listening on ${this.endpoint}`)
         this.markReady()
       })

@@ -1,0 +1,91 @@
+{
+  "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+  "vcs": {
+    "enabled": true,
+    "clientKind": "git",
+    "useIgnoreFile": true
+  },
+  "files": {
+    "includes": [
+      "apps/desktop/src/**",
+      "apps/desktop/electron/**",
+      "apps/desktop/shared/**",
+      "apps/desktop/preload/**",
+      "apps/desktop/scripts/**",
+      "packages/**",
+      "jarod-core/packages/**",
+      "jarod-core/scripts/**",
+      "jarod-core/tests/**",
+      "scripts/**",
+      "!**/node_modules",
+      "!**/dist",
+      "!**/*.generated.ts",
+      "!**/*.css"
+    ]
+  },
+  "formatter": {
+    "enabled": false
+  },
+  "assist": {
+    "enabled": false
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "preset": "recommended",
+      "style": {
+        "noNonNullAssertion": "off",
+        "useTemplate": "off",
+        "useImportType": "off"
+      },
+      "complexity": {
+        "noCommaOperator": "off",
+        "noUselessStringRaw": "off",
+        "useLiteralKeys": "off"
+      },
+      "correctness": {
+        "useExhaustiveDependencies": "warn",
+        "noVoidTypeReturn": "warn",
+        "noUnusedImports": "warn"
+      },
+      "suspicious": {
+        "noAssignInExpressions": "warn",
+        "useIterableCallbackReturn": "warn",
+        "noControlCharactersInRegex": "warn",
+        "noArrayIndexKey": "warn",
+        "noImplicitAnyLet": "warn"
+      },
+      "a11y": {
+        "noAutofocus": "warn",
+        "noStaticElementInteractions": "warn",
+        "useAriaPropsSupportedByRole": "warn",
+        "useKeyWithClickEvents": "warn",
+        "useSemanticElements": "warn",
+        "noLabelWithoutControl": "warn",
+        "noAriaHiddenOnFocusable": "warn"
+      }
+    }
+  },
+  "overrides": [
+    {
+      "includes": ["**", "!**/*.test.ts", "!**/*.test.tsx", "!**/test/**", "!jarod-core/tests/**"],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noFocusedTests": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": ["**/*.test.ts", "**/*.test.tsx", "**/test/**", "jarod-core/tests/**"],
+      "linter": {
+        "rules": {
+          "correctness": {
+            "noUnsafeOptionalChaining": "off"
+          }
+        }
+      }
+    }
+  ]
+}
