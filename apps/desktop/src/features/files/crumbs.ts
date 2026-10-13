@@ -29,11 +29,13 @@ export function buildCrumbs(location: Location | null, root: string | null, root
   const parsed = parsePath(location.path)
   let base: Crumb
   let rest = segmentsBelow(location.path, root)
+  const belowHome = home ? segmentsBelow(location.path, home) : null
 
   if (rest) {
     base = rootCrumb
-  } else if (home && (rest = segmentsBelow(location.path, home))) {
+  } else if (home && belowHome) {
     base = { label: 'Home', location: { kind: 'dir', path: home } }
+    rest = belowHome
   } else {
     const drive = parsed.root || '/'
     base = { label: drive.startsWith('\\\\') ? drive.replace(/\\$/, '') : diskLabel(drive, platform), location: { kind: 'dir', path: drive } }

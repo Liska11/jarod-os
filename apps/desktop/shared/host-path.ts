@@ -90,6 +90,7 @@ export function segmentsBelow(path: string, base: string): string[] | null {
 
 /** Characters a file name may not hold: `/` everywhere, and Windows' reserved set on a Windows path. */
 export function invalidNameCharacter(name: string, windows: boolean): string | null {
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: control characters are exactly what a file name may not hold.
   const match = (windows ? /[\\/:*?"<>|\u0000-\u001f]/ : /[/\u0000]/).exec(name)
 
   return match ? match[0] : null

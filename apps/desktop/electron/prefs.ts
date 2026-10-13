@@ -66,6 +66,7 @@ export function normalizeAssistantName(value: unknown): string | undefined {
     return undefined
   }
 
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: control characters and line breaks become spaces.
   const name = value.replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 32).trim()
 
   return name || undefined
