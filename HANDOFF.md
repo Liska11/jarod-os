@@ -67,16 +67,9 @@ Avant de cloner, refaire un bundle si des commits ont été ajoutés après le 1
      - Vérifié dans l'app avec un profil jetable et de fausses clés : analyse, masquage, correction d'une ligne, puis import réel par le noyau (2 clés de fournisseur, 1 au coffre).
   5. ✅ **Journal** : `electron/ipc/setup.ts` note la vérification et le test Telegram, puis la fin de la configuration, sous `setup`. L'audit est noté sous `audit`. Jamais de jeton ni de clé dans le journal.
 
-**Reste de la phase d'initialisation (facultatif) :**
-- ✅ Détails de l'audit traduits à l'écran : `checkDetail(check, facts)` dans `DesktopSetup.tsx` les reconstruit depuis `report.facts`. Le champ `detail` en anglais reste le texte de repli et ce que reçoit l'agent (`system.audit`).
-- Ajouter dans les Réglages un bouton « Relancer la vérification du système » (`window.heraldOS.systemAudit.run()`) et « Importer des clés » (réutiliser `KeysStep`).
-- ✅ Assistant à la demande : commande `setup.open` dans `src/commands/setup.ts`, avec la palette, la voix et `os_ui` pour l'agent. Elle passe par `$setupRequested` (`src/store/setup.ts`), et l'assistant se ferme par ✕ sans rien marquer. Commande `system.audit` : nouvel audit, renvoyé à l'agent comme données. Pas encore vérifié dans l'app lancée (typecheck et tests seulement).
-- Tester Telegram avec un vrai bot (jeton du propriétaire).
-- Linux et macOS : l'assistant `desktop` n'est activé que sous Windows (`setupState()` dans `electron/ipc/setup.ts`) ; l'audit, lui, fonctionne partout.
+**Arrêt au 14/10 (quota épuisé)** : tout est commité et sauvegardé sur D:, aucune tâche n'est à moitié faite. Ce qui reste à faire est dans la **section 4**, par ordre de priorité.
 
-**Arrêt au 14/10 (quota épuisé)** : tout est commité et sauvegardé sur D: ; aucune tâche n'est à moitié faite. Prochaines traductions dans l'ordre de `i18n:report` (StatusPanel, Documents, LocalEngineBlock…) ; les libellés des modèles (`kanban-model.ts`, `jarod-settings-model.ts`, `devices-model.ts`) restent en anglais.
-
-**Pour la prochaine session** : donner ce fichier à l'agent et lui demander de choisir dans « Reste de la phase d'initialisation » ou dans la liste de la section 4. La phase d'initialisation demandée par la spécification (section 7) est faite. Points à rappeler :
+**Pour la prochaine session** : donner ce fichier à l'agent et lui demander de prendre la section 4 dans l'ordre. La phase d'initialisation de la spécification (section 7) est faite. Points à rappeler :
 - toujours pas de push sans accord ;
 - le propriétaire n'a pas encore validé la tâche 3 de la section 4 (dossier Pinokio géré par Jarod-OS) ;
 - la réinstallation de Windows est envisagée. Placer le dossier Pinokio sur D: (par exemple `D:\pinokio`) pour garder les apps d'IA et leurs modèles.
@@ -95,7 +88,8 @@ Avant de cloner, refaire un bundle si des commits ont été ajoutés après le 1
 
 - **Windows** : installeur NSIS non signé et paquet appx ; instance unique ; mode sans échec (`--safe-mode`) ; récupération après plantage du rendu ; géométrie de fenêtre mémorisée ; icône de notification ; réglages du shell sous `%APPDATA%\Jarod-OS\config`, avec migration automatique ; écritures atomiques des réglages.
 - **Sécurité** : sockets de contrôle limités (1 Mo par ligne, jeton comparé à temps constant) ; `nodemailer` 10, `pnpm audit --prod` à 0 faille.
-- **i18n** : infrastructure typée en/fr ; langue et nom de l'assistant réglables ; environ 1 140 chaînes restent à traduire.
+- **i18n** : infrastructure typée en/fr ; langue et nom de l'assistant réglables ; 659 chaînes restent en anglais (1 142 au départ).
+- **Premier lancement (Windows)** : assistant avec audit du système, bot Telegram, import des clés API ; rouvrable avec la commande `setup.open` ; commande `system.audit` pour l'agent. Détail en section 0.
 - **Pinokio** (ADR-022, commits `a49c985`, `d581ed2`, `8e27c66`, `23e0d6b`) :
   - Le moteur `pinokiod` est embarqué. Il démarre à la demande et s'arrête à la sortie de Jarod-OS.
   - Il est corrigé pour n'écouter que sur 127.0.0.1, avec une garde Host/Origin (`apps/desktop/electron/pinokio/guard.ts`).
@@ -108,28 +102,36 @@ Avant de cloner, refaire un bundle si des commits ont été ajoutés après le 1
 
 ## 3. Travail en cours
 
-Phase d'initialisation entamée : le moteur de l'audit est fait, mais n'est pas encore branché ni affiché (voir section 0). L'arbre de travail était propre au moment de cette passation, et la dernière fonctionnalité (Pinokio) est complète et commitée.
+Rien n'est en cours : l'arbre de travail est propre, et la dernière tâche (traduction de la page Kanban) est commitée.
 
-Points vérifiés seulement en partie :
-- Pinokio n'a pas été testé de bout en bout sur une vraie app d'IA (plusieurs Go de téléchargement).
-- `pinokio_run` repose sur l'API interne de pinokiod (WebSocket `{uri, mode:"open"}`, puis exécution des scripts jusqu'à ce que le menu donne une URL). Voir `jarod-core/packages/plugins/tools/src/pinokio/tools.ts`, fonction `drive`. Seul un faux moteur l'a exercé (`jarod-core/packages/plugins/tools/test/pinokio-tools.test.ts`).
-- Le paquet appx n'a pas été testé.
+## 4. Ce qui reste à faire (par priorité)
 
-## 4. TODO restant (par priorité)
+### A. À vérifier (fait, mais pas testé en conditions réelles)
+1. **Telegram avec un vrai bot** : il faut le jeton du propriétaire. Parcours : assistant → Bot Telegram → Vérifier → envoyer un message au bot → Tester → Enregistrer. Vérifier ensuite que la passerelle démarre et que `/pair <code>` fonctionne.
+2. **Commande `setup.open` dans l'app lancée** : barre de commandes → « Open the setup wizard ». L'assistant doit s'ouvrir et se fermer par ✕ sans écrire `setup-done`. Seuls les tests la couvrent.
+3. **Nouvel installeur** : celui de D: (commit `56d5a52`) ne contient pas les traductions faites depuis. Le reconstruire (`npm run dist:win` dans `apps/desktop`), le recopier sur D: et noter la nouvelle empreinte SHA-256 en section 2.
+4. **Pinokio en vrai** : installer et lancer une petite app d'IA depuis la fenêtre Pinokio, puis via l'outil `pinokio_run` avec un vrai modèle. `pinokio_run` repose sur l'API interne de pinokiod (fonction `drive` dans `jarod-core/packages/plugins/tools/src/pinokio/tools.ts`) ; seul un faux moteur l'a exercé.
+5. **Paquet `.appx`** et option réseau `JAROD_PINOKIO_LAN=1` : jamais testés.
 
-1. **Phase d'initialisation (first-run)** : voir la section 7, spécification du propriétaire. C'est la prochaine phase.
-2. **Sauvegarde de la branche** : rien n'est poussé. Proposer au propriétaire `git bundle create ..\jarod-os.bundle --all` ou un push, avec son accord.
-3. **Dossier Pinokio géré par Jarod-OS** (proposé, pas encore validé par le propriétaire) :
-   - Aujourd'hui, pinokiod lit `~/.pinokio/config.json`, dont la clé `home` vaut par défaut `C:\pinokio`.
-   - Au premier lancement, Pinokio affiche son écran « Set a Pinokio home folder ».
-   - Idée : Jarod-OS choisit et retient ce dossier, de préférence sur un disque autre que C:, pour survivre à une réinstallation de Windows.
-   - Fichier concerné : `apps/desktop/electron/pinokio/service.ts` (`pinokioProfile`, `readPinokioHome`).
-   - Lien avec la section 7 : l'audit pourrait proposer ce dossier.
-4. **D1 : confinement des écritures de `run_shell` sous Windows** (jeton restreint ou ACL). C'est un chantier de sécurité à part, à tester sur plusieurs versions de Windows. Seule vraie barrière manquante (voir `ANALYSE-2026-10-13.md`).
-5. **Traductions restantes** (en cours le 14/10 ; sections de Réglages déjà traduites : Général, Apparence, Confidentialité, Voix, Appareils et API, Agent et sécurité, Règles d'automatisation, {assistant} et agents, Persona et profils, Secrets, Serveurs MCP, plus la page Kanban ; clés `settings.<section>.*`). Méthode : les scripts `i18n_lib.py` et `i18n_<section>.py`, qui étaient dans le dossier de travail temporaire, remplacent chaque littéral par `t('clé')`, ajoutent `useT()` dans chaque composant et écrivent les clés en/fr. Reste 659 chaînes (`npm run i18n:report --workspace apps/desktop`), surtout dans les sections de Réglages. Lancer `npm run i18n:report --workspace apps/desktop` ; les clés sont dans `apps/desktop/src/locales/en.ts` et `fr.ts`.
-6. **Signature de code puis mises à jour** (ADR-021) : il faut un certificat (décision et achat du propriétaire), puis un flux de mises à jour publié. Ne pas activer l'auto-update avant.
-7. **Pinokio sur macOS et Linux** : seul `dist:win` embarque le moteur. Il faut adapter `apps/desktop/scripts/bundle-pinokio.mjs` (élagage par plateforme, rebuild de better-sqlite3) et les `extraResources` de `apps/desktop/package.json`.
-8. **Tests réels de Pinokio** : installer et lancer une petite app depuis la fenêtre, puis via `pinokio_run` avec un vrai modèle ; vérifier l'appx ; tester l'option réseau `JAROD_PINOKIO_LAN=1`.
+### B. À finir (petites tâches)
+6. **Traductions** : 659 chaînes restent en anglais (`npm run i18n:report --workspace apps/desktop` les liste par fichier).
+   - Déjà fait : les sections de Réglages Général, Apparence, Confidentialité, Voix, Appareils et API, Agent et sécurité, Règles d'automatisation, {assistant} et agents, Persona et profils, Secrets, Serveurs MCP, plus la page Kanban.
+   - Suivants, dans l'ordre du rapport : `features/status/StatusPanel.tsx`, `settings/sections/DocumentsSection.tsx`, `LocalEngineBlock.tsx`, `SkillsSection.tsx`, `shell/surfaces/ControlMenu.tsx`, `PluginsSection.tsx`, `automations/*`, `LocalModelsSection.tsx`, `DataSection.tsx`, `MessagingSection.tsx`, `setup/FirstRunSetup.tsx` (écran de l'image Linux)…
+   - Restent aussi en anglais : les libellés des fichiers modèles (`kanban/kanban-model.ts` : `STATUS_LABEL`, `VERB_LABEL`, `NEEDS_TEXT` ; `settings/sections/jarod-settings-model.ts` : `DECISION_LABEL`, `TOOL_SEARCH_LABEL` ; `devices-model.ts`, `mcp-model.ts`, `rules-model.ts`, `vault-model.ts` pour les messages de validation).
+   - Méthode : remplacer chaque littéral par `t('clé')`, appeler `useT()` dans chaque composant, ajouter la clé dans `src/locales/en.ts` **et** `fr.ts`, avec les mêmes `{placeholders}`. Le test `src/lib/i18n.test.ts` le vérifie. Les scripts Python utilisés le 14/10 étaient dans un dossier temporaire et sont perdus ; le principe est simple à refaire.
+   - Toujours lancer typecheck et tests **avant** de committer.
+7. **Réglages** : ajouter une ligne « Relancer la vérification du système » (`window.heraldOS.systemAudit.run()`) et « Importer des clés API » (réutiliser `src/features/setup/KeysStep.tsx`), par exemple dans la section Général ou Données.
+8. **Assistant sur Linux et macOS** : l'assistant `desktop` n'est activé que sous Windows (`setupState()` dans `apps/desktop/electron/ipc/setup.ts`). L'audit fonctionne partout ; il faut décider si l'assistant s'affiche aussi sur macOS et sur Linux hors image.
+
+### C. Chantiers (à décider avec le propriétaire)
+9. **Dossier Pinokio géré par Jarod-OS** (proposé, **pas encore validé**) :
+   - pinokiod lit `~/.pinokio/config.json`, clé `home`, par défaut `C:\pinokio` ; au premier lancement, Pinokio affiche son écran « Set a Pinokio home folder ».
+   - Idée : Jarod-OS choisit et retient ce dossier, de préférence sur un autre disque que C: (par exemple `D:\pinokio`), pour survivre à une réinstallation de Windows. L'audit pourrait le proposer.
+   - Fichier : `apps/desktop/electron/pinokio/service.ts` (`pinokioProfile`, `readPinokioHome`).
+10. **D1 : confinement des écritures de `run_shell` sous Windows** (jeton restreint ou ACL) : c'est la seule vraie barrière de sécurité qui manque (voir `ANALYSE-2026-10-13.md`). Chantier à part, à tester sur plusieurs versions de Windows.
+11. **Signature de code puis mises à jour** (ADR-021) : il faut un certificat (décision et achat du propriétaire), puis un flux de mises à jour publié. Ne pas activer l'auto-update avant.
+12. **Pinokio sur macOS et Linux** : seul `dist:win` embarque le moteur. Adapter `apps/desktop/scripts/bundle-pinokio.mjs` (élagage par plateforme, rebuild de better-sqlite3) et les `extraResources` de `apps/desktop/package.json`.
+13. **Push vers GitHub** : rien n'est poussé (`origin` = PAVADI234/herald-os). Seulement avec l'accord explicite du propriétaire.
 
 ## 5. Environnement
 
