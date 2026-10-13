@@ -767,7 +767,7 @@ export const en = {
   'settings.privacy.hideLog': 'Hide log',
   'settings.privacy.viewLog': 'View log',
   'settings.privacy.never.remove': 'Stop leaving out {entry}',
-  'settings.privacy.subtitle': 'What {assistant} may look at and do on this {device}, and the record of what it did.'
+  'settings.privacy.subtitle': 'What {assistant} may look at and do on this device, and the record of what it did.'
 } as const
 
 export type MessageKey = keyof typeof en

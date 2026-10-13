@@ -2,7 +2,6 @@ import { useStore } from '@nanostores/react'
 import { IconBrain, IconEyeOff, IconFolder, IconHash, IconHistory, IconShieldLock, IconTrash, IconX } from '@tabler/icons-react'
 import { useEffect, useState } from 'react'
 import { GlassButton, GlassCard, LinkAction, Toggle } from '../../../components/ui/glass.tsx'
-import { deviceNoun } from '../../../lib/platform-labels.ts'
 import { useLocalData } from '../../../lib/use-async.ts'
 import { $env } from '../../../store/backend.ts'
 import { $continuity, forgetThreads, setContinuityEnabled, setExclusions } from '../../../store/continuity.ts'
@@ -134,7 +133,7 @@ export function PrivacySection() {
 
   return (
     <>
-      <SectionTitle title={t('settings.privacy.title')} subtitle={t('settings.privacy.subtitle', { device: deviceNoun() })} />
+      <SectionTitle title={t('settings.privacy.title')} subtitle={t('settings.privacy.subtitle')} />
 
       <ContinuitySettings />
 
