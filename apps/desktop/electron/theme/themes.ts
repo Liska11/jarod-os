@@ -1,4 +1,5 @@
 import fs from 'node:fs'
+import { writeFileAtomic } from '../atomic-write.ts'
 import os from 'node:os'
 import path from 'node:path'
 import { app } from 'electron'
@@ -139,7 +140,7 @@ export function saveTheme(spec: ThemeSpec, imagePath?: string): string {
     next.wallpaper = `wallpaper${extension}`
   }
 
-  fs.writeFileSync(path.join(dir, 'theme.json'), `${JSON.stringify(next, null, 2)}\n`)
+  writeFileAtomic(path.join(dir, 'theme.json'), `${JSON.stringify(next, null, 2)}\n`)
 
   return spec.name
 }
@@ -205,7 +206,7 @@ export async function installTheme(url: string): Promise<string[]> {
 
       const wallpaper = spec.wallpaper && spec.wallpaper !== 'default' && fs.existsSync(path.join(target, path.basename(spec.wallpaper))) ? path.basename(spec.wallpaper) : 'default'
       const clean: ThemeSpec = { name: spec.name, label: spec.label, description: spec.description, shell: spec.shell?.scheme ? { scheme: spec.shell.scheme } : undefined, wallpaper, colors: spec.colors, gtk: spec.gtk, terminal: spec.terminal }
-      fs.writeFileSync(path.join(target, 'theme.json'), `${JSON.stringify(clean, null, 2)}\n`)
+      writeFileAtomic(path.join(target, 'theme.json'), `${JSON.stringify(clean, null, 2)}\n`)
       installed.push(spec.name)
     }
 

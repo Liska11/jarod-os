@@ -1,6 +1,7 @@
 import { type BrowserWindow, dialog, ipcMain, protocol, shell } from 'electron'
 import { execFile } from 'node:child_process'
 import fs from 'node:fs'
+import { writeFileAtomic } from '../atomic-write.ts'
 import os from 'node:os'
 import path from 'node:path'
 import { IPC, type ShellCommand } from '../../shared/ipc.ts'
@@ -37,8 +38,7 @@ function readJson<T>(file: string, fallback: T): T {
 }
 
 function writeJson(file: string, value: unknown): void {
-  fs.mkdirSync(path.dirname(file), { recursive: true })
-  fs.writeFileSync(file, `${JSON.stringify(value, null, 2)}\n`)
+  writeFileAtomic(file, `${JSON.stringify(value, null, 2)}\n`)
 }
 
 const TYPES: Record<string, string> = {

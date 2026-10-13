@@ -1,4 +1,5 @@
 import fs from 'node:fs'
+import { writeFileAtomic } from '../atomic-write.ts'
 import os from 'node:os'
 import path from 'node:path'
 import { BrowserWindow, ipcMain } from 'electron'
@@ -111,7 +112,7 @@ export function setBranding(patch: BrandingPatch): BrandingView {
     }
   }
 
-  fs.writeFileSync(storeFile(), `${JSON.stringify(stored, null, 2)}\n`)
+  writeFileAtomic(storeFile(), `${JSON.stringify(stored, null, 2)}\n`)
   log('branding', `name=${stored.name ?? '-'} logo=${stored.logo ?? '-'} lock=${stored.lock ?? '-'}`)
 
   const view = brandingView()

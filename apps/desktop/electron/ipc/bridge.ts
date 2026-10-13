@@ -1,5 +1,6 @@
 import { ipcMain } from 'electron'
 import fs from 'node:fs/promises'
+import { writeFileAtomic } from '../atomic-write.ts'
 import path from 'node:path'
 import { type AuditEntry, IPC } from '../../shared/ipc.ts'
 import { heraldOsDataDir } from '../paths.ts'
@@ -28,7 +29,7 @@ export function registerBridgeIpc(): void {
   })
   ipcMain.handle(IPC.bridgePolicyWrite, async (_event, text: string) => {
     await fs.mkdir(heraldOsDataDir(), { recursive: true })
-    await fs.writeFile(policyFile(), String(text))
+    writeFileAtomic(policyFile(), String(text))
   })
   ipcMain.handle(IPC.bridgeAuditRead, async (_event, limit: number): Promise<AuditEntry[]> => {
     let text = ''

@@ -1,4 +1,5 @@
 import fs from 'node:fs'
+import { writeFileAtomic } from './atomic-write.ts'
 import path from 'node:path'
 import { type EventAutomation, isEventName } from '../shared/events.ts'
 import type { ContinuityPrefs, CrashHelpPrefs, HeraldOSPrefs } from '../shared/ipc.ts'
@@ -92,7 +93,7 @@ export function writePrefs(patch: Partial<HeraldOSPrefs>): HeraldOSPrefs {
     ...(patch.menuBar ? { menuBar: normalizeMenuBar({ ...current.menuBar, ...patch.menuBar }) } : {})
   }
   fs.mkdirSync(heraldOsDataDir(), { recursive: true })
-  fs.writeFileSync(prefsFile(), JSON.stringify(next, null, 2))
+  writeFileAtomic(prefsFile(), JSON.stringify(next, null, 2))
 
   return next
 }
