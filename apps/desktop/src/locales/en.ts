@@ -1198,7 +1198,28 @@ export const en = {
   'settings.persona.switchWarn': 'The engine restarts on “{name}”: conversations of the current profile stop until you switch back. Continue?',
   'settings.persona.deleteWarn': '“{name}” is moved aside (profiles-supprimes), not erased. Continue?',
   'settings.persona.makeActive.aria': 'Make {name} the active profile',
-  'settings.persona.edit.aria': 'Edit {name}'
+  'settings.persona.edit.aria': 'Edit {name}',
+  'settings.vault.title': 'Secrets',
+  'settings.vault.subtitle': 'Values the agent can use without seeing them.',
+  'settings.vault.needsJarod': 'The secrets vault is edited here with the Jarod engine.',
+  'settings.vault.vault': 'Vault',
+  'settings.vault.none': 'No secret yet',
+  'settings.vault.none.hint': 'Add an API key or token the agent should use without ever reading it.',
+  'settings.vault.noValue': 'No value',
+  'settings.vault.removed': 'Secret removed',
+  'settings.vault.new': 'New secret',
+  'settings.vault.add': 'Add a secret',
+  'settings.vault.add.hint': 'The value is stored encrypted and never shown again.',
+  'settings.vault.saved': 'Secret saved',
+  'settings.vault.value': 'Value',
+  'settings.vault.value.keep': 'Value (leave empty to keep the saved one)',
+  'settings.vault.description': 'Description',
+  'settings.vault.description.placeholder': 'What it is for',
+  'settings.vault.domains': 'Domains it may be sent to (spaces, commas or lines)',
+  'settings.vault.env': 'Environment variable (for shell commands)',
+  'settings.vault.shell': 'Available to shell commands',
+  'settings.vault.shell.hint': 'Shell commands can read it',
+  'settings.vault.readFailed': 'Could not read the vault: {error}'
 } as const
 
 export type MessageKey = keyof typeof en
