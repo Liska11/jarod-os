@@ -10,14 +10,16 @@ import { $themes, applyTheme, generateTheme, installThemes, loadThemes } from '.
 import { MenuBarSettings } from './MenuBarSettings.tsx'
 import { errorText, Filterable, InlineNote, markSaved, SectionTitle, SettingsGroup, SettingsRow } from './shared.tsx'
 import { baseName } from '../../../../shared/path-names.ts'
+import { type MessageKey, t, useT } from '../../../lib/i18n.ts'
 
-const ACCENTS: { id: 'blue' | 'ice' | 'violet'; label: string; color: string }[] = [
-  { id: 'blue', label: 'Blue', color: '#2f7dff' },
-  { id: 'ice', label: 'Ice', color: '#4cc2ff' },
-  { id: 'violet', label: 'Violet', color: '#7c6cff' }
+const ACCENTS: { id: 'blue' | 'ice' | 'violet'; label: MessageKey; color: string }[] = [
+  { id: 'blue', label: 'settings.appearance.accent.blue', color: '#2f7dff' },
+  { id: 'ice', label: 'settings.appearance.accent.ice', color: '#4cc2ff' },
+  { id: 'violet', label: 'settings.appearance.accent.violet', color: '#7c6cff' }
 ]
 
 export function AppearanceSection() {
+  useT()
   const prefs = useStore($prefs)
 
   const save = async (patch: Parameters<typeof updatePrefs>[0]) => {
@@ -25,7 +27,7 @@ export function AppearanceSection() {
       await updatePrefs(patch)
       markSaved()
     } catch (error) {
-      notify({ title: 'Could not save setting', body: errorText(error), level: 'error' })
+      notify({ title: t('settings.general.saveFailed'), body: errorText(error), level: 'error' })
     }
   }
 
@@ -37,7 +39,7 @@ export function AppearanceSection() {
         await save({ wallpaper: `file://${path}` })
       }
     } catch (error) {
-      notify({ title: 'Could not choose wallpaper', body: errorText(error), level: 'error' })
+      notify({ title: t('settings.appearance.wallpaperFailed'), body: errorText(error), level: 'error' })
     }
   }
 
@@ -45,14 +47,14 @@ export function AppearanceSection() {
 
   return (
     <>
-      <SectionTitle title="Appearance" subtitle="Theme, accent, wallpaper, fonts and the menu bar." />
+      <SectionTitle title={t('settings.appearance.title')} subtitle={t('settings.appearance.subtitle')} />
 
       <ThemeGallery />
       <ThemeTools />
 
-      <SettingsGroup title="Look">
-        <SettingsRow icon={<IconDroplet />} label="Accent" description="The accent colour of the Ocean and Graphite themes (other themes bring their own)." keywords="colour color highlight">
-          <div className="flex items-center gap-2" role="radiogroup" aria-label="Accent colour">
+      <SettingsGroup title={t('settings.appearance.look')}>
+        <SettingsRow icon={<IconDroplet />} label={t('settings.appearance.accent')} description={t('settings.appearance.accent.hint')} keywords="colour color highlight">
+          <div className="flex items-center gap-2" role="radiogroup" aria-label={t('settings.appearance.accent.aria')}>
             {ACCENTS.map(accent => {
               const active = prefs.accent === accent.id
 
@@ -62,7 +64,7 @@ export function AppearanceSection() {
                   type="button"
                   role="radio"
                   aria-checked={active}
-                  aria-label={accent.label}
+                  aria-label={t(accent.label)}
                   onClick={() => void save({ accent: accent.id })}
                   className={cn('size-6 rounded-full border border-white/30 transition-transform', active ? 'scale-110 shadow-[0_0_0_2px_var(--color-bg),0_0_0_3.5px_var(--color-fg-3)]' : 'opacity-75 hover:opacity-100')}
                   style={{ background: accent.color }}
@@ -71,14 +73,14 @@ export function AppearanceSection() {
             })}
           </div>
         </SettingsRow>
-        <SettingsRow icon={<IconPhoto />} label="Wallpaper" description={wallpaperName ? <span className="selectable">{wallpaperName}</span> : 'The living Hermes wallpaper.'} keywords="background image desktop">
+        <SettingsRow icon={<IconPhoto />} label={t('settings.appearance.wallpaper')} description={wallpaperName ? <span className="selectable">{wallpaperName}</span> : t('settings.appearance.wallpaper.default')} keywords="background image desktop">
           {prefs.wallpaper && (
-            <GlassButton size="sm" variant="ghost" onClick={() => void save({ wallpaper: '' })} aria-label="Use Hermes wallpaper">
-              Use Hermes wallpaper
+            <GlassButton size="sm" variant="ghost" onClick={() => void save({ wallpaper: '' })} aria-label={t('settings.appearance.wallpaper.reset')}>
+              t('settings.appearance.wallpaper.reset')
             </GlassButton>
           )}
-          <GlassButton size="sm" onClick={() => void chooseWallpaper()} aria-label="Choose wallpaper image">
-            Choose image…
+          <GlassButton size="sm" onClick={() => void chooseWallpaper()} aria-label={t('settings.appearance.wallpaper.choose')}>
+            {t('settings.appearance.chooseImage')}
           </GlassButton>
         </SettingsRow>
       </SettingsGroup>
@@ -87,15 +89,15 @@ export function AppearanceSection() {
 
       <MenuBarSettings />
 
-      <SettingsGroup title="Dock">
-        <SettingsRow icon={<IconLayoutBottombar />} label="Automatically hide the Dock" description="The Dock slides away and returns when the cursor reaches the bottom edge." keywords="dock autohide hide show">
-          <Toggle checked={prefs.dockAutoHide !== false} onChange={next => void save({ dockAutoHide: next })} label="Automatically hide the Dock" />
+      <SettingsGroup title={t('settings.appearance.dock')}>
+        <SettingsRow icon={<IconLayoutBottombar />} label={t('settings.appearance.dock.hide')} description={t('settings.appearance.dock.hide.hint')} keywords="dock autohide hide show">
+          <Toggle checked={prefs.dockAutoHide !== false} onChange={next => void save({ dockAutoHide: next })} label={t('settings.appearance.dock.hide')} />
         </SettingsRow>
       </SettingsGroup>
 
-      <SettingsGroup title="Motion">
-        <SettingsRow icon={<IconSparkles />} label="Reduce motion" description="Collapse non-essential animation across the shell." keywords="animation accessibility">
-          <Toggle checked={prefs.reduceMotion} onChange={next => void save({ reduceMotion: next })} label="Reduce motion" />
+      <SettingsGroup title={t('settings.appearance.motion')}>
+        <SettingsRow icon={<IconSparkles />} label={t('settings.appearance.reduce')} description={t('settings.appearance.reduce.hint')} keywords="animation accessibility">
+          <Toggle checked={prefs.reduceMotion} onChange={next => void save({ reduceMotion: next })} label={t('settings.appearance.reduce')} />
         </SettingsRow>
       </SettingsGroup>
     </>
@@ -104,6 +106,7 @@ export function AppearanceSection() {
 
 /** Every installed theme as a card of its own colours; choosing one restyles the whole environment. */
 function ThemeGallery() {
+  useT()
   const themes = useStore($themes)
   const prefs = useStore($prefs)
   const current = prefs.themeName ?? `herald-${prefs.theme}`
@@ -120,7 +123,7 @@ function ThemeGallery() {
       await applyTheme(theme.name)
       markSaved()
     } catch (error) {
-      notify({ title: `Could not apply ${theme.label}`, body: errorText(error), level: 'error' })
+      notify({ title: t('settings.appearance.applyFailed', { theme: theme.label }), body: errorText(error), level: 'error' })
     } finally {
       setBusy(null)
     }
@@ -131,10 +134,10 @@ function ThemeGallery() {
   }
 
   return (
-    <Filterable label="Theme" description="Choose a theme" keywords="theme dark light colour color look">
+    <Filterable label={t('settings.appearance.theme')} description={t('settings.appearance.theme.choose')} keywords="theme dark light colour color look">
       <section className="flex flex-col gap-1.5">
-        <h3 className="px-0.5 text-[12.5px] font-medium text-fg-2">Theme</h3>
-        <div className="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-2.5" role="radiogroup" aria-label="Theme">
+        <h3 className="px-0.5 text-[12.5px] font-medium text-fg-2">{t('settings.appearance.theme')}</h3>
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-2.5" role="radiogroup" aria-label={t('settings.appearance.theme')}>
           {themes.map(theme => {
             const active = theme.name === current
 
@@ -161,8 +164,8 @@ function ThemeGallery() {
                 <span className="min-w-0">
                   <span className="block truncate text-[12.5px] font-medium text-fg">{theme.label}</span>
                   <span className="block truncate text-[11px] text-fg-3">
-                    {theme.scheme === 'light' ? 'Light' : 'Dark'}
-                    {theme.source === 'user' ? ' · yours' : ''}
+                    {theme.scheme === 'light' ? t('settings.appearance.light') : t('settings.appearance.dark')}
+                    {theme.source === 'user' ? t('settings.appearance.yours') : ''}
                   </span>
                 </span>
               </GlassCard>
@@ -175,6 +178,7 @@ function ThemeGallery() {
 }
 
 function ThemeTools() {
+  useT()
   const prefs = useStore($prefs)
   const [repo, setRepo] = useState('')
   const [working, setWorking] = useState<'generate' | 'install' | null>(null)
@@ -193,7 +197,7 @@ function ThemeTools() {
       setWorking('generate')
       const name = await generateTheme({ image: source })
       markSaved()
-      notify({ title: 'New theme', body: `${$themes.get().find(theme => theme.name === name)?.label ?? name} is ready and in use.`, level: 'success' })
+      notify({ title: t('settings.appearance.newTheme'), body: t('settings.appearance.newTheme.body', { theme: $themes.get().find(theme => theme.name === name)?.label ?? name }), level: 'success' })
     } catch (reason) {
       setError(errorText(reason))
     } finally {
@@ -208,7 +212,7 @@ function ThemeTools() {
     try {
       const names = await installThemes(repo.trim())
       setRepo('')
-      notify({ title: 'Themes installed', body: names.join(', '), level: 'success' })
+      notify({ title: t('settings.appearance.installed'), body: names.join(', '), level: 'success' })
     } catch (reason) {
       setError(errorText(reason))
     } finally {
@@ -217,43 +221,43 @@ function ThemeTools() {
   }
 
   return (
-    <SettingsGroup title="Make it yours">
+    <SettingsGroup title={t('settings.appearance.yoursGroup')}>
       <SettingsRow
         icon={<IconWand />}
-        label="Make a theme from an image"
-        description="Jarod-OS takes the colours of a photo or artwork, makes a complete theme from them, and uses the image as the wallpaper. You can also ask Hermes for one: “make me a calm green theme”."
+        label={t('settings.appearance.fromImage')}
+        description={t('settings.appearance.fromImage.hint')}
         keywords="generate create custom wallpaper colours"
         below={error ? <InlineNote tone="danger">{error}</InlineNote> : undefined}
       >
         {prefs.wallpaper && (
           <GlassButton size="sm" variant="ghost" disabled={working !== null} onClick={() => void make(prefs.wallpaper)}>
-            From the wallpaper
+            {t('settings.appearance.fromWallpaper')}
           </GlassButton>
         )}
         <GlassButton size="sm" disabled={working !== null} onClick={() => void make()}>
-          {working === 'generate' ? 'Making…' : 'Choose image…'}
+          {working === 'generate' ? t('settings.appearance.making') : t('settings.appearance.chooseImage')}
         </GlassButton>
       </SettingsRow>
-      <SettingsRow icon={<IconBrandGit />} label="Install themes from git" description="Paste the https address of a theme repository. Only its colours and images are kept." keywords="download share community">
+      <SettingsRow icon={<IconBrandGit />} label={t('settings.appearance.git')} description={t('settings.appearance.git.hint')} keywords="download share community">
         <input
           value={repo}
           onChange={event => setRepo(event.target.value)}
           onKeyDown={event => event.key === 'Enter' && repo.trim() && void install()}
           placeholder="https://github.com/…"
-          aria-label="Theme repository address"
+          aria-label={t('settings.appearance.git.aria')}
           className="glass-input h-8 w-56 rounded-lg px-2.5 text-[12.5px] outline-none placeholder:text-fg-4"
         />
         <GlassButton size="sm" disabled={!repo.trim() || working !== null} onClick={() => void install()}>
-          {working === 'install' ? 'Installing…' : 'Install'}
+          {working === 'install' ? t('settings.appearance.installing') : t('settings.appearance.install')}
         </GlassButton>
       </SettingsRow>
-      <SettingsRow icon={<IconSparkles />} label="Follow Hermes skins" description="When you change Hermes's skin with /skin, Jarod-OS takes on its colours too. Jarod's own themes always restyle Hermes." keywords="skin hermes cli tui sync">
+      <SettingsRow icon={<IconSparkles />} label={t('settings.appearance.skins')} description={t('settings.appearance.skins.hint')} keywords="skin hermes cli tui sync">
         <Toggle
           checked={Boolean(prefs.followHermesSkin)}
           onChange={next => {
             void updatePrefs({ followHermesSkin: next }).then(markSaved)
           }}
-          label="Follow Hermes skins"
+          label={t('settings.appearance.skins')}
         />
       </SettingsRow>
     </SettingsGroup>
@@ -261,6 +265,7 @@ function ThemeTools() {
 }
 
 function FontSettings() {
+  useT()
   const prefs = useStore($prefs)
   const [families, setFamilies] = useState<string[]>([])
 
@@ -285,24 +290,24 @@ function FontSettings() {
       onFocus={loadFamilies}
       onBlur={event => event.target.value.trim() !== (prefs.fonts?.[kind] ?? '') && set(kind, event.target.value)}
       onKeyDown={event => event.key === 'Enter' && event.currentTarget.blur()}
-      placeholder="Default"
+      placeholder={t('settings.appearance.font.default')}
       aria-label={label}
       className="glass-input h-8 w-52 rounded-lg px-2.5 text-[12.5px] outline-none placeholder:text-fg-4"
     />
   )
 
   return (
-    <SettingsGroup title="Fonts">
+    <SettingsGroup title={t('settings.appearance.fonts')}>
       <datalist id="herald-font-families">
         {families.map(family => (
           <option key={family} value={family} />
         ))}
       </datalist>
-      <SettingsRow icon={<IconTypography />} label="Interface font" description="Leave empty for the system font." keywords="font typeface text">
-        {field('ui', 'Interface font')}
+      <SettingsRow icon={<IconTypography />} label={t('settings.appearance.font.ui')} description={t('settings.appearance.font.ui.hint')} keywords="font typeface text">
+        {field('ui', t('settings.appearance.font.ui'))}
       </SettingsRow>
-      <SettingsRow icon={<IconCode />} label="Code font" description="Used by the terminal and code views." keywords="font monospace terminal code">
-        {field('mono', 'Code font')}
+      <SettingsRow icon={<IconCode />} label={t('settings.appearance.font.mono')} description={t('settings.appearance.font.mono.hint')} keywords="font monospace terminal code">
+        {field('mono', t('settings.appearance.font.mono'))}
       </SettingsRow>
     </SettingsGroup>
   )

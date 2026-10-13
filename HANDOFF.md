@@ -100,10 +100,9 @@ Avant de cloner, refaire un bundle si des commits ont été ajoutés après le 1
   - Une fenêtre « Pinokio » présente le moteur (`apps/desktop/src/features/pinokio/PinokioWindow.tsx`).
   - Cinq commandes OS (`apps/desktop/src/commands/pinokio.ts`).
   - Sept outils agent `pinokio_*` (`jarod-core/packages/plugins/tools/src/pinokio/`) ; install, run et stop exigent un accord.
-- **Installeur reconstruit le 14/10/2026** (`npm run dist:win`, code de sortie 0, depuis le commit `23e0d6b`). `apps/desktop/release/` est ignoré par git, donc seules les empreintes sont consignées ici :
-  - `JarodOS-Setup-0.1.0-alpha.1-win-x64.exe` (136 935 970 octets), SHA-256 `ad58f14a011d5e278743f80ecfb0db258bcaf3268dc159e367fc8d09c73ee8e4`
-  - `JarodOS-0.1.0-alpha.1-win-x64.appx` (193 940 024 octets, non signé), SHA-256 `4f5a1d83b9723da4163da94662abb1940abb5ebb523e0f7e97247b1ebff1fabb`
-- **Tests au dernier passage** : shell 116 fichiers et 724 tests OK ; noyau 2 589 tests OK ; typecheck OK ; Biome 0 erreur (530 avertissements hérités).
+- **Installeur reconstruit le 14/10/2026 depuis le commit `56d5a52`** (il contient l'assistant de premier lancement : audit, Telegram, clés API). `apps/desktop/release/` est ignoré par git ; l'empreinte est consignée ici :
+  - `JarodOS-Setup-0.1.0-alpha.1-win-x64.exe` (136 948 258 octets), SHA-256 `1a9c5e8bc632e3a114395c68e812011959e66169a399b00631428d6a49094cbc`. La copie sur `D:` est identique.
+- **Tests au dernier passage (14/10)** : shell, 121 fichiers et 755 tests OK ; typecheck OK ; Biome sans erreur (530 avertissements hérités). Noyau : 2 589 tests OK au 13/10 (il n'a pas été modifié depuis).
 
 ## 3. Travail en cours
 
@@ -125,7 +124,7 @@ Points vérifiés seulement en partie :
    - Fichier concerné : `apps/desktop/electron/pinokio/service.ts` (`pinokioProfile`, `readPinokioHome`).
    - Lien avec la section 7 : l'audit pourrait proposer ce dossier.
 4. **D1 : confinement des écritures de `run_shell` sous Windows** (jeton restreint ou ACL). C'est un chantier de sécurité à part, à tester sur plusieurs versions de Windows. Seule vraie barrière manquante (voir `ANALYSE-2026-10-13.md`).
-5. **Traductions restantes** : environ 1 140 chaînes, surtout dans les sections de Réglages. Lancer `npm run i18n:report --workspace apps/desktop` ; les clés sont dans `apps/desktop/src/locales/en.ts` et `fr.ts`.
+5. **Traductions restantes** (en cours le 14/10 : Général et Apparence faits, clés `settings.general.*` et `settings.appearance.*`). Méthode : les scripts `i18n_lib.py` et `i18n_<section>.py`, qui étaient dans le dossier de travail temporaire, remplacent chaque littéral par `t('clé')`, ajoutent `useT()` dans chaque composant et écrivent les clés en/fr. Reste environ 1 040 chaînes, surtout dans les sections de Réglages. Lancer `npm run i18n:report --workspace apps/desktop` ; les clés sont dans `apps/desktop/src/locales/en.ts` et `fr.ts`.
 6. **Signature de code puis mises à jour** (ADR-021) : il faut un certificat (décision et achat du propriétaire), puis un flux de mises à jour publié. Ne pas activer l'auto-update avant.
 7. **Pinokio sur macOS et Linux** : seul `dist:win` embarque le moteur. Il faut adapter `apps/desktop/scripts/bundle-pinokio.mjs` (élagage par plateforme, rebuild de better-sqlite3) et les `extraResources` de `apps/desktop/package.json`.
 8. **Tests réels de Pinokio** : installer et lancer une petite app depuis la fenêtre, puis via `pinokio_run` avec un vrai modèle ; vérifier l'appx ; tester l'option réseau `JAROD_PINOKIO_LAN=1`.
