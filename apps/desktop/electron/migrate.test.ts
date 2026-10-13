@@ -72,6 +72,19 @@ describe('migrateLegacyData', () => {
     expect(fs.existsSync(path.join(root, 'appData/Hermes OS'))).toBe(false)
   })
 
+  it('still moves the profile when the single-instance lock is the only thing in userData', () => {
+    write('appData/Hermes OS/Local Storage/leveldb/000003.log', 'ls')
+    write('appData/Hermes OS/Preferences', 'old prefs')
+    // Windows' lockfile and Linux's Singleton* links exist as soon as the lock is claimed, before migration runs.
+    write('appData/Jarod-OS/lockfile', '')
+    write('appData/Jarod-OS/SingletonLock', '')
+
+    migrateLegacyData(locations())
+
+    expect(read('appData/Jarod-OS/Local Storage/leveldb/000003.log')).toBe('ls')
+    expect(read('appData/Jarod-OS/Preferences')).toBe('old prefs')
+  })
+
   it('never replaces an existing profile', () => {
     write('appData/Hermes OS/Preferences', 'old')
     write('appData/Jarod-OS/Preferences', 'new')

@@ -71,10 +71,33 @@ function mergeInto(from: string, to: string, moved: string[]): void {
   }
 }
 
+/** What the single-instance lock leaves in `userData` before anything else runs: Windows' lockfile, Linux's and macOS' Singleton links. */
+const LOCK_ENTRIES = new Set(['lockfile', 'SingletonLock', 'SingletonCookie', 'SingletonSocket'])
+
+/** A profile is new when it holds nothing but the lock: the old one is merged into it, entry by entry (the lock itself is held open). */
+function moveProfile(from: string, to: string, moved: string[]): void {
+  let entries: string[] | null = null
+
+  try {
+    entries = fs.readdirSync(to)
+  } catch {
+    // Not there yet.
+  }
+
+  if (entries && entries.length > 0 && entries.every(name => LOCK_ENTRIES.has(name))) {
+    mergeInto(from, to, moved)
+
+    return
+  }
+
+  moveIfMissing(from, to, moved)
+}
+
 /**
  * Carries data over from the pre-rename "Hermes OS" locations: the shell's folder in the Hermes home
  * (prefs, permission policy, audit log) and the Chromium profile (local storage, web-window logins).
- * Must run before anything opens the profile; the single-instance lock writes into `userData`.
+ * Must run before anything opens the profile. It now runs after the single-instance lock (so a second
+ * launch never migrates), which is why a `userData` holding only the lock still counts as empty.
  */
 export function migrateLegacyData(locations: LegacyLocations): string[] {
   const moved: string[] = []
@@ -87,7 +110,7 @@ export function migrateLegacyData(locations: LegacyLocations): string[] {
   }
 
   attempt(() => mergeInto(path.join(locations.hermesHome, 'hermes-os'), path.join(locations.hermesHome, 'herald-os'), moved))
-  attempt(() => moveIfMissing(path.join(locations.appData, 'Hermes OS'), locations.userData, moved))
+  attempt(() => moveProfile(path.join(locations.appData, 'Hermes OS'), locations.userData, moved))
 
   for (const name of PARTITIONS) {
     attempt(() => moveIfMissing(path.join(locations.userData, 'Partitions', `hermes-${name}`), path.join(locations.userData, 'Partitions', `herald-${name}`), moved))
