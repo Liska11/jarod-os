@@ -68,7 +68,7 @@ Avant de cloner, refaire un bundle si des commits ont été ajoutés après le 1
   5. ✅ **Journal** : `electron/ipc/setup.ts` note la vérification et le test Telegram, puis la fin de la configuration, sous `setup`. L'audit est noté sous `audit`. Jamais de jeton ni de clé dans le journal.
 
 **Reste de la phase d'initialisation (facultatif) :**
-- Traduire les détails de l'audit, aujourd'hui en anglais dans `audit.ts`, champ `detail` : renvoyer des données structurées plutôt que du texte.
+- ✅ Détails de l'audit traduits à l'écran : `checkDetail(check, facts)` dans `DesktopSetup.tsx` les reconstruit depuis `report.facts`. Le champ `detail` en anglais reste le texte de repli et ce que reçoit l'agent (`system.audit`).
 - Ajouter dans les Réglages un bouton « Relancer la vérification du système » (`window.heraldOS.systemAudit.run()`) et « Importer des clés » (réutiliser `KeysStep`).
 - ✅ Assistant à la demande : commande `setup.open` dans `src/commands/setup.ts`, avec la palette, la voix et `os_ui` pour l'agent. Elle passe par `$setupRequested` (`src/store/setup.ts`), et l'assistant se ferme par ✕ sans rien marquer. Commande `system.audit` : nouvel audit, renvoyé à l'agent comme données. Pas encore vérifié dans l'app lancée (typecheck et tests seulement).
 - Tester Telegram avec un vrai bot (jeton du propriétaire).

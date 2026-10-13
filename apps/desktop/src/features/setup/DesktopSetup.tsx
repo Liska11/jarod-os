@@ -1,6 +1,6 @@
 import { IconAlertTriangle, IconCheck, IconCopy, IconCpu, IconInfoCircle, IconRefresh, IconSparkles, IconX } from '@tabler/icons-react'
 import { useEffect, useState } from 'react'
-import type { AuditReport, Check, CheckStatus } from '../../../shared/system-audit.ts'
+import type { AuditReport, Check, CheckStatus, SystemFacts } from '../../../shared/system-audit.ts'
 import { HeraldLogo } from '../../components/herald-logo.tsx'
 import { GlassButton } from '../../components/ui/glass.tsx'
 import { Spinner } from '../../components/ui/primitives.tsx'
@@ -83,6 +83,48 @@ export function checkLabel(check: Check): string {
   return text === key ? check.label : text
 }
 
+const gb = (mb: number) => (mb / 1024).toFixed(1)
+const yesNo = (value: boolean | null) => t(value === null ? 'setup.detail.unknown' : value ? 'setup.detail.yes' : 'setup.detail.no')
+const TOOLS = new Set(['node', 'npm', 'pnpm', 'git', 'python', 'ollama', 'docker'])
+const MINIMUM: Record<string, string> = { node: '22.12', python: '3.10' }
+
+/** A check's detail in the interface language, rebuilt from the audit's facts; main's English text when there is no rule. */
+export function checkDetail(check: Check, facts: SystemFacts): string {
+  const [kind, device = ''] = check.id.split(':')
+  switch (kind) {
+    case 'cpu':
+      return t('setup.detail.cpu', { model: facts.cpu.model, cores: facts.cpu.cores || '?', threads: facts.cpu.threads, avx2: yesNo(facts.cpu.avx2), avx512: yesNo(facts.cpu.avx512) })
+    case 'ram':
+      return t(check.status === 'ok' ? 'setup.detail.ram' : 'setup.detail.ramLow', { gb: gb(facts.ramMB) })
+    case 'disk':
+      return facts.freeDiskMB === null ? check.detail : t(check.status === 'ok' ? 'setup.detail.disk' : 'setup.detail.diskLow', { gb: gb(facts.freeDiskMB) })
+    case 'gpu': {
+      const gpu = facts.gpus.find(g => g.name === device)
+      if (!gpu) return device ? check.detail : t('setup.detail.noGpu')
+      if (gpu.integrated) return gpu.vramMB === null ? t('setup.detail.igpu', { name: gpu.name }) : t('setup.detail.igpuUpTo', { name: gpu.name, gb: gb(gpu.vramMB) })
+      return gpu.vramMB === null ? gpu.name : t('setup.detail.vram', { name: gpu.name, gb: gb(gpu.vramMB) })
+    }
+    case 'npu':
+      return check.status === 'ok' ? device : t('setup.detail.npuDown', { name: device })
+    case 'vulkan':
+    case 'wsl':
+      return check.status === 'ok' ? t('setup.detail.present') : t(kind === 'wsl' ? 'setup.detail.wslMissing' : 'setup.detail.vulkanMissing')
+    case 'cuda':
+      return check.status === 'ok' ? check.detail : t('setup.detail.cudaMissing')
+    case 'openvino':
+      return t('setup.detail.openvino')
+    case 'rocm':
+      return t(facts.platform === 'win32' ? 'setup.detail.rocmWindows' : 'setup.detail.rocmLinux')
+    default:
+      if (TOOLS.has(kind)) {
+        const version = facts.software[kind]
+        if (!version) return t('setup.detail.notInstalled')
+        return check.status === 'outdated' ? t('setup.detail.outdated', { version, min: MINIMUM[kind] ?? '' }) : version
+      }
+      return check.detail
+  }
+}
+
 function AuditStep({ onDone }: { onDone: () => void }) {
   const [report, setReport] = useState<AuditReport | null>(null)
   const [busy, setBusy] = useState(true)
@@ -119,8 +161,8 @@ function AuditStep({ onDone }: { onDone: () => void }) {
       {error && <p className="text-[12.5px] text-danger">{t('setup.audit.failed', { error })}</p>}
       {report && (
         <div className="flex min-h-0 flex-col gap-3 overflow-y-auto pr-1">
-          <Section title={t('setup.audit.hardware')} checks={hardware} />
-          <Section title={t('setup.audit.prerequisites')} checks={prerequisites} />
+          <Section title={t('setup.audit.hardware')} checks={hardware} facts={report.facts} />
+          <Section title={t('setup.audit.prerequisites')} checks={prerequisites} facts={report.facts} />
         </div>
       )}
       <div className="flex items-center justify-between gap-2">
@@ -133,21 +175,21 @@ function AuditStep({ onDone }: { onDone: () => void }) {
   )
 }
 
-function Section({ title, checks }: { title: string; checks: Check[] }) {
+function Section({ title, checks, facts }: { title: string; checks: Check[]; facts: SystemFacts }) {
   if (checks.length === 0) return null
   return (
     <section className="flex flex-col gap-1">
       <h3 className="text-[11px] font-semibold uppercase tracking-wide text-fg-3">{title}</h3>
       <ul className="flex flex-col gap-1">
         {checks.map(check => (
-          <CheckRow key={check.id} check={check} />
+          <CheckRow key={check.id} check={check} detail={checkDetail(check, facts)} />
         ))}
       </ul>
     </section>
   )
 }
 
-function CheckRow({ check }: { check: Check }) {
+function CheckRow({ check, detail }: { check: Check; detail: string }) {
   const [copied, setCopied] = useState(false)
   const showFix = check.fix && check.status !== 'ok'
 
@@ -157,10 +199,10 @@ function CheckRow({ check }: { check: Check }) {
         <span role="img" aria-label={t(`setup.status.${check.status}` as MessageKey)}>
           {STATUS_ICON[check.status]}
         </span>
-        <span className="font-medium text-fg">{checkLabel(check)}</span>
+        <span className="shrink-0 font-medium text-fg">{checkLabel(check)}</span>
         {check.critical && check.status !== 'ok' && <span className="rounded bg-danger/20 px-1.5 text-[10.5px] text-danger">{t('setup.status.blocking')}</span>}
-        <span className="min-w-0 flex-1 truncate text-right text-fg-3" title={check.detail}>
-          {check.detail}
+        <span className="min-w-0 flex-1 truncate text-right text-fg-3" title={detail}>
+          {detail}
         </span>
       </div>
       {showFix && (

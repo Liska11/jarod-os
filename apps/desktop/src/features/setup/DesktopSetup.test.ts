@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import type { Check } from '../../../shared/system-audit.ts'
-import { checkLabel } from './DesktopSetup.tsx'
+import type { Check, SystemFacts } from '../../../shared/system-audit.ts'
+import { checkDetail, checkLabel } from './DesktopSetup.tsx'
 
 const check = (id: string, label: string): Check => ({ id, label, status: 'info', critical: false, detail: '' })
 
@@ -14,5 +14,33 @@ describe('checkLabel', () => {
 
   it('falls back to the label main gave for a check it has no translation for', () => {
     expect(checkLabel(check('node', 'Node.js'))).toBe('Node.js')
+  })
+})
+
+describe('checkDetail', () => {
+  const facts: SystemFacts = {
+    platform: 'win32',
+    environment: 'windows',
+    os: { name: 'Windows', version: '10', kernel: '10' },
+    cpu: { model: 'Core Ultra 9', cores: 24, threads: 24, avx2: true, avx512: false },
+    gpus: [{ name: 'Intel(R) Graphics', vendor: 'intel', vramMB: 2048, integrated: true, driver: null }],
+    npus: [],
+    ramMB: 65536,
+    freeDiskMB: 10240,
+    software: { node: '20.1.0', python: null },
+    nvidiaSmi: null,
+    vulkan: true
+  }
+
+  it('rebuilds the detail from the facts', () => {
+    expect(checkDetail(check('cpu', 'Processor'), facts)).toBe('Core Ultra 9 · 24 cores / 24 threads · AVX2 yes · AVX-512 no')
+    expect(checkDetail({ ...check('ram', 'Memory'), status: 'ok' }, facts)).toBe('64.0 GB')
+    expect(checkDetail(check('gpu:Intel(R) Graphics', 'Integrated GPU'), facts)).toBe('Intel(R) Graphics · shares the system memory (up to 2.0 GB)')
+    expect(checkDetail({ ...check('node', 'Node.js'), status: 'outdated' }, facts)).toBe('20.1.0 (needs 22.12 or later)')
+    expect(checkDetail({ ...check('python', 'Python'), status: 'missing' }, facts)).toBe('not installed')
+  })
+
+  it('keeps the text main gave for a check it has no rule for', () => {
+    expect(checkDetail({ ...check('os', 'Operating system'), detail: 'Windows 11' }, facts)).toBe('Windows 11')
   })
 })
