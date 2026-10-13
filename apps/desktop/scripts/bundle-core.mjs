@@ -1,13 +1,14 @@
-// Builds the Jarod core that ships inside the app: jarod-core/ -> one JavaScript file plus the native SQLite module (jarod-core/scripts/bundle-gateway.mjs),
-// and the Node runtime that runs it, copied beside it. The result, jarod-core/dist/gateway, is what electron-builder puts in resources/jarod-core
-// and what a development checkout runs (electron/backend/jarod-core.ts).
+// Builds the Jarod core that ships inside the app: jarod-core/ -> one JavaScript file plus the native SQLite module (jarod-core/scripts/bundle-gateway.mjs).
+// The result, jarod-core/dist/gateway, is what electron-builder puts in resources/jarod-core and what a development checkout runs
+// (electron/backend/jarod-core.ts). Jarod-OS runs it with its own executable in Node mode when the native module loads there (checked below);
+// otherwise, or with JAROD_SHIP_NODE=1, the Node that built it is copied beside it so the native module and the runtime always match.
 //
 //   node scripts/bundle-core.mjs
 //
-// Needs pnpm (jarod-core is its own workspace with its own lockfile). The Node used here is the one that installs and compiles the core, so the native
-// module and the runtime shipped with it always match.
+// Needs pnpm (jarod-core is its own workspace with its own lockfile).
 import { spawnSync } from 'node:child_process'
-import { copyFileSync, existsSync, writeFileSync } from 'node:fs'
+import { copyFileSync, existsSync, rmSync, writeFileSync } from 'node:fs'
+import { createRequire } from 'node:module'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -37,9 +38,42 @@ if (!existsSync(path.join(core, 'node_modules'))) {
 run(process.execPath, [path.join(core, 'scripts', 'bundle-gateway.mjs'), '--out', out], core)
 
 const runtime = path.join(out, process.platform === 'win32' ? 'node.exe' : 'node')
+const license = path.join(out, 'NODE-LICENSE.txt')
+
+/**
+ * Jarod-OS can run the core with its own executable in Node mode (ELECTRON_RUN_AS_NODE), which spares the installer a second Node (~90 MB).
+ * That only works when the core's native module loads in Electron's Node: checked here, with this checkout's Electron, by opening a database.
+ * When it does not (a module built for one Node ABI only), the Node that built it is shipped beside it, as before.
+ */
+function electronRunsTheCore() {
+  let electron
+
+  try {
+    electron = createRequire(path.join(here, '..', 'package.json'))('electron')
+  } catch {
+    return false
+  }
+
+  const probe = spawnSync(electron, ['-e', "const D = require('better-sqlite3-multiple-ciphers'); new D(':memory:').prepare('select 1').get(); process.stdout.write('ok')"], {
+    cwd: out,
+    env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' },
+    encoding: 'utf8',
+    timeout: 60_000
+  })
+
+  return probe.status === 0 && probe.stdout === 'ok'
+}
+
+if (process.env.JAROD_SHIP_NODE !== '1' && electronRunsTheCore()) {
+  rmSync(runtime, { force: true })
+  rmSync(license, { force: true })
+  console.log(`Jarod core ready in ${out}: Jarod-OS runs it in Node mode (its native module loads in Electron's Node), no separate Node shipped`)
+  process.exit(0)
+}
+
 copyFileSync(process.execPath, runtime)
 writeFileSync(
-  path.join(out, 'NODE-LICENSE.txt'),
+  license,
   `The file ${path.basename(runtime)} is Node.js ${process.version}, copied unmodified from the machine that built this package.
 
 Node.js is released under the MIT license. Copyright Node.js contributors. All rights reserved.

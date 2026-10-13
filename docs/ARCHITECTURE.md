@@ -70,7 +70,9 @@ Setup, session model and dev loop for Linux: `docs/LINUX.md`.
    or `HERALD_OS_JAROD_CORE=<folder>`), and Hermes when it does not. `HERALD_OS_BACKEND_URL` and
    `HERALD_OS_BACKEND_TOKEN` attach the shell to a backend someone else runs (`coexist.ts`).
 2. **Start the Jarod core.** `node gateway.mjs --init --exit-on-stdin-close --workspace <folder>`,
-   with the `node` shipped beside it (installed) or from `PATH` (checkout). It gets its own profile
+   run by Jarod-OS's own executable in Node mode (`ELECTRON_RUN_AS_NODE=1`; installed), by a `node`
+   shipped beside it when the build had to include one (`bundle-core.mjs` checks that the core's native
+   module loads in Electron's Node), or by `node` from `PATH` (checkout). It gets its own profile
    (`JAROD_HOME=<data>/profile`, data under `%LOCALAPPDATA%\Jarod-OS`, `~/Library/Application
    Support/Jarod-OS/core` or `$XDG_DATA_HOME/jarod-os`; `JAROD_OS_DATA` moves it), the working
    folder conversations stay in (`Documents/Jarod-OS`, or `JAROD_WORKSPACE`) and the per-launch

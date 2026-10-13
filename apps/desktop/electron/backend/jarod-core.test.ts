@@ -8,14 +8,27 @@ describe('resolveJarodCore', () => {
   it('installed: the core and its own runtime sit in the resources folder', () => {
     const resources = path.join('C:', 'App', 'resources')
     const gateway = path.join(resources, 'jarod-core', 'gateway.mjs')
-    const core = resolveJarodCore({ packaged: true, resourcesPath: resources, platform: 'win32', env: {}, exists: present(gateway) })
+    const core = resolveJarodCore({ packaged: true, resourcesPath: resources, platform: 'win32', env: {}, exists: present(gateway, path.join(resources, 'jarod-core', 'node.exe')) })
 
     expect(core).toEqual({ dir: path.join(resources, 'jarod-core'), gateway, node: path.join(resources, 'jarod-core', 'node.exe') })
   })
 
+  it('installed without a Node of its own: Jarod-OS’s executable runs the core in Node mode', () => {
+    const resources = path.join('C:', 'App', 'resources')
+    const gateway = path.join(resources, 'jarod-core', 'gateway.mjs')
+    const execPath = path.join('C:', 'App', 'Jarod-OS.exe')
+
+    expect(resolveJarodCore({ packaged: true, resourcesPath: resources, platform: 'win32', env: { HERALD_OS_NODE: 'C:\\node\\node.exe' }, exists: present(gateway), execPath })).toEqual({
+      dir: path.join(resources, 'jarod-core'),
+      gateway,
+      node: execPath,
+      runAsNode: true
+    })
+  })
+
   it('installed: the runtime is the shipped one even when PATH has another node', () => {
     const resources = path.join('/opt', 'jarod-os', 'resources')
-    const core = resolveJarodCore({ packaged: true, resourcesPath: resources, platform: 'linux', env: { HERALD_OS_NODE: '/usr/bin/node' }, exists: present(path.join(resources, 'jarod-core', 'gateway.mjs')) })
+    const core = resolveJarodCore({ packaged: true, resourcesPath: resources, platform: 'linux', env: { HERALD_OS_NODE: '/usr/bin/node' }, exists: present(path.join(resources, 'jarod-core', 'gateway.mjs'), path.join(resources, 'jarod-core', 'node')) })
 
     expect(core?.node).toBe(path.join(resources, 'jarod-core', 'node'))
   })
@@ -85,6 +98,13 @@ describe('jarodSpawnPlan', () => {
     expect(plan.args).toEqual([core.gateway, '--init', '--exit-on-stdin-close', '--workspace', '/w'])
     expect(plan.cwd).toBe(core.dir)
     expect(plan.env).toMatchObject({ JAROD_HOME: path.join('/d', 'Jarod-OS', 'profile'), JAROD_GATEWAY_TOKEN: 'tok', PATH: '/bin', OPENAI_API_KEY: 'k' })
+  })
+
+  it('asks Electron to behave as Node when it is the runtime', () => {
+    const plan = jarodSpawnPlan({ ...core, node: path.join('/r', 'Jarod-OS'), runAsNode: true }, { token: 'tok', dataDir: '/d', workspace: '/w', env: {} })
+
+    expect(plan.command).toBe(path.join('/r', 'Jarod-OS'))
+    expect(plan.env.ELECTRON_RUN_AS_NODE).toBe('1')
   })
 
   it('does not hand the core anything meant for Hermes or for Electron-as-node, nor a fixed port', () => {

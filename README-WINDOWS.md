@@ -10,8 +10,9 @@ session.
 
 ### Which agent runs
 
-- **The Jarod core, by default.** The installer ships it (`resources\jarod-core`, with its own
-  `node.exe`): nothing else to install. Its data lives in `%LOCALAPPDATA%\Jarod-OS`
+- **The Jarod core, by default.** The installer ships it (`resources\jarod-core`), and
+  `Jarod-OS.exe` runs it in Node mode, so it shows up as a second `Jarod-OS.exe` in Task Manager:
+  nothing else to install. Its data lives in `%LOCALAPPDATA%\Jarod-OS`
   (`JAROD_OS_DATA` moves it) and conversations work in `Documents\Jarod-OS` (`JAROD_WORKSPACE`).
   From source, `npm run bundle:core` builds it into `jarod-core\dist\gateway`, where `npm run dev`
   finds it.

@@ -12,8 +12,13 @@ import { osEnv } from '../env.ts'
 export type BackendChoice = 'jarod' | 'hermes'
 
 export interface JarodCore {
-  /** The JavaScript runtime that runs the gateway: the one shipped beside it when installed, `node` from PATH in a development checkout. */
+  /**
+   * The JavaScript runtime that runs the gateway: a `node` shipped beside it, else (installed) Jarod-OS's own executable in Node mode,
+   * else `node` from PATH in a development checkout.
+   */
   node: string
+  /** `node` is the Electron executable: it runs the gateway with ELECTRON_RUN_AS_NODE=1 (the installer then carries no second Node, ~90 MB). */
+  runAsNode?: boolean
   gateway: string
   /** Where the compiled core sits (`<resources>/jarod-core` installed, `<repo>/jarod-core/dist/gateway` in development). */
   dir: string
@@ -29,6 +34,8 @@ export interface CoreLocation {
   /** `app.getAppPath()` in development (`apps/desktop`). */
   appPath?: string
   exists?: (file: string) => boolean
+  /** `process.execPath`: the Electron executable, which can run the core in Node mode when no Node is shipped. */
+  execPath?: string
 }
 
 const nodeName = (platform: NodeJS.Platform): string => (platform === 'win32' ? 'node.exe' : 'node')
@@ -60,7 +67,16 @@ export function resolveJarodCore(location: CoreLocation): JarodCore | null {
 
     const shippedNode = path.join(dir, nodeName(platform))
 
-    return { dir, gateway, node: shipped || exists(shippedNode) ? shippedNode : osEnv('NODE', env)?.trim() || nodeName(platform) }
+    if (exists(shippedNode)) {
+      return { dir, gateway, node: shippedNode }
+    }
+
+    // Installed without a Node of its own (bundle-core.mjs checked that the core's native module loads in Electron's): Jarod-OS runs it.
+    if (shipped) {
+      return { dir, gateway, node: location.execPath ?? process.execPath, runAsNode: true }
+    }
+
+    return { dir, gateway, node: osEnv('NODE', env)?.trim() || nodeName(platform) }
   }
 
   return null
@@ -118,7 +134,12 @@ export interface SpawnPlan {
 export function jarodSpawnPlan(core: JarodCore, options: { token: string; dataDir: string; workspace: string; env: NodeJS.ProcessEnv }): SpawnPlan {
   const env: NodeJS.ProcessEnv = { ...options.env, JAROD_HOME: path.join(options.dataDir, 'profile'), JAROD_GATEWAY_TOKEN: options.token }
 
-  delete env.ELECTRON_RUN_AS_NODE
+  if (core.runAsNode) {
+    env.ELECTRON_RUN_AS_NODE = '1'
+  } else {
+    delete env.ELECTRON_RUN_AS_NODE
+  }
+
   delete env.HERMES_DASHBOARD_SESSION_TOKEN
   delete env.JAROD_GATEWAY_PORT
 
