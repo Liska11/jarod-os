@@ -1219,7 +1219,31 @@ export const en = {
   'settings.vault.env': 'Environment variable (for shell commands)',
   'settings.vault.shell': 'Available to shell commands',
   'settings.vault.shell.hint': 'Shell commands can read it',
-  'settings.vault.readFailed': 'Could not read the vault: {error}'
+  'settings.vault.readFailed': 'Could not read the vault: {error}',
+  'settings.mcp.title': 'MCP servers',
+  'settings.mcp.subtitle.short': 'Tools that live in other programs.',
+  'settings.mcp.needsJarod': 'MCP servers are edited here with the Jarod engine.',
+  'settings.mcp.unknownError': 'unknown error',
+  'settings.mcp.subtitle': 'Tools that live in other programs: a command the agent starts, or a web address it calls.',
+  'settings.mcp.servers': 'Servers',
+  'settings.mcp.none': 'No MCP server yet',
+  'settings.mcp.none.hint': 'Add one to give the agent more tools.',
+  'settings.mcp.removed': 'Server removed',
+  'settings.mcp.on': 'Server on',
+  'settings.mcp.off': 'Server off',
+  'settings.mcp.add': 'Add a server',
+  'settings.mcp.add.hint': 'A program the agent starts (like npx or uvx), or a web address.',
+  'settings.mcp.updated': 'Server updated',
+  'settings.mcp.added': 'Server added',
+  'settings.mcp.type': 'Type',
+  'settings.mcp.type.stdio': 'Program (stdio)',
+  'settings.mcp.type.http': 'Web address (http)',
+  'settings.mcp.command': 'Command',
+  'settings.mcp.args': 'Arguments (one per line)',
+  'settings.mcp.env': 'Environment (NAME=value, one per line; values are secrets)',
+  'settings.mcp.works': 'Works: {count} tools',
+  'settings.mcp.works.one': 'Works: {count} tool',
+  'settings.mcp.readFailed': 'Could not read the servers: {error}'
 } as const
 
 export type MessageKey = keyof typeof en
