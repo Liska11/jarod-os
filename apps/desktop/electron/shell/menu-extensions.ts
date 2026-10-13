@@ -6,13 +6,14 @@ import { ipcMain } from 'electron'
 import { IPC } from '../../shared/ipc.ts'
 import { type MenuExtensions, parseMenuExtensions } from '../../shared/menu-extensions.ts'
 import { log } from '../log.ts'
+import { shellConfigDir } from '../paths.ts'
 
 /*
  * The person's control-menu entries (~/.config/herald-os/menu.json). The menu shows them; main
  * starts their programs, and only ever the program the file names for the entry it is asked about.
  */
 
-export const menuFile = (): string => path.join(os.homedir(), '.config', 'herald-os', 'menu.json')
+export const menuFile = (): string => path.join(shellConfigDir(), 'menu.json')
 
 export function readMenuExtensions(): MenuExtensions {
   let text: string

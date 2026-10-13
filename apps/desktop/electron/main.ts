@@ -28,11 +28,12 @@ import { applyVoiceHotkey, registerVoiceIpc } from './ipc/voice.ts'
 import { registerEditIpc } from './ipc/edit.ts'
 import { registerWebIpc } from './ipc/web.ts'
 import { log, logTail } from './log.ts'
-import { migrateLegacyData } from './migrate.ts'
+import { migrateLegacyData, migrateShellConfig } from './migrate.ts'
 import { registerNotificationHistoryIpc } from './notifications-history.ts'
+import { osEnv } from './env.ts'
 import { claimSingleInstance } from './single-instance.ts'
 import { SwitchService } from './switches.ts'
-import { hermesHome, heraldOsDataDir, isDev } from './paths.ts'
+import { hermesHome, heraldOsDataDir, isDev, legacyShellConfigDir, shellConfigDir } from './paths.ts'
 import { readPrefs, writePrefs } from './prefs.ts'
 import { isOmarchy, readOmarchyTheme } from './theme/omarchy.ts'
 import { prefsForTheme } from './theme/themes.ts'
@@ -77,6 +78,11 @@ protocol.registerSchemesAsPrivileged([{ scheme: 'herald-plugin', privileges: { s
 process.on('uncaughtException', error => log('main', `uncaught exception: ${error.stack ?? error.message}`))
 
 for (const line of primary ? migrateLegacyData({ hermesHome: hermesHome(), appData: app.getPath('appData'), userData: app.getPath('userData') }) : []) {
+  log('migrate', line)
+}
+
+// A folder chosen with HERALD_OS_CONFIG_DIR is the person's (or a test's): nothing is moved into it.
+for (const line of primary && !osEnv('CONFIG_DIR') ? migrateShellConfig(process.platform, legacyShellConfigDir(), shellConfigDir()) : []) {
   log('migrate', line)
 }
 

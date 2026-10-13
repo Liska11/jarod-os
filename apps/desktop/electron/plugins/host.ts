@@ -10,6 +10,7 @@ import { log } from '../log.ts'
 import { hostPlatform } from '../platform/index.ts'
 import type { OsCommandBridge } from '../shell/os-control.ts'
 import { WIDGET_SDK } from './sdk.ts'
+import { shellConfigDir } from '../paths.ts'
 
 /*
  * Widget plugins (ADR-019). Each lives in ~/.config/herald-os/plugins/<id>; the shell shows enabled
@@ -20,7 +21,7 @@ import { WIDGET_SDK } from './sdk.ts'
 const MAX_VALUE_BYTES = 64 * 1024
 const MAX_STORE_BYTES = 256 * 1024
 
-const configDir = () => path.join(os.homedir(), '.config', 'herald-os')
+const configDir = () => shellConfigDir()
 export const pluginsDir = (): string => path.join(configDir(), 'plugins')
 const stateFile = () => path.join(configDir(), 'plugins.json')
 const storeFile = (id: string) => path.join(configDir(), 'plugin-data', `${id}.json`)

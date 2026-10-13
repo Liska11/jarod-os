@@ -1,5 +1,10 @@
 # Make it yours
 
+> **Where these files live.** This page writes the shell's settings folder as `~/.config/herald-os`,
+> which is where it is on Linux and macOS. On Windows it is `%APPDATA%\Jarod-OS\config` (an older
+> `%USERPROFILE%\.config\herald-os` is moved there on the next start). `HERALD_OS_CONFIG_DIR` puts it
+> anywhere else.
+
 ## Themes
 
 A theme recolours everything at once: the shell, the in-shell terminal, the wallpaper's colours,
@@ -23,7 +28,7 @@ black), Rose, Lagoon, and two light ones, Paper and Cloud.
 
 ### Writing a theme by hand
 
-Your themes live in `~/.config/herald-os/themes/<name>/theme.json` on every platform. The name is
+Your themes live in `~/.config/herald-os/themes/<name>/theme.json` (see the note at the top for Windows). The name is
 the folder name: lowercase letters, digits and dashes.
 
 ```json

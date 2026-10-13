@@ -118,3 +118,24 @@ export function migrateLegacyData(locations: LegacyLocations): string[] {
 
   return moved
 }
+
+/**
+ * Windows: the shell's settings (plugins, hooks, themes, branding, menu, first-run state) move from the Unix-style
+ * `~/.config/herald-os` to `%APPDATA%\Jarod-OS\config` (see `shellConfigDir`). Entries the new folder already has
+ * are left where they were; the old folder goes once it is empty. Elsewhere the folder does not move.
+ */
+export function migrateShellConfig(platform: NodeJS.Platform, legacy: string, target: string): string[] {
+  const moved: string[] = []
+
+  if (platform !== 'win32' || path.resolve(legacy) === path.resolve(target)) {
+    return moved
+  }
+
+  try {
+    mergeInto(legacy, target, moved)
+  } catch (error) {
+    moved.push(`failed: ${String(error)}`)
+  }
+
+  return moved
+}

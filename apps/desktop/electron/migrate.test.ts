@@ -2,7 +2,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { migrateLegacyData } from './migrate.ts'
+import { migrateLegacyData, migrateShellConfig } from './migrate.ts'
 
 let root = ''
 
@@ -100,5 +100,40 @@ describe('migrateLegacyData', () => {
     write('.hermes/hermes-os/prefs.json')
     expect(migrateLegacyData(locations())).toHaveLength(1)
     expect(migrateLegacyData(locations())).toEqual([])
+  })
+})
+
+describe('migrateShellConfig', () => {
+  it('moves the Windows dot-folder into the Windows settings folder, keeping what is already there', () => {
+    write('home/.config/herald-os/plugins/clock/manifest.json', '{"id":"clock"}')
+    write('home/.config/herald-os/plugins.json', '{"enabled":{"clock":{}}}')
+    write('home/.config/herald-os/menu.json', 'old menu')
+    write('roaming/Jarod-OS/config/menu.json', 'new menu')
+
+    const moved = migrateShellConfig('win32', path.join(root, 'home/.config/herald-os'), path.join(root, 'roaming/Jarod-OS/config'))
+
+    expect(moved.some(line => line.startsWith('failed'))).toBe(false)
+    expect(read('roaming/Jarod-OS/config/plugins/clock/manifest.json')).toBe('{"id":"clock"}')
+    expect(read('roaming/Jarod-OS/config/plugins.json')).toBe('{"enabled":{"clock":{}}}')
+    expect(read('roaming/Jarod-OS/config/menu.json')).toBe('new menu')
+    expect(read('home/.config/herald-os/menu.json')).toBe('old menu')
+  })
+
+  it('creates the new folder from the old one in one move, and does nothing the second time', () => {
+    write('home/.config/herald-os/hooks/login.d/hello.cmd', 'echo hi')
+    const legacy = path.join(root, 'home/.config/herald-os')
+    const target = path.join(root, 'roaming/Jarod-OS/config')
+
+    expect(migrateShellConfig('win32', legacy, target)).toHaveLength(1)
+    expect(read('roaming/Jarod-OS/config/hooks/login.d/hello.cmd')).toBe('echo hi')
+    expect(fs.existsSync(legacy)).toBe(false)
+    expect(migrateShellConfig('win32', legacy, target)).toEqual([])
+  })
+
+  it('leaves Linux and macOS alone', () => {
+    write('home/.config/herald-os/menu.json', 'menu')
+
+    expect(migrateShellConfig('linux', path.join(root, 'home/.config/herald-os'), path.join(root, 'elsewhere'))).toEqual([])
+    expect(read('home/.config/herald-os/menu.json')).toBe('menu')
   })
 })

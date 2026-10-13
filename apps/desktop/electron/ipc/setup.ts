@@ -5,6 +5,7 @@ import path from 'node:path'
 import { IPC, type SetupResult, type SetupState } from '../../shared/ipc.ts'
 import { log } from '../log.ts'
 import { loadPty } from './terminal.ts'
+import { shellConfigDir } from '../paths.ts'
 
 /*
  * First-boot setup on the Jarod-OS image: the image's first boot made the account (no password)
@@ -14,7 +15,7 @@ import { loadPty } from './terminal.ts'
  */
 
 const FIRSTBOOT_DONE = '/var/lib/herald-os/firstboot-done'
-const configDir = () => path.join(os.homedir(), '.config', 'herald-os')
+const configDir = () => shellConfigDir()
 const doneFile = () => path.join(configDir(), 'setup-done')
 export const nameFile = (): string => path.join(configDir(), 'name')
 

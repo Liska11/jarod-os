@@ -8,10 +8,11 @@ import { HERALD_SKIN, hermesSkinYaml, schemeOf, type ThemeSpec, type ThemeSummar
 import { log } from '../log.ts'
 import { hermesHome } from '../paths.ts'
 import { run } from '../platform/exec.ts'
+import { shellConfigDir } from '../paths.ts'
 
 /** Where people's own themes live, on every platform (the Linux theme engine reads it too). */
 export function userThemesDir(): string {
-  return path.join(os.homedir(), '.config', 'herald-os', 'themes')
+  return path.join(shellConfigDir(), 'themes')
 }
 
 /** Theme folders shipped with Jarod-OS, first match wins (the same order as linux/bin/herald-os-theme). */

@@ -6,6 +6,7 @@ import { BrowserWindow, ipcMain } from 'electron'
 import { BRANDING_MIME, type BrandingKind, type BrandingPatch, type BrandingView, brandingFileName, brandingName, MAX_BRANDING_BYTES } from '../../shared/branding.ts'
 import { IPC } from '../../shared/ipc.ts'
 import { log } from '../log.ts'
+import { shellConfigDir } from '../paths.ts'
 
 /*
  * Branding (About's logo and name, the Linux lock-screen picture). Main is the only writer: Settings,
@@ -18,7 +19,7 @@ interface Stored {
   lock?: string
 }
 
-export const brandingDir = (): string => path.join(os.homedir(), '.config', 'herald-os', 'branding')
+export const brandingDir = (): string => path.join(shellConfigDir(), 'branding')
 const storeFile = () => path.join(brandingDir(), 'branding.json')
 const expandHome = (value: string) => (value === '~' ? os.homedir() : value.startsWith('~/') ? path.join(os.homedir(), value.slice(2)) : value)
 

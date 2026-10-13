@@ -1,15 +1,15 @@
 import { spawn } from 'node:child_process'
 import fs from 'node:fs'
-import os from 'node:os'
 import path from 'node:path'
 import { type HeraldEvent, hookEnv } from '../../shared/events.ts'
 import { log } from '../log.ts'
+import { shellConfigDir } from '../paths.ts'
 
 /** A hook that runs longer than this is stopped: hooks are for quick chores, not services. */
 const HOOK_TIMEOUT_MS = 120_000
 
 export function hooksDir(): string {
-  return path.join(os.homedir(), '.config', 'herald-os', 'hooks')
+  return path.join(shellConfigDir(), 'hooks')
 }
 
 /** Windows has no executable bit: a hook is a file of a type the system can run. */
