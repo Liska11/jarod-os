@@ -54,6 +54,7 @@ import { WallpaperService } from './shell/wallpaper.ts'
 import { appIconPath, createMainWindow, loadShell, MAIN_WINDOW_MIN } from './window.ts'
 import { CrashPolicy, isSafeMode, recoveryAction, recoveryPage, relaunchArgs } from './recovery.ts'
 import { readWindowState, restoreBounds, roundingDrift, withoutDrift, writeWindowState } from './window-state.ts'
+import { ShellTray, trayLanguage } from './tray.ts'
 
 app.setName('Jarod-OS')
 // First, before anything touches data or opens a socket (the lock is keyed on the name set just above).
@@ -62,6 +63,19 @@ const primary = claimSingleInstance(app)
 const safeMode = isSafeMode()
 const windowStateFile = () => path.join(app.getPath('userData'), 'window-state.json')
 let lastCrash: { at: string; reason: string } | null = null
+const tray = new ShellTray(appIconPath(), safeMode, {
+  show: () => {
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) {
+        mainWindow.restore()
+      }
+
+      mainWindow.show()
+      mainWindow.focus()
+    }
+  },
+  relaunch: safe => relaunch(safe)
+})
 const coreLocation = { packaged: app.isPackaged, resourcesPath: process.resourcesPath, appPath: app.getAppPath() }
 
 // With the Jarod core as backend, the shell keeps its Hermes-style files (plugins, themes, audit, notes) in a home of its own, never in a Hermes install of this machine.
@@ -278,6 +292,10 @@ function registerCoreIpc(): void {
       void switches.applyIdle(next)
     }
 
+    if ('language' in patch) {
+      tray.setLanguage(trayLanguage(next.language, app.getLocale()))
+    }
+
     if ('doNotDisturb' in patch || 'screensaver' in patch) {
       void switches.broadcast()
     }
@@ -487,6 +505,7 @@ app.whenReady().then(async () => {
     }
   })
   createWindow()
+  tray.start(trayLanguage(readPrefs().language, app.getLocale()))
   // Cmd+Ctrl+F is the standard macOS fullscreen toggle; register it as a local shortcut so the
   // user can always leave the environment. Only this shortcut follows focus: the voice hotkey
   // (ipc/voice.ts) must keep working while another app is in front.
@@ -545,6 +564,7 @@ app.on('before-quit', event => {
   event.preventDefault()
   globalShortcut.unregisterAll()
   crashes.stop()
+  tray.stop()
   plugins.stop()
   emojiPanel?.stop()
   control?.stop()
