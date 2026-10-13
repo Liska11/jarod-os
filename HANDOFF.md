@@ -56,9 +56,25 @@ Avant de cloner, refaire un bundle si des commits ont été ajoutés après le 1
      - Après l'enregistrement, une nouvelle personne reçoit un code d'appairage à valider avec `/pair <code>` (comportement existant du noyau).
      - Vérifié dans l'app : appel réel à Telegram avec un faux jeton, refus affiché, « Plus tard » mène à la fin. **Pas vérifié** avec un vrai bot : il faut un jeton du propriétaire.
      - Le champ « nom du bot » n'est qu'un rappel : le vrai nom vient de `getMe`, et le shell ne renomme pas le bot (`setMyName` est possible, mais pas fait).
-  4. **Étape 2, import `.txt` des clés** (`NOM=clé`) : analyse tolérante, doublons, format par service, correction ligne à ligne. Stockage avec `safeStorage` d'Electron (DPAPI sous Windows) ou dans le magasin de secrets existant du noyau, à vérifier avant d'en créer un. Ne jamais journaliser les valeurs.
+  4. ✅ **Étape 2, import `.txt` des clés API** :
+     - L'analyse est dans `src/features/setup/keys-import.ts`, avec ses tests. Elle accepte les lignes vides, les commentaires `#` ou `//`, `export NOM=…`, les espaces autour de `=` et les guillemets. Elle contrôle le nom, les espaces, et le préfixe des services connus (OpenAI `sk-`, Anthropic `sk-ant-`, Groq `gsk_`, HF `hf_`, etc.). Pour un nom en double, la dernière ligne gagne ; les précédentes sont marquées « remplacée par la ligne N ».
+     - L'écran est `KeysStep.tsx`, entre `telegram` et `done` : choisir un fichier ou coller les lignes, puis relire chaque ligne. Les valeurs sont masquées, une ligne invalide se corrige sur place, puis « Importer N clé(s) ».
+     - Où vont les clés :
+       - une clé de fournisseur passe par `jarod('set-env', NOM, valeur)`, le stockage chiffré du fournisseur ; si le noyau ne connaît pas ce nom, elle va au coffre ;
+       - un jeton de messagerie passe par `update-messaging-platform` ;
+       - le reste va dans `vault-save` (le coffre, `envVar` = le nom, sans domaine ni accès au shell, donc sans demande de confirmation).
+     - Après l'import, les valeurs sont effacées de la mémoire de l'écran.
+     - Vérifié dans l'app avec un profil jetable et de fausses clés : analyse, masquage, correction d'une ligne, puis import réel par le noyau (2 clés de fournisseur, 1 au coffre).
+  5. ✅ **Journal** : `electron/ipc/setup.ts` note la vérification et le test Telegram, puis la fin de la configuration, sous `setup`. L'audit est noté sous `audit`. Jamais de jeton ni de clé dans le journal.
 
-**Pour la prochaine session** : donner ce fichier à l'agent et lui demander de reprendre au point « À faire ensuite », étape 4 (import `.txt` des clés API), à insérer dans `DesktopSetup.tsx` entre `telegram` et `done` (tableau `STEPS`). Points à rappeler :
+**Reste de la phase d'initialisation (facultatif) :**
+- Traduire les détails de l'audit, aujourd'hui en anglais dans `audit.ts`, champ `detail` : renvoyer des données structurées plutôt que du texte.
+- Ajouter dans les Réglages un bouton « Relancer la vérification du système » (`window.heraldOS.systemAudit.run()`) et « Importer des clés » (réutiliser `KeysStep`).
+- Proposer l'assistant à la demande, par exemple avec une commande `setup.open` dans `src/commands/`.
+- Tester Telegram avec un vrai bot (jeton du propriétaire).
+- Linux et macOS : l'assistant `desktop` n'est activé que sous Windows (`setupState()` dans `electron/ipc/setup.ts`) ; l'audit, lui, fonctionne partout.
+
+**Pour la prochaine session** : donner ce fichier à l'agent et lui demander de choisir dans « Reste de la phase d'initialisation » ou dans la liste de la section 4. La phase d'initialisation demandée par la spécification (section 7) est faite. Points à rappeler :
 - toujours pas de push sans accord ;
 - le propriétaire n'a pas encore validé la tâche 3 de la section 4 (dossier Pinokio géré par Jarod-OS) ;
 - la réinstallation de Windows est envisagée. Placer le dossier Pinokio sur D: (par exemple `D:\pinokio`) pour garder les apps d'IA et leurs modèles.

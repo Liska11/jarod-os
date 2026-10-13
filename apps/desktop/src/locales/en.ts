@@ -577,7 +577,31 @@ export const en = {
   'setup.telegram.error.unauthorized': 'Telegram refused this token: copy it again from @BotFather.',
   'setup.telegram.error.network': 'Telegram could not be reached',
   'setup.telegram.error.no-message': 'No message reached the bot in time. Open the bot in Telegram, send it any message, then press “Test” again.',
-  'setup.telegram.error.refused': 'Telegram refused'
+  'setup.telegram.error.refused': 'Telegram refused',
+  'setup.keys.title': 'API keys',
+  'setup.keys.text': 'Import your keys from a .txt file, one per line as NAME=key (for example OPENAI_API_KEY=sk-…). They go to the engine’s encrypted store and are never shown again.',
+  'setup.keys.choose': 'Choose a .txt file',
+  'setup.keys.paste': 'Or paste the lines here',
+  'setup.keys.read': 'Read these lines',
+  'setup.keys.empty': 'No key found in this file.',
+  'setup.keys.other': 'Another file',
+  'setup.keys.import': 'Import {count} key(s)',
+  'setup.keys.line': 'line {line}',
+  'setup.keys.fix': 'Correct',
+  'setup.keys.fixPlaceholder': 'NAME=key',
+  'setup.keys.vaultDescription': 'Imported at first run',
+  'setup.keys.to.provider': '→ model provider',
+  'setup.keys.to.messaging': '→ messaging channel',
+  'setup.keys.to.vault': '→ vault',
+  'setup.keys.saved.provider': 'saved for the model provider',
+  'setup.keys.saved.messaging': 'saved for the messaging channel',
+  'setup.keys.saved.vault': 'saved in the vault',
+  'setup.keys.problem.missing-equals': 'no “=” on this line',
+  'setup.keys.problem.bad-name': 'the name must start with a letter, then letters, digits or _',
+  'setup.keys.problem.empty-value': 'no key after “=”',
+  'setup.keys.problem.spaces': 'the key contains spaces',
+  'setup.keys.problem.format': 'this service’s keys look like {shape}',
+  'setup.keys.problem.replaced': 'replaced by line {line}'
 } as const
 
 export type MessageKey = keyof typeof en

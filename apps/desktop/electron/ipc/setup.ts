@@ -112,10 +112,17 @@ export function changePassword(password: string, current = ''): Promise<SetupRes
 }
 
 export function registerSetupIpc(): void {
-  ipcMain.handle(IPC.setupTelegramCheck, (_event, token: unknown) => checkBot(String(token ?? '')))
-  ipcMain.handle(IPC.setupTelegramTest, (_event, token: unknown, reply: unknown) =>
-    roundTrip(String(token ?? ''), String(reply ?? 'Jarod-OS is connected.').slice(0, 500), { waitSeconds: 120 })
-  )
+  // Logged for diagnosis: the outcome and the bot's name, never the token.
+  ipcMain.handle(IPC.setupTelegramCheck, async (_event, token: unknown) => {
+    const bot = await checkBot(String(token ?? ''))
+    log('setup', bot.ok ? `telegram: token accepted for @${bot.username ?? '?'}` : `telegram: token refused (${bot.code ?? 'error'})`)
+    return bot
+  })
+  ipcMain.handle(IPC.setupTelegramTest, async (_event, token: unknown, reply: unknown) => {
+    const trip = await roundTrip(String(token ?? ''), String(reply ?? 'Jarod-OS is connected.').slice(0, 500), { waitSeconds: 120 })
+    log('setup', trip.ok ? 'telegram: round trip ok' : `telegram: round trip failed (${trip.code ?? 'error'})`)
+    return trip
+  })
   ipcMain.handle(IPC.setupState, () => setupState())
   ipcMain.handle(IPC.setupName, (_event, name: string) => {
     const clean = String(name ?? '').replace(/[\r\n:]/g, ' ').trim().slice(0, 64)
@@ -139,6 +146,8 @@ export function registerSetupIpc(): void {
       fs.mkdirSync(configDir(), { recursive: true })
       fs.writeFileSync(doneFile(), `${new Date().toISOString()}\n`)
     }
+
+    log('setup', options.later ? 'first-run setup left for the next start' : 'first-run setup finished')
 
     return { ok: true } satisfies SetupResult
   })
