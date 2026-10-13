@@ -3,7 +3,7 @@ import { IconBellRinging, IconBolt, IconClockPause, IconCoin, IconEar, IconEye, 
 import { useEffect, useState } from 'react'
 import type { MicPermission, VoiceEngine, VoicePrefs } from '../../../../shared/ipc.ts'
 import { GlassButton, Pill, Toggle } from '../../../components/ui/glass.tsx'
-import { deviceNoun, privacySettingsPath } from '../../../lib/platform-labels.ts'
+import { privacySettingsPath } from '../../../lib/platform-labels.ts'
 import { rest } from '../../../lib/rest.ts'
 import { $engineKind } from '../../../store/engine.ts'
 import { JarodSpeechGroup } from './JarodSpeechGroup.tsx'
@@ -15,6 +15,7 @@ import { $voice, $voiceActive, LIVE_RATE_PER_MINUTE, liveSecondsToday, speakWith
 import { fetchLiveStatus, type LiveStatus } from '../../../store/voice-live-status.ts'
 import { $wake, setWakeWordEnabled } from '../../../store/wake.ts'
 import { errorText, focusSettings, InlineNote, markSaved, MenuDropdown, RadioCard, SectionTitle, SettingsGroup, SettingsRow, Stepper } from './shared.tsx'
+import { t, useT } from '../../../lib/i18n.ts'
 
 /*
  * Voice: the two engines (free chained pipeline, paid GPT-Live), how a conversation starts (wake
@@ -51,6 +52,7 @@ const IDLE_OPTIONS = [20, 30, 45, 60, 120, 300]
 const CAP_OPTIONS = [0, 15, 30, 60, 120, 240]
 
 export function VoiceSection() {
+  useT()
   const prefs = useStore($prefs)
   const voice = prefs.voice
   const wake = useStore($wake)
@@ -75,7 +77,7 @@ export function VoiceSection() {
       await updatePrefs({ voice: { ...$prefs.get().voice, ...patch } })
       markSaved()
     } catch (error) {
-      notify({ title: 'Could not save setting', body: errorText(error), level: 'error' })
+      notify({ title: t('settings.general.saveFailed'), body: errorText(error), level: 'error' })
     }
   }
 
@@ -85,13 +87,13 @@ export function VoiceSection() {
       config.reload()
       markSaved()
     } catch (error) {
-      notify({ title: 'Could not update Hermes config', body: errorText(error), level: 'error' })
+      notify({ title: t('settings.voice.configFailed'), body: errorText(error), level: 'error' })
     }
   }
 
   const setEngine = async (engine: VoiceEngine) => {
     if (engine === 'live' && liveStatus && !liveStatus.available) {
-      notify({ title: 'Live is not available', body: liveStatus.reason ?? 'GPT-Live cannot start on this runtime.', level: 'warn' })
+      notify({ title: t('settings.voice.liveUnavailable'), body: liveStatus.reason ?? t('settings.voice.liveUnavailable.body'), level: 'warn' })
 
       return
     }
@@ -103,7 +105,7 @@ export function VoiceSection() {
     try {
       setMic(await window.heraldOS.voice.requestMicrophone())
     } catch (error) {
-      notify({ title: 'Microphone', body: errorText(error), level: 'error' })
+      notify({ title: t('settings.voice.microphone'), body: errorText(error), level: 'error' })
     }
   }
 
@@ -111,11 +113,11 @@ export function VoiceSection() {
     setTesting(true)
 
     try {
-      await speakWithFreeFallback('Hello. This is Hermes, speaking from Jarod-OS.')
+      await speakWithFreeFallback(t('settings.voice.hello'))
       config.reload()
       markSaved()
     } catch (error) {
-      notify({ title: 'Speech test failed', body: errorText(error), level: 'error' })
+      notify({ title: t('settings.voice.testFailed'), body: errorText(error), level: 'error' })
     } finally {
       setTesting(false)
     }
@@ -128,7 +130,7 @@ export function VoiceSection() {
       config.reload()
       markSaved()
     } catch (error) {
-      notify({ title: 'Could not update Hermes config', body: errorText(error), level: 'error' })
+      notify({ title: t('settings.voice.configFailed'), body: errorText(error), level: 'error' })
     }
   }
 
@@ -140,81 +142,81 @@ export function VoiceSection() {
 
   return (
     <>
-      <SectionTitle title="Voice" subtitle="Talk to Hermes and hear it answer. Hermes stays the brain in every mode; only the audio path changes." />
+      <SectionTitle title={t('settings.voice.title')} subtitle={t('settings.voice.subtitle')} />
 
-      <SettingsGroup title="Voice">
-        <SettingsRow icon={<IconMicrophone />} label="Enable voice" description="Shows the microphone in the menu bar and composers, and registers the hotkey. Off means the mic is never opened." keywords="talk speak jarvis">
-          <Toggle checked={voice.enabled} onChange={next => void save({ enabled: next, wakeWord: next ? voice.wakeWord : false })} label="Enable voice" />
+      <SettingsGroup title={t('settings.voice.title')}>
+        <SettingsRow icon={<IconMicrophone />} label={t('settings.voice.enable')} description={t('settings.voice.enable.hint')} keywords="talk speak jarvis">
+          <Toggle checked={voice.enabled} onChange={next => void save({ enabled: next, wakeWord: next ? voice.wakeWord : false })} label={t('settings.voice.enable')} />
         </SettingsRow>
         <SettingsRow
           icon={<IconMicrophone />}
-          label="Microphone access"
-          description={mic === 'granted' ? 'Granted.' : mic === 'denied' || mic === 'restricted' ? `Denied. Allow Jarod-OS under ${privacySettingsPath('Microphone')}.` : 'Not asked yet; the first conversation asks.'}
+          label={t('settings.voice.access')}
+          description={mic === 'granted' ? t('settings.voice.access.granted') : mic === 'denied' || mic === 'restricted' ? t('settings.voice.access.denied', { path: privacySettingsPath('Microphone') }) : t('settings.voice.access.unknown')}
           keywords="permission privacy"
         >
           {mic !== 'granted' && (
-            <GlassButton size="sm" onClick={() => void requestMic()} aria-label="Request microphone access">
-              Request access
+            <GlassButton size="sm" onClick={() => void requestMic()} aria-label={t('settings.voice.access.request')}>
+              {t('settings.voice.access.button')}
             </GlassButton>
           )}
         </SettingsRow>
-        <SettingsRow icon={<IconListDetails />} label="What you can say" description='Every voice command, with examples. You can also say "what can I say".' keywords="commands help list">
-          <GlassButton size="sm" onClick={() => focusSettings({ section: 'commands' })} aria-label="Show voice commands">
-            Show commands
+        <SettingsRow icon={<IconListDetails />} label={t('settings.voice.commands')} description={t('settings.voice.commands.hint')} keywords="commands help list">
+          <GlassButton size="sm" onClick={() => focusSettings({ section: 'commands' })} aria-label={t('settings.voice.commands.aria')}>
+            {t('settings.voice.commands.button')}
           </GlassButton>
         </SettingsRow>
-        <SettingsRow icon={<IconPlayerPlay />} label="Try it" description="Hear the configured voice, or start a conversation right here.">
-          <GlassButton size="sm" onClick={() => void sayHello()} disabled={testing} aria-label="Play a test sentence">
+        <SettingsRow icon={<IconPlayerPlay />} label={t('settings.voice.try')} description={t('settings.voice.try.hint')}>
+          <GlassButton size="sm" onClick={() => void sayHello()} disabled={testing} aria-label={t('settings.voice.try.aria')}>
             <IconVolume />
-            {testing ? 'Speaking…' : 'Say hello'}
+            {testing ? t('settings.voice.speaking') : t('settings.voice.sayHello')}
           </GlassButton>
-          <GlassButton size="sm" variant="primary" onClick={() => void startVoice('button')} disabled={active} aria-label="Start a voice conversation">
-            {active ? 'Listening…' : 'Start talking'}
+          <GlassButton size="sm" variant="primary" onClick={() => void startVoice('button')} disabled={active} aria-label={t('settings.voice.start.aria')}>
+            {active ? t('settings.voice.listening') : t('settings.voice.start')}
           </GlassButton>
         </SettingsRow>
       </SettingsGroup>
 
-      <SettingsGroup title="Engine">
+      <SettingsGroup title={t('settings.voice.engine')}>
         <SettingsRow
-          label="Conversation engine"
-          description="Free: your mic is transcribed, Hermes answers, and the reply is spoken as it streams (about 2 s per turn). Live: OpenAI's full-duplex voice model talks with you and delegates to Hermes (under 1 s, natural interruptions)."
+          label={t('settings.voice.engine.label')}
+          description={t('settings.voice.engine.hint')}
           keywords="chained gpt-live realtime cost"
           below={
             <div className="flex flex-col gap-2">
               <div className="flex gap-2">
-                <RadioCard icon={<IconWaveSine />} label="Free" description="No extra cost; STT and TTS providers below" selected={voice.engine === 'chained'} onSelect={() => void setEngine('chained')} />
+                <RadioCard icon={<IconWaveSine />} label={t('settings.voice.free')} description={t('settings.voice.free.hint')} selected={voice.engine === 'chained'} onSelect={() => void setEngine('chained')} />
                 <RadioCard
                   icon={<IconBolt />}
                   label="Live"
-                  description={liveStatus?.available ? `$${LIVE_RATE_PER_MINUTE.toFixed(2)} per minute while talking` : 'Needs an OpenAI key and Hermes 0.21.3+'}
+                  description={liveStatus?.available ? t('settings.voice.live.rate', { price: LIVE_RATE_PER_MINUTE.toFixed(2) }) : t('settings.voice.live.needs')}
                   selected={voice.engine === 'live'}
                   onSelect={() => void setEngine('live')}
                   disabled={liveStatus ? !liveStatus.available : false}
                 />
               </div>
-              {liveStatus && !liveStatus.available && <InlineNote tone="info">Live unavailable: {liveStatus.reason}</InlineNote>}
+              {liveStatus && !liveStatus.available && <InlineNote tone="info">{t('settings.voice.live.unavailable', { reason: liveStatus.reason ?? '' })}</InlineNote>}
             </div>
           }
         />
       </SettingsGroup>
 
-      <SettingsGroup title="Starting a conversation">
+      <SettingsGroup title={t('settings.voice.starting')}>
         <SettingsRow
           icon={<IconEar />}
-          label={`Wake word: “${wake.phrase}”`}
+          label={t('settings.voice.wake', { phrase: wake.phrase })}
           description={
             wake.listening
-              ? `Listening${wake.capture === 'local' ? ' (Hermes opened the mic itself)' : ''}.`
+              ? wake.capture === 'local' ? t('settings.voice.wake.listeningLocal') : t('settings.voice.wake.listening')
               : wake.error
                 ? wake.error
-                : `Runs the on-device openWakeWord detector inside Hermes; nothing leaves this ${deviceNoun()} until you speak to it.`
+                : t('settings.voice.wake.hint')
           }
           keywords="hey hermes always listening"
         >
-          {wake.listening && <Pill tone="ok" dot>Armed</Pill>}
-          <Toggle checked={voice.wakeWord} onChange={next => void setWakeWordEnabled(next).then(markSaved)} label="Wake word" />
+          {wake.listening && <Pill tone="ok" dot>{t('settings.voice.wake.armed')}</Pill>}
+          <Toggle checked={voice.wakeWord} onChange={next => void setWakeWordEnabled(next).then(markSaved)} label={t('settings.voice.wake.toggle')} />
         </SettingsRow>
-        <SettingsRow icon={<IconKeyboard />} label="Global hotkey" description="Toggles a conversation from any app (Electron accelerator syntax, e.g. Alt+Space or CommandOrControl+Shift+H)." keywords="shortcut push to talk">
+        <SettingsRow icon={<IconKeyboard />} label={t('settings.voice.hotkey')} description={t('settings.voice.hotkey.hint')} keywords="shortcut push to talk">
           <input
             value={hotkeyDraft}
             onChange={event => setHotkeyDraft(event.target.value)}
@@ -224,46 +226,46 @@ export function VoiceSection() {
                 event.currentTarget.blur()
               }
             }}
-            aria-label="Global voice hotkey"
+            aria-label={t('settings.voice.hotkey.aria')}
             spellCheck={false}
             className="glass-input h-8 w-[200px] rounded-lg px-2.5 font-mono text-[12px] text-fg outline-none"
           />
         </SettingsRow>
-        <SettingsRow icon={<IconHourglass />} label="Follow-up window" description="Seconds the mic keeps listening after Hermes finishes speaking." keywords="continue listening">
-          <Stepper value={voice.followUpSeconds} min={0} max={30} onChange={next => void save({ followUpSeconds: next })} label="follow-up seconds" />
+        <SettingsRow icon={<IconHourglass />} label={t('settings.voice.followUp')} description={t('settings.voice.followUp.hint')} keywords="continue listening">
+          <Stepper value={voice.followUpSeconds} min={0} max={30} onChange={next => void save({ followUpSeconds: next })} label={t('settings.voice.followUp.aria')} />
         </SettingsRow>
-        <SettingsRow icon={<IconEye />} label="Follow Hermes" description="Show what Hermes changes as it works (a new memory, a paused automation, a written file) even when you are not in a voice conversation. Voice conversations always follow." keywords="watch show work">
-          <Toggle checked={voice.followHermes} onChange={next => void save({ followHermes: next })} label="Follow Hermes" />
+        <SettingsRow icon={<IconEye />} label={t('settings.voice.follow')} description={t('settings.voice.follow.hint')} keywords="watch show work">
+          <Toggle checked={voice.followHermes} onChange={next => void save({ followHermes: next })} label={t('settings.voice.follow')} />
         </SettingsRow>
-        <SettingsRow icon={<IconBellRinging />} label="Speak notifications" description="Read Hermes notifications aloud (missions, reminders) while voice is enabled and no conversation is running." keywords="announce read aloud">
-          <Toggle checked={voice.announceNotifications} onChange={next => void save({ announceNotifications: next })} label="Speak notifications" />
+        <SettingsRow icon={<IconBellRinging />} label={t('settings.voice.announce')} description={t('settings.voice.announce.hint')} keywords="announce read aloud">
+          <Toggle checked={voice.announceNotifications} onChange={next => void save({ announceNotifications: next })} label={t('settings.voice.announce')} />
         </SettingsRow>
       </SettingsGroup>
 
       {engineKind === 'jarod' ? (
         <JarodSpeechGroup />
       ) : (
-      <SettingsGroup title="Speech providers (free engine)">
-        <SettingsRow icon={<IconLanguage />} label="Speech to text" description={config.error ? `Could not read Hermes config: ${config.error}` : 'Which service turns your voice into text. Stored in Hermes config.yaml (stt.provider).'} keywords="stt transcribe whisper">
-          <MenuDropdown ariaLabel="Speech-to-text provider" label={STT_PROVIDERS.find(p => p.id === sttProvider)?.label ?? sttProvider} value={sttProvider} items={STT_PROVIDERS} onSelect={id => void saveConfig('stt', id)} disabled={!config.data} />
+      <SettingsGroup title={t('settings.voice.providers')}>
+        <SettingsRow icon={<IconLanguage />} label={t('settings.voice.stt')} description={config.error ? t('settings.voice.configUnreadable', { error: config.error }) : t('settings.voice.stt.hint')} keywords="stt transcribe whisper">
+          <MenuDropdown ariaLabel={t('settings.voice.stt.aria')} label={STT_PROVIDERS.find(p => p.id === sttProvider)?.label ?? sttProvider} value={sttProvider} items={STT_PROVIDERS} onSelect={id => void saveConfig('stt', id)} disabled={!config.data} />
         </SettingsRow>
         {sttProvider === 'local' && (
-          <SettingsRow icon={<IconWaveSine />} label="Transcription model" description="Larger models hear short commands and names better but take longer per sentence. Accurate (small.en) is recommended; the first use downloads it." keywords="whisper accuracy model local">
-            <MenuDropdown ariaLabel="Local transcription model" label={LOCAL_STT_MODELS.find(m => m.id === localModel)?.label ?? localModel} value={localModel} items={LOCAL_STT_MODELS} onSelect={id => void saveLocalModel(id)} disabled={!config.data} />
+          <SettingsRow icon={<IconWaveSine />} label={t('settings.voice.model')} description={t('settings.voice.model.hint')} keywords="whisper accuracy model local">
+            <MenuDropdown ariaLabel={t('settings.voice.model.aria')} label={LOCAL_STT_MODELS.find(m => m.id === localModel)?.label ?? localModel} value={localModel} items={LOCAL_STT_MODELS} onSelect={id => void saveLocalModel(id)} disabled={!config.data} />
           </SettingsRow>
         )}
-        <SettingsRow icon={<IconSpeakerphone />} label="Text to speech" description="Which voice speaks Hermes's replies. Stored in Hermes config.yaml (tts.provider); voices and speed follow `hermes tools`." keywords="tts voice speak">
-          <MenuDropdown ariaLabel="Text-to-speech provider" label={TTS_PROVIDERS.find(p => p.id === ttsProvider)?.label ?? ttsProvider} value={ttsProvider} items={TTS_PROVIDERS} onSelect={id => void saveConfig('tts', id)} disabled={!config.data} />
+        <SettingsRow icon={<IconSpeakerphone />} label={t('settings.voice.tts')} description={t('settings.voice.tts.hint')} keywords="tts voice speak">
+          <MenuDropdown ariaLabel={t('settings.voice.tts.aria')} label={TTS_PROVIDERS.find(p => p.id === ttsProvider)?.label ?? ttsProvider} value={ttsProvider} items={TTS_PROVIDERS} onSelect={id => void saveConfig('tts', id)} disabled={!config.data} />
         </SettingsRow>
       </SettingsGroup>
       )}
 
-      <SettingsGroup title="Live cost controls">
-        <SettingsRow icon={<IconClockPause />} label="Close after silence" description="A Live session bills per second while open; it is closed after this much quiet." keywords="idle timeout">
-          <MenuDropdown ariaLabel="Live idle timeout" label={`${voice.liveIdleSeconds} s`} value={String(voice.liveIdleSeconds)} items={IDLE_OPTIONS.map(s => ({ id: String(s), label: `${s} seconds` }))} onSelect={id => void save({ liveIdleSeconds: Number(id) })} />
+      <SettingsGroup title={t('settings.voice.cost')}>
+        <SettingsRow icon={<IconClockPause />} label={t('settings.voice.idle')} description={t('settings.voice.idle.hint')} keywords="idle timeout">
+          <MenuDropdown ariaLabel={t('settings.voice.idle.aria')} label={`${voice.liveIdleSeconds} s`} value={String(voice.liveIdleSeconds)} items={IDLE_OPTIONS.map(s => ({ id: String(s), label: t('settings.voice.seconds', { count: s }) }))} onSelect={id => void save({ liveIdleSeconds: Number(id) })} />
         </SettingsRow>
-        <SettingsRow icon={<IconCoin />} label="Daily cap" description={`Today: ${todayMinutes} min of Live, about $${todayCost}. New Live sessions are refused past the cap; the free engine keeps working.`} keywords="budget limit spend">
-          <MenuDropdown ariaLabel="Live daily cap" label={voice.liveDailyCapMinutes ? `${voice.liveDailyCapMinutes} min` : 'No cap'} value={String(voice.liveDailyCapMinutes)} items={CAP_OPTIONS.map(m => ({ id: String(m), label: m ? `${m} minutes (≈ $${(m * LIVE_RATE_PER_MINUTE).toFixed(2)})` : 'No cap' }))} onSelect={id => void save({ liveDailyCapMinutes: Number(id) })} />
+        <SettingsRow icon={<IconCoin />} label={t('settings.voice.cap')} description={t('settings.voice.cap.hint', { minutes: todayMinutes, cost: todayCost })} keywords="budget limit spend">
+          <MenuDropdown ariaLabel={t('settings.voice.cap.aria')} label={voice.liveDailyCapMinutes ? `${voice.liveDailyCapMinutes} min` : t('settings.voice.noCap')} value={String(voice.liveDailyCapMinutes)} items={CAP_OPTIONS.map(m => ({ id: String(m), label: m ? t('settings.voice.capOption', { minutes: m, cost: (m * LIVE_RATE_PER_MINUTE).toFixed(2) }) : t('settings.voice.noCap') }))} onSelect={id => void save({ liveDailyCapMinutes: Number(id) })} />
         </SettingsRow>
       </SettingsGroup>
     </>
