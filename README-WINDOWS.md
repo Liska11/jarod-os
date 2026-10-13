@@ -5,8 +5,21 @@ user, the executable and the installer identity changed; internal identifiers (`
 `window.heraldOS`, data folders under `herald-os`) keep their upstream names.
 
 Jarod-OS runs on Windows 10 and 11 as an **application**: the same window as on macOS, fullscreen
-by default, with Hermes Agent installed natively (no WSL). It does not replace the Windows
-desktop the way Jarod-OS Linux replaces the session.
+by default (no WSL). It does not replace the Windows desktop the way Jarod-OS Linux replaces the
+session.
+
+### Which agent runs
+
+- **The Jarod core, by default.** The installer ships it (`resources\jarod-core`, with its own
+  `node.exe`): nothing else to install. Its data lives in `%LOCALAPPDATA%\Jarod-OS`
+  (`JAROD_OS_DATA` moves it) and conversations work in `Documents\Jarod-OS` (`JAROD_WORKSPACE`).
+  From source, `npm run bundle:core` builds it into `jarod-core\dist\gateway`, where `npm run dev`
+  finds it.
+- **Hermes Agent, if you prefer it** or when no core was built: set `HERALD_OS_BACKEND=hermes`, and
+  install Hermes as in step 1. The system bridge described below is the Hermes side; the Jarod
+  core has its own system tools.
+
+Settings > About shows which one is running ("Agent runtime").
 
 What you get is the shell (Overview, Missions, Memory, Hermes, Files, Terminal, System, Settings...),
 the agent, and the system bridge: Hermes can list processes, search your files, open apps and
@@ -18,12 +31,14 @@ and written to `audit.jsonl`. What it does not do yet is in [Limitations](#limit
 | | |
 | --- | --- |
 | Windows | 10 (1809 or later) or 11, x64. ARM64 is untested. |
-| Hermes Agent | Native install, see below. Hermes runs its shell tool through Git Bash, so Git for Windows must be on the machine (Hermes's installer fetches a portable one if not). |
+| Hermes Agent | **Optional**: only for the Hermes backend (see above). Native install, see below. Hermes runs its shell tool through Git Bash, so Git for Windows must be on the machine (Hermes's installer fetches a portable one if not). |
 | Node.js | 22.12 or later, for running from source or building. |
 | ripgrep | Optional. File search uses `rg` from `PATH`, from Hermes's own copy in `%LOCALAPPDATA%\hermes\tools\ripgrep-*`, or from `%LOCALAPPDATA%\hermes\bin`, and a slower built-in walk otherwise. |
 | Python | Not needed: the bridge plugin runs inside Hermes's own Python. |
 
-## 1. Install Hermes Agent natively
+## 1. Install Hermes Agent natively (optional)
+
+Skip this step if the Jarod core is enough for you.
 
 In PowerShell (no administrator rights needed):
 

@@ -1,10 +1,12 @@
 # Jarod-OS Architecture
 
-Jarod-OS is an agent-native operating system: it makes Hermes Agent the primary interface between
+Jarod-OS is an agent-native operating system: it makes an AI agent the primary interface between
 the user and the computer. Jarod-OS Linux is the whole system (Fedora underneath, the Jarod shell
-as the session); on macOS the same shell runs fullscreen over the macOS desktop. It is a separate
-product from Hermes Desktop: it consumes the upstream Hermes runtime unchanged and grows its own
-shell on top.
+as the session); on macOS the same shell runs fullscreen over the macOS desktop, and on Windows it
+runs as an application. The agent is the **Jarod core** shipped inside Jarod-OS (`jarod-core/`, a
+TypeScript kernel); a Hermes Agent install can stand in for it, because both answer the same wire
+protocol. Jarod-OS is a separate product from Hermes Desktop: it reuses Hermes' wire contract and
+grows its own shell on top.
 
 ## Three authorities
 
@@ -14,7 +16,7 @@ The same seam rules upstream Hermes Desktop uses apply here:
 | --- | --- | --- |
 | Electron main | The machine: window/fullscreen lifecycle, backend process, PTYs, filesystem, app discovery, system stats, notifications, typed IPC | `apps/desktop/electron` |
 | Renderer (React) | The experience: surfaces, navigation, presentation, ephemeral interaction state | `apps/desktop/src` |
-| Hermes runtime | The work: sessions, model calls, tools, skills, memory, cron, approvals | the user's Hermes install (`$HERMES_HOME/hermes-agent`) |
+| Agent backend | The work: sessions, model calls, tools, skills, memory, schedules, approvals | the Jarod core shipped in Jarod-OS (`jarod-core/`, default), or the user's Hermes install (`$HERMES_HOME/hermes-agent`) |
 
 The renderer never touches Node or Electron directly; native power arrives through a narrow,
 typed preload bridge (`window.heraldOS`). Agent behaviour is never re-implemented in React.
@@ -27,17 +29,21 @@ flowchart LR
     Renderer[React renderer]
     Main --> Preload --> Renderer
   end
-  subgraph runtime [Hermes runtime in HERMES_HOME]
+  subgraph core [Jarod core: default backend]
+    Gateway["gateway.mjs (JSON-RPC + REST)"]
+    Kernel[kernel + plugins: agent, tools, llm, memory, rag, scheduler, voice...]
+    Gateway --> Kernel
+  end
+  subgraph hermes [Hermes runtime: optional backend]
     Serve["hermes serve (JSON-RPC + REST)"]
     Agent[AIAgent, tools, skills, memory]
     Bridge[herald-os-bridge plugin]
     Serve --> Agent --> Bridge
   end
-  Renderer -->|"WebSocket JSON-RPC (@herald-os/client)"| Serve
-  Main -->|"REST with session token"| Serve
+  Renderer -->|"WebSocket JSON-RPC (@herald-os/client)"| Gateway
+  Main -->|"REST with session token"| Gateway
+  Renderer -.->|same protocol| Serve
   Bridge -->|"request_tool_approval"| Serve
-  Bridge -->|"mdfind, open, lsof, ps, osascript"| macOS[(macOS)]
-  Bridge -->|"plocate, gio, ss, ps, nmcli, journalctl"| Linux[(Linux)]
 ```
 
 ## Host platforms
@@ -57,18 +63,43 @@ Setup, session model and dev loop for Linux: `docs/LINUX.md`.
 
 ## Backend lifecycle
 
-1. Resolve a runtime through an ordered ladder (`apps/desktop/electron/backend/resolve.ts`):
-   `HERALD_OS_HERMES_ROOT` -> `$HERMES_HOME/hermes-agent` managed install (its `venv/bin/python`)
-   -> `hermes` on `PATH`. Each candidate is probed before use.
-2. Spawn `hermes serve --host 127.0.0.1 --port 0` with `HERMES_DASHBOARD_SESSION_TOKEN` (random per
-   launch), `HERALD_OS=1`, and `HERMES_HOME`.
-3. Read `HERMES_BACKEND_READY port=N` from stdout, then poll `GET /api/status` with
-   `X-Hermes-Session-Token` until it answers.
-4. Hand `{ wsUrl, baseUrl }` to the renderer. The renderer dials `ws://127.0.0.1:N/api/ws?token=...`
-   with the upstream `JsonRpcGatewayClient`; REST calls go through main so the renderer only ever
-   sees a capability, not a credential.
-5. On exit the child is restarted with bounded backoff; after the budget is exhausted the shell
-   shows a recoverable failure screen instead of spinning.
+`apps/desktop/electron/backend/manager.ts` owns the backend process; `jarod-core.ts` decides which one.
+
+1. **Choose.** `HERALD_OS_BACKEND=jarod|hermes` decides when set. Otherwise the Jarod core runs when
+   the build has one (`<resources>/jarod-core` installed, `jarod-core/dist/gateway` in a checkout,
+   or `HERALD_OS_JAROD_CORE=<folder>`), and Hermes when it does not. `HERALD_OS_BACKEND_URL` and
+   `HERALD_OS_BACKEND_TOKEN` attach the shell to a backend someone else runs (`coexist.ts`).
+2. **Start the Jarod core.** `node gateway.mjs --init --exit-on-stdin-close --workspace <folder>`,
+   with the `node` shipped beside it (installed) or from `PATH` (checkout). It gets its own profile
+   (`JAROD_HOME=<data>/profile`, data under `%LOCALAPPDATA%\Jarod-OS`, `~/Library/Application
+   Support/Jarod-OS/core` or `$XDG_DATA_HOME/jarod-os`; `JAROD_OS_DATA` moves it), the working
+   folder conversations stay in (`Documents/Jarod-OS`, or `JAROD_WORKSPACE`) and the per-launch
+   token (`JAROD_GATEWAY_TOKEN`). Its standard input stays open: closing it is how the shell stops
+   it, the one clean stop on Windows, and the core closes its database first.
+3. **Or start Hermes.** Resolve a runtime through an ordered ladder (`resolve.ts`):
+   `HERALD_OS_HERMES_ROOT` -> `$HERMES_HOME/hermes-agent` managed install -> `hermes` on `PATH`,
+   each probed before use; then `hermes serve --host 127.0.0.1 --port 0` with
+   `HERMES_DASHBOARD_SESSION_TOKEN`, `HERALD_OS=1` and `HERMES_HOME`.
+4. **Wait for it.** Read `HERMES_BACKEND_READY port=N` from stdout (both backends print it), then
+   poll `GET /api/status` with `X-Hermes-Session-Token` until it answers. The gateway listens on
+   `127.0.0.1` only and compares the token in constant time.
+5. **Connect.** Hand `{ wsUrl, baseUrl }` to the renderer, which dials
+   `ws://127.0.0.1:N/api/ws?token=...` with the upstream `JsonRpcGatewayClient`; REST calls go
+   through main so the renderer only ever sees a capability, not a credential.
+6. **Recover.** On exit the child is restarted with bounded backoff; after the budget is exhausted
+   the shell shows a recoverable failure screen instead of spinning.
+
+## Shell resilience
+
+- **One instance.** The single-instance lock is claimed before anything else runs; a second launch
+  exits at once (`single-instance.ts`) and the first comes to the front.
+- **A crashed window.** If the shell's page dies, it is reloaded once; a second crash within a
+  minute shows a recovery page (Reload, Restart in safe mode, Quit) (`recovery.ts`).
+- **Safe mode.** `--safe-mode` (or `HERALD_OS_SAFE_MODE=1`) starts without widget plugins, hook
+  scripts and event automations; a badge under the menu bar leads back. Settings > About > Health
+  shows it, the last crash and the settings folder.
+- **Settings files** are written atomically (`atomic-write.ts`), and the main window's place is
+  saved on close and restored when a screen still holds it (`window-state.ts`).
 
 ## Wire contract
 
@@ -152,6 +183,9 @@ conversations and events go to the model provider.
 
 ## System bridge
 
+With the Jarod core, system access is the core's own tools (`jarod-core/packages/plugins/tools/src/system`,
+behind its approval gate and shell guard); this section is about the Hermes backend.
+
 `plugins/herald-os-bridge` is a regular out-of-tree Hermes plugin. It registers a narrow toolset
 (`herald_os`) that exposes the host machine through explicit, permission-tiered tools. Execution
 happens on the backend host behind a `HostAdapter` abstraction (`darwin`, `linux` and `windows`
@@ -160,6 +194,8 @@ implemented). Sensitive operations route through upstream's own approval gate
 See [`SYSTEM-BRIDGE.md`](SYSTEM-BRIDGE.md).
 
 ## Upstream compatibility
+
+These hold for the Hermes backend and the wire contract the Jarod core implements.
 
 - The Python runtime is never forked: it is whatever `hermes update` installs.
 - Only `apps/shared/src` is compiled into Jarod-OS, from a pinned snapshot

@@ -5,7 +5,7 @@
 <h1 align="center">Jarod-OS</h1>
 
 <p align="center">
-  An agent-native operating system, with <a href="https://github.com/NousResearch/hermes-agent">Hermes Agent</a> as the interface.
+  An agent-native operating system, with an AI agent as the interface: the built-in Jarod core, or <a href="https://github.com/NousResearch/hermes-agent">Hermes Agent</a>.
 </p>
 
 <p align="center">
@@ -27,8 +27,10 @@ permission system you control.
 > **Jarod-OS is derived from [Herald OS](https://github.com/iamlukethedev/Herald-OS), an independent project by
 > [Luke The Dev](https://github.com/iamlukethedev)** (MIT licence; see [NOTICE](NOTICE) and [LICENSE](LICENSE)). It
 > is not an official Hermes or Nous Research product, and it is not affiliated with, sponsored by or
-> endorsed by Nous Research. Jarod-OS runs on [Hermes Agent](https://github.com/NousResearch/hermes-agent),
-> the open-source agent Nous Research publishes, which is installed alongside it.
+> endorsed by Nous Research. Its builds ship their own agent, the **Jarod core** (`jarod-core/`), and can run
+> [Hermes Agent](https://github.com/NousResearch/hermes-agent), the open-source agent Nous Research publishes,
+> instead (`HERALD_OS_BACKEND=hermes`, or when a build has no core). Some install steps below still assume
+> Hermes; on Windows, see [README-WINDOWS.md](README-WINDOWS.md#which-agent-runs).
 >
 > This derivative is not published yet: the release, CI and clone links below still point to the upstream
 > Herald OS project, whose downloads are named after Herald OS.
