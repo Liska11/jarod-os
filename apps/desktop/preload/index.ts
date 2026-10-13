@@ -264,6 +264,8 @@ const api = {
     onState: (listener: (state: WindowState) => void): Unsubscribe => subscribe(IPC.windowState, listener),
     toggleFullscreen: (): Promise<void> => ipcRenderer.invoke(IPC.windowToggleFullscreen),
     quit: (): Promise<void> => ipcRenderer.invoke(IPC.windowQuit),
+    /** Quit and start again, in safe mode (no widget plugins, hook scripts or event automations) or normally. */
+    relaunch: (safeMode: boolean): Promise<void> => ipcRenderer.invoke(IPC.windowRelaunch, safeMode),
     minimize: (): Promise<void> => ipcRenderer.invoke(IPC.windowMinimize),
     toggleMaximize: (): Promise<void> => ipcRenderer.invoke(IPC.windowToggleMaximize),
     close: (): Promise<void> => ipcRenderer.invoke(IPC.windowClose)

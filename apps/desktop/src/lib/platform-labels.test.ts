@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { $env } from '../store/backend.ts'
 import { deviceNoun, hostPlatform, platformOfAgent, revealLabel, shortcutLabel, voiceKeyLabel } from './platform-labels.ts'
 
-const onPlatform = (platform: NodeJS.Platform) => $env.set({ platform, hermesHome: '/h/.hermes', homeDir: '/h', version: '0.0.0', isDev: false, shellMode: 'panels' })
+const onPlatform = (platform: NodeJS.Platform) => $env.set({ platform, hermesHome: '/h/.hermes', homeDir: '/h', version: '0.0.0', isDev: false, shellMode: 'panels', safeMode: false, userDataDir: '/h/.config/Jarod-OS', lastCrash: null })
 
 afterEach(() => $env.set(null))
 

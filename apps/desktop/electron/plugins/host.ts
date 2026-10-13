@@ -74,7 +74,9 @@ export class PluginHost {
   constructor(
     private readonly getWindows: () => BrowserWindow[],
     private readonly getMain: () => BrowserWindow | null,
-    private readonly osBridge: OsCommandBridge
+    private readonly osBridge: OsCommandBridge,
+    /** Safe mode: every plugin is listed, none runs. */
+    private readonly safeMode = false
   ) {}
 
   list(): PluginView[] {
@@ -100,7 +102,7 @@ export class PluginHost {
 
       return {
         manifest: usable ?? { id: folder, name: folder, version: '0.0.0', entry: 'index.html', placement: [], permissions: [], hosts: [] },
-        enabled: Boolean(usable && grantCovers(state.enabled[folder], usable)),
+        enabled: !this.safeMode && Boolean(usable && grantCovers(state.enabled[folder], usable)),
         errors,
         dir,
         git: fs.existsSync(path.join(dir, '.git')),

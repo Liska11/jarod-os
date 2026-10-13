@@ -10,6 +10,7 @@ import { CommandBar } from './CommandBar.tsx'
 import { Dock } from './Dock.tsx'
 import { MainWindow } from './MainWindow.tsx'
 import { MenuBar } from './MenuBar.tsx'
+import { SafeModeBadge } from './SafeModeBadge.tsx'
 import { NotificationsPanel } from './NotificationsPanel.tsx'
 import { RequestHost } from './RequestHost.tsx'
 import { StatusPanelPopover } from './StatusPanelPopover.tsx'
@@ -87,6 +88,7 @@ export function Desktop() {
     <div className="relative h-full w-full overflow-hidden bg-bg">
       <Wallpaper />
       <MenuBar />
+      <SafeModeBadge />
       <div className="absolute inset-0 z-(--z-windows)">
         {Object.values(windows).map(win =>
           win.id === MAIN_WINDOW_ID ? (

@@ -1,4 +1,4 @@
-import { app, BrowserWindow, globalShortcut, ipcMain, Notification, protocol, shell } from 'electron'
+import { app, BrowserWindow, globalShortcut, ipcMain, Notification, protocol, screen, shell } from 'electron'
 import os from 'node:os'
 import path from 'node:path'
 import { type EnvInfo, type HeraldOSPrefs, IPC, type RestRequest, type ShellCommand, type WindowState } from '../shared/ipc.ts'
@@ -50,11 +50,17 @@ import { EmojiPanel } from './shell/emoji-panel.ts'
 import { registerMenuExtensionsIpc } from './shell/menu-extensions.ts'
 import { registerServiceIpc } from './shell/services.ts'
 import { WallpaperService } from './shell/wallpaper.ts'
-import { appIconPath, createMainWindow } from './window.ts'
+import { appIconPath, createMainWindow, loadShell, MAIN_WINDOW_MIN } from './window.ts'
+import { CrashPolicy, isSafeMode, recoveryAction, recoveryPage, relaunchArgs } from './recovery.ts'
+import { readWindowState, restoreBounds, roundingDrift, withoutDrift, writeWindowState } from './window-state.ts'
 
 app.setName('Jarod-OS')
 // First, before anything touches data or opens a socket (the lock is keyed on the name set just above).
 const primary = claimSingleInstance(app)
+// Safe mode: started without widget plugins, hook scripts and event automations (see recovery.ts).
+const safeMode = isSafeMode()
+const windowStateFile = () => path.join(app.getPath('userData'), 'window-state.json')
+let lastCrash: { at: string; reason: string } | null = null
 const coreLocation = { packaged: app.isPackaged, resourcesPath: process.resourcesPath, appPath: app.getAppPath() }
 
 // With the Jarod core as backend, the shell keeps its Hermes-style files (plugins, themes, audit, notes) in a home of its own, never in a Hermes install of this machine.
@@ -85,7 +91,8 @@ const osBridge = new OsCommandBridge(() => (panels ? panels.mainWindow() : mainW
 const plugins = new PluginHost(
   () => BrowserWindow.getAllWindows(),
   () => (panels ? panels.mainWindow() : mainWindow),
-  osBridge
+  osBridge,
+  safeMode
 )
 /** Preferences changed outside a renderer (the CLI, a theme): every window and the wallpaper follow. */
 function broadcastPrefs(next: HeraldOSPrefs): void {
@@ -178,6 +185,11 @@ const crashes = new CrashWatcher(
 )
 // Every event runs the person's hook scripts and fires the Hermes automations waiting for it.
 events.on(event => {
+  // Safe mode leaves out what a person added; the events themselves still flow to the renderer.
+  if (safeMode) {
+    return
+  }
+
   runHooks(event)
   void fireEventAutomations(event, backend)
 })
@@ -214,6 +226,7 @@ function registerCoreIpc(): void {
     }
   })
   ipcMain.handle(IPC.windowQuit, () => app.quit())
+  ipcMain.handle(IPC.windowRelaunch, (_event, safe: boolean) => relaunch(Boolean(safe)))
   // The window buttons Windows needs (macOS has its own, Linux a compositor).
   ipcMain.handle(IPC.windowMinimize, () => mainWindow?.minimize())
   ipcMain.handle(IPC.windowToggleMaximize, () => {
@@ -280,7 +293,17 @@ function registerCoreIpc(): void {
 
   ipcMain.handle(
     IPC.envInfo,
-    (): EnvInfo => ({ platform: process.platform, hermesHome: hermesHome(), homeDir: os.homedir(), version: app.getVersion(), isDev, shellMode: mode })
+    (): EnvInfo => ({
+      platform: process.platform,
+      hermesHome: hermesHome(),
+      homeDir: os.homedir(),
+      version: app.getVersion(),
+      isDev,
+      shellMode: mode,
+      safeMode,
+      userDataDir: app.getPath('userData'),
+      lastCrash
+    })
   )
 
   registerFsIpc(() => mainWindow)
@@ -317,8 +340,77 @@ function registerCoreIpc(): void {
   registerEditIpc(() => webViews)
 }
 
+/** Quit and start again (the backend is stopped on the way out, as for any quit), in safe mode or not. */
+function relaunch(safe: boolean): void {
+  log('main', `restarting${safe ? ' in safe mode' : ''}`)
+  app.relaunch({ args: relaunchArgs(process.argv, safe) })
+  app.quit()
+}
+
+/** A renderer that dies leaves a blank window: reload once, then offer the recovery page (recovery.ts). */
+function watchRenderer(win: BrowserWindow): void {
+  const policy = new CrashPolicy()
+
+  win.webContents.on('render-process-gone', (_event, details) => {
+    log('main', `the shell's page went away: ${details.reason} (exit code ${details.exitCode})`)
+
+    if (details.reason !== 'clean-exit') {
+      lastCrash = { at: new Date().toISOString(), reason: details.reason }
+      events.emit('crash', { app: 'Jarod-OS', pid: process.pid, reason: `renderer ${details.reason}` })
+    }
+
+    switch (policy.next(details.reason, Date.now())) {
+      case 'reload':
+        loadShell(win)
+        break
+      case 'recover':
+        void win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(recoveryPage(details.reason, safeMode))}`)
+        break
+    }
+  })
+  win.webContents.on('unresponsive', () => log('main', "the shell's page stopped responding"))
+  win.webContents.on('responsive', () => log('main', "the shell's page responds again"))
+  // The recovery page's links: main acts on them (window.ts already refuses the navigation itself).
+  win.webContents.on('will-navigate', (event, url) => {
+    const action = recoveryAction(url)
+
+    if (!action) {
+      return
+    }
+
+    event.preventDefault()
+
+    if (action === 'reload') {
+      loadShell(win)
+    } else if (action === 'quit') {
+      app.quit()
+    } else {
+      relaunch(action === 'safe-mode')
+    }
+  })
+}
+
+/** Desktop mode: the window comes back where it was, and its place is saved when it closes. */
+function createRestoredWindow(): BrowserWindow {
+  const saved = readWindowState(windowStateFile())
+  const bounds = restoreBounds(saved, screen.getAllDisplays().map(display => display.workArea), MAIN_WINDOW_MIN)
+  const win = createMainWindow(readPrefs(), bounds ? { bounds, maximized: Boolean(saved?.maximized) } : null)
+  const drift = roundingDrift(bounds, win.getBounds())
+
+  win.on('close', () => {
+    try {
+      writeWindowState(windowStateFile(), { ...withoutDrift(win.getNormalBounds(), drift), maximized: win.isMaximized() })
+    } catch (error) {
+      log('main', `cannot save the window's place: ${error instanceof Error ? error.message : String(error)}`)
+    }
+  })
+
+  return win
+}
+
 function attachMainWindow(win: BrowserWindow): void {
   mainWindow = win
+  watchRenderer(win)
 
   win.on('enter-full-screen', broadcastWindowState)
   win.on('leave-full-screen', broadcastWindowState)
@@ -344,7 +436,7 @@ function createWindow(): void {
     return
   }
 
-  attachMainWindow(createMainWindow(readPrefs()))
+  attachMainWindow(createRestoredWindow())
   osControl?.start()
   appHost?.start()
   control?.start()
@@ -364,7 +456,7 @@ app.whenReady().then(async () => {
     return
   }
 
-  log('main', `Jarod-OS ${app.getVersion()} starting (dev=${isDev}, mode=${mode}, HERMES_HOME=${hermesHome()})`)
+  log('main', `Jarod-OS ${app.getVersion()} starting (dev=${isDev}, mode=${mode}, HERMES_HOME=${hermesHome()}${safeMode ? ', safe mode' : ''})`)
   // A packaged app carries its icon in the bundle; `electron .` would show Electron's.
   const icon = isDev ? appIconPath() : undefined
 
@@ -404,6 +496,13 @@ app.whenReady().then(async () => {
   // The backend is told where the control server listens, so wait for it (a port on Windows).
   await Promise.race([osControl?.ready, new Promise(resolve => setTimeout(resolve, 3000))])
   void backend.start()
+})
+
+// GPU, utility and other helper processes: Chromium recovers by itself (a GPU that keeps crashing falls back to software); keep a trace.
+app.on('child-process-gone', (_event, details) => {
+  if (details.reason !== 'clean-exit') {
+    log('main', `${details.type} process gone: ${details.reason} (exit code ${details.exitCode}${details.name ? `, ${details.name}` : ''})`)
+  }
 })
 
 app.on('second-instance', () => {

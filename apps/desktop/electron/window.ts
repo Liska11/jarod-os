@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url'
 import type { HeraldOSPrefs } from '../shared/ipc.ts'
 import { osEnv } from './env.ts'
 import { devServerUrl, isShellPage, rendererIndex } from './paths.ts'
+import type { Rect } from './window-state.ts'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 
@@ -15,17 +16,32 @@ export function appIconPath(): string | undefined {
   return [path.join(root, 'build', 'icon.png'), path.join(root, 'dist', 'renderer', 'brand', 'herald-icon.png')].find(file => fs.existsSync(file))
 }
 
-export function createMainWindow(prefs: HeraldOSPrefs): BrowserWindow {
+/** The smallest the main window may get outside kiosk mode. */
+export const MAIN_WINDOW_MIN = { width: 1024, height: 640 }
+
+/** Loads the shell's page: the dev server in development, the bundled renderer otherwise. */
+export function loadShell(win: BrowserWindow): void {
+  const dev = devServerUrl()
+
+  if (dev) {
+    void win.loadURL(dev)
+  } else {
+    void win.loadFile(rendererIndex())
+  }
+}
+
+/** `restore`: where the window was last time, already checked against today's screens (see window-state.ts). */
+export function createMainWindow(prefs: HeraldOSPrefs, restore: { bounds: Rect; maximized: boolean } | null = null): BrowserWindow {
   const { workAreaSize } = screen.getPrimaryDisplay()
   // Jarod-OS Linux: the shell is the whole session (cage hands it the only output). Kiosk mode
   // removes every escape hatch a window manager would normally offer.
   const kiosk = osEnv('KIOSK') === '1'
   const darwin = process.platform === 'darwin'
+  const placed = kiosk ? null : restore?.bounds
   const win = new BrowserWindow({
-    width: workAreaSize.width,
-    height: workAreaSize.height,
-    minWidth: kiosk ? undefined : 1024,
-    minHeight: kiosk ? undefined : 640,
+    ...(placed ? { x: placed.x, y: placed.y, width: placed.width, height: placed.height } : { width: workAreaSize.width, height: workAreaSize.height }),
+    minWidth: kiosk ? undefined : MAIN_WINDOW_MIN.width,
+    minHeight: kiosk ? undefined : MAIN_WINDOW_MIN.height,
     show: false,
     frame: false,
     titleBarStyle: 'hidden',
@@ -63,13 +79,7 @@ export function createMainWindow(prefs: HeraldOSPrefs): BrowserWindow {
     }
   })
 
-  const dev = devServerUrl()
-
-  if (dev) {
-    void win.loadURL(dev)
-  } else {
-    void win.loadFile(rendererIndex())
-  }
+  loadShell(win)
 
   // HiDPI on compositors that expose the output at scale 1 (cage in Stage 1): zoom the page instead
   // of forcing Chromium's device scale factor, which would size Wayland buffers wrongly.
@@ -81,7 +91,13 @@ export function createMainWindow(prefs: HeraldOSPrefs): BrowserWindow {
     win.webContents.on('did-navigate', apply)
   }
 
-  win.once('ready-to-show', () => win.show())
+  win.once('ready-to-show', () => {
+    if (placed && restore?.maximized && !win.isFullScreen()) {
+      win.maximize()
+    }
+
+    win.show()
+  })
 
   return win
 }

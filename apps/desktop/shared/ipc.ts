@@ -713,6 +713,12 @@ export interface EnvInfo {
   version: string
   isDev: boolean
   shellMode: ShellMode
+  /** Started with `--safe-mode`: no widget plugins, hook scripts or event automations. */
+  safeMode: boolean
+  /** Where the shell keeps its own settings and window state (Electron's userData). */
+  userDataDir: string
+  /** The last time this shell's own window crashed, if it has since it started. */
+  lastCrash: { at: string; reason: string } | null
 }
 
 /** Channel names, table-driven so preload and main cannot drift. */
@@ -858,6 +864,7 @@ export const IPC = {
   windowGetState: 'herald-os:window:get-state',
   windowToggleFullscreen: 'herald-os:window:toggle-fullscreen',
   windowQuit: 'herald-os:window:quit',
+  windowRelaunch: 'herald-os:window:relaunch',
   windowMinimize: 'herald-os:window:minimize',
   windowToggleMaximize: 'herald-os:window:toggle-maximize',
   windowClose: 'herald-os:window:close',
