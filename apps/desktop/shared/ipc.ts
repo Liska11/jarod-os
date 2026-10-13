@@ -409,8 +409,10 @@ export interface CatalogGroupView {
 }
 
 export interface SetupState {
-  /** The Jarod-OS image has not been set up by its owner yet. */
+  /** The Jarod-OS image has not been set up by its owner yet, or (Windows) this install has not been set up yet. */
   needed: boolean
+  /** `image`: the Linux image's first boot (account, Wi-Fi). `desktop`: Jarod-OS on Windows (system audit, then accounts). */
+  mode: 'image' | 'desktop'
   user: string
   /** The name Herald greets with (blank until setup asks). */
   name: string

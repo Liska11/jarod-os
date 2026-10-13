@@ -7,6 +7,8 @@ import { Spinner } from '../../components/ui/primitives.tsx'
 import { cn } from '../../lib/cn.ts'
 import { $hermesAuth, refreshHermesAuth, requestHermesLogin } from '../../store/hermes-auth.ts'
 import { StatusPanel } from '../status/StatusPanel.tsx'
+import { DesktopSetup } from './DesktopSetup.tsx'
+import { Footer, Heading } from './parts.tsx'
 
 type Step = 'welcome' | 'account' | 'wifi' | 'hermes' | 'done'
 
@@ -17,6 +19,7 @@ type Step = 'welcome' | 'account' | 'wifi' | 'hermes' | 'done'
  */
 export function FirstRunSetup() {
   const [due, setDue] = useState(false)
+  const [mode, setMode] = useState<'image' | 'desktop'>('image')
   const [step, setStep] = useState<Step>('welcome')
   const [forSomeoneElse, setForSomeoneElse] = useState(false)
   const auth = useStore($hermesAuth)
@@ -24,12 +27,19 @@ export function FirstRunSetup() {
   useEffect(() => {
     void window.heraldOS.setup
       ?.state()
-      .then(state => setDue(state.needed))
+      .then(state => {
+        setMode(state.mode)
+        setDue(state.needed)
+      })
       .catch(() => undefined)
   }, [])
 
   if (!due) {
     return null
+  }
+
+  if (mode === 'desktop') {
+    return <DesktopSetup onFinished={() => setDue(false)} />
   }
 
   // Signing in happens on Hermes's own card; setup steps aside until it is done.
@@ -88,28 +98,6 @@ export function FirstRunSetup() {
           </div>
         )}
       </div>
-    </div>
-  )
-}
-
-function Heading({ icon, title, text }: { icon: React.ReactNode; title: string; text: string }) {
-  return (
-    <div className="flex flex-col gap-1.5">
-      <div className="flex items-center gap-2 text-fg">
-        <span className="icon-tile size-8 rounded-lg">{icon}</span>
-        <h2 className="text-[19px] font-semibold tracking-tight">{title}</h2>
-      </div>
-      <p className="text-[13px] leading-relaxed text-fg-3">{text}</p>
-    </div>
-  )
-}
-
-function Footer({ onNext, label, busy, disabled }: { onNext: () => void; label: string; busy?: boolean; disabled?: boolean }) {
-  return (
-    <div className="flex justify-end">
-      <GlassButton variant="primary" onClick={onNext} disabled={busy || disabled}>
-        {busy ? <Spinner /> : null} {label} <IconArrowRight size={15} />
-      </GlassButton>
     </div>
   )
 }

@@ -8,6 +8,9 @@ import { loadPty } from './terminal.ts'
 import { shellConfigDir } from '../paths.ts'
 
 /*
+ * First-run setup. On Windows (`desktop` mode) it is due until this install was set up once: the system audit, then
+ * the accounts; `HERALD_OS_SKIP_SETUP=1` skips it (throwaway profiles, tests).
+ *
  * First-boot setup on the Jarod-OS image: the image's first boot made the account (no password)
  * and installed Hermes; the person names it, sets a password, joins Wi-Fi and signs in to Hermes.
  * Nothing here needs root: `passwd` changes the person's own password (the current one is empty on
@@ -29,7 +32,13 @@ export function setupState(): SetupState {
     // Not named yet.
   }
 
-  return { needed: process.platform === 'linux' && image && !fs.existsSync(doneFile()), user: os.userInfo().username, name }
+  const done = fs.existsSync(doneFile())
+
+  if (process.platform === 'win32') {
+    return { needed: !done && process.env.HERALD_OS_SKIP_SETUP !== '1', mode: 'desktop', user: os.userInfo().username, name }
+  }
+
+  return { needed: process.platform === 'linux' && image && !done, mode: 'image', user: os.userInfo().username, name }
 }
 
 /** What `passwd` asks (LANG=C), most specific first: "Retype new password:" also ends in "new password:". */

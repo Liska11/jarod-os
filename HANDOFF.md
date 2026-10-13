@@ -39,11 +39,20 @@ Avant de cloner, refaire un bundle si des commits ont été ajoutés après le 1
      - Types partagés dans `shared/system-audit.ts`.
      - ⚠️ **Il existe déjà un `setup` (IPC `setup*`, `electron/ipc/setup.ts`, `src/features/setup/FirstRunSetup.tsx`).** C'est le premier démarrage de **l'image Linux** : nom, mot de passe `passwd`, Wi-Fi. Il ne se déclenche que sous Linux, avec `/var/lib/herald-os/firstboot-done`. Ne pas le confondre ni l'écraser : l'audit utilise exprès le nom `systemAudit`. L'assistant Windows peut soit réutiliser `FirstRunSetup.tsx` (ajouter des étapes et étendre `setupState().needed` à Windows), soit être une fenêtre à part. Le plus simple : étendre `FirstRunSetup`.
      - Pas encore vérifié dans l'app lancée : seulement typecheck et tests. Pour vérifier, lancer `npm run dev` avec des dossiers jetables (section 5), puis dans la console du rendu : `await window.heraldOS.systemAudit.get()`.
-  2. **Assistant de premier lancement** dans le renderer : une fenêtre qui montre le rapport, bloque si `blocked`, et propose « Relancer l'audit ». Il apparaît si aucun `first-run.json` n'est marqué terminé. Les textes vont dans `src/locales/en.ts` et `fr.ts`. Les libellés de `audit.ts` sont en anglais : les traduire côté renderer à partir de `check.id`.
+  2. ✅ **Assistant de premier lancement sous Windows** :
+     - `SetupState` a désormais un `mode` : `image` pour l'image Linux, `desktop` pour Windows. Sous Windows, l'assistant est dû tant que `setup-done` n'existe pas dans le dossier de configuration ; `HERALD_OS_SKIP_SETUP=1` le saute (`electron/ipc/setup.ts`, fonction `setupState`).
+     - `FirstRunSetup.tsx` renvoie vers `src/features/setup/DesktopSetup.tsx` en mode `desktop`. Le parcours : Bienvenue → Vérification du système (matériel puis outils et pilotes, commande de correction copiable, « Vérifier à nouveau », « Suivant » désactivé si `blocked`) → Tout est prêt (`setup.finish`).
+     - `Heading` et `Footer` ont été extraits dans `parts.tsx`.
+     - Traductions en/fr sous les clés `setup.*`.
+     - Vérifié dans l'app lancée avec un profil jetable : affichage en français, audit réel, fin du parcours, `setup-done` écrit, l'écran ne revient plus.
+     - Limites :
+       - les détails des lignes (« 24 cores », « present ») restent en anglais, car ils viennent de `audit.ts` ;
+       - il n'y a pas encore de bouton « Relancer la vérification » dans les Réglages ;
+       - les utilisateurs Windows existants verront l'assistant une fois, puisqu'ils n'ont pas de `setup-done`.
   3. **Étape 2, Telegram** : validation du jeton par `https://api.telegram.org/bot<token>/getMe`, puis message de test (`sendMessage` vers le chat qui a écrit au bot : `getUpdates`). Vérifier d'abord si le noyau gère déjà Telegram (`grep -ri telegram jarod-core/packages`) et réutiliser son stockage.
   4. **Étape 2, import `.txt` des clés** (`NOM=clé`) : analyse tolérante, doublons, format par service, correction ligne à ligne. Stockage avec `safeStorage` d'Electron (DPAPI sous Windows) ou dans le magasin de secrets existant du noyau, à vérifier avant d'en créer un. Ne jamais journaliser les valeurs.
 
-**Pour la prochaine session** : donner ce fichier à l'agent et lui demander de reprendre au point « À faire ensuite », étape 2 (assistant de premier lancement). Points à rappeler :
+**Pour la prochaine session** : donner ce fichier à l'agent et lui demander de reprendre au point « À faire ensuite », étape 3 (Telegram), à insérer dans `DesktopSetup.tsx` entre `audit` et `done` (tableau `STEPS`). Points à rappeler :
 - toujours pas de push sans accord ;
 - le propriétaire n'a pas encore validé la tâche 3 de la section 4 (dossier Pinokio géré par Jarod-OS) ;
 - la réinstallation de Windows est envisagée. Placer le dossier Pinokio sur D: (par exemple `D:\pinokio`) pour garder les apps d'IA et leurs modèles.
