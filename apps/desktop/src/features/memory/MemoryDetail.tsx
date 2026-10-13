@@ -6,6 +6,7 @@ import { MemoryTile } from './memory-icons.tsx'
 import { KIND_LABEL, type MemoryEntry } from './memory-store.ts'
 import { formatShortDate } from './MemoryRow.tsx'
 import type { MemoryToolsetState } from './use-memory-toolset.ts'
+import { t, useT } from '../../lib/i18n.ts'
 
 interface DetailProps {
   entry: MemoryEntry | null
@@ -23,6 +24,7 @@ interface DetailProps {
 
 /** Right-hand detail card: one memory, its provenance, edit/forget, and the "pause memory" footer. */
 export function MemoryDetail({ entry, related, editable, busy, onSave, onForget, onAdd, toolset, hasAny }: DetailProps) {
+  useT()
   return (
     <GlassCard className="flex w-[380px] shrink-0 flex-col overflow-hidden">
       <div className="min-h-0 flex-1 overflow-y-auto p-5">
@@ -32,12 +34,12 @@ export function MemoryDetail({ entry, related, editable, busy, onSave, onForget,
           <EmptyGlass
             className="h-full min-h-60"
             icon={<IconBrain />}
-            title={hasAny ? 'Select a memory' : 'Nothing remembered yet'}
-            description={hasAny ? 'Pick an entry on the left to see where it came from and what it is used for.' : 'Hermes writes memories as you work together. You can also add one yourself.'}
+            title={hasAny ? t('memoryDetail.select') : t('memoryPage.empty')}
+            description={hasAny ? t('memoryDetail.select.hint') : t('memoryDetail.empty.hint')}
             action={
               hasAny ? undefined : (
                 <GlassButton size="sm" variant="primary" onClick={onAdd}>
-                  Add memory
+                  {t('memoryPage.add')}
                 </GlassButton>
               )
             }
@@ -47,11 +49,11 @@ export function MemoryDetail({ entry, related, editable, busy, onSave, onForget,
       <div className="flex items-center justify-between gap-3 border-t border-line px-5 py-3">
         <div className="flex min-w-0 items-center gap-2 text-[12px] text-fg-3">
           <IconShieldCheck size={15} className="shrink-0" aria-hidden="true" />
-          <span className="truncate">You control what Hermes remembers.</span>
+          <span className="truncate">{t('memoryDetail.control')}</span>
         </div>
         <div className="flex shrink-0 items-center gap-2.5">
-          <span className="text-[12px] text-fg-2">Pause memory</span>
-          <Toggle checked={toolset.paused} onChange={value => void toolset.setPaused(value)} label="Pause memory" disabled={!toolset.known || toolset.busy} />
+          <span className="text-[12px] text-fg-2">{t('memoryDetail.pause')}</span>
+          <Toggle checked={toolset.paused} onChange={value => void toolset.setPaused(value)} label={t('memoryDetail.pause')} disabled={!toolset.known || toolset.busy} />
         </div>
       </div>
     </GlassCard>

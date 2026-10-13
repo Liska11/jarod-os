@@ -7,19 +7,21 @@ import { ActivityTimeline } from './ActivityTimeline.tsx'
 import { MissionCard } from './MissionCard.tsx'
 import { MissionComposer } from './MissionComposer.tsx'
 import { MissionDetail } from './MissionDetail.tsx'
+import { type MessageKey, t, useT } from '../../lib/i18n.ts'
 
 type TabId = 'active' | 'review' | 'completed'
 
 const ACTIVITY_SHORT = 6
 const ACTIVITY_LONG = 20
 
-const EMPTY_COPY: Record<TabId, { title: string; description: string }> = {
-  active: { title: 'No active missions', description: 'Start a mission and Hermes will plan the steps and work through them.' },
-  review: { title: 'Nothing needs review', description: 'Finished missions wait here until you have looked at them.' },
-  completed: { title: 'No completed missions yet', description: 'Missions you have reviewed end up here.' }
+const EMPTY_COPY: Record<TabId, { title: MessageKey; description: MessageKey }> = {
+  active: { title: 'missions.empty.active', description: 'missions.empty.active.hint' },
+  review: { title: 'missions.empty.review', description: 'missions.empty.review.hint' },
+  completed: { title: 'missions.empty.completed', description: 'missions.empty.completed.hint' }
 }
 
 export function MissionsPage() {
+  useT()
   const active = useStore($activeMissions)
   const review = useStore($reviewMissions)
   const completed = useStore($completedMissions)
@@ -51,9 +53,9 @@ export function MissionsPage() {
   }, [focus])
 
   const tabs: readonly TabDef<TabId>[] = [
-    { id: 'active', label: 'Active', count: active.length },
-    { id: 'review', label: 'Needs review', count: review.length },
-    { id: 'completed', label: 'Completed', count: completed.length }
+    { id: 'active', label: t('missions.tab.active'), count: active.length },
+    { id: 'review', label: t('missions.tab.review'), count: review.length },
+    { id: 'completed', label: t('missions.tab.completed'), count: completed.length }
   ]
   const list = tab === 'active' ? active : tab === 'review' ? review : completed
   // Auto-select the first mission of the current tab when nothing (or something gone) is selected.
@@ -69,13 +71,13 @@ export function MissionsPage() {
     <div className="page-enter flex h-full flex-col">
       <PageHeader
         icon="missions"
-        title="Missions"
-        subtitle="From intent to finished work."
+        title={t('app.missions')}
+        subtitle={t('missions.subtitle')}
         actions={
           <>
-            <GlassButton onClick={() => setComposing(true)} aria-label="New mission">
+            <GlassButton onClick={() => setComposing(true)} aria-label={t('missions.new')}>
               <IconPlus />
-              New mission
+              {t('missions.new')}
             </GlassButton>
             <MoreButton />
           </>
@@ -89,13 +91,13 @@ export function MissionsPage() {
           {list.length === 0 ? (
             <EmptyGlass
               icon={<IconTarget />}
-              title={EMPTY_COPY[tab].title}
-              description={EMPTY_COPY[tab].description}
+              title={t(EMPTY_COPY[tab].title)}
+              description={t(EMPTY_COPY[tab].description)}
               action={
                 tab === 'active' ? (
                   <GlassButton size="sm" variant="primary" onClick={() => setComposing(true)}>
                     <IconPlus />
-                    New mission
+                    {t('missions.new')}
                   </GlassButton>
                 ) : undefined
               }
@@ -109,10 +111,10 @@ export function MissionsPage() {
           )}
 
           <Section
-            title="Recent activity"
+            title={t('missions.activity')}
             action={
               activity.length > ACTIVITY_SHORT ? (
-                <LinkAction onClick={() => setShowAllActivity(v => !v)}>{showAllActivity ? 'Show less' : 'View all'}</LinkAction>
+                <LinkAction onClick={() => setShowAllActivity(v => !v)}>{showAllActivity ? t('missions.showLess') : t('missions.viewAll')}</LinkAction>
               ) : undefined
             }
           >
@@ -126,7 +128,7 @@ export function MissionsPage() {
             {selected ? (
               <MissionDetail key={selected.id} mission={selected} />
             ) : (
-              <EmptyGlass icon={<IconTarget />} title="Select a mission" description="Pick a mission on the left to see its plan, preview and activity." className="flex-1" />
+              <EmptyGlass icon={<IconTarget />} title={t('missions.select')} description={t('missions.select.hint')} className="flex-1" />
             )}
           </GlassCard>
         </div>

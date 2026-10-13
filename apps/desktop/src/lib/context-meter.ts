@@ -1,4 +1,5 @@
 import type { Usage } from '@herald-os/client'
+import { t } from './i18n.ts'
 
 /*
  * What the context gauge under the composer says. The core reports how many tokens the next call will occupy
@@ -29,7 +30,7 @@ export function contextView(usage: Usage | null | undefined): ContextView {
   const max = typeof usage?.context_max === 'number' && usage.context_max > 0 ? usage.context_max : null
 
   if (used === null) {
-    return { label: 'Context', percent: null, tone: 'unknown', title: 'The context in use appears after the first reply.', full: false }
+    return { label: t('context.label'), percent: null, tone: 'unknown', title: t('context.unknown'), full: false }
   }
 
   const estimated = usage?.context_estimated ? ' (estimated)' : ''

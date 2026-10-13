@@ -119,14 +119,14 @@ export function FilesSidebar() {
           <IconCloud size={15} className="shrink-0 text-fg-3" />
           {disk ? (
             <span className="truncate">
-              {formatBytes(disk.used, 0)} of {formatBytes(disk.total, 0)} used
+              {t('files.storageUsed', { used: formatBytes(disk.used, 0), total: formatBytes(disk.total, 0) })}
             </span>
           ) : (
             <span className="shimmer h-3 w-24 rounded" />
           )}
         </div>
         <ProgressBar value={percent} className="h-1" />
-        <LinkAction onClick={() => openApp('system')}>Manage storage</LinkAction>
+        <LinkAction onClick={() => openApp('system')}>{t('files.manageStorage')}</LinkAction>
       </div>
     </aside>
   )

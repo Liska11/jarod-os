@@ -35,10 +35,11 @@ import { $editing, $paneTab, $selectedArtifact, $zoom, artifactKind, collectSour
 import { MenuDivider, MenuItem, PopMenu } from './Menu.tsx'
 import { revealLabel } from '../../lib/platform-labels.ts'
 import { attempt } from '../../lib/native.ts'
+import { type MessageKey, t, useT } from '../../lib/i18n.ts'
 
 const TABS: readonly TabDef<PaneTab>[] = [
-  { id: 'preview', label: 'Preview' },
-  { id: 'sources', label: 'Sources' }
+  { id: 'preview', label: 'pane.preview' as MessageKey },
+  { id: 'sources', label: 'pane.sources' as MessageKey }
 ]
 const ZOOMS = [50, 75, 100, 125, 150]
 
@@ -63,6 +64,7 @@ const PDF_STYLE = `
 `
 
 export function ArtifactPane({ chat }: { chat: ChatState | null }) {
+  useT()
   const artifact = useStore($selectedArtifact)
   const tab = useStore($paneTab)
   const editing = useStore($editing)
@@ -101,11 +103,11 @@ export function ArtifactPane({ chat }: { chat: ChatState | null }) {
 
     try {
       await window.heraldOS.fs.writeText(artifact.path, draft)
-      notify({ title: 'Saved', body: artifact.name, level: 'success', surface: 'hermes' })
+      notify({ title: t('pane.saved'), body: artifact.name, level: 'success', surface: 'hermes' })
       $editing.set(false)
       file.reload()
     } catch (error) {
-      notify({ title: 'Could not save', body: error instanceof Error ? error.message : String(error), level: 'error', surface: 'hermes' })
+      notify({ title: t('pane.saveFailed'), body: error instanceof Error ? error.message : String(error), level: 'error', surface: 'hermes' })
     } finally {
       setSaving(false)
     }
@@ -177,27 +179,27 @@ export function ArtifactPane({ chat }: { chat: ChatState | null }) {
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex items-center gap-3 border-b border-line px-4 py-3">
-        <Tabs tabs={TABS} value={tab} onChange={next => $paneTab.set(next)} />
+        <Tabs tabs={TABS.map(item => ({ ...item, label: t(item.label as MessageKey) }))} value={tab} onChange={next => $paneTab.set(next)} />
         {artifact && <span className="min-w-0 flex-1 truncate text-[12.5px] text-fg-2">{artifact.name}</span>}
         {!artifact && <span className="flex-1" />}
-        <span className="hidden items-center gap-1.5 text-[12px] text-fg-3 xl:flex" title="Hermes drafted this; check facts and names before you share it.">
+        <span className="hidden items-center gap-1.5 text-[12px] text-fg-3 xl:flex" title={t('pane.review.title')}>
           <span className="size-1.5 rounded-full bg-accent-strong" />
-          Review before sharing
+          {t('pane.review')}
           <IconInfoCircle size={13} />
         </span>
         {editing ? (
           <>
             <GlassButton size="sm" variant="ghost" onClick={() => $editing.set(false)} disabled={saving}>
-              Cancel
+              {t('pane.cancel')}
             </GlassButton>
             <GlassButton size="sm" variant="primary" onClick={() => void save()} disabled={saving}>
-              {saving ? 'Saving…' : 'Save'}
+              {saving ? t('pane.saving') : t('pane.save')}
             </GlassButton>
           </>
         ) : (
-          <GlassButton size="sm" onClick={beginEdit} disabled={!editable} title={editable ? undefined : 'Only text documents can be edited here'}>
+          <GlassButton size="sm" onClick={beginEdit} disabled={!editable} title={editable ? undefined : t('pane.editOnlyText')}>
             {editable ? <IconPencil /> : <IconPencilOff />}
-            Edit
+            {t('pane.edit')}
           </GlassButton>
         )}
         <PopMenu
@@ -206,7 +208,7 @@ export function ArtifactPane({ chat }: { chat: ChatState | null }) {
           trigger={
             <GlassButton size="sm" disabled={!artifact} onClick={() => setExportOpen(v => !v)} aria-haspopup="menu" aria-expanded={exportOpen}>
               <IconUpload />
-              Export
+              {t('pane.export')}
             </GlassButton>
           }
         >
@@ -310,7 +312,7 @@ export function ArtifactPane({ chat }: { chat: ChatState | null }) {
         {tab === 'sources' ? (
           <Sources chat={chat} />
         ) : !artifact ? (
-          <EmptyGlass className="h-full" icon={<IconFileText />} title="Nothing to preview yet" description="Ask Hermes to draft something and it will appear here." />
+          <EmptyGlass className="h-full" icon={<IconFileText />} title={t('pane.empty')} description={t('pane.empty.hint')} />
         ) : editing ? (
           <textarea
             ref={editor}
@@ -359,7 +361,7 @@ function Document({ artifact, file, loading, error, zoom }: { artifact: Artifact
   if (error || !file) {
     const missing = !error || /ENOENT/.test(error)
 
-    return <EmptyGlass className="h-full" icon={<IconFileText />} title="Can't open this file" description={missing ? 'The file is not on disk any more.' : error} action={<GlassButton size="sm" onClick={() => void attempt('show the file', () => window.heraldOS.fs.reveal(artifact.path))}>{revealLabel()}</GlassButton>} />
+    return <EmptyGlass className="h-full" icon={<IconFileText />} title={t('pane.cannotOpen')} description={missing ? t('pane.missing') : error} action={<GlassButton size="sm" onClick={() => void attempt('show the file', () => window.heraldOS.fs.reveal(artifact.path))}>{revealLabel()}</GlassButton>} />
   }
 
   if (file.kind === 'image' && file.content) {
@@ -405,19 +407,19 @@ function BinaryPreview({ artifact, file, zoom }: { artifact: Artifact; file: Fil
       </div>
       <GlassButton size="sm" variant="primary" onClick={() => void attempt('open the file', () => window.heraldOS.fs.openPath(artifact.path))}>
         <IconExternalLink />
-        Open in default app
+        {t('pane.openDefault')}
       </GlassButton>
     </div>
   )
 }
 
-const ACTION_LABEL: Record<SourceRow['action'], string> = { read: 'Read', wrote: 'Wrote', searched: 'Searched', visited: 'Visited' }
+const ACTION_LABEL: Record<SourceRow['action'], MessageKey> = { read: 'pane.action.read', wrote: 'pane.action.wrote', searched: 'pane.action.searched', visited: 'pane.action.visited' }
 
 function Sources({ chat }: { chat: ChatState | null }) {
   const rows = useMemo(() => (chat ? collectSources(chat.messages) : []), [chat?.messages])
 
   if (rows.length === 0) {
-    return <EmptyGlass className="h-full" icon={<IconSearch />} title="No sources yet" description="Files Hermes reads or writes and pages it visits in this conversation will be listed here." />
+    return <EmptyGlass className="h-full" icon={<IconSearch />} title={t('pane.noSources')} description={t('pane.noSources.hint')} />
   }
 
   return (
@@ -430,7 +432,7 @@ function Sources({ chat }: { chat: ChatState | null }) {
           <div className="min-w-0 flex-1">
             <div className="truncate text-[13px] text-fg">{row.label}</div>
             <div className="truncate text-[11.5px] text-fg-3">
-              {ACTION_LABEL[row.action]} · <span className={cn(row.kind === 'file' && 'font-mono')}>{row.target}</span>
+              {t(ACTION_LABEL[row.action])} · <span className={cn(row.kind === 'file' && 'font-mono')}>{row.target}</span>
             </div>
           </div>
           {row.kind === 'file' && (
@@ -440,8 +442,8 @@ function Sources({ chat }: { chat: ChatState | null }) {
           )}
           <button
             type="button"
-            aria-label={row.kind === 'url' ? 'Open in browser' : 'Open'}
-            title={row.kind === 'url' ? 'Open in browser' : 'Open'}
+            aria-label={row.kind === 'url' ? t('pane.openBrowser') : t('pane.open')}
+            title={row.kind === 'url' ? t('pane.openBrowser') : t('pane.open')}
             onClick={() => void (row.kind === 'url' ? window.heraldOS.shell.openExternal(row.target) : window.heraldOS.fs.openPath(row.target))}
             className="flex size-7 items-center justify-center rounded-lg text-fg-3 hover:bg-white/8 hover:text-fg"
           >

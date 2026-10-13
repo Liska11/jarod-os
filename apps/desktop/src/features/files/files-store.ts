@@ -14,6 +14,7 @@ import { showPage } from '../../store/windows.ts'
 import { isViewable } from '../../../shared/viewer.ts'
 import { baseName } from '../../../shared/path-names.ts'
 import { invalidNameCharacter, isWindowsPath, joinPath as joinHostPath, normalizeDir, parentOf as parentOfHostPath } from '../../../shared/host-path.ts'
+import { dateLocale, t, tn } from '../../lib/i18n.ts'
 
 /*
  * Page-local state for Files: where we are, what is selected, how we look at it, plus the
@@ -405,7 +406,7 @@ const TYPE_LABELS: Record<string, string> = {
 
 export function describeType(item: FileItem): string {
   if (item.kind === 'directory') {
-    return 'Folder'
+    return t('files.folder')
   }
 
   if (IMAGE_EXTS.has(item.extension)) {
@@ -456,7 +457,7 @@ const DAY = 86_400_000
 /** "Modified today, 9:14 AM" (withTime) / "Modified 2 days ago" / "Modified Sep 16". */
 export function formatModified(epochMs: number, withTime = false): string {
   if (!epochMs) {
-    return 'Modified —'
+    return t('files.modified.unknown')
   }
 
   const ms = epochMs < 1e12 ? epochMs * 1000 : epochMs
@@ -464,31 +465,31 @@ export function formatModified(epochMs: number, withTime = false): string {
   const now = new Date()
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
   const dayDelta = Math.floor((startOfToday - new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime()) / DAY)
-  const time = date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
+  const time = date.toLocaleTimeString(dateLocale(), { hour: 'numeric', minute: '2-digit' })
 
   if (dayDelta <= 0) {
-    return withTime ? `Modified today, ${time}` : 'Modified today'
+    return withTime ? t('files.modified.todayAt', { time }) : t('files.modified.today')
   }
 
   if (dayDelta === 1) {
-    return withTime ? `Modified yesterday, ${time}` : 'Modified yesterday'
+    return withTime ? t('files.modified.yesterdayAt', { time }) : t('files.modified.yesterday')
   }
 
   if (dayDelta < 7) {
-    return `Modified ${dayDelta} days ago`
+    return t('files.modified.daysAgo', { count: dayDelta })
   }
 
   const sameYear = date.getFullYear() === now.getFullYear()
 
-  return `Modified ${date.toLocaleDateString(undefined, sameYear ? { month: 'short', day: 'numeric' } : { month: 'short', day: 'numeric', year: 'numeric' })}`
+  return t('files.modified.on', { date: date.toLocaleDateString(dateLocale(), sameYear ? { month: 'short', day: 'numeric' } : { month: 'short', day: 'numeric', year: 'numeric' }) })
 }
 
 export function itemCountLabel(count: number | null): string {
   if (count == null) {
-    return 'Folder'
+    return t('files.folder')
   }
 
-  return count === 1 ? '1 item' : `${count} items`
+  return tn('files.items', count)
 }
 
 export function fileMeta(item: FileItem, count: number | null): string {

@@ -1,3 +1,5 @@
+import { t } from '../../../lib/i18n.ts'
+
 /*
  * The model button of Settings → Hermes & agents: the choice made, or the invitation to make one. A profile that never chose has none (the engine answers
  * `model.options` with empty `provider`/`model` and `needs_choice`), and the core's built-in default is not shown as if the user had picked it.
@@ -13,7 +15,7 @@ export function shortModel(model: string | undefined | null): string {
 
 export function modelButtonLabel(options: { provider?: string; model?: string; needs_choice?: boolean } | null | undefined, chat: { provider?: string; model?: string } | null | undefined): string {
   if (options?.needs_choice) {
-    return 'Choose a model'
+    return t('model.choose')
   }
 
   const current = options?.model ?? chat?.model

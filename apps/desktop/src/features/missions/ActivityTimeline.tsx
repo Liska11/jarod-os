@@ -2,10 +2,11 @@ import { IconActivity } from '@tabler/icons-react'
 import { EmptyGlass } from '../../components/ui/glass.tsx'
 import type { ActivityEntry } from '../../store/missions.ts'
 import { activityIcon, formatTime } from './mission-helpers.ts'
+import { t } from '../../lib/i18n.ts'
 
 export function ActivityTimeline({ entries }: { entries: ActivityEntry[] }) {
   if (entries.length === 0) {
-    return <EmptyGlass icon={<IconActivity />} title="No activity yet" description="Tool calls, plan updates and saved files show up here as Hermes works." />
+    return <EmptyGlass icon={<IconActivity />} title={t('missions.noActivity')} description={t('missions.noActivity.hint')} />
   }
 
   return (

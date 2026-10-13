@@ -66,6 +66,7 @@ import {
   useListing
 } from './files-store.ts'
 import { Menu } from './Menu.tsx'
+import { type MessageKey, t, useT } from '../../lib/i18n.ts'
 
 const KIND_FILTERS: readonly { id: KindFilter; label: string }[] = [
   { id: 'all', label: 'All' },
@@ -88,6 +89,7 @@ function pathOfDroppedFile(file: File): string | null {
 }
 
 export function FilesPage() {
+  useT()
   const page = useStore($page)
   const home = useStore($home)
   const root = useStore($root)
@@ -124,7 +126,7 @@ export function FilesPage() {
 
   useEffect(() => {
     if (listing.error) {
-      notify({ title: 'Could not read this folder', body: listing.error, level: 'error' })
+      notify({ title: t('filesPage.readFailed'), body: listing.error, level: 'error' })
     }
   }, [listing.error])
 
@@ -371,14 +373,14 @@ export function FilesPage() {
     >
       <PageHeader
         icon="files"
-        title="Files"
+        title={t('app.files')}
         actions={
           <div ref={filterRef} className="relative">
             <SearchField
               value={query}
               onChange={value => $query.set(value)}
               onSubmit={submitSearch}
-              placeholder="Find files or describe what you need"
+              placeholder={t('filesPage.search')}
               className="w-[420px]"
               trailing={
                 <button type="button" aria-label="Filters" aria-expanded={filterMenu} onClick={() => setFilterMenu(open => !open)} className={cn('flex size-6 shrink-0 items-center justify-center rounded-md hover:bg-white/8', kindFilter !== 'all' || showHidden ? 'text-accent-strong' : 'text-fg-3 hover:text-fg')}>
@@ -395,10 +397,10 @@ export function FilesPage() {
             {filterMenu && (
               <div className="float absolute top-11 right-0 z-30 flex w-72 flex-col gap-3 rounded-xl p-3 animate-pop">
                 <div className="text-[11px] tracking-[0.08em] text-fg-3 uppercase">Show</div>
-                <Chips items={KIND_FILTERS} value={kindFilter} onChange={value => $kindFilter.set(value)} />
+                <Chips items={KIND_FILTERS.map(item => ({ ...item, label: t(`filesPage.filter.${item.id}` as MessageKey) }))} value={kindFilter} onChange={value => $kindFilter.set(value)} />
                 <div className="flex items-center justify-between gap-3 border-t border-line pt-3 text-[12.5px] text-fg-2">
                   Hidden files
-                  <Toggle checked={showHidden} onChange={value => $showHidden.set(value)} label="Show hidden files" />
+                  <Toggle checked={showHidden} onChange={value => $showHidden.set(value)} label={t('filesPage.showHidden')} />
                 </div>
               </div>
             )}
@@ -408,10 +410,10 @@ export function FilesPage() {
 
       <div className="flex h-10 shrink-0 items-center gap-3 px-6 pb-2">
         <div className="flex h-8 items-center rounded-lg border border-line bg-white/6 p-0.5">
-          <button type="button" aria-label="Back" disabled={!canGoBack} onClick={goBack} className="flex h-7 w-8 items-center justify-center rounded-md text-fg-2 hover:bg-white/8 hover:text-fg disabled:cursor-default disabled:opacity-35 disabled:hover:bg-transparent">
+          <button type="button" aria-label={t('filesPage.back')} disabled={!canGoBack} onClick={goBack} className="flex h-7 w-8 items-center justify-center rounded-md text-fg-2 hover:bg-white/8 hover:text-fg disabled:cursor-default disabled:opacity-35 disabled:hover:bg-transparent">
             <IconChevronLeft size={16} />
           </button>
-          <button type="button" aria-label="Forward" disabled={!canGoForward} onClick={goForward} className="flex h-7 w-8 items-center justify-center rounded-md text-fg-2 hover:bg-white/8 hover:text-fg disabled:cursor-default disabled:opacity-35 disabled:hover:bg-transparent">
+          <button type="button" aria-label={t('filesPage.forward')} disabled={!canGoForward} onClick={goForward} className="flex h-7 w-8 items-center justify-center rounded-md text-fg-2 hover:bg-white/8 hover:text-fg disabled:cursor-default disabled:opacity-35 disabled:hover:bg-transparent">
             <IconChevronRight size={16} />
           </button>
         </div>
@@ -433,10 +435,10 @@ export function FilesPage() {
         </nav>
 
         <div className="flex h-8 items-center rounded-lg border border-line bg-white/6 p-0.5" role="group" aria-label="View">
-          <button type="button" aria-label="Grid view" aria-pressed={viewMode === 'grid'} onClick={() => $viewMode.set('grid')} className={cn('flex h-7 w-8 items-center justify-center rounded-md transition-colors duration-120', viewMode === 'grid' ? 'bg-accent text-accent-fg shadow-[0_2px_10px_rgba(47,125,255,.45)]' : 'text-fg-2 hover:bg-white/8 hover:text-fg')}>
+          <button type="button" aria-label={t('filesPage.gridView')} aria-pressed={viewMode === 'grid'} onClick={() => $viewMode.set('grid')} className={cn('flex h-7 w-8 items-center justify-center rounded-md transition-colors duration-120', viewMode === 'grid' ? 'bg-accent text-accent-fg shadow-[0_2px_10px_rgba(47,125,255,.45)]' : 'text-fg-2 hover:bg-white/8 hover:text-fg')}>
             <IconLayoutGrid size={15} />
           </button>
-          <button type="button" aria-label="List view" aria-pressed={viewMode === 'list'} onClick={() => $viewMode.set('list')} className={cn('flex h-7 w-8 items-center justify-center rounded-md transition-colors duration-120', viewMode === 'list' ? 'bg-accent text-accent-fg shadow-[0_2px_10px_rgba(47,125,255,.45)]' : 'text-fg-2 hover:bg-white/8 hover:text-fg')}>
+          <button type="button" aria-label={t('filesPage.listView')} aria-pressed={viewMode === 'list'} onClick={() => $viewMode.set('list')} className={cn('flex h-7 w-8 items-center justify-center rounded-md transition-colors duration-120', viewMode === 'list' ? 'bg-accent text-accent-fg shadow-[0_2px_10px_rgba(47,125,255,.45)]' : 'text-fg-2 hover:bg-white/8 hover:text-fg')}>
             <IconList size={15} />
           </button>
         </div>
@@ -444,7 +446,7 @@ export function FilesPage() {
         <div className="relative">
           <GlassButton size="sm" aria-haspopup="menu" aria-expanded={newMenu} onClick={() => setNewMenu(open => !open)}>
             <IconPlus />
-            New
+            {t('filesPage.new')}
             <IconChevronDown className="text-fg-3" />
           </GlassButton>
           {newMenu && (
@@ -452,9 +454,9 @@ export function FilesPage() {
               onClose={() => setNewMenu(false)}
               className="top-9"
               items={[
-                { id: 'folder', label: 'New folder', icon: <IconFolderPlus />, onSelect: () => openNewPrompt('folder') },
-                { id: 'file', label: 'New text file', icon: <IconFileText />, onSelect: () => openNewPrompt('file') },
-                { id: 'ask', label: 'Ask Hermes to create…', icon: <IconMessage />, onSelect: () => showPage('hermes'), dividerBefore: true }
+                { id: 'folder', label: t('filesPage.newFolder'), icon: <IconFolderPlus />, onSelect: () => openNewPrompt('folder') },
+                { id: 'file', label: t('filesPage.newTextFile'), icon: <IconFileText />, onSelect: () => openNewPrompt('file') },
+                { id: 'ask', label: t('filesPage.askCreate'), icon: <IconMessage />, onSelect: () => showPage('hermes'), dividerBefore: true }
               ]}
             />
           )}
@@ -470,13 +472,13 @@ export function FilesPage() {
                 { id: 'reveal', label: revealLabel(), icon: <IconFolderOpen />, disabled: !cwd, onSelect: () => cwd && revealItem(cwd) },
                 {
                   id: 'terminal',
-                  label: 'Open in Terminal',
+                  label: t('filesPage.openTerminal'),
                   icon: <IconTerminal2 />,
                   disabled: !cwd,
                   onSelect: () => cwd && window.heraldOS.fs.openIn('terminal', cwd).catch(error => notify({ title: 'Could not open Terminal', body: messageOf(error), level: 'error' }))
                 },
-                { id: 'hidden', label: showHidden ? 'Hide hidden files' : 'Show hidden files', icon: showHidden ? <IconEyeOff /> : <IconEye />, checked: showHidden, onSelect: () => $showHidden.set(!showHidden), dividerBefore: true },
-                { id: 'refresh', label: 'Refresh', icon: <IconRefresh />, onSelect: refresh }
+                { id: 'hidden', label: showHidden ? t('filesPage.hideHidden') : t('filesPage.showHidden'), icon: showHidden ? <IconEyeOff /> : <IconEye />, checked: showHidden, onSelect: () => $showHidden.set(!showHidden), dividerBefore: true },
+                { id: 'refresh', label: t('filesPage.refresh'), icon: <IconRefresh />, onSelect: refresh }
               ]}
             />
           )}
@@ -490,7 +492,7 @@ export function FilesPage() {
           {prompt && (
             <div className="glass-card mb-3 flex items-center gap-3 rounded-xl px-3 py-2 animate-rise">
               <span className="shrink-0 text-fg-3">{prompt === 'folder' ? <IconFolderPlus size={16} /> : <IconFileText size={16} />}</span>
-              <span className="shrink-0 text-[12.5px] text-fg-2">{prompt === 'folder' ? 'New folder' : 'New text file'}</span>
+              <span className="shrink-0 text-[12.5px] text-fg-2">{prompt === 'folder' ? t('filesPage.newFolder') : t('filesPage.newTextFile')}</span>
               <RenameField name={prompt === 'folder' ? 'Untitled folder' : 'Untitled.txt'} onCommit={commitPrompt} onCancel={() => setPrompt(null)} className="max-w-sm" commitOnBlur={false} />
               <GlassButton size="sm" variant="ghost" onClick={() => setPrompt(null)}>
                 Cancel
@@ -508,14 +510,14 @@ export function FilesPage() {
             {listing.data && items.length === 0 && !listing.error && (
               <EmptyGlass
                 icon={query.trim() ? <IconSearch /> : <IconFolderOpen />}
-                title={query.trim() ? `Nothing here matches “${query.trim()}”` : location?.kind === 'favorites' ? 'No favourites yet' : location?.kind === 'recent' ? 'No recent files' : 'Empty folder'}
-                description={query.trim() ? 'Try a sentence like “find my screenshots from yesterday” to ask Hermes.' : location?.kind === 'favorites' ? 'Star a file or folder from its details to keep it here.' : undefined}
-                action={query.trim() ? <GlassButton size="sm" onClick={() => askHermesToFind(query.trim())}>Ask Hermes to find it</GlassButton> : undefined}
+                title={query.trim() ? t('filesPage.noMatch', { query: query.trim() }) : location?.kind === 'favorites' ? t('filesPage.noFavourites') : location?.kind === 'recent' ? t('filesPage.noRecent') : t('filesPage.emptyFolder')}
+                description={query.trim() ? t('filesPage.noMatch.hint') : location?.kind === 'favorites' ? t('filesPage.noFavourites.hint') : undefined}
+                action={query.trim() ? <GlassButton size="sm" onClick={() => askHermesToFind(query.trim())}>{t('filesPage.askFind')}</GlassButton> : undefined}
                 className="mt-2"
               />
             )}
 
-            {listing.error && !listing.loading && <EmptyGlass icon={<IconFolderOpen />} title="Could not read this folder" description={listing.error} action={<GlassButton size="sm" onClick={listing.reload}>Try again</GlassButton>} className="mt-2" />}
+            {listing.error && !listing.loading && <EmptyGlass icon={<IconFolderOpen />} title={t('filesPage.readFailed')} description={listing.error} action={<GlassButton size="sm" onClick={listing.reload}>Try again</GlassButton>} className="mt-2" />}
 
             {items.length > 0 && (
               <div ref={gridRef} role="listbox" aria-label="Files" aria-multiselectable={false} className={cn(viewMode === 'grid' ? 'grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-3 stagger' : 'flex flex-col gap-0.5', listing.loading && 'opacity-80 transition-opacity')}>

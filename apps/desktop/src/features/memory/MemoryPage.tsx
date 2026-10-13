@@ -11,6 +11,7 @@ import { MemoryMenu } from './MemoryMenu.tsx'
 import { MemoryRow } from './MemoryRow.tsx'
 import { $memory, $memoryFocus, addEntry, countRelatedSessions, forgetEntry, loadMemory, type MemoryEntry, type MemoryFile, type MemoryKind, memoryPath, updateEntry } from './memory-store.ts'
 import { useMemoryToolset } from './use-memory-toolset.ts'
+import { type MessageKey, t, tn, useT } from '../../lib/i18n.ts'
 
 type Filter = 'all' | MemoryKind
 
@@ -25,6 +26,7 @@ const FILTERS: readonly { id: Filter; label: string }[] = [
 const errorMessage = (err: unknown) => (err instanceof Error ? err.message : String(err))
 
 export function MemoryPage() {
+  useT()
   const env = useStore($env)
   const memory = useStore($memory)
   const sessions = useStore($sessions)
@@ -146,13 +148,13 @@ export function MemoryPage() {
     <div className="flex h-full flex-col page-enter">
       <PageHeader
         icon="memory"
-        title="Memory"
-        subtitle="What Hermes knows, and why."
+        title={t('app.memory')}
+        subtitle={t('app.memory.tagline')}
         actions={
           <>
             <GlassButton variant="primary" onClick={() => setAdding(true)} disabled={!hermesHome || adding}>
               <IconPlus />
-              Add memory
+              {t('memoryPage.add')}
             </GlassButton>
             <MemoryMenu onReload={reload} onOpenFile={openFile} disabled={!hermesHome} />
           </>
@@ -160,11 +162,11 @@ export function MemoryPage() {
       />
 
       <div className="flex flex-col gap-3 px-6 pb-4">
-        <SearchField value={query} onChange={setQuery} placeholder="Search your memory…" />
+        <SearchField value={query} onChange={setQuery} placeholder={t('memoryPage.search')} />
         <div className="flex items-center justify-between gap-3">
-          <Chips items={FILTERS} value={filter} onChange={setFilter} />
+          <Chips items={FILTERS.map(item => ({ ...item, label: t(`memoryPage.filter.${item.id}` as MessageKey) }))} value={filter} onChange={setFilter} />
           <span className="shrink-0 text-[12px] text-fg-3 tabular-nums" aria-live="polite">
-            {loading ? '' : `${count} ${count === 1 ? 'memory' : 'memories'}`}
+            {loading ? '' : tn('memoryPage.count', count)}
           </span>
         </div>
       </div>
@@ -176,11 +178,11 @@ export function MemoryPage() {
           ) : memory.error ? (
             <EmptyGlass
               icon={<IconBrain />}
-              title="Could not read memory"
+              title={t('memoryPage.readFailed')}
               description={memory.error}
               action={
                 <GlassButton size="sm" onClick={reload}>
-                  Try again
+                  {t('memoryPage.tryAgain')}
                 </GlassButton>
               }
             />
@@ -194,20 +196,20 @@ export function MemoryPage() {
                 memory.entries.length === 0 ? (
                   <EmptyGlass
                     icon={<IconBrain />}
-                    title="Nothing remembered yet"
-                    description="Hermes saves what matters as you work together. Add the first memory yourself, or just start a conversation."
+                    title={t('memoryPage.empty')}
+                    description={t('memoryPage.empty.hint')}
                     action={
                       <GlassButton size="sm" variant="primary" onClick={() => setAdding(true)}>
                         <IconPlus />
-                        Add memory
+                        {t('memoryPage.add')}
                       </GlassButton>
                     }
                   />
                 ) : (
                   <EmptyGlass
                     icon={<IconSearchOff />}
-                    title="No memories match"
-                    description={query ? `Nothing mentions “${query.trim()}”${filter === 'all' ? '' : ' in this category'}.` : 'Nothing in this category yet.'}
+                    title={t('memoryPage.noMatch')}
+                    description={query ? t(filter === 'all' ? 'memoryPage.noMatch.query' : 'memoryPage.noMatch.queryCategory', { query: query.trim() }) : t('memoryPage.noMatch.category')}
                     action={
                       <GlassButton
                         size="sm"

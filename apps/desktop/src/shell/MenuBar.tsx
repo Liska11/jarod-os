@@ -24,6 +24,7 @@ import { $systemStats, useNetworkStatus, useSystemStats } from '../store/system.
 import { $focusedTitle } from '../store/windows.ts'
 import { VoiceIndicator } from '../features/voice/VoiceIndicator.tsx'
 import { quietly } from '../lib/native.ts'
+import { t, useT } from '../lib/i18n.ts'
 
 export function useClock(intervalMs = 10_000): Date {
   const [now, setNow] = useState(() => new Date())
@@ -62,7 +63,7 @@ export function MenuBarStatus({ onSearch, onBell, bellActive }: { onSearch: () =
 
   const items: Record<MenuBarItem, ReactNode> = {
     search: (
-      <button type="button" aria-label="Search" onClick={onSearch} className="flex size-6 items-center justify-center rounded-md hover:bg-white/10">
+      <button type="button" aria-label={t('menubar.search')} onClick={onSearch} className="flex size-6 items-center justify-center rounded-md hover:bg-white/10">
         <IconSearch size={15} />
       </button>
     ),
@@ -92,13 +93,13 @@ export function MenuBarStatus({ onSearch, onBell, bellActive }: { onSearch: () =
       </button>
     ) : null,
     notifications: (
-      <button type="button" aria-label="Notifications" onClick={onBell} className={cn('relative flex size-6 items-center justify-center rounded-md hover:bg-white/10', bellActive && 'bg-white/10')}>
+      <button type="button" aria-label={t('menubar.notifications')} onClick={onBell} className={cn('relative flex size-6 items-center justify-center rounded-md hover:bg-white/10', bellActive && 'bg-white/10')}>
         <IconBell size={15} />
         {unread > 0 && <span className="absolute top-0.5 right-0.5 size-1.5 rounded-full bg-accent-strong" />}
       </button>
     ),
     clock: (
-      <button type="button" aria-label="Calendar" onClick={() => openStatusPanel('clock')} className={cn(iconButton('clock'), 'gap-2 tabular-nums')}>
+      <button type="button" aria-label={t('menubar.calendar')} onClick={() => openStatusPanel('clock')} className={cn(iconButton('clock'), 'gap-2 tabular-nums')}>
         {clock.date && <span>{clock.date}</span>}
         <span className="font-medium">{clock.time}</span>
       </button>
@@ -131,13 +132,13 @@ export function WindowControls() {
 
   return (
     <div className="no-drag flex items-center gap-0.5" role="group" aria-label="Window controls">
-      <button type="button" aria-label="Minimize" title="Minimize" onClick={() => void quietly(() => window.heraldOS.window.minimize())} className={cn(base, 'hover:bg-white/10')}>
+      <button type="button" aria-label={t('menubar.minimize')} title={t('menubar.minimize')} onClick={() => void quietly(() => window.heraldOS.window.minimize())} className={cn(base, 'hover:bg-white/10')}>
         <IconMinus size={15} />
       </button>
-      <button type="button" aria-label={filled ? 'Restore' : 'Maximize'} title={state.fullscreen ? 'Leave fullscreen (F11)' : filled ? 'Restore' : 'Maximize'} onClick={() => void quietly(() => window.heraldOS.window.toggleMaximize())} className={cn(base, 'hover:bg-white/10')}>
+      <button type="button" aria-label={filled ? t('menubar.restore') : t('menubar.maximize')} title={state.fullscreen ? t('menubar.leaveFullscreen') : filled ? t('menubar.restore') : t('menubar.maximize')} onClick={() => void quietly(() => window.heraldOS.window.toggleMaximize())} className={cn(base, 'hover:bg-white/10')}>
         {filled ? <IconCopy size={14} /> : <IconSquare size={13} />}
       </button>
-      <button type="button" aria-label="Close" title="Close" onClick={() => void quietly(() => window.heraldOS.window.close())} className={cn(base, 'hover:bg-danger/80 hover:text-white')}>
+      <button type="button" aria-label={t('menubar.close')} title={t('menubar.close')} onClick={() => void quietly(() => window.heraldOS.window.close())} className={cn(base, 'hover:bg-danger/80 hover:text-white')}>
         <IconX size={15} />
       </button>
     </div>
@@ -213,6 +214,7 @@ function UsageMeter() {
 
 /** Backend/gateway health badge shown next to the brand while Hermes is not reachable. */
 export function BackendBadge() {
+  useT()
   const backend = useStore($backend)
   const connection = useStore($connection)
   const online = backend.phase === 'ready' && connection === 'open'
@@ -221,7 +223,7 @@ export function BackendBadge() {
     return null
   }
 
-  return <span className="ml-2 rounded-full bg-warn/20 px-2 py-0.5 text-[11px] text-warn">{backend.phase === 'failed' ? 'Hermes offline' : 'Starting Hermes'}</span>
+  return <span className="ml-2 rounded-full bg-warn/20 px-2 py-0.5 text-[11px] text-warn">{backend.phase === 'failed' ? t('menubar.offline') : t('menubar.starting')}</span>
 }
 
 export function MenuBar() {
