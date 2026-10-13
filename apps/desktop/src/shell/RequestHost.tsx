@@ -4,7 +4,8 @@ import { IconKey, IconLock, IconQuestionMark, IconShieldCheck } from '@tabler/ic
 import { useState } from 'react'
 import { Button } from '../components/ui/button.tsx'
 import { Badge } from '../components/ui/primitives.tsx'
-import { deviceNoun } from '../lib/platform-labels.ts'
+import { type MessageKey, t, useT } from '../lib/i18n.ts'
+import { thisDevice } from '../lib/platform-labels.ts'
 import { $pendingRequests, type PendingRequest, resolveRequest } from '../store/requests.ts'
 
 /**
@@ -13,6 +14,7 @@ import { $pendingRequests, type PendingRequest, resolveRequest } from '../store/
  */
 export function RequestHost() {
   const pending = useStore($pendingRequests)
+  const { tn } = useT()
 
   if (pending.length === 0) {
     return null
@@ -22,7 +24,7 @@ export function RequestHost() {
 
   return (
     <div className="pointer-events-none absolute right-5 bottom-[92px] z-(--z-request) flex w-[420px] flex-col items-stretch gap-2">
-      {rest.length > 0 && <div className="pointer-events-auto self-end text-[11px] text-fg-3">{rest.length} more waiting</div>}
+      {rest.length > 0 && <div className="pointer-events-auto self-end text-[11px] text-fg-3">{tn('request.more', rest.length)}</div>}
       <div className="float pointer-events-auto rounded-2xl p-4 animate-rise">
         <RequestCard entry={current} />
       </div>
@@ -37,13 +39,13 @@ function RequestCard({ entry }: { entry: PendingRequest }) {
     case 'clarify':
       return <ClarifyCard id={entry.request.id} params={entry.request.params} />
     case 'sudo':
-      return <ValueCard id={entry.request.id} icon={<IconLock size={16} />} title="Administrator password" description={entry.request.params.command} secret />
+      return <ValueCard id={entry.request.id} icon={<IconLock size={16} />} title={t('request.sudo')} description={entry.request.params.command} secret />
     case 'secret':
-      return <ValueCard id={entry.request.id} icon={<IconKey size={16} />} title={entry.request.params.prompt || `Provide ${entry.request.params.env_var}`} description={entry.request.params.env_var} secret />
+      return <ValueCard id={entry.request.id} icon={<IconKey size={16} />} title={entry.request.params.prompt || t('request.provide', { name: entry.request.params.env_var })} description={entry.request.params.env_var} secret />
   }
 }
 
-const CHOICE_LABEL: Record<ApprovalChoice, string> = { once: 'Allow once', session: 'Allow this session', always: 'Always allow', deny: 'Deny' }
+const CHOICE_LABEL: Record<ApprovalChoice, MessageKey> = { once: 'request.choice.once', session: 'request.choice.session', always: 'request.choice.always', deny: 'request.choice.deny' }
 
 /** Upstream labels plugin-gated approvals `<tool> (plugin approval rule)`; the tool name is what the user needs. */
 const PLUGIN_RULE_RE = /^<([a-z0-9_]+)> \(plugin approval rule\)$/i
@@ -75,7 +77,7 @@ function ApprovalCard({ id, params }: { id: string; params: ApprovalRequestParam
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 text-[13px] font-medium">
-            {bridgeTool ? `Hermes wants to act on this ${deviceNoun()}` : 'Hermes is asking for permission'}
+            {bridgeTool ? t('request.actOnDevice', { thisDevice: thisDevice() }) : t('request.permission')}
             {toolName && <Badge tone={destructive ? 'danger' : 'accent'}>{toolName.replace(/^system_/, '').replace(/_/g, ' ')}</Badge>}
           </div>
           {params.description && <div className="mt-1 text-[12.5px] text-fg-2">{params.description}</div>}
@@ -93,7 +95,7 @@ function ApprovalCard({ id, params }: { id: string; params: ApprovalRequestParam
             autoFocus={choice === 'once'}
             onClick={() => resolveRequest(id, { choice })}
           >
-            {CHOICE_LABEL[choice]}
+            {t(CHOICE_LABEL[choice])}
           </Button>
         ))}
       </div>
@@ -102,7 +104,7 @@ function ApprovalCard({ id, params }: { id: string; params: ApprovalRequestParam
 }
 
 function ClarifyCard({ id, params }: { id: string; params: ClarifyRequestParams }) {
-  const questions = params.questions?.length ? params.questions : [{ qid: '_single', question: params.question ?? 'Hermes needs more information', choices: params.choices ?? null, multi_select: Boolean(params.multi_select) }]
+  const questions = params.questions?.length ? params.questions : [{ qid: '_single', question: params.question ?? t('request.needInfo'), choices: params.choices ?? null, multi_select: Boolean(params.multi_select) }]
   const [answers, setAnswers] = useState<Record<string, string>>({})
   const single = questions.length === 1 && questions[0].qid === '_single'
   const set = (qid: string, value: string) => setAnswers(prev => ({ ...prev, [qid]: value }))
@@ -120,7 +122,7 @@ function ClarifyCard({ id, params }: { id: string; params: ClarifyRequestParams 
         <span className="mt-0.5 text-info">
           <IconQuestionMark size={16} />
         </span>
-        <div className="text-[13px] font-medium">Hermes has a question</div>
+        <div className="text-[13px] font-medium">{t('attention.question')}</div>
       </div>
       {questions.map(question => (
         <div key={question.qid} className="flex flex-col gap-2">
@@ -160,17 +162,17 @@ function ClarifyCard({ id, params }: { id: string; params: ClarifyRequestParams 
                 submit()
               }
             }}
-            placeholder={question.choices?.length ? 'Or type your own answer' : 'Type your answer'}
+            placeholder={question.choices?.length ? t('request.orType') : t('request.type')}
             className="h-8 rounded-sm bg-surface px-2.5 text-[12.5px] outline-none hairline focus:shadow-[0_0_0_1px_var(--color-accent)]"
           />
         </div>
       ))}
       <div className="flex justify-end gap-2">
         <Button variant="ghost" size="sm" onClick={() => resolveRequest(id, single ? { answer: '' } : {})}>
-          Skip
+          {t('request.skip')}
         </Button>
         <Button variant="primary" size="sm" onClick={submit}>
-          Answer
+          {t('request.answer')}
         </Button>
       </div>
     </div>
@@ -203,10 +205,10 @@ function ValueCard({ id, icon, title, description, secret }: { id: string; icon:
       />
       <div className="flex justify-end gap-2">
         <Button variant="ghost" size="sm" onClick={() => resolveRequest(id, { value: '' })}>
-          Cancel
+          {t('request.cancel')}
         </Button>
         <Button variant="primary" size="sm" onClick={() => resolveRequest(id, { value })}>
-          Continue
+          {t('request.continue')}
         </Button>
       </div>
     </div>

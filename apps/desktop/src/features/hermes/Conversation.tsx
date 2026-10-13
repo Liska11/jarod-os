@@ -14,8 +14,9 @@ import { ComposerBar } from './ComposerBar.tsx'
 import { HermesComposer } from './HermesComposer.tsx'
 import { SuggestionChips } from './SuggestionChips.tsx'
 import { ToolSummaryRow } from './ToolSummaryRow.tsx'
+import { type MessageKey, t, useT } from '../../lib/i18n.ts'
 
-const HERO_SUGGESTIONS = ["What's using the most CPU right now?", 'Find the screenshots I took yesterday', 'Draft a brief for my next product review', 'What is taking up my disk space?']
+const HERO_SUGGESTIONS: MessageKey[] = ['chat.suggestion.cpu', 'chat.suggestion.screenshots', 'chat.suggestion.brief', 'chat.suggestion.disk']
 
 /** A user prompt and everything Hermes did in response, up to the next prompt. */
 interface Turn {
@@ -70,6 +71,7 @@ function blocksOf(items: ChatMessage[]): Block[] {
 }
 
 export function Conversation({ chat, online }: { chat: ChatState | null; online: boolean }) {
+  const { assistant } = useT()
   const space = useStore($activeSpace)
   const submit = async (text: string): Promise<void> => {
     await (text.startsWith('/') ? runSlash(text) : sendPrompt(text))
@@ -80,15 +82,15 @@ export function Conversation({ chat, online }: { chat: ChatState | null; online:
       <div className="flex items-center gap-3 border-b border-line px-5 py-3.5">
         <HermesAvatar size={36} rounded={10} />
         <div className="min-w-0">
-          <div className="truncate text-[15px] leading-tight font-semibold text-fg">Hermes</div>
-          <div className="truncate text-[12px] text-fg-3">{chat?.title || `${space?.name ?? 'Personal'} workspace`}</div>
+          <div className="truncate text-[15px] leading-tight font-semibold text-fg">{assistant}</div>
+          <div className="truncate text-[12px] text-fg-3">{chat?.title || t('chat.workspace', { name: space?.name ?? 'Personal' })}</div>
         </div>
       </div>
 
       {chat ? <Transcript chat={chat} online={online} /> : <Hero online={online} />}
 
       <div className="shrink-0 px-4 pb-4 pt-2">
-        <HermesComposer autoFocus disabled={!online} streaming={chat?.streaming} placeholder={online ? 'Ask Hermes anything…' : 'Connecting to Hermes…'} onSubmit={submit} onInterrupt={() => void interruptChat()} />
+        <HermesComposer autoFocus disabled={!online} streaming={chat?.streaming} placeholder={online ? t('chat.ask') : t('chat.connecting')} onSubmit={submit} onInterrupt={() => void interruptChat()} />
         <ComposerBar chat={chat} online={online} />
       </div>
     </div>
@@ -96,17 +98,19 @@ export function Conversation({ chat, online }: { chat: ChatState | null; online:
 }
 
 function Hero({ online }: { online: boolean }) {
+  const { t, assistant } = useT()
+
   return (
     <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-6 px-6 page-enter">
       <HermesAvatar size={48} rounded={14} />
       <div className="text-center">
-        <div className="text-[20px] font-semibold tracking-tight text-fg">Hermes</div>
-        <div className="mt-1 text-[13px] text-fg-3">Your computer, in conversation.</div>
+        <div className="text-[20px] font-semibold tracking-tight text-fg">{assistant}</div>
+        <div className="mt-1 text-[13px] text-fg-3">{t('chat.hero')}</div>
       </div>
       <div className="stagger grid w-full max-w-md grid-cols-2 gap-2">
         {HERO_SUGGESTIONS.map(text => (
-          <button key={text} type="button" onClick={() => void sendPrompt(text)} disabled={!online} className="glass-card glass-card-hover rounded-xl px-3.5 py-3 text-left text-[12.5px] text-fg-2 hover:text-fg disabled:cursor-not-allowed disabled:opacity-40">
-            {text}
+          <button key={text} type="button" onClick={() => void sendPrompt(t(text))} disabled={!online} className="glass-card glass-card-hover rounded-xl px-3.5 py-3 text-left text-[12.5px] text-fg-2 hover:text-fg disabled:cursor-not-allowed disabled:opacity-40">
+            {t(text)}
           </button>
         ))}
       </div>
@@ -115,6 +119,7 @@ function Hero({ online }: { online: boolean }) {
 }
 
 function Transcript({ chat, online }: { chat: ChatState; online: boolean }) {
+  useT()
   const artifacts = useStore($chatArtifacts)
   const selected = useStore($selectedArtifact)
   const scroller = useRef<HTMLDivElement>(null)
@@ -153,7 +158,7 @@ function Transcript({ chat, online }: { chat: ChatState; online: boolean }) {
     <div ref={scroller} className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
       <div className="flex flex-col gap-3">
         {chat.hydrating && chat.messages.length === 0 && (
-          <div className="flex flex-col gap-3" aria-label="Loading conversation">
+          <div className="flex flex-col gap-3" aria-label={t('chat.loading')}>
             <div className="shimmer ml-auto h-12 w-3/5 rounded-xl" />
             <div className="shimmer h-16 w-4/5 rounded-xl" />
           </div>
@@ -181,7 +186,7 @@ function Transcript({ chat, online }: { chat: ChatState; online: boolean }) {
         {chat.streaming && (chat.status || !chat.openAssistantId) && (
           <div className="flex items-center gap-2 px-1 text-[12px] text-fg-3 animate-fade-in">
             <span className="size-1.5 rounded-full bg-accent animate-pulse-soft" />
-            {chat.status?.text ?? 'Thinking'}
+            {chat.status?.text ?? t('chat.thinking')}
           </div>
         )}
       </div>
@@ -224,7 +229,7 @@ const AssistantBubble = memo(function AssistantBubble({ message }: { message: As
         {hasReasoning && (
           <button type="button" onClick={() => setShowReasoning(v => !v)} className="mb-1 flex items-center gap-1 text-[11.5px] text-fg-3 hover:text-fg-2">
             <IconChevronRight size={12} className={cn('transition-transform duration-100', showReasoning && 'rotate-90')} />
-            {message.streaming && !text ? 'Thinking' : 'Reasoning'}
+            {message.streaming && !text ? t('chat.thinking') : t('chat.reasoning')}
           </button>
         )}
         {hasReasoning && showReasoning && <div className="selectable mb-2 border-l border-line-strong pl-3 text-[12px] leading-relaxed whitespace-pre-wrap text-fg-3">{message.reasoning}</div>}
@@ -237,7 +242,7 @@ const AssistantBubble = memo(function AssistantBubble({ message }: { message: As
         ) : null}
         {message.error && <div className="mt-2 rounded-lg bg-danger/10 px-3 py-2 text-[12.5px] text-danger">{message.error}</div>}
         <div className="mt-1 flex items-center justify-end gap-2 text-[10.5px] tabular-nums text-fg-3">
-          {message.status === 'interrupted' && <span className="text-fg-4">Interrupted</span>}
+          {message.status === 'interrupted' && <span className="text-fg-4">{t('chat.interrupted')}</span>}
           {!message.streaming && <span>{formatTime(message.ts)}</span>}
         </div>
       </div>

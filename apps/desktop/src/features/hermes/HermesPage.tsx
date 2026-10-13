@@ -12,6 +12,7 @@ import { SessionList } from '../chat/SessionList.tsx'
 import { ArtifactPane } from './ArtifactPane.tsx'
 import { Conversation } from './Conversation.tsx'
 import { MenuDivider, MenuItem, PopMenu } from './Menu.tsx'
+import { t, useT } from '../../lib/i18n.ts'
 
 /** The conversation never gets narrower than a readable column; the preview can be pulled away altogether. */
 const SPLIT_LIMITS = { minLeft: 380, minRight: 280, snapRight: 160 }
@@ -22,6 +23,7 @@ const SPLIT_LIMITS = { minLeft: 380, minRight: 280, snapRight: 160 }
  * store/chat.ts pipeline; this page only lays it out and adds the artifact pane.
  */
 export function HermesPage() {
+  const { assistant } = useT()
   const chat = useStore($activeChat)
   const activeId = useStore($activeChatId)
   const connection = useStore($connection)
@@ -82,9 +84,9 @@ export function HermesPage() {
     try {
       await deleteSession(chat.storedSessionId)
       forgetChat(chat.sessionId)
-      notify({ title: 'Conversation deleted', body: chat.title || undefined, level: 'info', surface: 'hermes' })
+      notify({ title: t('chat.deleted'), body: chat.title || undefined, level: 'info', surface: 'hermes' })
     } catch (error) {
-      notify({ title: 'Could not delete', body: error instanceof Error ? error.message : String(error), level: 'error', surface: 'hermes' })
+      notify({ title: t('chat.deleteFailed'), body: error instanceof Error ? error.message : String(error), level: 'error', surface: 'hermes' })
     } finally {
       setBusy(false)
       setMenuOpen(false)
@@ -99,8 +101,8 @@ export function HermesPage() {
             ref={renameInput}
             value={title}
             autoFocus
-            aria-label="Conversation title"
-            placeholder="Conversation title"
+            aria-label={t('chat.title')}
+            placeholder={t('chat.title')}
             onChange={event => setTitle(event.target.value)}
             onBlur={commitRename}
             onKeyDown={event => {
@@ -113,13 +115,13 @@ export function HermesPage() {
             className="glass-input h-9 w-72 rounded-lg px-3 text-[13px] outline-none placeholder:text-fg-4 animate-pop"
           />
         )}
-        <GlassButton onClick={() => void createChat()} disabled={!online} aria-label="New conversation">
+        <GlassButton onClick={() => void createChat()} disabled={!online} aria-label={t('chat.new')}>
           <IconPlus />
-          New conversation
+          {t('chat.new')}
         </GlassButton>
-        <PopMenu open={menuOpen} onClose={() => setMenuOpen(false)} trigger={<MoreButton aria-label="Conversation actions" aria-haspopup="menu" aria-expanded={menuOpen} onClick={() => setMenuOpen(v => !v)} />}>
+        <PopMenu open={menuOpen} onClose={() => setMenuOpen(false)} trigger={<MoreButton aria-label={t('chat.actions')} aria-haspopup="menu" aria-expanded={menuOpen} onClick={() => setMenuOpen(v => !v)} />}>
           <MenuItem icon={<IconPencil />} disabled={!chat} onClick={startRename}>
-            Rename
+            {t('chat.rename')}
           </MenuItem>
           <MenuItem
             icon={<IconArrowUpRight />}
@@ -128,11 +130,11 @@ export function HermesPage() {
               setMenuOpen(false)
 
               if (chat) {
-                openApp('chat-popout', { payload: { sessionId: chat.storedSessionId }, title: chat.title || 'Hermes' })
+                openApp('chat-popout', { payload: { sessionId: chat.storedSessionId }, title: chat.title || assistant })
               }
             }}
           >
-            Pop out
+            {t('chat.popOut')}
           </MenuItem>
           <MenuItem
             icon={<IconHistory />}
@@ -141,16 +143,16 @@ export function HermesPage() {
               setSessionsOpen(v => !v)
             }}
           >
-            Sessions…
+            {t('chat.sessions')}
           </MenuItem>
           <MenuDivider />
           {confirmDelete ? (
             <MenuItem icon={<IconTrash />} danger disabled={busy} onClick={() => void remove()}>
-              {busy ? 'Deleting…' : 'Delete for good?'}
+              {busy ? t('chat.deleting') : t('chat.deleteConfirm')}
             </MenuItem>
           ) : (
             <MenuItem icon={<IconTrash />} danger disabled={!chat} onClick={() => setConfirmDelete(true)}>
-              Delete
+              {t('chat.delete')}
             </MenuItem>
           )}
         </PopMenu>
@@ -173,11 +175,11 @@ export function HermesPage() {
       />
 
       {sessionsOpen && (
-        <div className="absolute inset-0 z-10 flex" role="dialog" aria-label="Sessions">
-          <button type="button" aria-label="Close sessions" onClick={() => setSessionsOpen(false)} className="absolute inset-0 cursor-default bg-black/20" />
+        <div className="absolute inset-0 z-10 flex" role="dialog" aria-label={t('chat.sessionsLabel')}>
+          <button type="button" aria-label={t('chat.closeSessions')} onClick={() => setSessionsOpen(false)} className="absolute inset-0 cursor-default bg-black/20" />
           <div className="glass relative m-6 mr-0 flex w-[280px] flex-col overflow-hidden rounded-2xl animate-rise">
             <div className="flex items-center justify-end px-2 pt-2">
-              <button type="button" aria-label="Close" onClick={() => setSessionsOpen(false)} className="flex size-7 items-center justify-center rounded-lg text-fg-3 hover:bg-white/8 hover:text-fg">
+              <button type="button" aria-label={t('chat.close')} onClick={() => setSessionsOpen(false)} className="flex size-7 items-center justify-center rounded-lg text-fg-3 hover:bg-white/8 hover:text-fg">
                 <IconX size={15} />
               </button>
             </div>

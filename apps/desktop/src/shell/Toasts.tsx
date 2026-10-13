@@ -4,10 +4,12 @@ import { Dot } from '../components/ui/primitives.tsx'
 import { $toasts, activateDesktopNotification, dismissNotification, dismissToast, type HermesNotification, type NotificationLevel } from '../store/notifications.ts'
 import { runCommand } from '../store/os-commands.ts'
 import { showSurface } from '../store/surface.ts'
+import { t, useT } from '../lib/i18n.ts'
 
 const TONE: Record<NotificationLevel, 'info' | 'ok' | 'warn' | 'danger'> = { info: 'info', success: 'ok', warn: 'warn', error: 'danger' }
 
 export function Toasts() {
+  useT()
   const toasts = useStore($toasts)
 
   if (toasts.length === 0) {
@@ -45,7 +47,7 @@ export function Toasts() {
             {toast.desktop && toast.desktop.actions.length > 0 && <DesktopActions item={toast} />}
             {toast.actions && <CommandActions item={toast} />}
           </div>
-          <button type="button" aria-label="Dismiss" onClick={() => close(toast)} className="-mr-1 flex size-6 shrink-0 items-center justify-center rounded-xs text-fg-3 hover:text-fg">
+          <button type="button" aria-label={t('toast.dismiss')} onClick={() => close(toast)} className="-mr-1 flex size-6 shrink-0 items-center justify-center rounded-xs text-fg-3 hover:text-fg">
             <IconX size={13} />
           </button>
         </div>
