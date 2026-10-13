@@ -19,6 +19,7 @@ import { ragTools } from "./rag-tools.js";
 import { systemActTools } from "./system/act.js";
 import { systemDestroyTools } from "./system/destroy.js";
 import { systemReadTools } from "./system/tools.js";
+import { pinokioTools } from "./pinokio/tools.js";
 import { ToolRegistry } from "./registry.js";
 import { searchTools } from "./search.js";
 import { skillHubTools } from "./skills-hub-tools.js";
@@ -43,6 +44,7 @@ export * from "./skills-tools.js";
 export * from "./ssh.js";
 export * from "./ssh-hosts.js";
 export { systemReadTools, type SystemToolDeps } from "./system/tools.js";
+export { pinokioTools, type PinokioToolDeps } from "./pinokio/tools.js";
 export { systemActTools, type Launcher, type SystemActDeps } from "./system/act.js";
 export { systemDestroyTools, type SystemDestroyDeps } from "./system/destroy.js";
 export * from "./tool-search.js";
@@ -94,6 +96,8 @@ export class ToolsService extends Service {
     for (const t of systemActTools()) r.register(t);
     // Phase 3 (modification et destruction) : `dangerous`, refus des emplacements protégés AVANT toute demande (`precheck`).
     for (const t of systemDestroyTools()) r.register(t);
+    // Pinokio (ADR-022) : offerts seulement quand Jarod-OS embarque le moteur (JAROD_PINOKIO_URL) ; installer, lancer, arrêter sont `dangerous`.
+    for (const t of pinokioTools()) r.register(t);
   }
 
   /**

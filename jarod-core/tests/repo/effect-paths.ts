@@ -1,5 +1,5 @@
 /**
- * Q19 — carte des chemins d'effet (BESOINS Q19, PHASE-4 « Q19 ») : classement des 56 outils du registre et des
+ * Q19 — carte des chemins d'effet (BESOINS Q19, PHASE-4 « Q19 ») : classement des 63 outils du registre (77 sous Windows) et des
  * 31 commandes `/` tels que le kernel les charge. Le test `effect-paths.test.ts` échoue si un outil ou une
  * commande apparaît (ou disparaît) sans être classé ICI : ajouter un chemin d'effet exige de dire ce qu'il fait.
  *
@@ -107,6 +107,14 @@ export const TOOLS: Readonly<Record<string, ToolClass>> = {
   system_processes: ro,
   system_quit_app: ask("exécution"),
   system_state: ro,
+  // Pinokio (ADR-022) : enregistrés partout, offerts au modèle seulement quand Jarod-OS embarque le moteur (JAROD_PINOKIO_URL).
+  pinokio_search: ro,
+  pinokio_status: ro,
+  pinokio_logs: ro,
+  pinokio_install: ask("réseau"),
+  pinokio_run: ask("exécution"),
+  pinokio_stop: ask("exécution"),
+  pinokio_open: free("machine", "montre une page de cet ordinateur (l'interface d'une app déjà lancée) dans une fenêtre Jarod-OS : rien n'est lancé, installé ni modifié"),
 };
 
 /** Les outils qui n'existent que sous Windows (`systemReadTools` & co. rendent une liste vide ailleurs) : attendus au registre seulement là. */
