@@ -13,6 +13,7 @@ import { $spaces } from '../../../store/spaces.ts'
 import { $switches, setSwitch, SWITCH_LABELS } from '../../../store/switches.ts'
 import { errorText, markSaved, MenuDropdown, SectionTitle, SettingsGroup, SettingsRow, Stepper } from './shared.tsx'
 import { attempt } from '../../../lib/native.ts'
+import { LanguageSettings } from './LanguageSettings.tsx'
 
 export function GeneralSection() {
   const prefs = useStore($prefs)
@@ -43,6 +44,8 @@ export function GeneralSection() {
   return (
     <>
       <SectionTitle title="General" subtitle="How Jarod-OS starts and where it works." />
+
+      <LanguageSettings />
 
       <SettingsGroup title="Startup">
         <SettingsRow icon={<IconMaximize />} label="Launch fullscreen" description="Jarod-OS takes over the screen when it starts. Cmd+Ctrl+F toggles at any time." keywords="full screen start">

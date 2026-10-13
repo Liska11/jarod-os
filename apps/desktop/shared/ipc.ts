@@ -495,6 +495,10 @@ export interface OsControlReply {
 export type AudioWsKind = 'speak-stream'
 
 export interface HeraldOSPrefs {
+  /** The interface language: the system's (`auto`, the default), English or French. */
+  language?: 'auto' | 'en' | 'fr'
+  /** What the assistant is called in the interface; unset follows the backend (Jarod for the Jarod core, Hermes for Hermes). */
+  assistantName?: string
   fullscreenOnLaunch: boolean
   reduceMotion: boolean
   accent: 'blue' | 'ice' | 'violet'

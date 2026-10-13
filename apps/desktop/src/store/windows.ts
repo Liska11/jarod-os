@@ -4,6 +4,7 @@ import { afterExit, motion } from '../lib/motion.ts'
 import { type Bounds, clampBounds, DEFAULT_MIN_SIZE, type Size } from '../lib/window-geometry.ts'
 import { $prefs, updatePrefs } from './backend.ts'
 import { isMainSurface, isPanels, relayToMain } from './shell.ts'
+import { $assistantName, $locale, appText } from '../lib/i18n.ts'
 
 export type { Bounds }
 
@@ -32,12 +33,13 @@ export const $windows = atom<Record<string, OSWindow>>({})
 export const $focusedWindowId = atom<string | null>(null)
 export const $page = atom<PageId>('overview')
 /** Menu-bar title: the focused window's title. */
-export const $focusedTitle = computed([$windows, $focusedWindowId, $page], (windows, id, page) => {
+// The language and the assistant's name are dependencies so the title follows them.
+export const $focusedTitle = computed([$windows, $focusedWindowId, $page, $locale, $assistantName], (windows, id, page) => {
   if (!id || !windows[id]) {
     return 'Jarod-OS'
   }
 
-  return id === MAIN_WINDOW_ID ? appById(page).name : windows[id].title
+  return id === MAIN_WINDOW_ID ? appText(page, appById(page)).name : windows[id].title
 })
 
 let zCounter = 10

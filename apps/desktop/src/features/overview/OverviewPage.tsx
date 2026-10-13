@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { EmptyGlass, LinkAction, Section, StatusDot } from '../../components/ui/glass.tsx'
 import { cn } from '../../lib/cn.ts'
 import { greetingFor } from '../../lib/format.ts'
+import { useT } from '../../lib/i18n.ts'
 import { createChat, runSlash, sendPrompt } from '../../store/chat.ts'
 import { $threads } from '../../store/continuity.ts'
 import { $connection } from '../../store/gateway.ts'
@@ -19,9 +20,6 @@ import { TodayPanel } from './TodayPanel.tsx'
 
 const MISSIONS_SHOWN = 3
 
-const PLAN_MY_DAY_PROMPT = "Plan my day. Look at today's calendar events and my open tasks and missions, then propose a realistic schedule with priorities, time blocks and anything I should prepare for. Keep it short and actionable."
-/** Left for the person to finish; the herald-os-tailor skill tells Hermes how to make it. */
-const MAKE_THEME_DRAFT = 'Make me a Jarod-OS theme that feels like '
 
 /** Home of the main window: greeting, prompt, what is in motion and what needs the user. */
 export function OverviewPage() {
@@ -34,6 +32,7 @@ export function OverviewPage() {
   const [draft, setDraft] = useState<{ text: string; id: number }>()
   const rootRef = useRef<HTMLDivElement>(null)
   const narrow = useNarrow(rootRef, 900)
+  const { t } = useT()
 
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 60_000)
@@ -63,25 +62,25 @@ export function OverviewPage() {
           <div className="flex flex-col gap-5">
             <div className="flex items-center gap-2 text-[10.5px] font-medium tracking-[0.14em] text-fg-3 uppercase">
               <StatusDot tone={online ? 'ok' : 'warn'} pulse={!online} />
-              {online ? 'Hermes is ready' : 'Connecting to Hermes'}
+              {online ? t('overview.ready') : t('overview.connecting')}
             </div>
             <div>
               <h1 className="text-[28px] leading-tight font-semibold tracking-tight text-fg">{greeting}</h1>
-              <div className="mt-1 text-[16px] text-fg-2">{threads.length > 0 ? 'Welcome back. Here is where you left off.' : 'Your day, already in motion.'}</div>
+              <div className="mt-1 text-[16px] text-fg-2">{threads.length > 0 ? t('overview.welcomeBack') : t('overview.subtitle')}</div>
             </div>
-            <OverviewComposer disabled={!online} placeholder={online ? 'What would you like to make happen?' : 'Starting Hermes…'} onSubmit={submit} draft={draft} />
+            <OverviewComposer disabled={!online} placeholder={online ? t('overview.composer') : t('overview.starting')} onSubmit={submit} draft={draft} />
             <div className="flex flex-wrap items-center gap-2">
-              <QuickAction icon={<IconSunHigh />} label="Plan my day" disabled={!online} onClick={() => void submit(PLAN_MY_DAY_PROMPT)} />
-              <QuickAction icon={<IconTargetArrow />} label="Start a mission" disabled={!online} onClick={() => void startMission()} />
-              <QuickAction icon={<IconPalette />} label="Make a theme" disabled={!online} onClick={() => setDraft({ text: MAKE_THEME_DRAFT, id: Date.now() })} />
+              <QuickAction icon={<IconSunHigh />} label={t('overview.planMyDay')} disabled={!online} onClick={() => void submit(t('overview.planMyDay.prompt'))} />
+              <QuickAction icon={<IconTargetArrow />} label={t('overview.startMission')} disabled={!online} onClick={() => void startMission()} />
+              <QuickAction icon={<IconPalette />} label={t('overview.makeTheme')} disabled={!online} onClick={() => setDraft({ text: t('overview.makeTheme.draft'), id: Date.now() })} />
             </div>
           </div>
 
           <PickUp />
 
-          <Section title="Active missions" action={<LinkAction onClick={() => showPage('missions')}>See all</LinkAction>}>
+          <Section title={t('overview.activeMissions')} action={<LinkAction onClick={() => showPage('missions')}>{t('overview.seeAll')}</LinkAction>}>
             {missions.length === 0 ? (
-              <EmptyGlass title="No missions yet" description="Ask Hermes for something and it becomes a mission." />
+              <EmptyGlass title={t('overview.noMissions')} description={t('overview.noMissions.hint')} />
             ) : (
               <div className="stagger flex flex-col gap-3">
                 {missions.map(mission => (

@@ -1,3 +1,5 @@
+import { dateLocale, t } from './i18n.ts'
+
 const UNITS = ['B', 'KB', 'MB', 'GB', 'TB']
 
 export function formatBytes(bytes: number, digits = 1): string {
@@ -58,34 +60,34 @@ export function formatRelative(epochMsOrSeconds: number | undefined | null): str
   const minutes = Math.round(delta / 60_000)
 
   if (minutes < 1) {
-    return 'just now'
+    return t('time.justNow')
   }
 
   if (minutes < 60) {
-    return `${minutes}m ago`
+    return t('time.minutesAgo', { count: minutes })
   }
 
   const hours = Math.round(minutes / 60)
 
   if (hours < 24) {
-    return `${hours}h ago`
+    return t('time.hoursAgo', { count: hours })
   }
 
   const days = Math.round(hours / 24)
 
   if (days < 7) {
-    return `${days}d ago`
+    return t('time.daysAgo', { count: days })
   }
 
-  return new Date(ms).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+  return new Date(ms).toLocaleDateString(dateLocale(), { month: 'short', day: 'numeric' })
 }
 
 export function formatClock(date: Date): string {
-  return date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
+  return date.toLocaleTimeString(dateLocale(), { hour: '2-digit', minute: '2-digit' })
 }
 
 export function formatDate(date: Date): string {
-  return date.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })
+  return date.toLocaleDateString(dateLocale(), { weekday: 'long', month: 'long', day: 'numeric' })
 }
 
 export function truncate(text: string, max: number): string {
@@ -96,16 +98,16 @@ export function greetingFor(date: Date): string {
   const hour = date.getHours()
 
   if (hour < 5) {
-    return 'Good night'
+    return t('time.greeting.night')
   }
 
   if (hour < 12) {
-    return 'Good morning'
+    return t('time.greeting.morning')
   }
 
   if (hour < 18) {
-    return 'Good afternoon'
+    return t('time.greeting.afternoon')
   }
 
-  return 'Good evening'
+  return t('time.greeting.evening')
 }

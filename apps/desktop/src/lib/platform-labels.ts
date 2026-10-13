@@ -1,4 +1,5 @@
 import { $env } from '../store/backend.ts'
+import { t } from './i18n.ts'
 
 /** The platform a user agent string belongs to, or `unknown` (a test runner, an unusual shell). */
 export function platformOfAgent(agent: string): NodeJS.Platform | 'unknown' {
@@ -63,6 +64,11 @@ export function privacySettingsPath(kind: 'Camera' | 'Microphone' | 'Calendars',
     default:
       return 'your system’s privacy settings'
   }
+}
+
+/** "this Mac" / "this computer", in the interface's language ("ce Mac", "cet ordinateur"). */
+export function thisDevice(): string {
+  return t(hostPlatform() === 'darwin' ? 'device.this.mac' : 'device.this.computer')
 }
 
 export function revealLabel(): string {

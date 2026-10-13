@@ -1,5 +1,6 @@
 import { IconChevronRight, IconShieldCheck } from '@tabler/icons-react'
 import { GlassCard } from '../../components/ui/glass.tsx'
+import { useT } from '../../lib/i18n.ts'
 import { rest } from '../../lib/rest.ts'
 import { useBackendData } from '../../lib/use-async.ts'
 import { showPage } from '../../store/windows.ts'
@@ -15,8 +16,9 @@ export function MemoryCard() {
   const memory = useBackendData(() => rest.get<MemoryStatus>('/api/memory'))
   const count = memory.data?.builtin_files?.memory
   const known = typeof count === 'number' && count > 0
-  const label = memory.loading && !memory.data ? null : known ? 'Memory up to date' : 'Memory paused'
-  const detail = known ? `${count} ${count === 1 ? 'entry' : 'entries'} remembered` : memory.error ? 'Hermes is not reachable yet' : 'Nothing remembered yet'
+  const { t, tn } = useT()
+  const label = memory.loading && !memory.data ? null : known ? t('memory.upToDate') : t('memory.paused')
+  const detail = known ? tn('memory.count', count) : memory.error ? t('memory.unreachable') : t('memory.empty')
 
   return (
     <GlassCard as="button" interactive onClick={() => showPage('memory')} className="flex w-full items-center gap-3 p-3">

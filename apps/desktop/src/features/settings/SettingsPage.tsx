@@ -3,6 +3,7 @@ import { IconAccessible, IconApps, IconBell, IconCircleCheckFilled, IconPuzzle, 
 import { type ComponentType, useEffect, useState } from 'react'
 import { GlassButton, PageHeader, SearchField } from '../../components/ui/glass.tsx'
 import { cn } from '../../lib/cn.ts'
+import { type MessageKey, useT } from '../../lib/i18n.ts'
 import { pauseAllAgents } from '../../store/agents-control.ts'
 import { $chats } from '../../store/chat.ts'
 import { AboutSection } from './sections/AboutSection.tsx'
@@ -74,6 +75,7 @@ export function SettingsPage() {
   const [section, setSection] = useState<SectionId>('agents')
   const [query, setQuery] = useState('')
   const searching = query.trim().length > 0
+  const { t } = useT()
 
   useEffect(applyAccessibility, [])
 
@@ -97,10 +99,10 @@ export function SettingsPage() {
 
   return (
     <div className="page-enter flex h-full flex-col">
-      <PageHeader icon="settings" title="Settings" actions={<SearchField value={query} onChange={setQuery} placeholder="Search settings" className="w-[300px]" />} />
+      <PageHeader icon="settings" title={t('settings.title')} actions={<SearchField value={query} onChange={setQuery} placeholder={t('settings.search')} className="w-[300px]" />} />
 
       <div className="flex min-h-0 flex-1 gap-4 px-6 pb-4">
-        <nav className="flex w-[170px] shrink-0 flex-col gap-0.5" aria-label="Settings sections">
+        <nav className="flex w-[170px] shrink-0 flex-col gap-0.5" aria-label={t('settings.sections')}>
           {SECTIONS.map(item => {
             const active = !searching && item.id === section
             const Icon = item.icon
@@ -117,7 +119,7 @@ export function SettingsPage() {
                 className={cn('flex h-8 items-center gap-2.5 rounded-lg px-2.5 text-left text-[13px] transition-colors duration-150', active ? 'bg-accent text-accent-fg shadow-[0_4px_16px_rgba(47,125,255,.35)]' : 'text-fg-2 hover:bg-white/6 hover:text-fg')}
               >
                 <Icon size={17} stroke={1.7} />
-                <span className="truncate">{item.label}</span>
+                <span className="truncate">{t(`settings.${item.id}` as MessageKey)}</span>
               </button>
             )
           })}
@@ -138,8 +140,8 @@ export function SettingsPage() {
                     )
                   })}
                   <div data-empty="" className="hidden flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-line px-6 py-10 text-center">
-                    <div className="text-[13px] text-fg-2">No settings match “{query.trim()}”</div>
-                    <div className="text-[12px] text-fg-3">Try a different word, or browse the sections on the left.</div>
+                    <div className="text-[13px] text-fg-2">{t('settings.noMatch', { query: query.trim() })}</div>
+                    <div className="text-[12px] text-fg-3">{t('settings.noMatch.hint')}</div>
                   </div>
                 </div>
               ) : (
@@ -166,6 +168,7 @@ function ActiveSection({ id }: { id: SectionId }) {
 function Footer() {
   const savedAt = useStore($settingsSavedAt)
   const [showSaved, setShowSaved] = useState(false)
+  const { t } = useT()
 
   useEffect(() => {
     if (!savedAt) {
@@ -182,7 +185,7 @@ function Footer() {
     <div className="flex h-11 shrink-0 items-center justify-between gap-3 pt-2">
       <div className={cn('flex items-center gap-1.5 text-[12px] text-fg-2 transition-opacity duration-300', showSaved ? 'opacity-100' : 'opacity-0')} aria-live="polite">
         <IconCircleCheckFilled size={16} className="text-ok" />
-        Changes saved
+        {t('settings.saved')}
       </div>
       <PauseAllAgents />
     </div>

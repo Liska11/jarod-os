@@ -4,6 +4,7 @@ import { GlassButton, GlassCard, Section } from '../../components/ui/glass.tsx'
 import { openStoredSession } from '../../store/chat.ts'
 import { $reviewMissions, markReviewed } from '../../store/missions.ts'
 import { $pendingRequests, type PendingRequest } from '../../store/requests.ts'
+import { type MessageKey, t, useT } from '../../lib/i18n.ts'
 import { showPage } from '../../store/windows.ts'
 import { FileThumb, IconTile, Quiet } from './shared.tsx'
 
@@ -12,29 +13,30 @@ import { FileThumb, IconTile, Quiet } from './shared.tsx'
  * the RequestHost on the Hermes page) and missions whose result is waiting to be looked at.
  */
 
-const REQUEST_COPY: Record<PendingRequest['kind'], { title: string; icon: React.ReactNode }> = {
-  approval: { title: 'Approval needed', icon: <IconShieldCheck /> },
-  clarify: { title: 'Hermes has a question', icon: <IconMessageQuestion /> },
-  sudo: { title: 'Password needed', icon: <IconKey /> },
-  secret: { title: 'Password needed', icon: <IconKey /> }
+const REQUEST_COPY: Record<PendingRequest['kind'], { title: MessageKey; icon: React.ReactNode }> = {
+  approval: { title: 'attention.approval', icon: <IconShieldCheck /> },
+  clarify: { title: 'attention.question', icon: <IconMessageQuestion /> },
+  sudo: { title: 'attention.password', icon: <IconKey /> },
+  secret: { title: 'attention.password', icon: <IconKey /> }
 }
 
 function describe(entry: PendingRequest): string {
   const params = entry.request.params as Record<string, unknown>
   const text = [params.description, params.command, params.question, params.prompt, params.tool_name].find((v): v is string => typeof v === 'string' && v.trim().length > 0)
 
-  return text ?? 'Hermes is waiting for you.'
+  return text ?? t('attention.waiting')
 }
 
 export function Attention() {
   const pending = useStore($pendingRequests)
   const reviews = useStore($reviewMissions)
   const empty = pending.length === 0 && reviews.length === 0
+  const { t } = useT()
 
   return (
-    <Section title="Needs your attention">
+    <Section title={t('today.attention')}>
       {empty ? (
-        <Quiet>Nothing waiting on you.</Quiet>
+        <Quiet>{t('attention.empty')}</Quiet>
       ) : (
         <div className="stagger flex flex-col gap-2.5">
           {pending.map(entry => {
@@ -45,14 +47,14 @@ export function Attention() {
                 <div className="flex items-start gap-2.5">
                   <IconTile size={34}>{copy.icon}</IconTile>
                   <div className="min-w-0 flex-1">
-                    <div className="text-[13px] font-medium text-fg">{copy.title}</div>
+                    <div className="text-[13px] font-medium text-fg">{t(copy.title)}</div>
                     <div className="truncate text-[12px] text-fg-3" title={describe(entry)}>
                       {describe(entry)}
                     </div>
                   </div>
                 </div>
                 <GlassButton size="sm" variant="primary" className="self-start" onClick={() => showPage('hermes')}>
-                  Review
+                  {t('attention.review')}
                   <IconArrowRight />
                 </GlassButton>
               </GlassCard>
@@ -69,9 +71,9 @@ export function Attention() {
                   </IconTile>
                   <div className="min-w-0 flex-1">
                     <div className="truncate text-[13px] font-medium text-fg" title={mission.title}>
-                      {mission.title} is ready
+                      {t('attention.ready', { name: mission.title })}
                     </div>
-                    <div className="text-[12px] text-fg-3">Preview the update before it goes live.</div>
+                    <div className="text-[12px] text-fg-3">{t('attention.preview')}</div>
                   </div>
                   {artifact?.kind === 'file' && <FileThumb path={artifact.path} size={128} className="size-11 shrink-0" />}
                 </div>
@@ -85,7 +87,7 @@ export function Attention() {
                     markReviewed(mission.id)
                   }}
                 >
-                  Review changes
+                  {t('attention.reviewChanges')}
                   <IconArrowRight />
                 </GlassButton>
               </GlassCard>

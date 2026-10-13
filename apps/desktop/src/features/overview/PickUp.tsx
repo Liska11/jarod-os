@@ -3,7 +3,8 @@ import { IconBrain, IconCode, IconFileText, IconFolder, IconMessageCircle, IconP
 import type { ContinuityItem, ContinuityThread } from '../../../shared/ipc.ts'
 import { EmptyGlass, GlassButton, GlassCard, LinkAction, Section } from '../../components/ui/glass.tsx'
 import { formatRelative } from '../../lib/format.ts'
-import { deviceNoun } from '../../lib/platform-labels.ts'
+import { useT } from '../../lib/i18n.ts'
+import { thisDevice } from '../../lib/platform-labels.ts'
 import { $catchUp, $continuity, $threads, continueThread, dismissThread, openThreadItem, refreshThreads, setContinuityEnabled, startNextStep } from '../../store/continuity.ts'
 import { $connection } from '../../store/gateway.ts'
 import { IconTile, Shimmer } from './shared.tsx'
@@ -21,6 +22,7 @@ export function PickUp() {
   const threads = useStore($threads)
   const status = useStore($catchUp)
   const online = useStore($connection) === 'open'
+  const { t } = useT()
 
   if (continuity.enabled === false) {
     return null
@@ -36,14 +38,14 @@ export function PickUp() {
   const action = (
     <div className="flex items-center gap-3">
       <span className="text-[11.5px] text-fg-4" aria-live="polite">
-        {thinking ? 'Hermes is catching up…' : continuity.updatedAt ? `Updated ${formatRelative(continuity.updatedAt)}` : ''}
+        {thinking ? t('pickup.catchingUp') : continuity.updatedAt ? t('pickup.updated', { when: formatRelative(continuity.updatedAt) }) : ''}
       </span>
-      {!thinking && online && <LinkAction onClick={() => void refreshThreads({ force: true })}>Refresh</LinkAction>}
+      {!thinking && online && <LinkAction onClick={() => void refreshThreads({ force: true })}>{t('pickup.refresh')}</LinkAction>}
     </div>
   )
 
   return (
-    <Section title="Pick up where you left off" action={action}>
+    <Section title={t('pickup.title')} action={action}>
       {threads.length > 0 ? (
         <div className="stagger flex flex-col gap-3">
           {threads.map(thread => (
@@ -55,18 +57,18 @@ export function PickUp() {
       ) : status.phase === 'error' ? (
         <EmptyGlass
           className="min-h-28"
-          title="Hermes could not catch up"
+          title={t('pickup.failed')}
           description={status.message}
           action={
             online && (
               <GlassButton size="sm" onClick={() => void refreshThreads({ force: true })}>
-                Try again
+                {t('pickup.tryAgain')}
               </GlassButton>
             )
           }
         />
       ) : (
-        <EmptyGlass className="min-h-28" title="Nothing to pick up yet" description={`When you open Jarod-OS or come back to this ${deviceNoun()}, Hermes suggests where to continue.`} />
+        <EmptyGlass className="min-h-28" title={t('pickup.empty')} description={t('pickup.empty.hint', { thisDevice: thisDevice() })} />
       )}
     </Section>
   )
@@ -74,6 +76,7 @@ export function PickUp() {
 
 function ThreadCard({ thread, online }: { thread: ContinuityThread; online: boolean }) {
   const lead = thread.items.find(item => item.kind === 'project') ?? thread.items[0]
+  const { t } = useT()
 
   return (
     <GlassCard className="group flex flex-col gap-3 p-4" data-os-target={`thread:${thread.id}`}>
@@ -86,8 +89,8 @@ function ThreadCard({ thread, online }: { thread: ContinuityThread; online: bool
             </div>
             <button
               type="button"
-              aria-label={`Dismiss ${thread.title}`}
-              title="Dismiss"
+              aria-label={t('pickup.dismissThread', { name: thread.title })}
+              title={t('pickup.dismiss')}
               onClick={() => void dismissThread(thread.id)}
               className="ml-auto flex size-7 shrink-0 items-center justify-center rounded-lg text-fg-4 opacity-0 transition-opacity duration-120 group-hover:opacity-100 hover:bg-white/8 hover:text-fg focus-visible:opacity-100"
             >
@@ -112,9 +115,9 @@ function ThreadCard({ thread, online }: { thread: ContinuityThread; online: bool
           ))}
           <div className="ml-auto flex items-center gap-2">
             {thread.items.length > 0 && (
-              <GlassButton size="sm" aria-label={`Continue ${thread.title}`} onClick={() => void continueThread(thread)}>
+              <GlassButton size="sm" aria-label={t('pickup.continueThread', { name: thread.title })} onClick={() => void continueThread(thread)}>
                 <IconPlayerPlay />
-                Continue
+                {t('pickup.continue')}
               </GlassButton>
             )}
             {thread.next && (
@@ -145,8 +148,10 @@ function ItemChip({ item }: { item: ContinuityItem }) {
 }
 
 function ThinkingCards() {
+  const { t } = useT()
+
   return (
-    <div className="flex flex-col gap-3" role="status" aria-label="Hermes is catching up">
+    <div className="flex flex-col gap-3" role="status" aria-label={t('pickup.catchingUp')}>
       {[0, 1].map(index => (
         <GlassCard key={index} className="flex gap-3.5 p-4">
           <Shimmer className="size-10 rounded-xl" />
@@ -163,23 +168,23 @@ function ThinkingCards() {
 
 /** First run: the catch-up sends names to the model provider, so it starts only when the user says so. */
 function PickUpOffer() {
+  const { t } = useT()
+
   return (
     <GlassCard className="flex items-center gap-4 p-4">
       <IconTile size={40}>
         <IconBrain />
       </IconTile>
       <div className="min-w-0 flex-1">
-        <div className="text-[14px] font-semibold text-fg">Pick up where you left off</div>
-        <div className="mt-0.5 text-[12.5px] leading-snug text-fg-3">
-          When you open Jarod-OS or come back after a break, Hermes looks at the names of your recent documents, projects, chats and calendar events and suggests where to continue. Never file contents or your screen.
-        </div>
+        <div className="text-[14px] font-semibold text-fg">{t('pickup.title')}</div>
+        <div className="mt-0.5 text-[12.5px] leading-snug text-fg-3">{t('pickup.offer')}</div>
       </div>
       <div className="flex shrink-0 items-center gap-2">
         <GlassButton size="sm" variant="ghost" onClick={() => void setContinuityEnabled(false)}>
-          Not now
+          {t('pickup.notNow')}
         </GlassButton>
         <GlassButton size="sm" variant="primary" onClick={() => void setContinuityEnabled(true)}>
-          Turn on
+          {t('pickup.turnOn')}
         </GlassButton>
       </div>
     </GlassCard>

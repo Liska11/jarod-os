@@ -5,6 +5,7 @@ import type { RecentFile } from '../../../shared/ipc.ts'
 import { isViewable } from '../../../shared/viewer.ts'
 import { GlassCard, LinkAction, MoreButton, Section } from '../../components/ui/glass.tsx'
 import { formatRelative } from '../../lib/format.ts'
+import { t, useT } from '../../lib/i18n.ts'
 import { useLocalData } from '../../lib/use-async.ts'
 import { $prefs } from '../../store/backend.ts'
 import { notify } from '../../store/notifications.ts'
@@ -26,16 +27,16 @@ function openRecent(file: RecentFile): void {
 }
 
 function menuFor(file: RecentFile, onRemove: () => void): MenuItemDef[] {
-  const items: MenuItemDef[] = [{ id: 'open', label: 'Open', icon: <IconAppWindow />, onSelect: () => openRecent(file) }]
+  const items: MenuItemDef[] = [{ id: 'open', label: t('recent.open'), icon: <IconAppWindow />, onSelect: () => openRecent(file) }]
 
   if (file.kind === 'file' && isViewable(file.path)) {
-    items.push({ id: 'open-app', label: 'Open in its app', icon: <IconExternalLink />, onSelect: () => void window.heraldOS.fs.openPath(file.path).catch(error => notify({ title: `Could not open "${file.name}"`, body: String(error), level: 'error' })) })
+    items.push({ id: 'open-app', label: t('recent.openInApp'), icon: <IconExternalLink />, onSelect: () => void window.heraldOS.fs.openPath(file.path).catch(error => notify({ title: t('recent.openFailed', { name: file.name }), body: String(error), level: 'error' })) })
   }
 
   items.push(
-    { id: 'show', label: 'Show in Files', icon: <IconFolderOpen />, onSelect: () => void runCommand('files.show', { path: file.path }, { source: 'ui' }) },
-    { id: 'copy', label: 'Copy path', icon: <IconCopy />, onSelect: () => copyPath(file.path) },
-    { id: 'remove', label: 'Remove from Recents', icon: <IconEyeOff />, onSelect: onRemove, dividerBefore: true }
+    { id: 'show', label: t('recent.showInFiles'), icon: <IconFolderOpen />, onSelect: () => void runCommand('files.show', { path: file.path }, { source: 'ui' }) },
+    { id: 'copy', label: t('recent.copyPath'), icon: <IconCopy />, onSelect: () => copyPath(file.path) },
+    { id: 'remove', label: t('recent.remove'), icon: <IconEyeOff />, onSelect: onRemove, dividerBefore: true }
   )
 
   return items
@@ -48,14 +49,15 @@ export function RecentWork() {
   const [menuFor_, setMenuFor] = useState<string | null>(null)
   const [removed, setRemoved] = useState<ReadonlySet<string>>(new Set())
   const files = (recent.data ?? []).filter(file => !removed.has(file.path)).slice(0, SHOWN)
+  const { t } = useT()
 
   const remove = (file: RecentFile) => {
     setRemoved(new Set([...removed, file.path]))
-    removeFromRecents(file.path).catch(error => notify({ title: 'Could not remove from Recents', body: String(error), level: 'error' }))
+    removeFromRecents(file.path).catch(error => notify({ title: t('recent.removeFailed'), body: String(error), level: 'error' }))
   }
 
   return (
-    <Section title="Recent work" action={<LinkAction onClick={() => showPage('files')}>See all</LinkAction>}>
+    <Section title={t('recent.title')} action={<LinkAction onClick={() => showPage('files')}>{t('overview.seeAll')}</LinkAction>}>
       {recent.loading && !recent.data ? (
         <div className="grid grid-cols-2 gap-3">
           {Array.from({ length: SHOWN }, (_, i) => (
@@ -63,11 +65,11 @@ export function RecentWork() {
           ))}
         </div>
       ) : files.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-line px-4 py-5 text-center text-[12.5px] text-fg-3">{recent.error ? 'Recent files are unavailable right now.' : 'Nothing recent yet. Files you work on will show up here.'}</div>
+        <div className="rounded-xl border border-dashed border-line px-4 py-5 text-center text-[12.5px] text-fg-3">{recent.error ? t('recent.unavailable') : t('recent.empty')}</div>
       ) : (
         <div className="stagger grid grid-cols-2 gap-3">
           {files.map(file => {
-            const kind = file.kind === 'directory' ? 'Folder' : file.extension ? file.extension.replace(/^\./, '').toUpperCase() : 'File'
+            const kind = file.kind === 'directory' ? t('recent.folder') : file.extension ? file.extension.replace(/^\./, '').toUpperCase() : t('recent.file')
             const edited = formatRelative(file.modifiedAt)
             const open = menuFor_ === file.path
 
@@ -87,11 +89,11 @@ export function RecentWork() {
                     </div>
                     <div className="truncate text-[11.5px] text-fg-3">
                       {kind}
-                      {edited ? ` · Edited ${edited}` : ''}
+                      {edited ? ` · ${t('recent.edited', { when: edited })}` : ''}
                     </div>
                   </div>
                   <MoreButton
-                    aria-label={`More actions for ${file.name}`}
+                    aria-label={t('recent.more', { name: file.name })}
                     aria-expanded={open}
                     onClick={event => {
                       event.stopPropagation()

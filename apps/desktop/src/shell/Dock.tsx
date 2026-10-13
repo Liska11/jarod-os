@@ -5,6 +5,7 @@ import { AppGlyph, HermesAvatar } from '../components/app-icon.tsx'
 import { cn } from '../lib/cn.ts'
 import { reducedMotion } from '../lib/motion.ts'
 import { trashTarget } from '../../shared/trash.ts'
+import { useT } from '../lib/i18n.ts'
 import { hostPlatform } from '../lib/platform-labels.ts'
 import { $env, $prefs } from '../store/backend.ts'
 import { notify } from '../store/notifications.ts'
@@ -90,6 +91,7 @@ export function Dock() {
   const revealed = useDockReveal(autoHide)
   const envPlatform = useStore($env)?.platform
   const platform = envPlatform ?? hostPlatform()
+  const { t, assistant } = useT()
   const trashPath = trashTarget(platform)
 
   const main = windows[MAIN_WINDOW_ID]
@@ -116,7 +118,7 @@ export function Dock() {
     const list: DockItem[] = [
       {
         id: 'hermes',
-        label: 'Hermes',
+        label: assistant,
         render: () => <HermesAvatar size={44} rounded={11} />,
         onClick: openHermes,
         running: Boolean(main) && main.phase !== 'minimized'
@@ -128,7 +130,7 @@ export function Dock() {
     for (const pin of pinnedFor(platform)) {
       if (pin.label === 'Files') {
         // Files is always Jarod-OS's own page; borrow the host file manager's icon when it has one.
-        list.push({ id: 'files', label: 'Files', render: () => <NativeIcon src={iconFor(findApp(pin.names)?.path)} fallback="files" />, onClick: () => showPage('files') })
+        list.push({ id: 'files', label: t('app.files'), render: () => <NativeIcon src={iconFor(findApp(pin.names)?.path)} fallback="files" />, onClick: () => showPage('files') })
 
         continue
       }
@@ -140,12 +142,12 @@ export function Dock() {
       }
     }
 
-    list.push({ id: 'applications', label: 'Applications', render: () => <span className="icon-tile size-11 rounded-[11px]"><AppGlyph id="grid" size={22} /></span>, onClick: () => $applicationsOpen.set(true) })
-    list.push({ id: 'trash', label: 'Trash', render: () => <span className="flex size-11 items-center justify-center rounded-[11px] bg-white/6 text-fg-2"><AppGlyph id="trash" size={22} /></span>, onClick: () => void attempt('open the Trash', () => window.heraldOS.fs.openPath(trashPath)) })
+    list.push({ id: 'applications', label: t('dock.applications'), render: () => <span className="icon-tile size-11 rounded-[11px]"><AppGlyph id="grid" size={22} /></span>, onClick: () => $applicationsOpen.set(true) })
+    list.push({ id: 'trash', label: platform === 'win32' ? t('dock.recycleBin') : t('dock.trash'), render: () => <span className="flex size-11 items-center justify-center rounded-[11px] bg-white/6 text-fg-2"><AppGlyph id="trash" size={22} /></span>, onClick: () => void attempt('open the Trash', () => window.heraldOS.fs.openPath(trashPath)) })
 
     return list
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [apps, iconFor, main?.phase, platform])
+  }, [apps, iconFor, main?.phase, platform, t, assistant])
 
   const barRef = useRef<HTMLDivElement>(null)
   const { onMove, onLeave } = useDockMagnification(barRef)

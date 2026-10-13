@@ -8,6 +8,7 @@ import { formatBytes } from '../../lib/format.ts'
 import { useLocalData } from '../../lib/use-async.ts'
 import { useSystemStats } from '../../store/system.ts'
 import { openApp } from '../../store/windows.ts'
+import { t, useT } from '../../lib/i18n.ts'
 import { hostPlatform } from '../../lib/platform-labels.ts'
 import { RECYCLE_BIN } from '../../../shared/trash.ts'
 import { $home, $location, DRAG_MIME, joinPath, type Location, moveItem, navigate, sameLocation } from './files-store.ts'
@@ -37,20 +38,20 @@ async function resolvePlaces(home: string, platform: NodeJS.Platform | 'unknown'
   const projects = homeNames.has('Projects') ? joinPath(home, 'Projects') : homeNames.has('Apps') ? joinPath(home, 'Apps') : home
   const shared = mobileDocs.has('com~apple~CloudDocs') ? joinPath(iCloudParent, 'com~apple~CloudDocs') : homeNames.has('Public') ? joinPath(home, 'Public') : null
   const places: Place[] = [
-    { id: 'recent', label: 'Recent', icon: <IconClock />, location: { kind: 'recent' } },
-    { id: 'favorites', label: 'Favorites', icon: <IconStar />, location: { kind: 'favorites' } },
-    { id: 'projects', label: 'Projects', icon: <IconFolder />, location: { kind: 'dir', path: projects } },
-    { id: 'downloads', label: 'Downloads', icon: <IconDownload />, location: { kind: 'dir', path: joinPath(home, 'Downloads') } }
+    { id: 'recent', label: t('files.recent'), icon: <IconClock />, location: { kind: 'recent' } },
+    { id: 'favorites', label: t('files.favorites'), icon: <IconStar />, location: { kind: 'favorites' } },
+    { id: 'projects', label: t('files.projects'), icon: <IconFolder />, location: { kind: 'dir', path: projects } },
+    { id: 'downloads', label: t('files.downloads'), icon: <IconDownload />, location: { kind: 'dir', path: joinPath(home, 'Downloads') } }
   ]
 
   if (shared) {
-    places.push({ id: 'shared', label: 'Shared', icon: <IconUsers />, location: { kind: 'dir', path: shared } })
+    places.push({ id: 'shared', label: t('files.shared'), icon: <IconUsers />, location: { kind: 'dir', path: shared } })
   }
 
   if (platform === 'win32') {
-    places.push({ id: 'trash', label: 'Recycle Bin', icon: <IconTrash />, location: { kind: 'dir', path: RECYCLE_BIN }, external: RECYCLE_BIN })
+    places.push({ id: 'trash', label: t('files.recycleBin'), icon: <IconTrash />, location: { kind: 'dir', path: RECYCLE_BIN }, external: RECYCLE_BIN })
   } else {
-    places.push({ id: 'trash', label: 'Trash', icon: <IconTrash />, location: { kind: 'dir', path: mac ? joinPath(home, '.Trash') : joinPath(home, '.local/share/Trash/files') } })
+    places.push({ id: 'trash', label: t('files.trash'), icon: <IconTrash />, location: { kind: 'dir', path: mac ? joinPath(home, '.Trash') : joinPath(home, '.local/share/Trash/files') } })
   }
 
   return places
@@ -60,13 +61,14 @@ export function FilesSidebar() {
   const home = useStore($home)
   const location = useStore($location)
   const stats = useSystemStats()
-  const places = useLocalData(() => (home ? resolvePlaces(home, hostPlatform()) : Promise.resolve([] as Place[])), [home])
+  const { locale } = useT()
+  const places = useLocalData(() => (home ? resolvePlaces(home, hostPlatform()) : Promise.resolve([] as Place[])), [home, locale])
   const [dropTarget, setDropTarget] = useState<string | null>(null)
   const disk = stats?.disks[0]
   const percent = disk && disk.total > 0 ? (disk.used / disk.total) * 100 : 0
 
   return (
-    <aside className="flex w-[150px] shrink-0 flex-col justify-between" aria-label="Places">
+    <aside className="flex w-[150px] shrink-0 flex-col justify-between" aria-label={t('files.places')}>
       <nav className="flex flex-col gap-0.5">
         {!places.data && home && Array.from({ length: 6 }, (_, index) => <div key={index} className="shimmer mx-1 my-1 h-6 rounded-md" />)}
         {(places.data ?? []).map(place => {

@@ -3,6 +3,7 @@ import { IconLayoutSidebarLeftCollapse, IconLayoutSidebarLeftExpand, IconPlus } 
 import { useRef, useState } from 'react'
 import { AppGlyph, HermesAvatar } from '../components/app-icon.tsx'
 import { cn } from '../lib/cn.ts'
+import { appText, useT } from '../lib/i18n.ts'
 import { shortcutLabel } from '../lib/platform-labels.ts'
 import { $sidebar, SIDEBAR_COLLAPSED, SIDEBAR_MAX, SIDEBAR_MIN, SIDEBAR_SNAP, setSidebarCollapsed, setSidebarWidth, toggleSidebar } from '../store/sidebar.ts'
 import { $activeSpace, $spaces, addSpace, setActiveSpace } from '../store/spaces.ts'
@@ -18,6 +19,7 @@ export function Sidebar() {
   const [adding, setAdding] = useState(false)
   const [draft, setDraft] = useState('')
   const [dragging, setDragging] = useState(false)
+  const { t, assistant } = useT()
   const drag = useRef<{ startX: number; startWidth: number; wasCollapsed: boolean } | null>(null)
 
   const startResize = (event: React.PointerEvent<HTMLDivElement>) => {
@@ -76,15 +78,16 @@ export function Sidebar() {
         <HermesAvatar size={collapsed ? 36 : 44} rounded={collapsed ? 9 : 11} />
         {!collapsed && (
           <>
-            <div className="mt-2.5 text-[15px] font-semibold leading-tight text-fg">Hermes</div>
-            <div className="mt-0.5 text-[11px] leading-snug text-fg-3 italic">A more capable you. Always.</div>
+            <div className="mt-2.5 text-[15px] font-semibold leading-tight text-fg">{assistant}</div>
+            <div className="mt-0.5 text-[11px] leading-snug text-fg-3 italic">{t('sidebar.tagline')}</div>
           </>
         )}
       </div>
 
-      <nav className={cn('relative mt-5 flex flex-col gap-0.5', collapsed && 'w-full items-center')} aria-label="Pages">
+      <nav className={cn('relative mt-5 flex flex-col gap-0.5', collapsed && 'w-full items-center')} aria-label={t('sidebar.pages')}>
         {PAGES.map(def => {
           const activePage = def.id === page
+          const name = appText(def.id, def).name
 
           return (
             <button
@@ -92,7 +95,7 @@ export function Sidebar() {
               type="button"
               onClick={() => showPage(def.id)}
               aria-current={activePage ? 'page' : undefined}
-              aria-label={collapsed ? def.name : undefined}
+              aria-label={collapsed ? name : undefined}
               className={cn(
                 'side-item group relative flex h-8 items-center rounded-lg text-[12.5px] transition-colors duration-150',
                 collapsed ? 'w-9 justify-center' : 'gap-2.5 px-2.5',
@@ -100,7 +103,7 @@ export function Sidebar() {
               )}
             >
               <AppGlyph id={def.icon} size={16} stroke={1.9} className={activePage ? 'text-accent-fg' : 'text-fg-2 group-hover:text-fg'} />
-              {collapsed ? <span className="side-tip">{def.name}</span> : <span className="truncate">{def.name}</span>}
+              {collapsed ? <span className="side-tip">{name}</span> : <span className="truncate">{name}</span>}
             </button>
           )
         })}
@@ -118,7 +121,7 @@ export function Sidebar() {
                 key={space.id}
                 type="button"
                 onClick={() => setActiveSpace(space.id)}
-                aria-label={`${space.name} space`}
+                aria-label={t('sidebar.space', { name: space.name })}
                 aria-pressed={on}
                 className={cn('side-item group relative flex size-7 items-center justify-center rounded-lg transition-colors duration-150', on ? 'bg-white/14' : 'hover:bg-white/8')}
               >
@@ -129,7 +132,7 @@ export function Sidebar() {
           })}
           <button
             type="button"
-            aria-label="Add space"
+            aria-label={t('sidebar.addSpace')}
             onClick={() => {
               setSidebarCollapsed(false)
               setAdding(true)
@@ -137,14 +140,14 @@ export function Sidebar() {
             className="side-item group relative flex size-7 items-center justify-center rounded-lg text-fg-3 hover:bg-white/10 hover:text-fg"
           >
             <IconPlus size={13} />
-            <span className="side-tip">Add space</span>
+            <span className="side-tip">{t('sidebar.addSpace')}</span>
           </button>
         </div>
       ) : (
         <>
           <div className="flex items-center justify-between px-2">
-            <span className="text-[10px] font-semibold tracking-[0.14em] text-fg-3 uppercase">Spaces</span>
-            <button type="button" aria-label="Add space" onClick={() => setAdding(true)} className="flex size-5 items-center justify-center rounded text-fg-3 hover:bg-white/10 hover:text-fg">
+            <span className="text-[10px] font-semibold tracking-[0.14em] text-fg-3 uppercase">{t('sidebar.spaces')}</span>
+            <button type="button" aria-label={t('sidebar.addSpace')} onClick={() => setAdding(true)} className="flex size-5 items-center justify-center rounded text-fg-3 hover:bg-white/10 hover:text-fg">
               <IconPlus size={13} />
             </button>
           </div>
@@ -185,7 +188,7 @@ export function Sidebar() {
                     setDraft('')
                   }
                 }}
-                placeholder="New space"
+                placeholder={t('sidebar.newSpace')}
                 className="glass-input mt-1 h-7 rounded-lg px-2.5 text-[12.5px] outline-none"
               />
             )}
@@ -196,19 +199,19 @@ export function Sidebar() {
       <button
         type="button"
         onClick={toggleSidebar}
-        aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        title={`${collapsed ? 'Expand' : 'Collapse'} sidebar (${shortcutLabel('\\')})`}
+        aria-label={collapsed ? t('sidebar.expandSidebar') : t('sidebar.collapseSidebar')}
+        title={t('sidebar.toggleHint', { action: collapsed ? t('sidebar.expandSidebar') : t('sidebar.collapseSidebar'), shortcut: shortcutLabel('\\') })}
         className={cn('side-item group relative mt-auto flex h-8 items-center rounded-lg text-fg-3 transition-colors duration-150 hover:bg-white/8 hover:text-fg', collapsed ? 'w-9 justify-center' : 'gap-2.5 px-2.5 text-[12px]')}
       >
         {collapsed ? <IconLayoutSidebarLeftExpand size={16} stroke={1.9} /> : <IconLayoutSidebarLeftCollapse size={16} stroke={1.9} />}
-        {collapsed ? <span className="side-tip">Expand sidebar</span> : <span>Collapse</span>}
+        {collapsed ? <span className="side-tip">{t('sidebar.expandSidebar')}</span> : <span>{t('sidebar.collapse')}</span>}
       </button>
 
       {/* Resize handle: drag to resize, drag past the snap point to collapse, double-click to toggle. */}
       <div
         role="separator"
         aria-orientation="vertical"
-        aria-label="Resize sidebar"
+        aria-label={t('sidebar.resize')}
         aria-valuemin={SIDEBAR_MIN}
         aria-valuemax={SIDEBAR_MAX}
         aria-valuenow={collapsed ? SIDEBAR_COLLAPSED : width}

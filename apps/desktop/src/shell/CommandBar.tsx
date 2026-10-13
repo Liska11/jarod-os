@@ -5,6 +5,7 @@ import { useMemo, useState } from 'react'
 import { AppGlyph, HermesAvatar } from '../components/app-icon.tsx'
 import { Kbd } from '../components/ui/primitives.tsx'
 import { cn } from '../lib/cn.ts'
+import { appText, useT } from '../lib/i18n.ts'
 import { shortcutLabel } from '../lib/platform-labels.ts'
 import { matchIntent } from '../lib/voice/intents.ts'
 import { openStoredSession, runSlash, sendPrompt } from '../store/chat.ts'
@@ -102,11 +103,12 @@ export function CommandPalette({ onClose, standalone = false, onApplications, cl
     close()
   }
 
+  const { t } = useT()
   const trimmed = query.trim()
   const isSlash = trimmed.startsWith('/')
   const needle = trimmed.toLowerCase()
   const matches = (label: string) => !needle || label.toLowerCase().includes(needle)
-  const filteredApps = useMemo(() => (isSlash ? [] : LAUNCHABLE_APPS.filter(app => matches(app.name))), [isSlash, needle])
+  const filteredApps = useMemo(() => (isSlash ? [] : LAUNCHABLE_APPS.filter(app => matches(appText(app.id, app).name) || matches(app.name))), [isSlash, needle])
   const filteredSessions = useMemo(() => (isSlash ? [] : sessions.filter(session => matches(session.title ?? session.preview ?? '')).slice(0, 8)), [isSlash, needle, sessions])
   const filteredSlash = useMemo(() => {
     if (!isSlash) {
@@ -209,7 +211,7 @@ export function CommandPalette({ onClose, standalone = false, onApplications, cl
         )}
 
         {filteredNative.length > 0 && (
-          <Command.Group heading="Open app">
+          <Command.Group heading={t('command.openApp')}>
             {filteredNative.map(app => (
               <Item
                 key={app.path}
@@ -219,7 +221,7 @@ export function CommandPalette({ onClose, standalone = false, onApplications, cl
                   close()
                 }}
                 icon={<IconArrowRight size={15} />}
-                hint="Launch"
+                hint={t('command.launch')}
               >
                 {app.name}
               </Item>
@@ -228,7 +230,7 @@ export function CommandPalette({ onClose, standalone = false, onApplications, cl
         )}
 
         {filteredApps.length > 0 && (
-          <Command.Group heading="Go to">
+          <Command.Group heading={t('command.goTo')}>
             {filteredApps.map(app => (
               <Item
                 key={app.id}
@@ -240,11 +242,11 @@ export function CommandPalette({ onClose, standalone = false, onApplications, cl
                 icon={<AppGlyph id={app.icon} size={15} />}
                 hint={app.shortcut ? shortcutLabel(app.shortcut) : undefined}
               >
-                {app.name}
+                {appText(app.id, app).name}
               </Item>
             ))}
             <Item value="page:applications" onSelect={applications} icon={<AppGlyph id="grid" size={15} />} hint={shortcutLabel('A', { shift: true })}>
-              Applications
+              {t('dock.applications')}
             </Item>
           </Command.Group>
         )}

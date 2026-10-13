@@ -3,6 +3,7 @@ import { IconAlertTriangle, IconDownload, IconFileText, IconFolder, IconInfoCirc
 import { useState } from 'react'
 import { GlassButton, Pill } from '../../../components/ui/glass.tsx'
 import { type HermesStatusPayload, rest } from '../../../lib/rest.ts'
+import { dateLocale, useT } from '../../../lib/i18n.ts'
 import { useBackendData, useLocalData } from '../../../lib/use-async.ts'
 import { $backend, $env } from '../../../store/backend.ts'
 import { openApp } from '../../../store/windows.ts'
@@ -15,57 +16,54 @@ export function AboutSection() {
   const status = useBackendData(() => rest.get<HermesStatusPayload>('/api/status'))
   const [showLog, setShowLog] = useState(false)
   const jarodCore = backend.runtime?.kind === 'jarod'
+  const { t } = useT()
   const log = useLocalData(() => (showLog ? window.heraldOS.backend.logTail(300) : Promise.resolve<string[]>([])), [showLog, backend.phase])
 
   return (
     <>
-      <SectionTitle title="About" subtitle="Versions, the runtime underneath, your branding, and where to look when something is off." />
+      <SectionTitle title={t('about.title')} subtitle={t('about.subtitle')} />
 
       <AboutIdentity />
 
-      <SettingsGroup title="Versions">
-        <SettingsRow icon={<IconInfoCircle />} label="Jarod-OS" description={env?.isDev ? 'Development build.' : 'Agent-native operating system.'} keywords="version build shell">
+      <SettingsGroup title={t('about.versions')}>
+        <SettingsRow icon={<IconInfoCircle />} label="Jarod-OS" description={env?.isDev ? t('about.devBuild') : t('about.product')} keywords="version build shell">
           <Pill tone="accent">{env?.version ?? '—'}</Pill>
         </SettingsRow>
-        <SettingsRow icon={<IconServer />} label="Agent runtime" description={<span className="selectable">{backend.runtime?.label ?? 'Not resolved yet.'}</span>} keywords="hermes jarod core agent version runtime backend">
+        <SettingsRow icon={<IconServer />} label={t('about.runtime')} description={<span className="selectable">{backend.runtime?.label ?? t('about.runtimeUnknown')}</span>} keywords="hermes jarod core agent version runtime backend">
           <Pill>{status.data?.version && status.data.version !== 'unknown' ? `v${String(status.data.version).replace(/^v/, '')}` : status.loading ? '…' : 'unknown'}</Pill>
           {backend.runtime && <Pill>{backend.runtime.kind}</Pill>}
         </SettingsRow>
       </SettingsGroup>
 
-      <SettingsGroup title="Health">
+      <SettingsGroup title={t('about.health')}>
         <SettingsRow
           icon={<IconLifebuoy />}
-          label="Safe mode"
-          description={
-            env?.safeMode
-              ? 'On: widget plugins, hook scripts and event automations are off until you restart normally.'
-              : 'Restart without widget plugins, hook scripts and event automations, to find out whether one of them is the problem.'
-          }
+          label={t('about.safeMode')}
+          description={env?.safeMode ? t('about.safeMode.on') : t('about.safeMode.off')}
           keywords="safe mode recovery crash plugins hooks troubleshoot"
         >
-          {env?.safeMode && <Pill tone="warn">On</Pill>}
+          {env?.safeMode && <Pill tone="warn">{t('about.safeMode.pill')}</Pill>}
           <GlassButton size="sm" onClick={() => void window.heraldOS.window.relaunch(!env?.safeMode)}>
-            {env?.safeMode ? 'Restart normally' : 'Restart in safe mode'}
+            {env?.safeMode ? t('about.restartNormally') : t('about.restartSafe')}
           </GlassButton>
         </SettingsRow>
         <SettingsRow
           icon={<IconAlertTriangle />}
-          label="Last crash"
-          description={env?.lastCrash ? `The Jarod-OS window crashed (${env.lastCrash.reason}) at ${new Date(env.lastCrash.at).toLocaleString()}; it was reloaded.` : 'The Jarod-OS window has not crashed since it started.'}
+          label={t('about.lastCrash')}
+          description={env?.lastCrash ? t('about.lastCrash.some', { reason: env.lastCrash.reason, when: new Date(env.lastCrash.at).toLocaleString(dateLocale()) }) : t('about.lastCrash.none')}
           keywords="crash renderer reload health"
         >
-          <Pill tone={env?.lastCrash ? 'warn' : 'ok'}>{env?.lastCrash ? 'Crashed' : 'None'}</Pill>
+          <Pill tone={env?.lastCrash ? 'warn' : 'ok'}>{env?.lastCrash ? t('about.lastCrash.crashed') : t('about.lastCrash.ok')}</Pill>
         </SettingsRow>
         <SettingsRow
           icon={<IconFolder />}
-          label="Settings folder"
+          label={t('about.settingsFolder')}
           description={<span className="selectable">{env?.userDataDir ?? '—'}</span>}
           keywords="data folder settings location backup userdata"
         >
           {env?.userDataDir && (
             <GlassButton size="sm" onClick={() => void window.heraldOS.fs.openPath(env.userDataDir)}>
-              Open
+              {t('about.open')}
             </GlassButton>
           )}
         </SettingsRow>
@@ -73,37 +71,33 @@ export function AboutSection() {
 
       <BrandingSettings />
 
-      <SettingsGroup title="Maintenance">
+      <SettingsGroup title={t('about.maintenance')}>
         <SettingsRow
           icon={<IconDownload />}
-          label="Check for updates"
-          description={
-            jarodCore
-              ? 'The Jarod core ships inside Jarod-OS: a new version of Jarod-OS updates both.'
-              : 'Jarod-OS runs whatever Hermes is installed. Run “hermes update” in Terminal, then restart Hermes from Network.'
-          }
+          label={t('about.updates')}
+          description={jarodCore ? t('about.updates.jarod') : t('about.updates.hermes')}
           keywords="upgrade update hermes jarod update terminal"
         >
           {!jarodCore && (
-            <GlassButton size="sm" onClick={() => openApp('terminal')} aria-label="Open Terminal">
-              Open Terminal
+            <GlassButton size="sm" onClick={() => openApp('terminal')} aria-label={t('about.openTerminal')}>
+              {t('about.openTerminal')}
             </GlassButton>
           )}
         </SettingsRow>
         <SettingsRow
           icon={<IconFileText />}
-          label="Open logs"
-          description="The last 300 lines from the shell and the backend it started."
+          label={t('about.logs')}
+          description={t('about.logs.description')}
           keywords="log output debug backend"
-          below={showLog ? <LogView lines={log.data ?? []} empty={log.loading ? 'Loading…' : 'No log output yet.'} className="animate-rise" /> : undefined}
+          below={showLog ? <LogView lines={log.data ?? []} empty={log.loading ? t('about.logs.loading') : t('about.logs.empty')} className="animate-rise" /> : undefined}
         >
           {showLog && (
             <GlassButton size="sm" variant="ghost" onClick={log.reload}>
-              Refresh
+              {t('about.logs.refresh')}
             </GlassButton>
           )}
-          <GlassButton size="sm" onClick={() => setShowLog(o => !o)} aria-label={showLog ? 'Hide logs' : 'Open logs'}>
-            {showLog ? 'Hide logs' : 'Open logs'}
+          <GlassButton size="sm" onClick={() => setShowLog(o => !o)} aria-label={showLog ? t('about.logs.hide') : t('about.logs')}>
+            {showLog ? t('about.logs.hide') : t('about.logs')}
           </GlassButton>
         </SettingsRow>
       </SettingsGroup>

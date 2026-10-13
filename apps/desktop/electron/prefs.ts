@@ -47,11 +47,28 @@ export function readPrefs(): HeraldOSPrefs {
       continuity: normalizeContinuity(parsed.continuity),
       crashHelp: normalizeCrashHelp(parsed.crashHelp),
       eventAutomations: normalizeEventAutomations(parsed.eventAutomations),
+      language: normalizeLanguage(parsed.language),
+      assistantName: normalizeAssistantName(parsed.assistantName),
       ...(parsed.menuBar ? { menuBar: normalizeMenuBar(parsed.menuBar) } : {})
     }
   } catch {
     return { ...DEFAULTS }
   }
+}
+
+function normalizeLanguage(value: unknown): HeraldOSPrefs['language'] {
+  return value === 'en' || value === 'fr' || value === 'auto' ? value : undefined
+}
+
+/** One line, at most 32 characters; empty means "follow the backend". */
+export function normalizeAssistantName(value: unknown): string | undefined {
+  if (typeof value !== 'string') {
+    return undefined
+  }
+
+  const name = value.replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 32).trim()
+
+  return name || undefined
 }
 
 function normalizeEventAutomations(value: unknown): EventAutomation[] | undefined {
@@ -90,6 +107,8 @@ export function writePrefs(patch: Partial<HeraldOSPrefs>): HeraldOSPrefs {
     voice: normalizeVoicePrefs({ ...current.voice, ...(patch.voice ?? {}) }),
     continuity: normalizeContinuity({ ...current.continuity, ...(patch.continuity ?? {}) }),
     crashHelp: normalizeCrashHelp({ ...current.crashHelp, ...(patch.crashHelp ?? {}) }),
+    ...('language' in patch ? { language: normalizeLanguage(patch.language) } : {}),
+    ...('assistantName' in patch ? { assistantName: normalizeAssistantName(patch.assistantName) } : {}),
     ...(patch.menuBar ? { menuBar: normalizeMenuBar({ ...current.menuBar, ...patch.menuBar }) } : {})
   }
   fs.mkdirSync(heraldOsDataDir(), { recursive: true })

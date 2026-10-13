@@ -23,7 +23,8 @@
     "test": "vitest run",
     "dist:mac": "npm run bundle:core && npm run build && electron-builder --mac --arm64 -c.npmRebuild=false --publish never",
     "dist:linux": "npm run bundle:core && npm run build && electron-builder --linux --publish never",
-    "dist:win": "npm run bundle:core && npm run build && electron-builder --win --x64 -c.npmRebuild=false --publish never"
+    "dist:win": "npm run bundle:core && npm run build && electron-builder --win --x64 -c.npmRebuild=false --publish never",
+    "i18n:report": "node scripts/i18n-report.mjs"
   },
   "dependencies": {
     "node-pty": "1.1.0"
