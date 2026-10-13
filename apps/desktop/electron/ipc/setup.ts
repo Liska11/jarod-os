@@ -5,6 +5,7 @@ import path from 'node:path'
 import { IPC, type SetupResult, type SetupState } from '../../shared/ipc.ts'
 import { log } from '../log.ts'
 import { loadPty } from './terminal.ts'
+import { checkBot, roundTrip } from '../setup/telegram.ts'
 import { shellConfigDir } from '../paths.ts'
 
 /*
@@ -111,6 +112,10 @@ export function changePassword(password: string, current = ''): Promise<SetupRes
 }
 
 export function registerSetupIpc(): void {
+  ipcMain.handle(IPC.setupTelegramCheck, (_event, token: unknown) => checkBot(String(token ?? '')))
+  ipcMain.handle(IPC.setupTelegramTest, (_event, token: unknown, reply: unknown) =>
+    roundTrip(String(token ?? ''), String(reply ?? 'Jarod-OS is connected.').slice(0, 500), { waitSeconds: 120 })
+  )
   ipcMain.handle(IPC.setupState, () => setupState())
   ipcMain.handle(IPC.setupName, (_event, name: string) => {
     const clean = String(name ?? '').replace(/[\r\n:]/g, ' ').trim().slice(0, 64)

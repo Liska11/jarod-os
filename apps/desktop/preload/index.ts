@@ -9,6 +9,8 @@ import {
   type CatalogResult,
   type SetupResult,
   type SetupState,
+  type TelegramBot,
+  type TelegramRoundTrip,
   type ClipboardEntry,
   type ContextReturn,
   type ContextSnapshot,
@@ -213,7 +215,11 @@ const api = {
     name: (name: string): Promise<SetupResult> => ipcRenderer.invoke(IPC.setupName, name),
     password: (password: string): Promise<SetupResult> => ipcRenderer.invoke(IPC.setupPassword, password),
     /** `later`: setting it up for someone else, who finishes setup at the next start. */
-    finish: (options: { later?: boolean } = {}): Promise<SetupResult> => ipcRenderer.invoke(IPC.setupFinish, options)
+    finish: (options: { later?: boolean } = {}): Promise<SetupResult> => ipcRenderer.invoke(IPC.setupFinish, options),
+    /** Check a Telegram bot token with Telegram (`getMe`); the token is not saved. */
+    telegramCheck: (token: string): Promise<TelegramBot> => ipcRenderer.invoke(IPC.setupTelegramCheck, token),
+    /** Wait (up to 2 minutes) for a message to the bot and answer it with `reply`. */
+    telegramTest: (token: string, reply: string): Promise<TelegramRoundTrip> => ipcRenderer.invoke(IPC.setupTelegramTest, token, reply)
   },
   dictation: {
     /** Type text into the focused app (any app); `copied` when it could only be left on the clipboard. */

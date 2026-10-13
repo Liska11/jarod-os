@@ -7,14 +7,15 @@ import { Spinner } from '../../components/ui/primitives.tsx'
 import { cn } from '../../lib/cn.ts'
 import { type MessageKey, t, useT } from '../../lib/i18n.ts'
 import { Footer, Heading } from './parts.tsx'
+import { TelegramStep } from './TelegramStep.tsx'
 
-type Step = 'welcome' | 'audit' | 'done'
-const STEPS: Step[] = ['welcome', 'audit', 'done']
+type Step = 'welcome' | 'audit' | 'telegram' | 'done'
+const STEPS: Step[] = ['welcome', 'audit', 'telegram', 'done']
 
 /**
  * First-run setup of Jarod-OS on Windows (HANDOFF.md, section 7): welcome, the system audit (hardware, prerequisites
- * with the command that fixes each, blocked while a critical one is missing), then done. The accounts step (Telegram
- * bot, API keys import) comes between the audit and the end.
+ * with the command that fixes each, blocked while a critical one is missing), the Telegram bot, then done. The API keys
+ * import goes between the Telegram step and the end.
  */
 export function DesktopSetup({ onFinished }: { onFinished: () => void }) {
   useT()
@@ -46,6 +47,7 @@ export function DesktopSetup({ onFinished }: { onFinished: () => void }) {
           </div>
         )}
         {step === 'audit' && <AuditStep onDone={next} />}
+        {step === 'telegram' && <TelegramStep onDone={next} />}
         {step === 'done' && (
           <div className="flex flex-col gap-4">
             <Heading icon={<IconCheck size={18} />} title={t('setup.done.title')} text={t('setup.done.text')} />

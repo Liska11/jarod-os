@@ -555,7 +555,29 @@ export const en = {
   'setup.check.rocm': 'AMD GPU compute',
   'setup.check.vulkan': 'Vulkan',
   'setup.check.openvino': 'OpenVINO',
-  'setup.check.wsl': 'WSL2'
+  'setup.check.wsl': 'WSL2',
+  'setup.later': 'Later',
+  'setup.telegram.title': 'Telegram bot',
+  'setup.telegram.text': 'Talk to {assistant} from your phone. In Telegram, ask @BotFather for /newbot, then paste the token it gives you.',
+  'setup.telegram.name': 'Bot name (a reminder; Telegram has the real one)',
+  'setup.telegram.token': 'Bot token',
+  'setup.telegram.check': 'Check the token',
+  'setup.telegram.refused': 'Telegram refused this token.',
+  'setup.telegram.found': 'Telegram knows this bot: {bot}',
+  'setup.telegram.otherName': 'Telegram calls it “{name}”.',
+  'setup.telegram.testHint': 'To test it, send any message to {bot} in Telegram, then press “Test”.',
+  'setup.telegram.test': 'Test',
+  'setup.telegram.waiting': 'Waiting for your message…',
+  'setup.telegram.tested': 'Message from {from} received, and the answer was sent.',
+  'setup.telegram.reply': 'Jarod-OS is connected to this bot.',
+  'setup.telegram.pairing': 'Once saved, the first message from a new person gets a pairing code: approve it in a conversation with /pair <code>.',
+  'setup.telegram.save': 'Save and continue',
+  'setup.telegram.saveFailed': 'The token could not be saved: {error}',
+  'setup.telegram.error.shape': 'This does not look like a bot token: digits, a colon, then about 35 letters and digits.',
+  'setup.telegram.error.unauthorized': 'Telegram refused this token: copy it again from @BotFather.',
+  'setup.telegram.error.network': 'Telegram could not be reached',
+  'setup.telegram.error.no-message': 'No message reached the bot in time. Open the bot in Telegram, send it any message, then press “Test” again.',
+  'setup.telegram.error.refused': 'Telegram refused'
 } as const
 
 export type MessageKey = keyof typeof en

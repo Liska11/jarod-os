@@ -418,6 +418,27 @@ export interface SetupState {
   name: string
 }
 
+/** The first-run Telegram step (electron/setup/telegram.ts): the bot behind a token, and a message round trip. */
+/** Why a Telegram check failed, for the screen to say it in its language (`error` keeps Telegram's own words). */
+export type TelegramErrorCode = 'shape' | 'unauthorized' | 'network' | 'no-message' | 'refused'
+
+export interface TelegramBot {
+  ok: boolean
+  /** The bot's @username and display name, when the token works. */
+  username?: string
+  name?: string
+  error?: string
+  code?: TelegramErrorCode
+}
+
+export interface TelegramRoundTrip {
+  ok: boolean
+  /** Who wrote to the bot. */
+  from?: string
+  error?: string
+  code?: TelegramErrorCode
+}
+
 export interface SetupResult {
   ok: boolean
   error?: string
@@ -854,6 +875,9 @@ export const IPC = {
 
   /** First-boot setup on the Jarod-OS image: whether it is due, the name, the password, done. */
   setupState: 'herald-os:setup:state',
+  /** First-run Telegram step: check a bot token (`getMe`); wait for a message to the bot and answer it. */
+  setupTelegramCheck: 'herald-os:setup:telegram-check',
+  setupTelegramTest: 'herald-os:setup:telegram-test',
   setupName: 'herald-os:setup:name',
   setupPassword: 'herald-os:setup:password',
   setupFinish: 'herald-os:setup:finish',

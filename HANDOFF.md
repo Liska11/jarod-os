@@ -49,10 +49,16 @@ Avant de cloner, refaire un bundle si des commits ont été ajoutés après le 1
        - les détails des lignes (« 24 cores », « present ») restent en anglais, car ils viennent de `audit.ts` ;
        - il n'y a pas encore de bouton « Relancer la vérification » dans les Réglages ;
        - les utilisateurs Windows existants verront l'assistant une fois, puisqu'ils n'ont pas de `setup-done`.
-  3. **Étape 2, Telegram** : validation du jeton par `https://api.telegram.org/bot<token>/getMe`, puis message de test (`sendMessage` vers le chat qui a écrit au bot : `getUpdates`). Vérifier d'abord si le noyau gère déjà Telegram (`grep -ri telegram jarod-core/packages`) et réutiliser son stockage.
+  3. ✅ **Étape 2, Telegram** :
+     - `electron/setup/telegram.ts`, avec ses tests, vérifie le jeton dans main (format, puis `getMe`), puis fait un aller-retour : il attend un message au bot (`getUpdates`) et y répond (`sendMessage`). Cela se fait **avant** d'enregistrer le jeton et de démarrer la passerelle, sinon `getUpdates` entrerait en concurrence avec elle.
+     - IPC `setupTelegramCheck` et `setupTelegramTest`, exposés en `window.heraldOS.setup.telegramCheck` et `.telegramTest`. Les erreurs ont un `code` traduit à l'écran.
+     - L'écran est `src/features/setup/TelegramStep.tsx`, inséré entre `audit` et `done`. L'enregistrement passe par le noyau : `jarod('update-messaging-platform', 'telegram', { env: { TELEGRAM_BOT_TOKEN }, enabled: true })` met le jeton dans le **coffre chiffré du profil** ; ensuite `jarod('start-gateway')`. Rien n'est stocké côté shell.
+     - Après l'enregistrement, une nouvelle personne reçoit un code d'appairage à valider avec `/pair <code>` (comportement existant du noyau).
+     - Vérifié dans l'app : appel réel à Telegram avec un faux jeton, refus affiché, « Plus tard » mène à la fin. **Pas vérifié** avec un vrai bot : il faut un jeton du propriétaire.
+     - Le champ « nom du bot » n'est qu'un rappel : le vrai nom vient de `getMe`, et le shell ne renomme pas le bot (`setMyName` est possible, mais pas fait).
   4. **Étape 2, import `.txt` des clés** (`NOM=clé`) : analyse tolérante, doublons, format par service, correction ligne à ligne. Stockage avec `safeStorage` d'Electron (DPAPI sous Windows) ou dans le magasin de secrets existant du noyau, à vérifier avant d'en créer un. Ne jamais journaliser les valeurs.
 
-**Pour la prochaine session** : donner ce fichier à l'agent et lui demander de reprendre au point « À faire ensuite », étape 3 (Telegram), à insérer dans `DesktopSetup.tsx` entre `audit` et `done` (tableau `STEPS`). Points à rappeler :
+**Pour la prochaine session** : donner ce fichier à l'agent et lui demander de reprendre au point « À faire ensuite », étape 4 (import `.txt` des clés API), à insérer dans `DesktopSetup.tsx` entre `telegram` et `done` (tableau `STEPS`). Points à rappeler :
 - toujours pas de push sans accord ;
 - le propriétaire n'a pas encore validé la tâche 3 de la section 4 (dossier Pinokio géré par Jarod-OS) ;
 - la réinstallation de Windows est envisagée. Placer le dossier Pinokio sur D: (par exemple `D:\pinokio`) pour garder les apps d'IA et leurs modèles.
