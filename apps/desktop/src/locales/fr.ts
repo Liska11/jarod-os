@@ -554,6 +554,7 @@ export const fr: Record<MessageKey, string> = {
   'setup.check.vulkan': 'Vulkan',
   'setup.check.openvino': 'OpenVINO',
   'setup.check.wsl': 'WSL2',
+  'setup.close': 'Fermer',
   'setup.later': 'Plus tard',
   'setup.telegram.title': 'Bot Telegram',
   'setup.telegram.text': 'Parlez à {assistant} depuis votre téléphone. Dans Telegram, demandez /newbot à @BotFather, puis collez le jeton qu’il vous donne.',

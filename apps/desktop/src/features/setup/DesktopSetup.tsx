@@ -18,13 +18,14 @@ const STEPS: Step[] = ['welcome', 'audit', 'telegram', 'keys', 'done']
  * with the command that fixes each, blocked while a critical one is missing), the Telegram bot, the API keys import,
  * then done.
  */
-export function DesktopSetup({ onFinished }: { onFinished: () => void }) {
+/** `onDemand`: opened again after first run (command `setup.open`); it can be closed, and finishing marks nothing. */
+export function DesktopSetup({ onFinished, onDemand = false }: { onFinished: () => void; onDemand?: boolean }) {
   useT()
   const [step, setStep] = useState<Step>('welcome')
   const next = () => setStep(STEPS[Math.min(STEPS.length - 1, STEPS.indexOf(step) + 1)] ?? 'done')
 
   const finish = async () => {
-    await window.heraldOS.setup.finish({})
+    if (!onDemand) await window.heraldOS.setup.finish({})
     onFinished()
   }
 
@@ -39,6 +40,11 @@ export function DesktopSetup({ onFinished }: { onFinished: () => void }) {
               <span key={item} className={cn('h-1.5 w-6 rounded-full bg-white/15', STEPS.indexOf(item) <= STEPS.indexOf(step) && 'bg-accent-strong')} />
             ))}
           </div>
+          {onDemand && (
+            <button type="button" onClick={onFinished} className="text-fg-3 hover:text-fg" aria-label={t('setup.close')} title={t('setup.close')}>
+              <IconX size={16} />
+            </button>
+          )}
         </div>
 
         {step === 'welcome' && (

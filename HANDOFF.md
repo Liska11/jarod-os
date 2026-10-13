@@ -70,7 +70,7 @@ Avant de cloner, refaire un bundle si des commits ont été ajoutés après le 1
 **Reste de la phase d'initialisation (facultatif) :**
 - Traduire les détails de l'audit, aujourd'hui en anglais dans `audit.ts`, champ `detail` : renvoyer des données structurées plutôt que du texte.
 - Ajouter dans les Réglages un bouton « Relancer la vérification du système » (`window.heraldOS.systemAudit.run()`) et « Importer des clés » (réutiliser `KeysStep`).
-- Proposer l'assistant à la demande, par exemple avec une commande `setup.open` dans `src/commands/`.
+- ✅ Assistant à la demande : commande `setup.open` dans `src/commands/setup.ts`, avec la palette, la voix et `os_ui` pour l'agent. Elle passe par `$setupRequested` (`src/store/setup.ts`), et l'assistant se ferme par ✕ sans rien marquer. Commande `system.audit` : nouvel audit, renvoyé à l'agent comme données. Pas encore vérifié dans l'app lancée (typecheck et tests seulement).
 - Tester Telegram avec un vrai bot (jeton du propriétaire).
 - Linux et macOS : l'assistant `desktop` n'est activé que sous Windows (`setupState()` dans `electron/ipc/setup.ts`) ; l'audit, lui, fonctionne partout.
 

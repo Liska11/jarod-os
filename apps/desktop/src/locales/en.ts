@@ -556,6 +556,7 @@ export const en = {
   'setup.check.vulkan': 'Vulkan',
   'setup.check.openvino': 'OpenVINO',
   'setup.check.wsl': 'WSL2',
+  'setup.close': 'Close',
   'setup.later': 'Later',
   'setup.telegram.title': 'Telegram bot',
   'setup.telegram.text': 'Talk to {assistant} from your phone. In Telegram, ask @BotFather for /newbot, then paste the token it gives you.',

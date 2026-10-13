@@ -6,6 +6,7 @@ import { GlassButton } from '../../components/ui/glass.tsx'
 import { Spinner } from '../../components/ui/primitives.tsx'
 import { cn } from '../../lib/cn.ts'
 import { $hermesAuth, refreshHermesAuth, requestHermesLogin } from '../../store/hermes-auth.ts'
+import { $setupRequested } from '../../store/setup.ts'
 import { StatusPanel } from '../status/StatusPanel.tsx'
 import { DesktopSetup } from './DesktopSetup.tsx'
 import { Footer, Heading } from './parts.tsx'
@@ -23,6 +24,7 @@ export function FirstRunSetup() {
   const [step, setStep] = useState<Step>('welcome')
   const [forSomeoneElse, setForSomeoneElse] = useState(false)
   const auth = useStore($hermesAuth)
+  const requested = useStore($setupRequested)
 
   useEffect(() => {
     void window.heraldOS.setup
@@ -33,6 +35,11 @@ export function FirstRunSetup() {
       })
       .catch(() => undefined)
   }, [])
+
+  // Asked for on demand (command `setup.open`): the wizard again, on any platform.
+  if (requested) {
+    return <DesktopSetup onDemand onFinished={() => $setupRequested.set(false)} />
+  }
 
   if (!due) {
     return null
