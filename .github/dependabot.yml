@@ -1,0 +1,30 @@
+# Weekly dependency updates, grouped so they arrive as a few pull requests rather than dozens.
+# Security updates are raised as soon as an advisory lands, whatever this schedule says.
+version: 2
+updates:
+  # The shell, the client and the root tooling (npm workspaces).
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      shell-dev:
+        dependency-type: development
+      shell-runtime:
+        dependency-type: production
+
+  # The Jarod core (a pnpm workspace; Dependabot reads pnpm-lock.yaml).
+  - package-ecosystem: npm
+    directory: /jarod-core
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      core:
+        patterns: ["*"]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
