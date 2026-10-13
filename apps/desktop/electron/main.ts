@@ -30,6 +30,7 @@ import { registerWebIpc } from './ipc/web.ts'
 import { log, logTail } from './log.ts'
 import { migrateLegacyData } from './migrate.ts'
 import { registerNotificationHistoryIpc } from './notifications-history.ts'
+import { claimSingleInstance } from './single-instance.ts'
 import { SwitchService } from './switches.ts'
 import { hermesHome, heraldOsDataDir, isDev } from './paths.ts'
 import { readPrefs, writePrefs } from './prefs.ts'
@@ -42,6 +43,7 @@ import { createCompositor, detectCompositor } from './wm/compositor.ts'
 import { NotificationDaemon } from './shell/notification-daemon.ts'
 import { maximizeAction } from './window-controls.ts'
 import { handleUiRequest, OsCommandBridge, OsControlServer, osControlToken } from './shell/os-control.ts'
+import { sameToken } from './shell/json-lines.ts'
 import { PanelShell } from './shell/panels.ts'
 import { registerBrandingIpc } from './shell/branding.ts'
 import { EmojiPanel } from './shell/emoji-panel.ts'
@@ -51,6 +53,8 @@ import { WallpaperService } from './shell/wallpaper.ts'
 import { appIconPath, createMainWindow } from './window.ts'
 
 app.setName('Jarod-OS')
+// First, before anything touches data or opens a socket (the lock is keyed on the name set just above).
+const primary = claimSingleInstance(app)
 const coreLocation = { packaged: app.isPackaged, resourcesPath: process.resourcesPath, appPath: app.getAppPath() }
 
 // With the Jarod core as backend, the shell keeps its Hermes-style files (plugins, themes, audit, notes) in a home of its own, never in a Hermes install of this machine.
@@ -66,7 +70,7 @@ protocol.registerSchemesAsPrivileged([{ scheme: 'herald-plugin', privileges: { s
 // shell, the Linux session included, would freeze behind a box nobody may see. Log it and go on.
 process.on('uncaughtException', error => log('main', `uncaught exception: ${error.stack ?? error.message}`))
 
-for (const line of migrateLegacyData({ hermesHome: hermesHome(), appData: app.getPath('appData'), userData: app.getPath('userData') })) {
+for (const line of primary ? migrateLegacyData({ hermesHome: hermesHome(), appData: app.getPath('appData'), userData: app.getPath('userData') }) : []) {
   log('migrate', line)
 }
 
@@ -123,7 +127,7 @@ const osControl = panels
   ? null
   : new OsControlServer(osControlPath, async request => {
       // No CLI talks to this socket (the Linux one serves `herald-os`), so every client is the backend.
-      if (request.token !== osControlToken()) {
+      if (!sameToken(request.token, osControlToken())) {
         return { ok: false, error: 'invalid control token' }
       }
 
@@ -177,10 +181,6 @@ events.on(event => {
   runHooks(event)
   void fireEventAutomations(event, backend)
 })
-
-if (!app.requestSingleInstanceLock()) {
-  app.quit()
-}
 
 function windowState(win: BrowserWindow): WindowState {
   return { fullscreen: win.isFullScreen(), focused: win.isFocused(), maximized: win.isMaximized() }
@@ -360,6 +360,10 @@ function createWindow(): void {
 }
 
 app.whenReady().then(async () => {
+  if (!primary) {
+    return
+  }
+
   log('main', `Jarod-OS ${app.getVersion()} starting (dev=${isDev}, mode=${mode}, HERMES_HOME=${hermesHome()})`)
   // A packaged app carries its icon in the bundle; `electron .` would show Electron's.
   const icon = isDev ? appIconPath() : undefined
@@ -404,6 +408,10 @@ app.whenReady().then(async () => {
 
 app.on('second-instance', () => {
   if (mainWindow) {
+    if (mainWindow.isMinimized()) {
+      mainWindow.restore()
+    }
+
     mainWindow.show()
     mainWindow.focus()
   }

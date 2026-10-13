@@ -5,6 +5,7 @@ import net from 'node:net'
 import path from 'node:path'
 import { IPC, type OsControlReply, type OsControlRequest } from '../../shared/ipc.ts'
 import { log } from '../log.ts'
+import { LineSplitter, sameToken } from './json-lines.ts'
 
 /*
  * OS control: how anything outside the renderer (the agent's `os_ui` tool through the bridge
@@ -102,7 +103,7 @@ export async function handleUiRequest(request: UiControlRequest, bridge: OsComma
     return null
   }
 
-  if (request.token !== osControlToken()) {
+  if (!sameToken(request.token, osControlToken())) {
     return { ok: false, error: 'invalid control token' }
   }
 
@@ -182,25 +183,24 @@ export class OsControlServer {
     }
 
     this.server = net.createServer(connection => {
-      let buffer = ''
+      const lines = new LineSplitter()
       connection.setEncoding('utf8')
-      connection.on('data', chunk => {
-        buffer += chunk
-        let index = buffer.indexOf('\n')
+      connection.on('data', (chunk: string) => {
+        const complete = lines.push(chunk)
 
-        while (index >= 0) {
-          const line = buffer.slice(0, index).trim()
-          buffer = buffer.slice(index + 1)
+        if (!complete) {
+          log('os-control', 'dropped a connection whose request line had no end')
+          connection.destroy()
 
-          if (line) {
-            void this.handleLine(line).then(reply => {
-              if (!connection.destroyed) {
-                connection.write(`${JSON.stringify(reply)}\n`)
-              }
-            })
-          }
+          return
+        }
 
-          index = buffer.indexOf('\n')
+        for (const line of complete) {
+          void this.handleLine(line).then(reply => {
+            if (!connection.destroyed) {
+              connection.write(`${JSON.stringify(reply)}\n`)
+            }
+          })
         }
       })
       connection.on('error', () => undefined)

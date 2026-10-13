@@ -17,6 +17,7 @@ import { menuFile, readMenuExtensions } from './menu-extensions.ts'
 import { brandingView, setBranding } from './branding.ts'
 import type { BrandingPatch, BrandingView } from '../../shared/branding.ts'
 import { handleUiRequest, isUiRequest, type OsCommandBridge, type UiControlRequest } from './os-control.ts'
+import { LineSplitter } from './json-lines.ts'
 
 interface ControlRequest {
   cmd: string
@@ -75,21 +76,20 @@ export class ControlSocket {
     }
 
     this.server = net.createServer(connection => {
-      let buffer = ''
+      const lines = new LineSplitter()
       connection.setEncoding('utf8')
-      connection.on('data', chunk => {
-        buffer += chunk
-        let index = buffer.indexOf('\n')
+      connection.on('data', (chunk: string) => {
+        const complete = lines.push(chunk)
 
-        while (index >= 0) {
-          const line = buffer.slice(0, index).trim()
-          buffer = buffer.slice(index + 1)
+        if (!complete) {
+          log('control', 'dropped a connection whose request line had no end')
+          connection.destroy()
 
-          if (line) {
-            void this.handleLine(line).then(reply => connection.write(`${JSON.stringify(reply)}\n`))
-          }
+          return
+        }
 
-          index = buffer.indexOf('\n')
+        for (const line of complete) {
+          void this.handleLine(line).then(reply => !connection.destroyed && connection.write(`${JSON.stringify(reply)}\n`))
         }
       })
       connection.on('error', () => undefined)
