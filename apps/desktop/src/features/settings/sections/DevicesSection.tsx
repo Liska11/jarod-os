@@ -9,6 +9,7 @@ import { androidSummary, apiAddress, type ApiServerStatus, apiSummary, baseName,
 import { intProblem } from './jarod-settings-model.ts'
 import { isUnsupported } from './providers-model.ts'
 import { errorText, InlineNote, markSaved, SectionTitle, SettingsGroup, SettingsRow } from './shared.tsx'
+import { t, useT } from '../../../lib/i18n.ts'
 
 /*
  * Devices & API: ways other things reach the agent, and machines the agent reaches.
@@ -19,9 +20,11 @@ import { errorText, InlineNote, markSaved, SectionTitle, SettingsGroup, Settings
  */
 
 export function DevicesSection() {
+  useT()
+
   return (
     <>
-      <SectionTitle title="Devices & API" subtitle="Ways other things reach the agent, and machines the agent reaches." />
+      <SectionTitle title={t('settings.devices.title')} subtitle={t('settings.devices.subtitle')} />
       <ApiBlock />
       <PhoneBlock />
       <SshBlock />
@@ -30,13 +33,14 @@ export function DevicesSection() {
 }
 
 function ApiBlock() {
+  useT()
   const status = useBackendData(() => jarod<ApiServerStatus>('api-server-status'))
   const settings = useJarodSettings()
   const [busy, setBusy] = useState(false)
   const [key, setKey] = useState<string | null>(null)
 
   if (isUnsupported(status.error)) {
-    return <InlineNote tone="info">The API and device features need the Jarod engine.</InlineNote>
+    return <InlineNote tone="info">{t('settings.devices.needsJarod')}</InlineNote>
   }
 
   const s = status.data
@@ -59,30 +63,30 @@ function ApiBlock() {
   }
 
   return (
-    <SettingsGroup title="OpenAI-compatible API">
+    <SettingsGroup title={t('settings.devices.api')}>
       {s && (
         <>
-          <SettingsRow icon={<IconServer2 />} label="Local API" description={apiSummary(s)} keywords="api server openai compatible chat completions open webui">
-            <Toggle checked={s.enabled && s.running} label="API on or off" disabled={busy} onChange={value => void run(value ? 'API on' : 'API off', () => jarod('api-server-set', value))} />
+          <SettingsRow icon={<IconServer2 />} label={t('settings.devices.api.local')} description={apiSummary(s)} keywords="api server openai compatible chat completions open webui">
+            <Toggle checked={s.enabled && s.running} label={t('settings.devices.api.toggle')} disabled={busy} onChange={value => void run(value ? t('settings.devices.api.on') : t('settings.devices.api.off'), () => jarod('api-server-set', value))} />
           </SettingsRow>
           <SettingsRow
             icon={<IconKey />}
-            label={s.keyConfigured ? 'API key saved' : 'No API key yet'}
-            description="Every request must carry the key. Making a new key replaces the old one, which stops working. The key is shown once."
+            label={s.keyConfigured ? t('settings.devices.key.saved') : t('settings.devices.key.none')}
+            description={t('settings.devices.key.hint')}
             keywords="api key new generate"
-            below={key && <InlineNote tone="info">New key — copy it now, it will not be shown again: <span className="font-mono select-all">{key}</span></InlineNote>}
+            below={key && <InlineNote tone="info">{t('settings.devices.key.new')} <span className="font-mono select-all">{key}</span></InlineNote>}
           >
-            <GlassButton size="sm" variant={s.keyConfigured ? 'secondary' : 'primary'} disabled={busy} onClick={() => void run('New key made', async () => setKey((await jarod<{ key: string }>('api-server-new-key')).key))}>
-              {s.keyConfigured ? 'Make a new key' : 'Make a key'}
+            <GlassButton size="sm" variant={s.keyConfigured ? 'secondary' : 'primary'} disabled={busy} onClick={() => void run(t('settings.devices.key.made'), async () => setKey((await jarod<{ key: string }>('api-server-new-key')).key))}>
+              {s.keyConfigured ? t('settings.devices.key.renew') : t('settings.devices.key.make')}
             </GlassButton>
           </SettingsRow>
           {api && (
-            <SettingsRow icon={<IconServer2 />} label="Who can reach it" description={`${apiAddress({ host: api.host, port: api.port })}. “Local network” lets any device on your network try (the key is still required).`} keywords="api host network localhost port">
-              <select value={api.host} disabled={busy || s.running} onChange={event => void run('Setting saved', () => jarod('set-jarod-settings', { apiServer: { host: event.target.value } }))} aria-label="API host" style={{ colorScheme: 'dark' }} className="glass-input h-8 rounded-lg px-2 text-[12.5px] text-fg outline-none">
-                <option value="127.0.0.1">This PC only</option>
-                <option value="0.0.0.0">Local network</option>
+            <SettingsRow icon={<IconServer2 />} label={t('settings.devices.reach')} description={t('settings.devices.reach.hint', { address: apiAddress({ host: api.host, port: api.port }) })} keywords="api host network localhost port">
+              <select value={api.host} disabled={busy || s.running} onChange={event => void run(t('settings.devices.settingSaved'), () => jarod('set-jarod-settings', { apiServer: { host: event.target.value } }))} aria-label={t('settings.devices.api.host')} style={{ colorScheme: 'dark' }} className="glass-input h-8 rounded-lg px-2 text-[12.5px] text-fg outline-none">
+                <option value="127.0.0.1">{t('settings.devices.reach.local')}</option>
+                <option value="0.0.0.0">{t('settings.devices.reach.lan')}</option>
               </select>
-              <PortButton value={api.port} disabled={busy || s.running} onSave={port => run('Port saved', () => jarod('set-jarod-settings', { apiServer: { port } }))} label="API port" />
+              <PortButton value={api.port} disabled={busy || s.running} onSave={port => run(t('settings.devices.portSaved'), () => jarod('set-jarod-settings', { apiServer: { port } }))} label={t('settings.devices.api.port')} />
             </SettingsRow>
           )}
         </>
@@ -92,14 +96,15 @@ function ApiBlock() {
 }
 
 function PortButton({ value, onSave, disabled, label }: { value: number; onSave: (port: number) => Promise<void>; disabled?: boolean; label: string }) {
+  useT()
   const [editing, setEditing] = useState(false)
   const [text, setText] = useState('')
   const problem = editing ? intProblem(text, 1024, 65535) : null
 
   if (!editing) {
     return (
-      <GlassButton size="sm" variant="secondary" disabled={disabled} onClick={() => (setText(String(value)), setEditing(true))} aria-label={`Change ${label}`}>
-        Port {value}
+      <GlassButton size="sm" variant="secondary" disabled={disabled} onClick={() => (setText(String(value)), setEditing(true))} aria-label={t('settings.devices.change', { what: label })}>
+        {t('settings.devices.port', { port: value })}
       </GlassButton>
     )
   }
@@ -117,7 +122,7 @@ function PortButton({ value, onSave, disabled, label }: { value: number; onSave:
     >
       <input autoFocus value={text} onChange={event => setText(event.target.value)} aria-label={label} inputMode="numeric" className="glass-input h-8 w-[84px] rounded-lg px-2 font-mono text-[12.5px] text-fg outline-none" />
       <GlassButton type="submit" size="sm" variant="primary" disabled={Boolean(problem)}>
-        Save
+        {t('settings.devices.save')}
       </GlassButton>
       <GlassButton type="button" size="sm" variant="ghost" onClick={() => setEditing(false)}>
         ✕
@@ -128,6 +133,7 @@ function PortButton({ value, onSave, disabled, label }: { value: number; onSave:
 }
 
 function PhoneBlock() {
+  useT()
   const status = useBackendData(() => jarod<PhoneStatus>('phone-status'))
   const [busy, setBusy] = useState(false)
   const [pairing, setPairing] = useState<PairingInfo | null>(null)
@@ -157,7 +163,7 @@ function PhoneBlock() {
       markSaved()
       notify({ title, level: 'success' })
     } catch (error) {
-      reportEngineError('Phone', error)
+      reportEngineError(t('settings.devices.phone'), error)
     } finally {
       setBusy(false)
       status.reload()
@@ -167,47 +173,47 @@ function PhoneBlock() {
   const left = pairing ? secondsLeft(pairing.expiresAt, now) : 0
 
   return (
-    <SettingsGroup title="Phone">
-      <SettingsRow icon={<IconDeviceMobile />} label="Phone bridge" description={phoneSummary(mobile)} keywords="phone mobile bridge pair">
-        <Toggle checked={mobile.running} label="Phone bridge on or off" disabled={busy} onChange={value => void run(value ? 'Phone bridge on' : 'Phone bridge off', () => jarod('phone-bridge-set', value))} />
+    <SettingsGroup title={t('settings.devices.phone')}>
+      <SettingsRow icon={<IconDeviceMobile />} label={t('settings.devices.bridge')} description={phoneSummary(mobile)} keywords="phone mobile bridge pair">
+        <Toggle checked={mobile.running} label={t('settings.devices.bridge.toggle')} disabled={busy} onChange={value => void run(value ? t('settings.devices.bridge.on') : t('settings.devices.bridge.off'), () => jarod('phone-bridge-set', value))} />
       </SettingsRow>
       {mobile.running && (
         <SettingsRow
           icon={<IconKey />}
-          label="Pair a phone"
-          description="Open the address on the phone and type the code. The code works once and expires."
+          label={t('settings.devices.pair')}
+          description={t('settings.devices.pair.hint')}
           keywords="phone pair code"
           below={pairing && (
             <InlineNote tone={left > 0 ? 'info' : 'warn'}>
-              Address <span className="font-mono select-all">{pairing.url}</span> · code <span className="font-mono select-all">{pairing.secret}</span> · {timeLeftText(left)}
+              {t('settings.devices.pair.address')} <span className="font-mono select-all">{pairing.url}</span> · {t('settings.devices.pair.code')} <span className="font-mono select-all">{pairing.secret}</span> · {timeLeftText(left)}
             </InlineNote>
           )}
         >
-          <GlassButton size="sm" variant="primary" disabled={busy} onClick={() => void run('Pairing code ready', async () => setPairing(await jarod<PairingInfo>('phone-pairing')))}>
-            Show a code
+          <GlassButton size="sm" variant="primary" disabled={busy} onClick={() => void run(t('settings.devices.pair.ready'), async () => setPairing(await jarod<PairingInfo>('phone-pairing')))}>
+            {t('settings.devices.pair.show')}
           </GlassButton>
         </SettingsRow>
       )}
       {mobile.devices.map(device => (
-        <SettingsRow key={device.deviceId} icon={<IconDeviceMobile />} label={device.name || 'Phone'} description={`Paired ${new Date(device.pairedAt).toLocaleDateString()} · last seen ${device.lastSeen ? new Date(device.lastSeen).toLocaleString() : 'never'}`} keywords={`phone paired ${device.name}`}>
-          <GlassButton size="sm" variant="ghost" disabled={busy} onClick={() => void run('Phone removed', () => jarod('phone-revoke', device.deviceId))} aria-label={`Revoke ${device.name || 'phone'}`}>
-            Revoke
+        <SettingsRow key={device.deviceId} icon={<IconDeviceMobile />} label={device.name || t('settings.devices.phone')} description={t('settings.devices.paired', { date: new Date(device.pairedAt).toLocaleDateString(), seen: device.lastSeen ? new Date(device.lastSeen).toLocaleString() : t('settings.devices.never') })} keywords={`phone paired ${device.name}`}>
+          <GlassButton size="sm" variant="ghost" disabled={busy} onClick={() => void run(t('settings.devices.phone.removed'), () => jarod('phone-revoke', device.deviceId))} aria-label={t('settings.devices.revoke.aria', { name: device.name || t('settings.devices.phone') })}>
+            {t('settings.devices.revoke')}
           </GlassButton>
         </SettingsRow>
       ))}
       <SettingsRow icon={<IconBrandAndroid />} label="Android (adb)" description={androidSummary(android)} keywords="android adb device platform tools">
-        <GlassButton size="sm" variant="secondary" disabled={busy} onClick={() => void run('adb chosen', async () => {
+        <GlassButton size="sm" variant="secondary" disabled={busy} onClick={() => void run(t('settings.devices.adb.chosen'), async () => {
           const file = await jarod<string | null>('android-pick-adb')
 
           if (file) {
             await jarod('android-set-adb', file)
           }
         })}>
-          Choose adb…
+          {t('settings.devices.adb.choose')}
         </GlassButton>
         {android.configured && (
-          <GlassButton size="sm" variant="ghost" disabled={busy} onClick={() => void run('adb reset', () => jarod('android-set-adb', ''))}>
-            Use the one on PATH
+          <GlassButton size="sm" variant="ghost" disabled={busy} onClick={() => void run(t('settings.devices.adb.reset'), () => jarod('android-set-adb', ''))}>
+            {t('settings.devices.adb.path')}
           </GlassButton>
         )}
       </SettingsRow>
@@ -223,6 +229,7 @@ function PhoneBlock() {
 }
 
 function SshBlock() {
+  useT()
   const hosts = useBackendData(() => jarod<SshHost[]>('ssh-hosts-list'))
   const [draft, setDraft] = useState<SshDraft | null>(null)
   const [busy, setBusy] = useState(false)
@@ -241,7 +248,7 @@ function SshBlock() {
 
       return true
     } catch (error) {
-      notify({ title: 'SSH hosts', body: errorText(error).replace(/^.*?\[oneai\]\s*/, ''), level: 'error' })
+      notify({ title: t('settings.devices.ssh'), body: errorText(error).replace(/^.*?\[oneai\]\s*/, ''), level: 'error' })
 
       return false
     } finally {
@@ -250,14 +257,14 @@ function SshBlock() {
   }
 
   const test = async (host: SshHost) => {
-    setTests(current => ({ ...current, [host.id]: 'Testing…' }))
+    setTests(current => ({ ...current, [host.id]: t('settings.devices.ssh.testing') }))
 
     try {
       const r = await jarod<SshTest>('ssh-host-test', host.id)
 
-      setTests(current => ({ ...current, [host.id]: r.ok ? `Connected in ${r.durationMs} ms.` : `Failed: ${r.message || 'no answer'}` }))
+      setTests(current => ({ ...current, [host.id]: r.ok ? t('settings.devices.ssh.connected', { ms: r.durationMs }) : t('settings.devices.ssh.failed', { reason: r.message || t('settings.devices.ssh.noAnswer') }) }))
     } catch (error) {
-      setTests(current => ({ ...current, [host.id]: `Failed: ${errorText(error)}` }))
+      setTests(current => ({ ...current, [host.id]: t('settings.devices.ssh.failed', { reason: errorText(error) }) }))
     }
   }
 
@@ -265,22 +272,22 @@ function SshBlock() {
   const input = 'glass-input h-8 rounded-lg px-2.5 text-[12.5px] text-fg outline-none placeholder:text-fg-4'
 
   return (
-    <SettingsGroup title="SSH hosts">
-      {hosts.data?.length === 0 && <SettingsRow icon={<IconTerminal2 />} label="No host declared" description="The agent can run commands on a machine you declare here. Only a key file is used, never a password." keywords="ssh hosts empty" />}
+    <SettingsGroup title={t('settings.devices.ssh')}>
+      {hosts.data?.length === 0 && <SettingsRow icon={<IconTerminal2 />} label={t('settings.devices.ssh.none')} description={t('settings.devices.ssh.none.hint')} keywords="ssh hosts empty" />}
       {hosts.data?.map(host => (
-        <SettingsRow key={host.id} icon={<IconTerminal2 />} label={host.name} description={`${sshLine(host)} · key ${baseName(host.keyPath)}${tests[host.id] ? ` · ${tests[host.id]}` : ''}`} keywords={`ssh host ${host.name} ${host.host}`}>
-          <GlassButton size="sm" variant="ghost" disabled={busy} onClick={() => void test(host)} aria-label={`Test ${host.name}`}>
-            Test
+        <SettingsRow key={host.id} icon={<IconTerminal2 />} label={host.name} description={`${sshLine(host)} · ${t('settings.devices.ssh.key', { file: baseName(host.keyPath) })}${tests[host.id] ? ` · ${tests[host.id]}` : ''}`} keywords={`ssh host ${host.name} ${host.host}`}>
+          <GlassButton size="sm" variant="ghost" disabled={busy} onClick={() => void test(host)} aria-label={t('settings.devices.ssh.test.aria', { name: host.name })}>
+            {t('settings.devices.ssh.test')}
           </GlassButton>
-          <GlassButton size="sm" variant="ghost" disabled={busy} onClick={() => void run('Host removed', () => jarod('ssh-host-remove', host.id))} aria-label={`Remove ${host.name}`}>
-            Remove
+          <GlassButton size="sm" variant="ghost" disabled={busy} onClick={() => void run(t('settings.devices.ssh.removed'), () => jarod('ssh-host-remove', host.id))} aria-label={t('settings.devices.ssh.remove.aria', { name: host.name })}>
+            {t('settings.devices.ssh.remove')}
           </GlassButton>
         </SettingsRow>
       ))}
       <SettingsRow
         icon={<IconTerminal2 />}
-        label="Add a host"
-        description="Name, address, user and the private key file (chosen in the file dialog)."
+        label={t('settings.devices.ssh.add')}
+        description={t('settings.devices.ssh.add.hint')}
         keywords="ssh host add key"
         below={
           draft && (
@@ -290,20 +297,20 @@ function SshBlock() {
                 event.preventDefault()
 
                 if (problems.length === 0) {
-                  void run('Host added', () => jarod('ssh-host-add', { name: draft.name.trim(), host: draft.host.trim(), username: draft.username.trim(), port: Number(draft.port), keyPath: draft.keyPath })).then(ok => ok && setDraft(null))
+                  void run(t('settings.devices.ssh.added'), () => jarod('ssh-host-add', { name: draft.name.trim(), host: draft.host.trim(), username: draft.username.trim(), port: Number(draft.port), keyPath: draft.keyPath })).then(ok => ok && setDraft(null))
                 }
               }}
             >
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                <input value={draft.name} onChange={event => set('name', event.target.value)} placeholder="Name" aria-label="Host name" className={input} />
-                <input value={draft.host} onChange={event => set('host', event.target.value)} placeholder="Address" aria-label="Host address" spellCheck={false} className={input} />
-                <input value={draft.username} onChange={event => set('username', event.target.value)} placeholder="User" aria-label="User" spellCheck={false} className={input} />
-                <input value={draft.port} onChange={event => set('port', event.target.value)} placeholder="Port" aria-label="Port" inputMode="numeric" className={input} />
+                <input value={draft.name} onChange={event => set('name', event.target.value)} placeholder={t('settings.devices.ssh.name')} aria-label={t('settings.devices.ssh.name.aria')} className={input} />
+                <input value={draft.host} onChange={event => set('host', event.target.value)} placeholder={t('settings.devices.ssh.address')} aria-label={t('settings.devices.ssh.address.aria')} spellCheck={false} className={input} />
+                <input value={draft.username} onChange={event => set('username', event.target.value)} placeholder={t('settings.devices.ssh.user')} aria-label={t('settings.devices.ssh.user')} spellCheck={false} className={input} />
+                <input value={draft.port} onChange={event => set('port', event.target.value)} placeholder={t('settings.devices.ssh.port')} aria-label={t('settings.devices.ssh.port')} inputMode="numeric" className={input} />
               </div>
               <div className="flex items-center gap-2 text-[12px] text-fg-3">
-                <span className="min-w-0 flex-1 truncate">{draft.keyPath ? `Key: ${baseName(draft.keyPath)}` : 'No key chosen'}</span>
-                <GlassButton type="button" size="sm" variant="secondary" onClick={() => void jarod<string | null>('ssh-pick-key').then(file => file && set('keyPath', file), error => notify({ title: 'SSH key', body: errorText(error), level: 'error' }))}>
-                  Choose key…
+                <span className="min-w-0 flex-1 truncate">{draft.keyPath ? t('settings.devices.ssh.keyChosen', { file: baseName(draft.keyPath) }) : t('settings.devices.ssh.noKey')}</span>
+                <GlassButton type="button" size="sm" variant="secondary" onClick={() => void jarod<string | null>('ssh-pick-key').then(file => file && set('keyPath', file), error => notify({ title: t('settings.devices.ssh.keyTitle'), body: errorText(error), level: 'error' }))}>
+                  {t('settings.devices.ssh.chooseKey')}
                 </GlassButton>
               </div>
               {problems.length > 0 && draft.name.trim() && (
@@ -315,10 +322,10 @@ function SshBlock() {
               )}
               <div className="flex justify-end gap-2">
                 <GlassButton type="button" size="sm" variant="ghost" onClick={() => setDraft(null)}>
-                  Cancel
+                  {t('settings.devices.cancel')}
                 </GlassButton>
                 <GlassButton type="submit" size="sm" variant="primary" disabled={busy || problems.length > 0}>
-                  Add
+                  {t('settings.devices.add')}
                 </GlassButton>
               </div>
             </form>
@@ -326,7 +333,7 @@ function SshBlock() {
         }
       >
         <GlassButton size="sm" variant="primary" disabled={busy} onClick={() => setDraft(emptySsh())}>
-          Add…
+          {t('settings.devices.addMore')}
         </GlassButton>
       </SettingsRow>
     </SettingsGroup>
