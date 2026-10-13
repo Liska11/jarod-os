@@ -33,12 +33,17 @@ Avant de cloner, refaire un bundle si des commits ont été ajoutés après le 1
   - Rapport texte : `formatReport`.
   - Vérifié pour de vrai sur la machine du propriétaire (2,3 s, rien de bloquant). Données jetables : le JSON est allé dans le scratchpad.
 - ⏭ **À faire ensuite, dans l'ordre :**
-  1. **Brancher l'audit.** Dans `apps/desktop/electron/main.ts` (après `app.whenReady`), lancer `runAudit({ file: auditFile(shellConfigDir()), log: m => log('setup', m) })`. `shellConfigDir` est dans `electron/paths.ts` ; `log` dans `electron/log.ts`. Exposer le rapport par IPC : déclarer un canal dans `apps/desktop/shared/ipc.ts`, l'exposer dans `preload/index.ts` et le traiter dans un nouveau `electron/ipc/setup.ts`, sur le modèle de `electron/ipc/pinokio.ts`.
+  1. ✅ **Audit branché** (commit suivant `6d798c8`) :
+     - `AuditService` (`electron/setup/service.ts`) est lancé en arrière-plan dans `app.whenReady` (`electron/main.ts`) et journalisé sous `audit`.
+     - IPC `systemAuditGet` et `systemAuditRun` (`shared/ipc.ts`, `electron/ipc/system-audit.ts`), exposés au renderer par `window.heraldOS.systemAudit.get()` et `.run()`.
+     - Types partagés dans `shared/system-audit.ts`.
+     - ⚠️ **Il existe déjà un `setup` (IPC `setup*`, `electron/ipc/setup.ts`, `src/features/setup/FirstRunSetup.tsx`).** C'est le premier démarrage de **l'image Linux** : nom, mot de passe `passwd`, Wi-Fi. Il ne se déclenche que sous Linux, avec `/var/lib/herald-os/firstboot-done`. Ne pas le confondre ni l'écraser : l'audit utilise exprès le nom `systemAudit`. L'assistant Windows peut soit réutiliser `FirstRunSetup.tsx` (ajouter des étapes et étendre `setupState().needed` à Windows), soit être une fenêtre à part. Le plus simple : étendre `FirstRunSetup`.
+     - Pas encore vérifié dans l'app lancée : seulement typecheck et tests. Pour vérifier, lancer `npm run dev` avec des dossiers jetables (section 5), puis dans la console du rendu : `await window.heraldOS.systemAudit.get()`.
   2. **Assistant de premier lancement** dans le renderer : une fenêtre qui montre le rapport, bloque si `blocked`, et propose « Relancer l'audit ». Il apparaît si aucun `first-run.json` n'est marqué terminé. Les textes vont dans `src/locales/en.ts` et `fr.ts`. Les libellés de `audit.ts` sont en anglais : les traduire côté renderer à partir de `check.id`.
   3. **Étape 2, Telegram** : validation du jeton par `https://api.telegram.org/bot<token>/getMe`, puis message de test (`sendMessage` vers le chat qui a écrit au bot : `getUpdates`). Vérifier d'abord si le noyau gère déjà Telegram (`grep -ri telegram jarod-core/packages`) et réutiliser son stockage.
   4. **Étape 2, import `.txt` des clés** (`NOM=clé`) : analyse tolérante, doublons, format par service, correction ligne à ligne. Stockage avec `safeStorage` d'Electron (DPAPI sous Windows) ou dans le magasin de secrets existant du noyau, à vérifier avant d'en créer un. Ne jamais journaliser les valeurs.
 
-**Pour la prochaine session** : donner ce fichier à l'agent et lui demander de reprendre au point « À faire ensuite », étape 1. Points à rappeler :
+**Pour la prochaine session** : donner ce fichier à l'agent et lui demander de reprendre au point « À faire ensuite », étape 2 (assistant de premier lancement). Points à rappeler :
 - toujours pas de push sans accord ;
 - le propriétaire n'a pas encore validé la tâche 3 de la section 4 (dossier Pinokio géré par Jarod-OS) ;
 - la réinstallation de Windows est envisagée. Placer le dossier Pinokio sur D: (par exemple `D:\pinokio`) pour garder les apps d'IA et leurs modèles.

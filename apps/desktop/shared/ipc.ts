@@ -924,6 +924,11 @@ export const IPC = {
   /** Main -> renderer: show this page in a Jarod-OS web window (an app's UI, a link out of Pinokio). */
   pinokioOpenUrl: 'herald-os:pinokio:open-url',
 
+  // The system audit (electron/setup/audit.ts): hardware and prerequisites, checked at first run.
+  systemAuditGet: 'herald-os:system-audit:get',
+  /** Audit again, ignoring the saved report. */
+  systemAuditRun: 'herald-os:system-audit:run',
+
   prefsGet: 'herald-os:prefs:get',
   prefsSet: 'herald-os:prefs:set',
   prefsChanged: 'herald-os:prefs:changed',

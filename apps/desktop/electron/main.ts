@@ -29,6 +29,8 @@ import { registerEditIpc } from './ipc/edit.ts'
 import { registerWebIpc, type WebViews } from './ipc/web.ts'
 import { broadcastPinokioState, openElsewhere, registerPinokioIpc } from './ipc/pinokio.ts'
 import { locateRuntime, PINOKIO_URL, PinokioService } from './pinokio/service.ts'
+import { registerSystemAuditIpc } from './ipc/system-audit.ts'
+import { AuditService } from './setup/service.ts'
 import { log, logTail } from './log.ts'
 import { migrateLegacyData, migrateShellConfig } from './migrate.ts'
 import { registerNotificationHistoryIpc } from './notifications-history.ts'
@@ -104,6 +106,9 @@ for (const line of primary && !osEnv('CONFIG_DIR') ? migrateShellConfig(process.
 
 const backend = new BackendManager(coreLocation)
 // The Pinokio engine (ADR-022): started on demand by its window or the agent's tools, stopped on quit.
+// The system audit runs in the background once main is ready, then is reused from its JSON (electron/setup).
+const systemAudit = new AuditService({ configDir: shellConfigDir(), log: message => log('audit', message) })
+
 const pinokio = new PinokioService({
   runtime: locateRuntime(coreLocation),
   execPath: process.execPath,
@@ -377,6 +382,7 @@ function registerCoreIpc(): void {
   const webViews: WebViews = registerWebIpc(mode === 'desktop')
   registerEditIpc(() => webViews)
   registerPinokioIpc(pinokio, () => webViews, () => (panels ? panels.mainWindow() : mainWindow))
+  registerSystemAuditIpc(systemAudit)
 }
 
 /** Quit and start again (the backend is stopped on the way out, as for any quit), in safe mode or not. */
@@ -491,6 +497,7 @@ function createWindow(): void {
 }
 
 app.whenReady().then(async () => {
+  void systemAudit.get().catch(error => log('audit', `failed: ${(error as Error).message}`))
   if (!primary) {
     return
   }

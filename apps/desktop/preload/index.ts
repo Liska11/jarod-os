@@ -62,6 +62,7 @@ import type { MenuExtensions } from '../shared/menu-extensions.ts'
 import type { PluginMethod, PluginView } from '../shared/plugins.ts'
 import type { HeraldEvent } from '../shared/events.ts'
 import type { ThemeSpec, ThemeSummary } from '../shared/theme.ts'
+import type { AuditReport } from '../shared/system-audit.ts'
 
 type Unsubscribe = () => void
 
@@ -325,6 +326,12 @@ const api = {
     openHome: (): Promise<void> => ipcRenderer.invoke(IPC.pinokioOpenHome),
     /** Main asks for a page to be shown in a Jarod-OS window (an app's UI, a link out of Pinokio). */
     onOpenUrl: (listener: (url: string) => void): Unsubscribe => subscribe(IPC.pinokioOpenUrl, listener)
+  },
+  systemAudit: {
+    /** The system audit: the saved report, or the one running since startup. */
+    get: (): Promise<AuditReport> => ipcRenderer.invoke(IPC.systemAuditGet),
+    /** Audit the system again (after installing a missing prerequisite). */
+    run: (): Promise<AuditReport> => ipcRenderer.invoke(IPC.systemAuditRun)
   },
   clipboard: {
     history: (limit = 50): Promise<ClipboardEntry[]> => ipcRenderer.invoke(IPC.clipboardHistory, limit),
