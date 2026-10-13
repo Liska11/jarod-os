@@ -224,9 +224,26 @@ export class PinokioService {
 
     this.child = child
     log('pinokio', `starting the engine (pid ${child.pid ?? '?'}) from ${runtime.dir}`)
+    let agentStack = false
     const echo = (stream: NodeJS.ReadableStream | null, level: string) => {
       stream?.setEncoding('utf8')
       stream?.on('data', (chunk: string) => {
+        // node-pty's helper that lists a closing console's processes fails when the shell is already gone (pinokiod's short
+        // start-up shells): a harmless crash of that helper, not of the engine. One line instead of its stack.
+        if (chunk.includes('conpty_console_list_agent')) {
+          agentStack = true
+          log('pinokio', 'node-pty: console list helper could not attach (the shell had already exited; harmless)')
+
+          return
+        }
+
+        // The rest of that stack, when it arrives in later chunks.
+        if (agentStack && /^\s*(var consoleProcessList|\^|Error: AttachConsole failed|at |Node\.js v)/.test(chunk)) {
+          return
+        }
+
+        agentStack = false
+
         for (const line of chunk.split(/\r?\n/)) {
           if (line.trim()) {
             log('pinokio', `${level}${line.slice(0, 2_000)}`)

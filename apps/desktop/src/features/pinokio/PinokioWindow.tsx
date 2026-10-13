@@ -7,7 +7,7 @@ import { Spinner } from '../../components/ui/primitives.tsx'
 import { cn } from '../../lib/cn.ts'
 import { type MessageKey, t, useT } from '../../lib/i18n.ts'
 import { $pinokio, bindPinokio, startPinokio, stopPinokio } from '../../store/pinokio.ts'
-import { $webWindows, adoptWebView } from '../../store/web-windows.ts'
+import { $webWindows, adoptWebView, releaseWebView } from '../../store/web-windows.ts'
 import type { OSWindow } from '../../store/windows.ts'
 import { useNativeView } from '../web/native-view.ts'
 
@@ -69,7 +69,7 @@ export function PinokioWindow({ win }: { win: OSWindow }) {
   // The engine stopped under the view: forget it, so starting again opens a fresh one.
   useEffect(() => {
     if (viewId && (state.phase === 'stopped' || state.phase === 'unavailable')) {
-      void window.heraldOS.web.close(viewId).catch(() => undefined)
+      releaseWebView(viewId)
       setViewId(null)
     }
   }, [viewId, state.phase])

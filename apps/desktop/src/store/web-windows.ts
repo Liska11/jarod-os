@@ -141,6 +141,12 @@ export function adoptWebView(id: string, windowId: string, url: string, title: s
   $webWindows.set({ ...$webWindows.get(), [id]: { id, windowId, url, title, fixedTitle, loading: true } })
 }
 
+/** Close an adopted view but keep its frame open (the Pinokio window stays up, showing why, once its engine stops). */
+export function releaseWebView(id: string): void {
+  remove(id)
+  void window.heraldOS.web.close(id).catch(() => undefined)
+}
+
 /** Show a local file (PDF, image, text, media) in a Jarod-OS window; resolves with the view id. */
 export async function openFileWindow(filePath: string, options: OpenWebWindowOptions = {}): Promise<string> {
   bind()
