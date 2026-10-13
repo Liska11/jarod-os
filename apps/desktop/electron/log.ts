@@ -11,6 +11,11 @@ function ensureStream(): fs.WriteStream | null {
     return stream
   }
 
+  // Under Vitest the log stays in memory: tests used to append to the person's real herald-os.log (HERMES_HOME).
+  if (process.env.VITEST) {
+    return null
+  }
+
   try {
     const dir = path.join(hermesHome(), 'logs')
     fs.mkdirSync(dir, { recursive: true })
