@@ -103,6 +103,21 @@ Setup, session model and dev loop for Linux: `docs/LINUX.md`.
 - **Settings files** are written atomically (`atomic-write.ts`), and the main window's place is
   saved on close and restored when a screen still holds it (`window-state.ts`).
 
+## Pinokio engine
+
+Jarod-OS ships Pinokio's engine (`pinokiod`, MIT) to install and run AI apps (ADR-022):
+
+- `pinokio-runtime/` pins it; `apps/desktop/scripts/bundle-pinokio.mjs` prepares it for Electron and
+  compiles `electron/pinokio/host.ts` beside it; installed, it is `resources/pinokiod`.
+- `electron/pinokio/service.ts` starts it on demand (Jarod-OS in Node mode), uses the Pinokio app's
+  engine instead when one answers on port 42000, and stops its own on quit.
+- `host.ts` binds it to loopback and puts `guard.ts` (Host and Origin must be this machine) in
+  front of every request and WebSocket.
+- The `pinokio` window (`src/features/pinokio`) shows its UI in a web view (`openPinokio` in
+  `ipc/web.ts`); `pinokio.*` OS commands and the core's `pinokio_*` tools drive it.
+- `HERALD_OS_PINOKIO_PROFILE` gives the engine another `~` (its settings and home), for checks that
+  must not touch the real ones; `HERALD_OS_PINOKIO_RUNTIME` points at another build.
+
 ## Wire contract
 
 The wire is declared in Python (`tui_gateway/contracts`) and generated into

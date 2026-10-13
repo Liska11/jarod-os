@@ -131,6 +131,16 @@ Things to know:
 - A packaged Jarod-OS links and enables the bridge plugin itself at first start, the way
   `npm run bootstrap` does for a checkout.
 
+### The Pinokio engine
+
+`npm run dist:win` also runs `npm run bundle:pinokio`, which prepares Pinokio's engine for the
+installer (`pinokio-runtime\`, ~90 MB, compiled for this Electron; it needs the Visual Studio
+Build Tools for better-sqlite3). A checkout runs it after `npm run bundle:pinokio --workspace
+apps/desktop`. Open **Pinokio** from Applications or the command bar: the first start asks for a
+home folder (no spaces), where Pinokio keeps the apps and the tools it downloads (Python, Git…,
+several GB per AI app). If the Pinokio desktop app is installed, Jarod-OS shares its settings and
+apps; close the Pinokio app to let Jarod-OS run its own engine.
+
 ## Limitations
 
 What is different from macOS and Jarod-OS Linux, honestly:

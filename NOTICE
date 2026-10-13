@@ -25,6 +25,12 @@ Herald OS is an independent project. It is not an official Hermes Agent or
 Nous Research product, and it is not affiliated with, sponsored by or endorsed
 by Nous Research.
 
+The Windows build of Jarod-OS includes Pinokio's engine, pinokiod
+(https://github.com/pinokiocomputer/pinokiod), Copyright 2023 Pinokio,
+released under the MIT License, unmodified, with its npm dependencies under
+their own licenses (resources/pinokiod/node_modules). Jarod-OS is not
+affiliated with, sponsored by or endorsed by Pinokio.
+
 Third-party npm and Python packages keep their own licenses. A packaged build
 includes Electron (MIT, https://github.com/electron/electron/blob/main/LICENSE)
 and Chromium, whose component licenses are listed in LICENSES.chromium.html in

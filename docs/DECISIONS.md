@@ -335,3 +335,34 @@ derivative is not pushed anywhere), and Windows blocks unsigned updates through 
 - **Order:** a code-signing certificate first (`CSC_LINK`/`CSC_KEY_PASSWORD`, see README-WINDOWS), then a
   feed (GitHub Releases or a generic HTTPS folder), then electron-updater as the core's `RemoteUpdater`.
 - **Until then** a new version is installed by running the new installer, which closes the running app.
+
+## ADR-022: Pinokio's engine ships inside Jarod-OS, behind a loopback guard
+
+Pinokio (MIT, https://github.com/pinokiocomputer/pinokio) installs and runs AI apps from launcher
+scripts (git repositories with `install.js`, `start.js`, a dynamic menu), in isolated folders with
+their own Python/Node/Git. Jarod-OS embeds its engine, `pinokiod`, unmodified, rather than rewriting
+it: full compatibility with the hundreds of published launchers, at the cost of ~25 MB more in the
+installer (110 to 137 MB) and of following an engine whose HTTP/WebSocket API is internal (the one
+its own CLI, `pterm`, uses).
+
+- **Packaging.** `pinokio-runtime/` pins `pinokiod`; `npm run bundle:pinokio` installs it for this
+  checkout's Electron (better-sqlite3 rebuilt, its terminal module served by node-pty 1.1.0, other
+  platforms pruned) and electron-builder copies it to `resources/pinokiod` (Windows builds for now).
+- **Process.** Started on demand (the Pinokio window, the agent's tools), never at boot, in its own
+  process: Jarod-OS's executable in Node mode, like the core. Jarod-OS's quit stops it, which stops
+  the apps it launched. If the Pinokio desktop app's engine already answers on port 42000, Jarod-OS
+  uses it and never stops it; both share `~/.pinokio/config.json` and the same home folder (apps,
+  tools, models), so the two can be used in turn but not at once.
+- **Security.** Upstream listens on every interface and runs shell commands for any WebSocket
+  client, with no token and no Origin check: any web page or machine on the network could drive
+  it. The host (`electron/pinokio/host.ts`) binds it to 127.0.0.1 and refuses requests whose Host
+  or Origin is not this machine (`guard.ts`). Discover's install links are plain GET navigations
+  (no Origin), so they still work, and they only open pinokiod's own confirmation screen.
+  `JAROD_PINOKIO_LAN=1` restores network listening for people who want Pinokio's Home Server.
+- **UI.** Pinokio's own UI in a `pinokio` window (its own partition: clipboard writes, downloads,
+  camera/microphone for local apps after a yes); an app's page opens as another `pinokio` window,
+  links that leave the machine in an ordinary web window.
+- **Agent.** `pinokio_search` (installed apps, then the public registry), `pinokio_status`,
+  `pinokio_logs` (audited reads), `pinokio_install`, `pinokio_run`, `pinokio_stop` (an approval each),
+  `pinokio_open`; offered only when the shell announces the engine (`JAROD_PINOKIO_URL`), which they
+  start through the control socket (`pinokio.start`).
