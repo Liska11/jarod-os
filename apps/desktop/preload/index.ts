@@ -51,6 +51,7 @@ import {
   type TreeEntry,
   type WebOpenOptions,
   type WebViewBounds,
+  type PinokioState,
   type WebViewEvent,
   type WindowState,
   type WmAction,
@@ -312,6 +313,18 @@ const api = {
     navigate: (id: string, target: string): Promise<void> => ipcRenderer.invoke(IPC.webNavigate, id, target),
     reload: (id: string): Promise<void> => ipcRenderer.invoke(IPC.webReload, id),
     onEvent: (listener: (event: WebViewEvent) => void): Unsubscribe => subscribe(IPC.webEvent, listener)
+  },
+  pinokio: {
+    getState: (): Promise<PinokioState> => ipcRenderer.invoke(IPC.pinokioGetState),
+    onState: (listener: (state: PinokioState) => void): Unsubscribe => subscribe(IPC.pinokioState, listener),
+    /** Start the engine (or find the Pinokio app's); resolves with the resulting state. */
+    start: (): Promise<PinokioState> => ipcRenderer.invoke(IPC.pinokioStart),
+    stop: (): Promise<PinokioState> => ipcRenderer.invoke(IPC.pinokioStop),
+    /** Open the engine's UI (or `url`, a page on this computer) in a view owned by this window; resolves with the view id. */
+    openView: (url?: string, options: WebOpenOptions = {}): Promise<string> => ipcRenderer.invoke(IPC.pinokioOpenView, url ?? '', options),
+    openHome: (): Promise<void> => ipcRenderer.invoke(IPC.pinokioOpenHome),
+    /** Main asks for a page to be shown in a Jarod-OS window (an app's UI, a link out of Pinokio). */
+    onOpenUrl: (listener: (url: string) => void): Unsubscribe => subscribe(IPC.pinokioOpenUrl, listener)
   },
   clipboard: {
     history: (limit = 50): Promise<ClipboardEntry[]> => ipcRenderer.invoke(IPC.clipboardHistory, limit),

@@ -498,7 +498,30 @@ export const en = {
 
   // Safe mode badge
   'safeMode.badge': 'Safe mode: plugins, hooks and automations are off.',
-  'safeMode.restart': 'Restart normally'
+  'safeMode.restart': 'Restart normally',
+
+  // Pinokio window
+  'pinokio.title': 'Pinokio',
+  'pinokio.home': 'Pinokio home',
+  'pinokio.back': 'Back',
+  'pinokio.reload': 'Reload',
+  'pinokio.folder': 'Open the Pinokio folder',
+  'pinokio.stop': 'Stop the engine',
+  'pinokio.start': 'Start the engine',
+  'pinokio.phase.stopped': 'Engine stopped',
+  'pinokio.phase.starting': 'Starting the engine…',
+  'pinokio.phase.running': 'Engine running',
+  'pinokio.phase.external': 'Using the Pinokio app',
+  'pinokio.phase.stopping': 'Stopping…',
+  'pinokio.phase.error': 'Engine error',
+  'pinokio.phase.unavailable': 'Not in this build',
+  'pinokio.starting.hint': 'The first start prepares the engine; installing an app downloads its tools (Python, Git…) into the Pinokio folder.',
+  'pinokio.unavailable.hint': 'This build of Jarod-OS does not include the Pinokio engine. Build it with npm run bundle:pinokio.',
+  'pinokio.external.hint': 'The Pinokio app is open, so Jarod-OS uses its engine. Close the Pinokio app to let Jarod-OS run its own.',
+  'pinokio.stopped.hint': 'Pinokio installs and runs AI apps (image, voice, video, chat) on this computer, each in its own folder.',
+  'pinokio.hidden.covered': 'The page is hidden while a panel is open.',
+  'pinokio.hidden.occluded': 'Bring this window forward to see the page.',
+  'pinokio.retry': 'Try again'
 } as const
 
 export type MessageKey = keyof typeof en

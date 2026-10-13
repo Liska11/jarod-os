@@ -49,3 +49,7 @@ linux/vm/build/
 *.raw
 *.iso
 *.dmg
+
+# The Pinokio engine as Jarod-OS ships it: built by apps/desktop/scripts/bundle-pinokio.mjs.
+/pinokio-runtime/host.cjs
+/pinokio-runtime/.bundle-stamp.json

@@ -1,0 +1,11 @@
+{
+  "name": "@jarod-os/pinokio-runtime",
+  "version": "8.2.2",
+  "private": true,
+  "description": "The Pinokio engine (pinokiod) as Jarod-OS ships it: installed, adapted for Electron and started by apps/desktop/scripts/bundle-pinokio.mjs. See README.md.",
+  "license": "MIT",
+  "dependencies": {
+    "node-pty": "1.1.0",
+    "pinokiod": "8.2.2"
+  }
+}

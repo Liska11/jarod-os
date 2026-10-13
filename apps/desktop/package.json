@@ -19,11 +19,12 @@
     "build": "vite build && node scripts/bundle-electron.mjs",
     "start": "npm run build && electron .",
     "bundle:core": "node scripts/bundle-core.mjs",
+    "bundle:pinokio": "node scripts/bundle-pinokio.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.electron.json --noEmit",
     "test": "vitest run",
     "dist:mac": "npm run bundle:core && npm run build && electron-builder --mac --arm64 -c.npmRebuild=false --publish never",
     "dist:linux": "npm run bundle:core && npm run build && electron-builder --linux --publish never",
-    "dist:win": "npm run bundle:core && npm run build && electron-builder --win --x64 -c.npmRebuild=false --publish never",
+    "dist:win": "npm run bundle:core && npm run bundle:pinokio && npm run build && electron-builder --win --x64 -c.npmRebuild=false --publish never",
     "i18n:report": "node scripts/i18n-report.mjs"
   },
   "dependencies": {
@@ -213,6 +214,18 @@
             "!**/__pycache__/**",
             "!.pytest_cache/**"
           ]
+        },
+        {
+          "from": "../../pinokio-runtime",
+          "to": "pinokiod",
+          "filter": [
+            "host.cjs",
+            "package.json"
+          ]
+        },
+        {
+          "from": "../../pinokio-runtime/node_modules",
+          "to": "pinokiod/node_modules"
         }
       ]
     },

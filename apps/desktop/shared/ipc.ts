@@ -690,6 +690,25 @@ export interface WebOpenOptions {
   root?: string
 }
 
+/**
+ * The Pinokio engine (electron/pinokio/service.ts): `unavailable` when this build carries none, `external` when the
+ * Pinokio app's own engine answers (Jarod-OS uses it but never stops it), `running` when Jarod-OS started its own.
+ */
+export type PinokioPhase = 'unavailable' | 'stopped' | 'starting' | 'running' | 'external' | 'stopping' | 'error'
+
+export interface PinokioState {
+  phase: PinokioPhase
+  /** Where the engine answers (http://127.0.0.1:42000). */
+  url: string
+  /** This build ships an engine Jarod-OS can start. */
+  bundled: boolean
+  /** pinokiod's version while one answers. */
+  version?: string
+  /** pinokiod's home folder (apps, tools, models); null until its first-run screen sets one. */
+  home: string | null
+  error?: string
+}
+
 /** Main -> renderer: lifecycle of one embedded web view (`window.heraldOS.web`). */
 export type WebViewEvent =
   | { id: string; type: 'title'; title: string }
@@ -892,6 +911,18 @@ export const IPC = {
   webReload: 'herald-os:web:reload',
   /** Main -> renderer: title/url/loading changes and `closed`. */
   webEvent: 'herald-os:web:event',
+
+  // The Pinokio engine (electron/pinokio): state, start/stop, its UI in a web view.
+  pinokioGetState: 'herald-os:pinokio:get-state',
+  /** Main -> renderer: the engine's `PinokioState` changed. */
+  pinokioState: 'herald-os:pinokio:state',
+  pinokioStart: 'herald-os:pinokio:start',
+  pinokioStop: 'herald-os:pinokio:stop',
+  /** Open the engine's UI (or one of its pages) in a web view owned by this window; resolves with the view id. */
+  pinokioOpenView: 'herald-os:pinokio:open-view',
+  pinokioOpenHome: 'herald-os:pinokio:open-home',
+  /** Main -> renderer: show this page in a Jarod-OS web window (an app's UI, a link out of Pinokio). */
+  pinokioOpenUrl: 'herald-os:pinokio:open-url',
 
   prefsGet: 'herald-os:prefs:get',
   prefsSet: 'herald-os:prefs:set',

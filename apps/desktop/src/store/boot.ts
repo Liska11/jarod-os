@@ -28,6 +28,7 @@ import { bindThemes } from './themes.ts'
 import { bindUsage } from './usage.ts'
 import { bindVoice } from './voice.ts'
 import { bindWake } from './wake.ts'
+import { bindPinokio } from './pinokio.ts'
 
 const BOOT_FLAG = '__heraldOSBooted'
 
@@ -48,6 +49,7 @@ export function bootRenderer(): void {
   bindChatEvents()
   bindServerRequests()
   bindJarod()
+  bindPinokio()
   bindEngineKind()
   bindNotificationEvents()
   bindAgentEvents()

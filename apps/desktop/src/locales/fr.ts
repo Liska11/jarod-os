@@ -496,5 +496,28 @@ export const fr: Record<MessageKey, string> = {
 
   // Badge du mode sans échec
   'safeMode.badge': 'Mode sans échec : extensions, crochets et automatisations coupés.',
-  'safeMode.restart': 'Redémarrer normalement'
+  'safeMode.restart': 'Redémarrer normalement',
+
+  // Fenêtre Pinokio
+  'pinokio.title': 'Pinokio',
+  'pinokio.home': 'Accueil de Pinokio',
+  'pinokio.back': 'Précédent',
+  'pinokio.reload': 'Recharger',
+  'pinokio.folder': 'Ouvrir le dossier Pinokio',
+  'pinokio.stop': 'Arrêter le moteur',
+  'pinokio.start': 'Démarrer le moteur',
+  'pinokio.phase.stopped': 'Moteur arrêté',
+  'pinokio.phase.starting': 'Démarrage du moteur…',
+  'pinokio.phase.running': 'Moteur en marche',
+  'pinokio.phase.external': 'Utilise l’app Pinokio',
+  'pinokio.phase.stopping': 'Arrêt…',
+  'pinokio.phase.error': 'Erreur du moteur',
+  'pinokio.phase.unavailable': 'Absent de cette version',
+  'pinokio.starting.hint': 'Le premier démarrage prépare le moteur ; installer une app télécharge ses outils (Python, Git…) dans le dossier Pinokio.',
+  'pinokio.unavailable.hint': 'Cette version de Jarod-OS n’inclut pas le moteur Pinokio. Construisez-le avec npm run bundle:pinokio.',
+  'pinokio.external.hint': 'L’app Pinokio est ouverte : Jarod-OS utilise son moteur. Fermez l’app Pinokio pour que Jarod-OS lance le sien.',
+  'pinokio.stopped.hint': 'Pinokio installe et lance des apps d’IA (image, voix, vidéo, discussion) sur cet ordinateur, chacune dans son dossier.',
+  'pinokio.hidden.covered': 'La page est masquée tant qu’un panneau est ouvert.',
+  'pinokio.hidden.occluded': 'Mettez cette fenêtre au premier plan pour voir la page.',
+  'pinokio.retry': 'Réessayer'
 }

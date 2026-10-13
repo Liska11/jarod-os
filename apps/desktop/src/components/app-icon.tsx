@@ -5,6 +5,13 @@ import hermesAvatarUrl from '../assets/brand/hermes-avatar.jpg'
 import { cn } from '../lib/cn.ts'
 
 const PATHS: Record<AppIconId, React.ReactNode> = {
+  // Pinokio: a cube (an app in a box) with a spark.
+  pinokio: (
+    <>
+      <path d="M12 3.5 19.5 7.5v9L12 20.5 4.5 16.5v-9z" />
+      <path d="M4.5 7.5 12 11.5l7.5-4M12 11.5v9" />
+    </>
+  ),
   hermes: null,
   overview: <path d="M4 11.5 12 5l8 6.5V19a1 1 0 0 1-1 1h-4v-5h-6v5H5a1 1 0 0 1-1-1z" />,
   missions: (

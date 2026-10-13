@@ -132,6 +132,15 @@ export async function openWebWindow(url: string, options: OpenWebWindowOptions =
   return id
 }
 
+/**
+ * Track a view another window kind opened itself (the Pinokio window): its title, loading state and closing then follow
+ * the same rules as a web window's, framed by `windowId`.
+ */
+export function adoptWebView(id: string, windowId: string, url: string, title: string, fixedTitle: boolean): void {
+  bind()
+  $webWindows.set({ ...$webWindows.get(), [id]: { id, windowId, url, title, fixedTitle, loading: true } })
+}
+
 /** Show a local file (PDF, image, text, media) in a Jarod-OS window; resolves with the view id. */
 export async function openFileWindow(filePath: string, options: OpenWebWindowOptions = {}): Promise<string> {
   bind()

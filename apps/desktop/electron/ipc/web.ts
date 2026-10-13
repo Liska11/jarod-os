@@ -1,4 +1,4 @@
-import { BrowserWindow, ipcMain, net, session, type WebContents, WebContentsView } from 'electron'
+import { BrowserWindow, dialog, ipcMain, net, session, type WebContents, WebContentsView } from 'electron'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
@@ -6,6 +6,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 import { IPC, type WebOpenOptions, type WebViewBounds, type WebViewEvent } from '../../shared/ipc.ts'
 import { isViewable } from '../../shared/viewer.ts'
 import { log } from '../log.ts'
+import { isLoopbackOrigin } from '../pinokio/guard.ts'
 
 /*
  * Embedded web pages. Jarod-OS is a whole environment, so a web page (the provider sign-in portal,
@@ -61,6 +62,85 @@ const VIEWER_PREFERENCES: Electron.WebPreferences = { ...GUEST_PREFERENCES, plug
 /** Studio previews of the site Hermes is building: same lockdown, own partition so dev-server state never mixes with browsing. */
 const PREVIEW_PARTITION = 'persist:herald-preview'
 const PREVIEW_PREFERENCES: Electron.WebPreferences = { ...GUEST_PREFERENCES, partition: PREVIEW_PARTITION }
+
+/** The Pinokio engine's UI and its apps: same lockdown, own partition (openPinokio). */
+const PINOKIO_PARTITION = 'persist:jarod-pinokio'
+const PINOKIO_PREFERENCES: Electron.WebPreferences = { ...GUEST_PREFERENCES, partition: PINOKIO_PARTITION }
+let pinokioPrepared = false
+/** Origins the user answered about camera/microphone this session (true: allowed). */
+const pinokioMedia = new Map<string, boolean>()
+
+/**
+ * Pinokio's partition grants what its pages need and nothing else: writing to the clipboard (copying a log, a prompt),
+ * downloads (an app's outputs, through the usual save dialog), and the camera/microphone for an app on this machine
+ * once the user says yes (voice and video apps). Everything else is refused, like the other guests.
+ */
+function preparePinokioPartition(parent: BrowserWindow | null): void {
+  if (pinokioPrepared) {
+    return
+  }
+
+  pinokioPrepared = true
+  const guest = session.fromPartition(PINOKIO_PARTITION)
+  guest.setPermissionCheckHandler((_contents, permission, origin) => {
+    if (permission === 'clipboard-sanitized-write') {
+      return true
+    }
+
+    try {
+      return permission === 'media' && pinokioMedia.get(new URL(origin).origin) === true
+    } catch {
+      return false
+    }
+  })
+  guest.setDevicePermissionHandler(() => false)
+  guest.setPermissionRequestHandler((_contents, permission, callback, details) => {
+    if (permission === 'clipboard-sanitized-write') {
+      callback(true)
+
+      return
+    }
+
+    let origin: string
+
+    try {
+      origin = new URL(details.requestingUrl).origin
+    } catch {
+      callback(false)
+
+      return
+    }
+
+    if (permission !== 'media' || !isLoopbackOrigin(origin)) {
+      callback(false)
+
+      return
+    }
+
+    const known = pinokioMedia.get(origin)
+
+    if (known !== undefined) {
+      callback(known)
+
+      return
+    }
+
+    const options: Electron.MessageBoxOptions = {
+      type: 'question',
+      buttons: ['Allow', 'Deny'],
+      defaultId: 1,
+      cancelId: 1,
+      title: 'Camera and microphone',
+      message: `${origin} wants to use your camera or microphone.`,
+      detail: 'This is an app started by the Pinokio engine on this computer. Jarod-OS remembers your answer until it quits.'
+    }
+    const answer = parent && !parent.isDestroyed() ? dialog.showMessageBox(parent, options) : dialog.showMessageBox(options)
+    void answer.then(({ response }) => {
+      pinokioMedia.set(origin, response === 0)
+      callback(response === 0)
+    })
+  })
+}
 
 /** A preview may show http(s) pages and local files inside the project folder, nothing else. */
 function previewAllows(url: string, root: string | null): boolean {
@@ -119,6 +199,7 @@ export class WebViews {
   private readonly previewRoots = new Map<string, string | null>()
   private readonly previewFolders = new Map<string, string>()
   private readonly viewerFiles = new Map<string, string>()
+  private readonly pinokioViews = new Set<string>()
 
   /**
    * A Studio preview: a web page (usually the dev server on localhost) or a local file inside the
@@ -163,6 +244,17 @@ export class WebViews {
   /** Point a preview somewhere else (a new dev-server port, another page of the site). */
   navigate(owner: WebContents, id: string, target: string): void {
     const contents = this.contentsFor(id, owner)
+
+    // A Pinokio view goes anywhere on this machine (its home page, an app's page).
+    if (contents && this.pinokioViews.has(id)) {
+      if (!isLoopbackOrigin(target)) {
+        throw new Error('the Pinokio view shows pages on this computer only')
+      }
+
+      void contents.loadURL(target).catch(error => log('web', `${id}: load failed: ${error instanceof Error ? error.message : String(error)}`))
+
+      return
+    }
 
     if (!contents || !this.previewRoots.has(id)) {
       throw new Error('no such preview')
@@ -231,6 +323,54 @@ export class WebViews {
     this.guard(id, contents, new URL(url).origin)
     void contents.loadURL(url).catch(error => log('web', `${id}: load failed: ${error instanceof Error ? error.message : String(error)}`))
     log('web', `opened ${id} (${entry.kind}) ${url}`)
+
+    return id
+  }
+
+  /**
+   * The Pinokio engine's UI and the AI apps it serves (ADR-022): pages on this machine only, in their own partition so
+   * their sign-ins and settings never mix with browsing. A link or popup that leaves this machine goes to `onElsewhere`
+   * (an ordinary, locked-down web window); a popup on this machine (an app's UI) too, as its own window.
+   */
+  openPinokio(owner: WebContents, url: string, options: WebOpenOptions, onElsewhere: (url: string) => void): string {
+    if (typeof url !== 'string' || !isLoopbackOrigin(url)) {
+      throw new Error('the Pinokio view shows pages on this computer only')
+    }
+
+    preparePinokioPartition(BrowserWindow.fromWebContents(owner))
+    this.hookOwner(owner)
+    const id = `web-${++this.counter}`
+    const host = BrowserWindow.fromWebContents(owner)
+    const title = typeof options.title === 'string' ? options.title.slice(0, 200) : 'Pinokio'
+    const entry: Entry = this.embed && host && !host.isDestroyed() ? this.createEmbedded(id, host, owner, PINOKIO_PREFERENCES) : this.createDetached(id, owner, title, PINOKIO_PREFERENCES)
+    this.entries.set(id, entry)
+    this.pinokioViews.add(id)
+    const contents = entry.kind === 'view' ? entry.view.webContents : entry.win.webContents
+    this.guard(id, contents, new URL(url).origin)
+    // Replaces guard()'s policies: anywhere on this machine stays in the view, the rest opens beside it.
+    contents.setWindowOpenHandler(({ url: target }) => {
+      if (isHttp(target)) {
+        onElsewhere(target)
+      }
+
+      return { action: 'deny' }
+    })
+    contents.on('will-navigate', (event, target) => {
+      if (!isLoopbackOrigin(target)) {
+        event.preventDefault()
+
+        if (isHttp(target)) {
+          onElsewhere(target)
+        }
+      }
+    })
+    contents.on('will-redirect', (event, target) => {
+      if (!isLoopbackOrigin(target)) {
+        event.preventDefault()
+      }
+    })
+    void contents.loadURL(url).catch(error => log('web', `${id}: load failed: ${error instanceof Error ? error.message : String(error)}`))
+    log('web', `opened Pinokio ${id} (${entry.kind}) ${url}`)
 
     return id
   }
@@ -310,6 +450,7 @@ export class WebViews {
     this.previewRoots.delete(id)
     this.previewFolders.delete(id)
     this.viewerFiles.delete(id)
+    this.pinokioViews.delete(id)
 
     if (entry.kind === 'view') {
       if (!entry.host.isDestroyed()) {

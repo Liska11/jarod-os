@@ -26,7 +26,9 @@ import { registerTerminalIpc } from './ipc/terminal.ts'
 import { registerThemeIpc, syncHermesSkin } from './ipc/theme.ts'
 import { applyVoiceHotkey, registerVoiceIpc } from './ipc/voice.ts'
 import { registerEditIpc } from './ipc/edit.ts'
-import { registerWebIpc } from './ipc/web.ts'
+import { registerWebIpc, type WebViews } from './ipc/web.ts'
+import { broadcastPinokioState, openElsewhere, registerPinokioIpc } from './ipc/pinokio.ts'
+import { locateRuntime, PINOKIO_URL, PinokioService } from './pinokio/service.ts'
 import { log, logTail } from './log.ts'
 import { migrateLegacyData, migrateShellConfig } from './migrate.ts'
 import { registerNotificationHistoryIpc } from './notifications-history.ts'
@@ -101,6 +103,18 @@ for (const line of primary && !osEnv('CONFIG_DIR') ? migrateShellConfig(process.
 }
 
 const backend = new BackendManager(coreLocation)
+// The Pinokio engine (ADR-022): started on demand by its window or the agent's tools, stopped on quit.
+const pinokio = new PinokioService({
+  runtime: locateRuntime(coreLocation),
+  execPath: process.execPath,
+  onState: broadcastPinokioState,
+  onOpen: (url, surface) => openElsewhere(() => mainWindow, url, surface)
+})
+
+// The core's pinokio_* tools are offered only when this build can run an engine.
+if (pinokio.state.bundled) {
+  process.env.JAROD_PINOKIO_URL = PINOKIO_URL
+}
 let mainWindow: BrowserWindow | null = null
 const mode = shellMode()
 // Panels mode (niri): several surface windows, compositor state mirror, control socket for hotkeys.
@@ -360,8 +374,9 @@ function registerCoreIpc(): void {
   registerTerminalIpc(() => mainWindow)
   registerVoiceIpc(backend)
   // Desktop mode layers pages over the shell window; panels mode gives them compositor windows.
-  const webViews = registerWebIpc(mode === 'desktop')
+  const webViews: WebViews = registerWebIpc(mode === 'desktop')
   registerEditIpc(() => webViews)
+  registerPinokioIpc(pinokio, () => webViews, () => (panels ? panels.mainWindow() : mainWindow))
 }
 
 /** Quit and start again (the backend is stopped on the way out, as for any quit), in safe mode or not. */
@@ -573,5 +588,5 @@ app.on('before-quit', event => {
   notifications?.stop()
   panels?.stop()
   appHost?.stop()
-  void backend.stop().finally(() => app.quit())
+  void Promise.allSettled([backend.stop(), pinokio.stop()]).finally(() => app.quit())
 })

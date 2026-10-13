@@ -61,6 +61,7 @@ const ORDER: readonly Slot[] = [
   { kind: 'hermes', appId: 'kanban' },
   { kind: 'hermes', appId: 'connections' },
   { kind: 'hermes', appId: 'terminal' },
+  { kind: 'hermes', appId: 'pinokio' },
   { kind: 'featured', label: 'Code' },
   { kind: 'featured', label: 'Photos' },
   { kind: 'featured', label: 'Music' },

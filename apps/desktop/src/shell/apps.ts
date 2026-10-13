@@ -5,7 +5,7 @@ import type { InstalledApp } from '../../shared/ipc.ts'
 export type PageId = 'overview' | 'hermes' | 'missions' | 'memory' | 'files' | 'automations' | 'kanban' | 'connections' | 'settings'
 
 /** Apps that open in their own floating window. */
-export type FloatingAppId = 'terminal' | 'system' | 'chat-popout' | 'web' | 'studio' | 'capture-editor' | 'camera' | 'widget'
+export type FloatingAppId = 'terminal' | 'system' | 'chat-popout' | 'web' | 'studio' | 'capture-editor' | 'camera' | 'widget' | 'pinokio'
 
 export type HermesAppId = PageId | FloatingAppId
 
@@ -43,6 +43,7 @@ export type AppIconId =
   | 'documents'
   | 'grid'
   | 'trash'
+  | 'pinokio'
 
 export const PAGES: readonly HermesAppDef<PageId>[] = [
   { id: 'overview', name: 'Overview', tagline: 'Your day, already in motion.', category: 'productivity', kind: 'page', icon: 'overview', shortcut: '1' },
@@ -67,6 +68,8 @@ export const FLOATING_APPS: readonly HermesAppDef<FloatingAppId>[] = [
   // Opens on a screenshot (the capture preview's Edit).
   { id: 'capture-editor', name: 'Markup', tagline: 'Draw on a screenshot, hide what is private.', category: 'creative', kind: 'window', icon: 'documents', defaultSize: { width: 960, height: 680 } },
   { id: 'camera', name: 'Camera', tagline: 'Your camera in a bubble, for screen recordings.', category: 'creative', kind: 'window', icon: 'system', defaultSize: { width: 260, height: 290 }, minSize: { width: 200, height: 230 } },
+  // The Pinokio engine's UI (ADR-022): install and run AI apps in one click. An app's own UI opens as another one (payload.url).
+  { id: 'pinokio', name: 'Pinokio', tagline: 'Install and run AI apps in one click.', category: 'development', kind: 'window', icon: 'pinokio', defaultSize: { width: 1200, height: 780 }, minSize: { width: 560, height: 420 } },
   // A widget plugin in its own window (its `panel` placement); opened with plugin.open.
   { id: 'widget', name: 'Widget', tagline: 'A widget plugin in a window.', category: 'productivity', kind: 'window', icon: 'grid', defaultSize: { width: 360, height: 280 }, minSize: { width: 240, height: 160 } }
 ]

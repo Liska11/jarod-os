@@ -31,6 +31,7 @@ const ApplicationsOverlay = lazy(() => import('../features/applications/Applicat
 const WebWindow = lazy(() => import('../features/web/WebWindow.tsx').then(m => ({ default: m.WebWindow })))
 const StudioWindow = lazy(() => import('../features/studio/StudioWindow.tsx').then(m => ({ default: m.StudioWindow })))
 const CaptureEditor = lazy(() => import('../features/capture/CaptureEditor.tsx').then(m => ({ default: m.CaptureEditor })))
+const PinokioWindow = lazy(() => import('../features/pinokio/PinokioWindow.tsx').then(m => ({ default: m.PinokioWindow })))
 const CameraBubble = lazy(() => import('../features/capture/CameraBubble.tsx').then(m => ({ default: m.CameraBubble })))
 
 function FloatingContent({ win }: { win: OSWindow }) {
@@ -49,6 +50,8 @@ function FloatingContent({ win }: { win: OSWindow }) {
       return <CaptureEditor file={typeof win.payload?.file === 'string' ? win.payload.file : undefined} />
     case 'camera':
       return <CameraBubble />
+    case 'pinokio':
+      return <PinokioWindow win={win} />
     case 'widget':
       return <WidgetWindow pluginId={typeof win.payload?.plugin === 'string' ? win.payload.plugin : undefined} />
     default:
