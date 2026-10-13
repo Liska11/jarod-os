@@ -1,7 +1,7 @@
 // Portage de packages/core/src/services/email.ts (rév. 2e180305).
 import { ImapFlow } from "imapflow";
 import { type ParsedMail, simpleParser } from "mailparser";
-import nodemailer from "nodemailer";
+import nodemailer, { type SendMailOptions } from "nodemailer";
 import { Emitter } from "@jarod/kernel/util";
 import type { GatewayStatus, IncomingFile } from "./telegram.js";
 import { type EmailConfig, EMAIL_PASSWORD_KEY } from "@jarod/contracts";
@@ -166,7 +166,7 @@ export class EmailGateway extends Emitter<{ status: GatewayStatus }> {
       unknown?: (from: string, name: string) => Promise<string> | string;
       /** Test seams: fetch unread messages, and send one. */
       fetchUnread?: () => Promise<Buffer[]>;
-      transport?: (mail: nodemailer.SendMailOptions) => Promise<unknown>;
+      transport?: (mail: SendMailOptions) => Promise<unknown>;
       onIgnored?: (from: string, why: string) => void;
       /** Test seam: délai maximal d'une relève (défaut `POLL_TIMEOUT_MS`). */
       pollTimeoutMs?: number;
@@ -284,7 +284,7 @@ export class EmailGateway extends Emitter<{ status: GatewayStatus }> {
     await this.send(from, answer);
   }
 
-  private async sendMail(mail: nodemailer.SendMailOptions): Promise<void> {
+  private async sendMail(mail: SendMailOptions): Promise<void> {
     if (this.opts.transport) {
       await this.opts.transport(mail);
       return;
@@ -300,7 +300,7 @@ export class EmailGateway extends Emitter<{ status: GatewayStatus }> {
   }
 
   /** Answers in the sender's thread (Re: subject, In-Reply-To), marked as an automatic reply. */
-  private envelope(to: string): nodemailer.SendMailOptions {
+  private envelope(to: string): SendMailOptions {
     const cfg = this.config();
     const thread = this.threads.get(to.toLowerCase());
     return {
