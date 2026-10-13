@@ -310,3 +310,28 @@ checks every call against the manifest and what the user granted.
   turn them on. Saved files reload the plugin live.
 - **Hermes's extension model is unchanged.** Agent capabilities stay in backend Hermes plugins such as
   the bridge, behind the approval gate; widgets are UI that Hermes can also write for you.
+
+## ADR-020: The Jarod core is the backend; Hermes is a compatibility option
+
+Since the Windows port the shell starts the Jarod core (`jarod-core/`, TypeScript) whenever a build has
+one, and every `dist:*` script bundles it; Hermes runs only with `HERALD_OS_BACKEND=hermes` or when no
+core was built. Two implementations of the system tools followed: the Python bridge
+(`plugins/herald-os-bridge`) for Hermes, and the core's own (`jarod-core/packages/plugins/tools/src/system`).
+
+- **New system capabilities go into the core.** The bridge gets fixes, not features: it stays shipped and
+  working for people who run Hermes, without a second copy of every new tool.
+- **The wire contract stays Hermes's.** The core answers the same JSON-RPC and REST surface, so the shell
+  needs no fork per backend, and Hermes keeps working as long as that contract holds.
+- **What would end it:** when nobody needs the Hermes backend any more, the bridge and the Hermes ladder
+  (`backend/resolve.ts`) can be removed in one change; until then they cost only their tests.
+
+## ADR-021: Updates wait for a published feed
+
+The core already has an update service (`jarod-core/packages/plugins/updates`: a local folder of
+installers, plus a remote channel the host provides through electron-updater with sha512 and
+Authenticode checks). The shell does not wire it yet: there is no published release feed (the
+derivative is not pushed anywhere), and Windows blocks unsigned updates through SmartScreen anyway.
+
+- **Order:** a code-signing certificate first (`CSC_LINK`/`CSC_KEY_PASSWORD`, see README-WINDOWS), then a
+  feed (GitHub Releases or a generic HTTPS folder), then electron-updater as the core's `RemoteUpdater`.
+- **Until then** a new version is installed by running the new installer, which closes the running app.
