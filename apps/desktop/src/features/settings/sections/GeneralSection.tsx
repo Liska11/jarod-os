@@ -14,8 +14,10 @@ import { $switches, setSwitch, SWITCH_LABELS } from '../../../store/switches.ts'
 import { errorText, markSaved, MenuDropdown, SectionTitle, SettingsGroup, SettingsRow, Stepper } from './shared.tsx'
 import { attempt } from '../../../lib/native.ts'
 import { LanguageSettings } from './LanguageSettings.tsx'
+import { t, useT } from '../../../lib/i18n.ts'
 
 export function GeneralSection() {
+  useT()
   const prefs = useStore($prefs)
   const spaces = useStore($spaces)
   const activeSpace = spaces.find(space => space.id === prefs.activeSpace) ?? spaces[0]
@@ -25,7 +27,7 @@ export function GeneralSection() {
       await updatePrefs(patch)
       markSaved()
     } catch (error) {
-      notify({ title: 'Could not save setting', body: errorText(error), level: 'error' })
+      notify({ title: t('settings.general.saveFailed'), body: errorText(error), level: 'error' })
     }
   }
 
@@ -37,27 +39,27 @@ export function GeneralSection() {
         await save({ [key]: path })
       }
     } catch (error) {
-      notify({ title: 'Could not choose folder', body: errorText(error), level: 'error' })
+      notify({ title: t('settings.general.folderFailed'), body: errorText(error), level: 'error' })
     }
   }
 
   return (
     <>
-      <SectionTitle title="General" subtitle="How Jarod-OS starts and where it works." />
+      <SectionTitle title={t('settings.general.title')} subtitle={t('settings.general.subtitle')} />
 
       <LanguageSettings />
 
-      <SettingsGroup title="Startup">
-        <SettingsRow icon={<IconMaximize />} label="Launch fullscreen" description="Jarod-OS takes over the screen when it starts. Cmd+Ctrl+F toggles at any time." keywords="full screen start">
-          <Toggle checked={prefs.fullscreenOnLaunch} onChange={next => void save({ fullscreenOnLaunch: next })} label="Launch fullscreen" />
+      <SettingsGroup title={t('settings.general.startup')}>
+        <SettingsRow icon={<IconMaximize />} label={t('settings.general.fullscreen')} description={t('settings.general.fullscreen.hint')} keywords="full screen start">
+          <Toggle checked={prefs.fullscreenOnLaunch} onChange={next => void save({ fullscreenOnLaunch: next })} label={t('settings.general.fullscreen')} />
         </SettingsRow>
-        <SettingsRow icon={<IconStack2 />} label="Default Space" description="The Space Jarod-OS opens in.">
+        <SettingsRow icon={<IconStack2 />} label={t('settings.general.space')} description={t('settings.general.space.hint')}>
           <MenuDropdown
-            ariaLabel="Default Space"
+            ariaLabel={t('settings.general.space')}
             label={
               <span className="flex items-center gap-2">
                 <span className="size-2 rounded-full" style={{ background: activeSpace?.color }} />
-                {activeSpace?.name ?? 'Personal'}
+                {activeSpace?.name ?? t('settings.general.space.personal')}
               </span>
             }
             value={activeSpace?.id}
@@ -73,14 +75,14 @@ export function GeneralSection() {
             onSelect={id => void save({ activeSpace: id })}
           />
         </SettingsRow>
-        <SettingsRow icon={<IconFolder />} label="Default folder" description={<span className="selectable font-mono text-[11.5px]">{prefs.defaultCwd || '~'}</span>} keywords="working directory cwd">
-          <GlassButton size="sm" onClick={() => void chooseFolder()} aria-label="Choose default folder">
-            Choose…
+        <SettingsRow icon={<IconFolder />} label={t('settings.general.folder')} description={<span className="selectable font-mono text-[11.5px]">{prefs.defaultCwd || '~'}</span>} keywords="working directory cwd">
+          <GlassButton size="sm" onClick={() => void chooseFolder()} aria-label={t('settings.general.folder.choose')}>
+            {t('settings.general.choose')}
           </GlassButton>
         </SettingsRow>
-        <SettingsRow icon={<IconFolder />} label="Projects folder" description={<span className="selectable font-mono text-[11.5px]">{prefs.projectsRoot || '~/Projects'}</span>} keywords="build studio code website app">
-          <GlassButton size="sm" onClick={() => void chooseFolder('projectsRoot')} aria-label="Choose projects folder">
-            Choose…
+        <SettingsRow icon={<IconFolder />} label={t('settings.general.projects')} description={<span className="selectable font-mono text-[11.5px]">{prefs.projectsRoot || '~/Projects'}</span>} keywords="build studio code website app">
+          <GlassButton size="sm" onClick={() => void chooseFolder('projectsRoot')} aria-label={t('settings.general.projects.choose')}>
+            {t('settings.general.choose')}
           </GlassButton>
         </SettingsRow>
       </SettingsGroup>
@@ -90,17 +92,17 @@ export function GeneralSection() {
       <TypingGroup />
 
 
-      <SettingsGroup title="Session">
+      <SettingsGroup title={t('settings.general.session')}>
         {hostPlatform() === 'linux' ? (
-          <SettingsRow icon={<IconPower />} label="Restart Jarod-OS" description="Stops the Hermes backend this shell started and starts a fresh session." keywords="exit close quit">
-            <GlassButton size="sm" variant="danger" onClick={() => void attempt('quit Jarod-OS', () => window.heraldOS.window.quit())} aria-label="Restart Jarod-OS">
-              Restart
+          <SettingsRow icon={<IconPower />} label={t('settings.general.restart')} description={t('settings.general.restart.hint')} keywords="exit close quit">
+            <GlassButton size="sm" variant="danger" onClick={() => void attempt('quit Jarod-OS', () => window.heraldOS.window.quit())} aria-label={t('settings.general.restart')}>
+              {t('settings.general.restart.button')}
             </GlassButton>
           </SettingsRow>
         ) : (
-          <SettingsRow icon={<IconPower />} label="Quit Jarod-OS" description="Stops the Hermes backend this shell started and returns to macOS." keywords="exit close">
-            <GlassButton size="sm" variant="danger" onClick={() => void attempt('quit Jarod-OS', () => window.heraldOS.window.quit())} aria-label="Quit Jarod-OS">
-              Quit
+          <SettingsRow icon={<IconPower />} label={t('settings.general.quit')} description={t('settings.general.quit.hint')} keywords="exit close">
+            <GlassButton size="sm" variant="danger" onClick={() => void attempt('quit Jarod-OS', () => window.heraldOS.window.quit())} aria-label={t('settings.general.quit')}>
+              {t('settings.general.quit.button')}
             </GlassButton>
           </SettingsRow>
         )}
@@ -110,32 +112,33 @@ export function GeneralSection() {
 }
 
 function SwitchesGroup() {
+  useT()
   const switches = useStore($switches)
   const prefs = useStore($prefs)
 
   const flip = (name: SwitchName, enabled: boolean) =>
     void setSwitch(name, enabled)
       .then(markSaved)
-      .catch(error => notify({ title: `Could not change ${SWITCH_LABELS[name].toLowerCase()}`, body: errorText(error), level: 'error' }))
+      .catch(error => notify({ title: t('settings.general.switchFailed', { name: SWITCH_LABELS[name].toLowerCase() }), body: errorText(error), level: 'error' }))
 
   return (
-    <SettingsGroup title="Switches">
-      <SettingsRow icon={<IconMoon />} label="Do not disturb" description="Notifications collect in the bell without popping up, sounding or being read aloud." keywords="dnd quiet focus silence">
-        <Toggle checked={switches.doNotDisturb} onChange={next => flip('doNotDisturb', next)} label="Do not disturb" />
+    <SettingsGroup title={t('settings.general.switches')}>
+      <SettingsRow icon={<IconMoon />} label={t('settings.general.dnd')} description={t('settings.general.dnd.hint')} keywords="dnd quiet focus silence">
+        <Toggle checked={switches.doNotDisturb} onChange={next => flip('doNotDisturb', next)} label={t('settings.general.dnd')} />
       </SettingsRow>
-      <SettingsRow icon={<IconCoffee />} label="Stay awake" description="Keep the screens on; nothing locks or sleeps on its own until you turn this off." keywords="caffeine inhibit idle sleep">
-        <Toggle checked={switches.stayAwake} onChange={next => flip('stayAwake', next)} label="Stay awake" />
+      <SettingsRow icon={<IconCoffee />} label={t('settings.general.awake')} description={t('settings.general.awake.hint')} keywords="caffeine inhibit idle sleep">
+        <Toggle checked={switches.stayAwake} onChange={next => flip('stayAwake', next)} label={t('settings.general.awake')} />
       </SettingsRow>
       {switches.nightLight !== null && (
-        <SettingsRow icon={<IconSunset2 />} label="Night light" description="Warmer colours that are easier on the eyes in the evening." keywords="blue light warm wlsunset">
-          <Toggle checked={switches.nightLight} onChange={next => flip('nightLight', next)} label="Night light" />
+        <SettingsRow icon={<IconSunset2 />} label={t('settings.general.night')} description={t('settings.general.night.hint')} keywords="blue light warm wlsunset">
+          <Toggle checked={switches.nightLight} onChange={next => flip('nightLight', next)} label={t('settings.general.night')} />
         </SettingsRow>
       )}
-      <SettingsRow icon={<IconDeviceDesktop />} label="Screensaver" description="After a few idle minutes, the living wallpaper and a large clock." keywords="screen saver idle clock">
+      <SettingsRow icon={<IconDeviceDesktop />} label={t('settings.general.screensaver')} description={t('settings.general.screensaver.hint')} keywords="screen saver idle clock">
         {switches.screensaver && (
-          <Stepper value={prefs.screensaver?.afterMinutes ?? 5} min={1} max={60} label="Minutes before the screensaver" onChange={afterMinutes => void updatePrefs({ screensaver: { enabled: true, afterMinutes } }).then(markSaved)} />
+          <Stepper value={prefs.screensaver?.afterMinutes ?? 5} min={1} max={60} label={t('settings.general.screensaver.minutes')} onChange={afterMinutes => void updatePrefs({ screensaver: { enabled: true, afterMinutes } }).then(markSaved)} />
         )}
-        <Toggle checked={switches.screensaver} onChange={next => flip('screensaver', next)} label="Screensaver" />
+        <Toggle checked={switches.screensaver} onChange={next => flip('screensaver', next)} label={t('settings.general.screensaver')} />
       </SettingsRow>
     </SettingsGroup>
   )
@@ -143,27 +146,28 @@ function SwitchesGroup() {
 
 /** Dictation and emoji in any app, and (Linux) the keymap niri runs with. */
 function TypingGroup() {
+  useT()
   const prefs = useStore($prefs)
   const linux = hostPlatform() === 'linux'
   const mod = linux ? 'Super' : 'Cmd'
   const keymap = prefs.keymap === 'omarchy' ? 'omarchy' : 'herald'
 
   return (
-    <SettingsGroup title="Typing">
-      <SettingsRow icon={<IconMicrophone />} label="Dictation" description='Speak in any app and the words are typed where the cursor is; it stops after a pause. Say "comma", "new line" or "press enter".' keywords="speech to text voice typing dictate">
+    <SettingsGroup title={t('settings.general.typing')}>
+      <SettingsRow icon={<IconMicrophone />} label={t('settings.general.dictation')} description={t('settings.general.dictation.hint')} keywords="speech to text voice typing dictate">
         <Kbd>{mod}+Ctrl+X</Kbd>
       </SettingsRow>
-      <SettingsRow icon={<IconMoodSmile />} label="Emoji" description={linux ? 'Search and insert an emoji into the app you are typing in.' : 'The picker inside Jarod-OS; Ctrl+Cmd+Space opens the macOS one anywhere else.'} keywords="emoji picker smiley">
+      <SettingsRow icon={<IconMoodSmile />} label={t('settings.general.emoji')} description={linux ? t('settings.general.emoji.linux') : t('settings.general.emoji.other')} keywords="emoji picker smiley">
         <Kbd>{mod}+Ctrl+E</Kbd>
-        <GlassButton size="sm" onClick={openEmojiPicker} aria-label="Open the emoji picker">
-          Open
+        <GlassButton size="sm" onClick={openEmojiPicker} aria-label={t('settings.general.emoji.open')}>
+          {t('settings.general.open')}
         </GlassButton>
       </SettingsRow>
       {linux && <DefaultTerminalRow />}
       {linux && (
-        <SettingsRow icon={<IconKeyboard />} label="Keymap" description="Omarchy: Super+C, X and V copy, cut and paste in every app, terminals included; voice moves to Super+Shift+V and centring a column to Super+Ctrl+C." keywords="keyboard shortcuts omarchy copy paste super hotkeys">
+        <SettingsRow icon={<IconKeyboard />} label={t('settings.general.keymap')} description={t('settings.general.keymap.hint')} keywords="keyboard shortcuts omarchy copy paste super hotkeys">
           <MenuDropdown
-            ariaLabel="Keymap"
+            ariaLabel={t('settings.general.keymap')}
             label={keymap === 'omarchy' ? 'Omarchy' : 'Jarod'}
             value={keymap}
             items={[
@@ -180,6 +184,7 @@ function TypingGroup() {
 
 /** Jarod-OS Linux: what Super+Return opens; terminals installed from Software join the list. */
 function DefaultTerminalRow() {
+  useT()
   const prefs = useStore($prefs)
   const catalog = useStore($catalog)
 
@@ -195,28 +200,29 @@ function DefaultTerminalRow() {
   const current = prefs.defaultTerminal ?? 'herald'
 
   return (
-    <SettingsRow icon={<IconTerminal2 />} label="Terminal" description="What Super+Return opens. Install Ghostty, Alacritty or Kitty from Software to add them here." keywords="terminal default ghostty kitty alacritty foot">
-      <MenuDropdown ariaLabel="Terminal" label={items.find(item => item.id === current)?.label ?? current} value={current} items={items} onSelect={id => void updatePrefs({ defaultTerminal: id }).then(markSaved)} />
+    <SettingsRow icon={<IconTerminal2 />} label={t('settings.general.terminal')} description={t('settings.general.terminal.hint')} keywords="terminal default ghostty kitty alacritty foot">
+      <MenuDropdown ariaLabel={t('settings.general.terminal')} label={items.find(item => item.id === current)?.label ?? current} value={current} items={items} onSelect={id => void updatePrefs({ defaultTerminal: id }).then(markSaved)} />
     </SettingsRow>
   )
 }
 
 /** Jarod-OS Linux: the idle timings swayidle runs with. */
 function IdleGroup() {
+  useT()
   const prefs = useStore($prefs)
   const idle = { lockAfter: 10, screenOffAfter: 15, suspendAfter: 0, ...prefs.idle }
   const set = (patch: Partial<typeof idle>) => void updatePrefs({ idle: { ...idle, ...patch } }).then(markSaved)
 
   return (
-    <SettingsGroup title="When you step away">
-      <SettingsRow icon={<IconLock />} label="Lock the screen after" description="Minutes without input (only when your account has a password)." keywords="lock idle timeout">
-        <Stepper value={idle.lockAfter} min={1} max={120} label="Minutes before locking" onChange={lockAfter => set({ lockAfter })} />
+    <SettingsGroup title={t('settings.general.idle')}>
+      <SettingsRow icon={<IconLock />} label={t('settings.general.lock')} description={t('settings.general.lock.hint')} keywords="lock idle timeout">
+        <Stepper value={idle.lockAfter} min={1} max={120} label={t('settings.general.lock.minutes')} onChange={lockAfter => set({ lockAfter })} />
       </SettingsRow>
-      <SettingsRow icon={<IconDeviceDesktopOff />} label="Turn the screens off after" description="Minutes without input." keywords="display off power idle">
-        <Stepper value={idle.screenOffAfter} min={1} max={180} label="Minutes before the screens turn off" onChange={screenOffAfter => set({ screenOffAfter })} />
+      <SettingsRow icon={<IconDeviceDesktopOff />} label={t('settings.general.screens')} description={t('settings.general.idleMinutes')} keywords="display off power idle">
+        <Stepper value={idle.screenOffAfter} min={1} max={180} label={t('settings.general.screens.minutes')} onChange={screenOffAfter => set({ screenOffAfter })} />
       </SettingsRow>
-      <SettingsRow icon={<IconZzz />} label="Sleep after" description={idle.suspendAfter ? 'Minutes without input.' : 'Never: the computer only sleeps when you ask.'} keywords="suspend sleep idle">
-        <Stepper value={idle.suspendAfter || null} min={0} max={240} label="Minutes before sleeping" onChange={suspendAfter => set({ suspendAfter })} />
+      <SettingsRow icon={<IconZzz />} label={t('settings.general.sleep')} description={idle.suspendAfter ? t('settings.general.idleMinutes') : t('settings.general.sleep.never')} keywords="suspend sleep idle">
+        <Stepper value={idle.suspendAfter || null} min={0} max={240} label={t('settings.general.sleep.minutes')} onChange={suspendAfter => set({ suspendAfter })} />
       </SettingsRow>
     </SettingsGroup>
   )
