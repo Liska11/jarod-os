@@ -3,6 +3,27 @@
 Rédigé le 14/10/2026 pour l'agent suivant (Hermes), qui n'a pas l'historique de conversation.
 Branche : `feature/windows-port` (107+ commits en avance sur `origin/main`). **Rien n'a été poussé** : consigne du propriétaire, « pas de push hors local ». Ne poussez pas sans son accord explicite.
 
+## 0. Reprendre ici (sauvegarde du 14/10/2026)
+
+**Sauvegardes sur D:**
+- `D:\jarod-os-2026-10-14.bundle` (10,8 Mo) : copie complète du dépôt avec toutes les branches. Vérifiée avec `git bundle verify`. Pointe sur `feature/windows-port` au commit `2b11918`, plus ce commit de mise à jour (le bundle a été créé juste avant).
+- `D:\JarodOS-Setup-0.1.0-alpha.1-win-x64.exe` : l'installeur reconstruit. Empreinte SHA-256 identique à celle de la section 2.
+
+**Restaurer après une réinstallation de Windows** (si `C:\Users\San\herald-os` est perdu) :
+```bash
+git clone -b feature/windows-port D:/jarod-os-2026-10-14.bundle herald-os
+cd herald-os
+git remote set-url origin https://github.com/PAVADI234/herald-os
+npm install
+pnpm --dir jarod-core install
+```
+Avant de cloner, refaire un bundle si des commits ont été ajoutés après le 14/10 : `git bundle create D:/jarod-os-<date>.bundle --all`.
+
+**Pour la prochaine session** : copier ce fichier à l'agent, puis lui demander de commencer la section 7. Points à rappeler :
+- toujours pas de push sans accord ;
+- le propriétaire n'a pas encore validé la tâche 3 de la section 4 (dossier Pinokio géré par Jarod-OS) ;
+- la réinstallation de Windows est envisagée. Placer le dossier Pinokio sur D: (par exemple `D:\pinokio`) pour garder les apps d'IA et leurs modèles.
+
 ## 1. Contexte projet
 
 - **Jarod-OS** (dépôt `herald-os`, anciennement Herald OS / Hermes OS) est un « système d'exploitation agent-natif » : un bureau complet (fenêtres, Dock, Fichiers, Réglages, barre de commandes) en Electron, piloté par un assistant IA nommé Jarod (renommable).
