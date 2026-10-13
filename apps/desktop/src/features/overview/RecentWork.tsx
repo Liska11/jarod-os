@@ -41,7 +41,7 @@ function menuFor(file: RecentFile, onRemove: () => void): MenuItemDef[] {
   return items
 }
 
-/** The last few files touched on this Mac, as thumbnail cards; the menu opens, shows or hides each one. */
+/** The last few files touched on this computer, as thumbnail cards; the menu opens, shows or hides each one. */
 export function RecentWork() {
   const hidden = useStore($prefs).hiddenRecents
   const recent = useLocalData(() => loadRecents(SHOWN), [hidden?.length ?? 0])

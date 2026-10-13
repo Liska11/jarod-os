@@ -1,5 +1,6 @@
 import { IconCameraOff } from '@tabler/icons-react'
 import { useEffect, useRef, useState } from 'react'
+import { privacySettingsPath } from '../../lib/platform-labels.ts'
 
 /** Your camera in a round bubble, mirrored like a mirror, for screen recordings and demos. */
 export function CameraBubble() {
@@ -13,7 +14,7 @@ export function CameraBubble() {
     void (async () => {
       try {
         if (!(await window.heraldOS.capture.requestCamera())) {
-          throw new Error('Jarod-OS is not allowed to use the camera (System Settings > Privacy & Security > Camera).')
+          throw new Error(`Jarod-OS is not allowed to use the camera (${privacySettingsPath('Camera')}).`)
         }
 
         stream = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 480 }, height: { ideal: 480 }, facingMode: 'user' }, audio: false })

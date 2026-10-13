@@ -38,6 +38,33 @@ export function deviceNoun(): string {
   return hostPlatform() === 'darwin' ? 'Mac' : 'computer'
 }
 
+/** What a disk or volume is called where the person lives: `Local Disk (C:)` on Windows, `Macintosh HD` for macOS' `/`. */
+export function diskLabel(mount: string, platform: NodeJS.Platform | 'unknown' = hostPlatform()): string {
+  const drive = /^([A-Za-z]):[\\/]?$/.exec(mount)
+
+  if (drive) {
+    return `Local Disk (${drive[1].toUpperCase()}:)`
+  }
+
+  if (mount === '/') {
+    return platform === 'darwin' ? 'Macintosh HD' : 'Computer'
+  }
+
+  return mount.replace(/[\\/]+$/, '') || mount
+}
+
+/** Where a person grants Jarod-OS the camera, microphone or calendar, in their own system's words. */
+export function privacySettingsPath(kind: 'Camera' | 'Microphone' | 'Calendars', platform: NodeJS.Platform | 'unknown' = hostPlatform()): string {
+  switch (platform) {
+    case 'darwin':
+      return `System Settings > Privacy & Security > ${kind}`
+    case 'win32':
+      return `Settings > Privacy & security > ${kind === 'Calendars' ? 'Calendar' : kind}`
+    default:
+      return 'your system’s privacy settings'
+  }
+}
+
 export function revealLabel(): string {
   return hostPlatform() === 'darwin' ? 'Reveal in Finder' : `Show in ${fileManagerName()}`
 }

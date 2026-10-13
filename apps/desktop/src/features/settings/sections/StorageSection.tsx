@@ -2,7 +2,7 @@ import { useStore } from '@nanostores/react'
 import { IconDeviceFloppy, IconHome } from '@tabler/icons-react'
 import { GlassButton, ProgressBar } from '../../../components/ui/glass.tsx'
 import { formatBytes } from '../../../lib/format.ts'
-import { deviceNoun } from '../../../lib/platform-labels.ts'
+import { deviceNoun, diskLabel } from '../../../lib/platform-labels.ts'
 import { useLocalData } from '../../../lib/use-async.ts'
 import { $env } from '../../../store/backend.ts'
 import { sendPrompt } from '../../../store/chat.ts'
@@ -34,7 +34,7 @@ export function StorageSection() {
             <SettingsRow
               key={disk.mount}
               icon={<IconDeviceFloppy />}
-              label={disk.mount === '/' ? 'Macintosh HD' : disk.mount}
+              label={diskLabel(disk.mount)}
               description={`${formatBytes(disk.used)} used of ${formatBytes(disk.total)} · ${formatBytes(disk.free)} free`}
               keywords="disk volume mount free used"
               below={<ProgressBar value={percent} tone={percent > 90 ? 'progress' : 'accent'} />}

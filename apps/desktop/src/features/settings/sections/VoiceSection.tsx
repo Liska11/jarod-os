@@ -3,7 +3,7 @@ import { IconBellRinging, IconBolt, IconClockPause, IconCoin, IconEar, IconEye, 
 import { useEffect, useState } from 'react'
 import type { MicPermission, VoiceEngine, VoicePrefs } from '../../../../shared/ipc.ts'
 import { GlassButton, Pill, Toggle } from '../../../components/ui/glass.tsx'
-import { deviceNoun } from '../../../lib/platform-labels.ts'
+import { deviceNoun, privacySettingsPath } from '../../../lib/platform-labels.ts'
 import { rest } from '../../../lib/rest.ts'
 import { $engineKind } from '../../../store/engine.ts'
 import { JarodSpeechGroup } from './JarodSpeechGroup.tsx'
@@ -149,7 +149,7 @@ export function VoiceSection() {
         <SettingsRow
           icon={<IconMicrophone />}
           label="Microphone access"
-          description={mic === 'granted' ? 'Granted.' : mic === 'denied' || mic === 'restricted' ? 'Denied. Allow Jarod-OS under System Settings > Privacy & Security > Microphone.' : 'Not asked yet; the first conversation asks.'}
+          description={mic === 'granted' ? 'Granted.' : mic === 'denied' || mic === 'restricted' ? `Denied. Allow Jarod-OS under ${privacySettingsPath('Microphone')}.` : 'Not asked yet; the first conversation asks.'}
           keywords="permission privacy"
         >
           {mic !== 'granted' && (

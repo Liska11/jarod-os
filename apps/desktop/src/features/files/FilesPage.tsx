@@ -21,7 +21,9 @@ import type React from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Chips, EmptyGlass, GlassButton, MoreButton, PageHeader, SearchField, Toggle } from '../../components/ui/glass.tsx'
 import { cn } from '../../lib/cn.ts'
-import { revealLabel } from '../../lib/platform-labels.ts'
+import { hostPlatform, revealLabel } from '../../lib/platform-labels.ts'
+import { isAbsolutePath } from '../../../shared/host-path.ts'
+import { buildCrumbs } from './crumbs.ts'
 import { notify } from '../../store/notifications.ts'
 import { $activeSpace } from '../../store/spaces.ts'
 import { $page, showPage } from '../../store/windows.ts'
@@ -52,7 +54,6 @@ import {
   goForward,
   goUp,
   type KindFilter,
-  type Location,
   looksLikeNaturalLanguage,
   messageOf,
   navigate,
@@ -73,60 +74,17 @@ const KIND_FILTERS: readonly { id: KindFilter; label: string }[] = [
   { id: 'documents', label: 'Documents' }
 ]
 
-interface Crumb {
-  label: string
-  location: Location
-}
-
-function buildCrumbs(location: Location | null, root: string | null, rootLabel: string, home: string | null): Crumb[] {
-  if (!location || !root) {
-    return []
-  }
-
-  const rootCrumb: Crumb = { label: rootLabel, location: { kind: 'dir', path: root } }
-
-  if (location.kind === 'recent') {
-    return [rootCrumb, { label: 'Recent', location }]
-  }
-
-  if (location.kind === 'favorites') {
-    return [rootCrumb, { label: 'Favorites', location }]
-  }
-
-  let base: Crumb
-
-  if (location.path === root || location.path.startsWith(`${root}/`)) {
-    base = rootCrumb
-  } else if (home && (location.path === home || location.path.startsWith(`${home}/`))) {
-    base = { label: 'Home', location: { kind: 'dir', path: home } }
-  } else {
-    base = { label: 'Macintosh HD', location: { kind: 'dir', path: '/' } }
-  }
-
-  const basePath = base.location.kind === 'dir' ? base.location.path : '/'
-  const rest = location.path.slice(basePath === '/' ? 1 : basePath.length + 1).split('/').filter(Boolean)
-  const crumbs = [base]
-  let current = basePath
-
-  for (const segment of rest) {
-    current = current === '/' ? `/${segment}` : `${current}/${segment}`
-    crumbs.push({ label: segment === '.Trash' ? 'Trash' : segment, location: { kind: 'dir', path: current } })
-  }
-
-  return crumbs
-}
-
 function isTypingTarget(target: EventTarget | null): boolean {
   const node = target as HTMLElement | null
 
   return Boolean(node && (node.tagName === 'INPUT' || node.tagName === 'TEXTAREA' || node.isContentEditable))
 }
 
-/** Dropped Finder files: Electron no longer exposes File.path, so this only works when the bridge adds it. */
+/** Dropped files (Finder, Explorer): Electron no longer exposes File.path, so this only works when the bridge adds it. */
 function pathOfDroppedFile(file: File): string | null {
   const candidate = window.heraldOS.fs.pathForFile?.(file) || (file as File & { path?: string }).path
 
-  return typeof candidate === 'string' && candidate.startsWith('/') ? candidate : null
+  return typeof candidate === 'string' && isAbsolutePath(candidate) ? candidate : null
 }
 
 export function FilesPage() {
@@ -188,7 +146,7 @@ export function FilesPage() {
   const natural = looksLikeNaturalLanguage(query)
   const items = useMemo(() => filterItems(listing.data ?? [], { showHidden, kind: kindFilter, query: natural ? '' : query }), [listing.data, showHidden, kindFilter, query, natural])
   const selected = useMemo(() => items.find(item => item.path === selectedPath) ?? null, [items, selectedPath])
-  const crumbs = useMemo(() => buildCrumbs(location, root, space.name, home), [location, root, space.name, home])
+  const crumbs = useMemo(() => buildCrumbs(location, root, space.name, home, hostPlatform()), [location, root, space.name, home])
   const cwd = location?.kind === 'dir' ? location.path : null
 
   useEffect(() => {

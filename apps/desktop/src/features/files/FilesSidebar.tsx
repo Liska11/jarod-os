@@ -8,13 +8,17 @@ import { formatBytes } from '../../lib/format.ts'
 import { useLocalData } from '../../lib/use-async.ts'
 import { useSystemStats } from '../../store/system.ts'
 import { openApp } from '../../store/windows.ts'
-import { $home, $location, DRAG_MIME, type Location, moveItem, navigate, sameLocation } from './files-store.ts'
+import { hostPlatform } from '../../lib/platform-labels.ts'
+import { RECYCLE_BIN } from '../../../shared/trash.ts'
+import { $home, $location, DRAG_MIME, joinPath, type Location, moveItem, navigate, sameLocation } from './files-store.ts'
 
 interface Place {
   id: string
   label: string
   icon: React.ReactNode
   location: Location
+  /** Opened by the system instead of browsed here (Windows' Recycle Bin is a shell location, not a folder). */
+  external?: string
 }
 
 async function namesIn(dir: string): Promise<Set<string>> {
@@ -25,23 +29,29 @@ async function namesIn(dir: string): Promise<Set<string>> {
   }
 }
 
-/** Resolve the well-known folders for this Mac; anything missing falls back sensibly or is dropped. */
-async function resolvePlaces(home: string): Promise<Place[]> {
-  const [homeNames, mobileDocs] = await Promise.all([namesIn(home), namesIn(`${home}/Library/Mobile Documents`)])
-  const projects = homeNames.has('Projects') ? `${home}/Projects` : homeNames.has('Apps') ? `${home}/Apps` : home
-  const shared = mobileDocs.has('com~apple~CloudDocs') ? `${home}/Library/Mobile Documents/com~apple~CloudDocs` : homeNames.has('Public') ? `${home}/Public` : null
+/** Resolve the well-known folders of this computer; anything missing falls back sensibly or is dropped. */
+async function resolvePlaces(home: string, platform: NodeJS.Platform | 'unknown'): Promise<Place[]> {
+  const mac = platform === 'darwin'
+  const iCloudParent = joinPath(home, 'Library/Mobile Documents')
+  const [homeNames, mobileDocs] = await Promise.all([namesIn(home), mac ? namesIn(iCloudParent) : Promise.resolve(new Set<string>())])
+  const projects = homeNames.has('Projects') ? joinPath(home, 'Projects') : homeNames.has('Apps') ? joinPath(home, 'Apps') : home
+  const shared = mobileDocs.has('com~apple~CloudDocs') ? joinPath(iCloudParent, 'com~apple~CloudDocs') : homeNames.has('Public') ? joinPath(home, 'Public') : null
   const places: Place[] = [
     { id: 'recent', label: 'Recent', icon: <IconClock />, location: { kind: 'recent' } },
     { id: 'favorites', label: 'Favorites', icon: <IconStar />, location: { kind: 'favorites' } },
     { id: 'projects', label: 'Projects', icon: <IconFolder />, location: { kind: 'dir', path: projects } },
-    { id: 'downloads', label: 'Downloads', icon: <IconDownload />, location: { kind: 'dir', path: `${home}/Downloads` } }
+    { id: 'downloads', label: 'Downloads', icon: <IconDownload />, location: { kind: 'dir', path: joinPath(home, 'Downloads') } }
   ]
 
   if (shared) {
     places.push({ id: 'shared', label: 'Shared', icon: <IconUsers />, location: { kind: 'dir', path: shared } })
   }
 
-  places.push({ id: 'trash', label: 'Trash', icon: <IconTrash />, location: { kind: 'dir', path: `${home}/.Trash` } })
+  if (platform === 'win32') {
+    places.push({ id: 'trash', label: 'Recycle Bin', icon: <IconTrash />, location: { kind: 'dir', path: RECYCLE_BIN }, external: RECYCLE_BIN })
+  } else {
+    places.push({ id: 'trash', label: 'Trash', icon: <IconTrash />, location: { kind: 'dir', path: mac ? joinPath(home, '.Trash') : joinPath(home, '.local/share/Trash/files') } })
+  }
 
   return places
 }
@@ -50,7 +60,7 @@ export function FilesSidebar() {
   const home = useStore($home)
   const location = useStore($location)
   const stats = useSystemStats()
-  const places = useLocalData(() => (home ? resolvePlaces(home) : Promise.resolve([] as Place[])), [home])
+  const places = useLocalData(() => (home ? resolvePlaces(home, hostPlatform()) : Promise.resolve([] as Place[])), [home])
   const [dropTarget, setDropTarget] = useState<string | null>(null)
   const disk = stats?.disks[0]
   const percent = disk && disk.total > 0 ? (disk.used / disk.total) * 100 : 0
@@ -61,7 +71,7 @@ export function FilesSidebar() {
         {!places.data && home && Array.from({ length: 6 }, (_, index) => <div key={index} className="shimmer mx-1 my-1 h-6 rounded-md" />)}
         {(places.data ?? []).map(place => {
           const active = sameLocation(location, place.location)
-          const droppable = place.location.kind === 'dir'
+          const droppable = place.location.kind === 'dir' && !place.external
           const dir = place.location.kind === 'dir' ? place.location.path : null
 
           return (
@@ -69,7 +79,7 @@ export function FilesSidebar() {
               key={place.id}
               type="button"
               aria-current={active ? 'page' : undefined}
-              onClick={() => navigate(place.location)}
+              onClick={() => (place.external ? void window.heraldOS.fs.openPath(place.external) : navigate(place.location))}
               onDragOver={event => {
                 if (droppable && event.dataTransfer.types.includes(DRAG_MIME)) {
                   event.preventDefault()

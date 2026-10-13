@@ -4,7 +4,7 @@ import { type ComponentType, useEffect, useState } from 'react'
 import type { CatalogEntryView } from '../../../../shared/ipc.ts'
 import { GlassButton, Pill } from '../../../components/ui/glass.tsx'
 import { Spinner } from '../../../components/ui/primitives.tsx'
-import { hostPlatform } from '../../../lib/platform-labels.ts'
+import { deviceNoun, hostPlatform } from '../../../lib/platform-labels.ts'
 import { $catalog, loadCatalog, runCatalog, switchHermesToLocalModel } from '../../../store/catalog.ts'
 import { notify } from '../../../store/notifications.ts'
 import { openTerminalProgram } from '../../../store/terminal.ts'
@@ -42,7 +42,7 @@ export function SoftwareSection() {
 
   return (
     <>
-      <SectionTitle title="Software" subtitle={linux ? 'Tools, languages, apps and games, installed the right way for this machine.' : 'Coding agents and local model apps for this Mac.'} />
+      <SectionTitle title="Software" subtitle={linux ? 'Tools, languages, apps and games, installed the right way for this machine.' : `Coding agents and local model apps for this ${deviceNoun()}.`} />
 
       {catalog.error && <InlineNote tone="danger">{catalog.error}</InlineNote>}
       {!catalog.loaded && (

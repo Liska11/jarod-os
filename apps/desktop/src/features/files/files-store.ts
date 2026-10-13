@@ -13,6 +13,7 @@ import { openFileWindow } from '../../store/web-windows.ts'
 import { showPage } from '../../store/windows.ts'
 import { isViewable } from '../../../shared/viewer.ts'
 import { baseName } from '../../../shared/path-names.ts'
+import { invalidNameCharacter, isWindowsPath, joinPath as joinHostPath, normalizeDir, parentOf as parentOfHostPath } from '../../../shared/host-path.ts'
 
 /*
  * Page-local state for Files: where we are, what is selected, how we look at it, plus the
@@ -58,23 +59,27 @@ export function expandHome(path: string | undefined, home: string | null): strin
     return undefined
   }
 
-  if (home && (path === '~' || path.startsWith('~/'))) {
-    return home + path.slice(1)
+  if (home && (path === '~' || path.startsWith('~/') || path.startsWith('~\\'))) {
+    return normalizeDir(joinHostPath(home, path.slice(2)))
   }
 
-  return path.replace(/\/+$/, '') || '/'
+  return normalizeDir(path)
 }
 
+/** Separator-aware (C:\Users as well as /home): see shared/host-path.ts. */
 export function parentOf(path: string): string | null {
-  if (path === '/' || !path) {
-    return null
-  }
-
-  return path.replace(/\/[^/]+\/?$/, '') || '/'
+  return parentOfHostPath(path)
 }
 
 export function joinPath(dir: string, name: string): string {
-  return dir === '/' ? `/${name}` : `${dir}/${name}`
+  return joinHostPath(dir, name)
+}
+
+/** Why `name` cannot be a file name in `dir`, or null when it can. */
+function nameProblem(dir: string, name: string): string | null {
+  const bad = invalidNameCharacter(name, isWindowsPath(dir))
+
+  return bad ? `Names cannot contain "${bad}"` : null
 }
 
 export function basename(path: string): string {
@@ -667,8 +672,10 @@ export async function renameItem(item: FileItem, name: string): Promise<boolean>
     return false
   }
 
-  if (trimmed.includes('/')) {
-    notify({ title: 'Names cannot contain "/"', level: 'warn' })
+  const problem = nameProblem(parent, trimmed)
+
+  if (problem) {
+    notify({ title: problem, level: 'warn' })
 
     return false
   }
@@ -726,6 +733,14 @@ export async function createFolder(dir: string, name: string): Promise<string | 
   const trimmed = name.trim()
 
   if (!trimmed) {
+    return null
+  }
+
+  const problem = nameProblem(dir, trimmed)
+
+  if (problem) {
+    notify({ title: problem, level: 'warn' })
+
     return null
   }
 

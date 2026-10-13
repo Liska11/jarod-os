@@ -4,6 +4,7 @@
 // onto "the mic is actually open".
 import { atom } from 'nanostores'
 import { floatToInt16, resampleLinear, rms, TARGET_SAMPLE_RATE } from './pcm.ts'
+import { privacySettingsPath } from '../platform-labels.ts'
 
 export interface CaptureFrame {
   /** 16 kHz mono int16 samples. */
@@ -54,10 +55,10 @@ async function open(): Promise<void> {
       const granted = await window.heraldOS.voice.requestMicrophone().catch(() => 'unknown' as const)
 
       if (granted === 'denied' || granted === 'restricted') {
-        throw new MicrophoneUnavailableError('denied', 'Microphone access was denied. Allow Jarod-OS in System Settings > Privacy & Security > Microphone.')
+        throw new MicrophoneUnavailableError('denied', `Microphone access was denied. Allow Jarod-OS in ${privacySettingsPath('Microphone')}.`)
       }
     } else if (permission === 'denied' || permission === 'restricted') {
-      throw new MicrophoneUnavailableError('denied', 'Microphone access is denied. Allow Jarod-OS in System Settings > Privacy & Security > Microphone.')
+      throw new MicrophoneUnavailableError('denied', `Microphone access is denied. Allow Jarod-OS in ${privacySettingsPath('Microphone')}.`)
     }
 
     if (!navigator.mediaDevices?.getUserMedia) {

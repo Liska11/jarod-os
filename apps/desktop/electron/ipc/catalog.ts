@@ -124,7 +124,7 @@ async function macRun(id: string, action: 'install' | 'remove'): Promise<Catalog
   const { method, reason } = pickMacMethod(found.entry, { npm: Boolean(npm), brew: Boolean(brew) })
 
   if (!method) {
-    return { ok: false, output: `${found.entry.label} cannot be installed on this Mac: ${reason ?? 'no macOS method'}` }
+    return { ok: false, output: `${found.entry.label} cannot be installed on this ${process.platform === 'darwin' ? 'Mac' : 'computer'}: ${reason ?? 'no install method for this system'}` }
   }
 
   if (method.kind === 'link') {
