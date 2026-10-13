@@ -19,7 +19,26 @@ pnpm --dir jarod-core install
 ```
 Avant de cloner, refaire un bundle si des commits ont été ajoutés après le 14/10 : `git bundle create D:/jarod-os-<date>.bundle --all`.
 
-**Pour la prochaine session** : copier ce fichier à l'agent, puis lui demander de commencer la section 7. Points à rappeler :
+**Phase d'initialisation (section 7) — avancement au 14/10/2026 :**
+- ✅ **Étape 1, moteur de l'audit** : `apps/desktop/electron/setup/audit.ts`, avec 11 tests dans `audit.test.ts`.
+  - Matériel :
+    - OS et environnement (windows, wsl2, linux, docker, macos) ;
+    - CPU avec AVX2 et AVX-512, via `IsProcessorFeaturePresent` ;
+    - GPU, avec la vraie VRAM lue dans le registre de la classe d'affichage (AdapterRAM plafonne à 4 Go) ;
+    - iGPU (mémoire partagée), NPU (PnP `ComputeAccelerator`), RAM et disque.
+  - Logiciels : Node ≥ 22.12, npm, pnpm, Git, Python ≥ 3.10, Ollama, Docker, WSL2, CUDA (`nvidia-smi`), Vulkan, ROCm et OpenVINO (en info).
+  - Chaque point a un statut ok, missing, outdated ou info, et une commande de correction exacte (winget sous Windows).
+  - Seules la RAM < 4 Go et le disque libre < 2 Go bloquent.
+  - JSON persistant via `runAudit({file})`, réutilisé sauf `force` ou changement de format. Chaque étape est journalisée.
+  - Rapport texte : `formatReport`.
+  - Vérifié pour de vrai sur la machine du propriétaire (2,3 s, rien de bloquant). Données jetables : le JSON est allé dans le scratchpad.
+- ⏭ **À faire ensuite, dans l'ordre :**
+  1. **Brancher l'audit.** Dans `apps/desktop/electron/main.ts` (après `app.whenReady`), lancer `runAudit({ file: auditFile(shellConfigDir()), log: m => log('setup', m) })`. `shellConfigDir` est dans `electron/paths.ts` ; `log` dans `electron/log.ts`. Exposer le rapport par IPC : déclarer un canal dans `apps/desktop/shared/ipc.ts`, l'exposer dans `preload/index.ts` et le traiter dans un nouveau `electron/ipc/setup.ts`, sur le modèle de `electron/ipc/pinokio.ts`.
+  2. **Assistant de premier lancement** dans le renderer : une fenêtre qui montre le rapport, bloque si `blocked`, et propose « Relancer l'audit ». Il apparaît si aucun `first-run.json` n'est marqué terminé. Les textes vont dans `src/locales/en.ts` et `fr.ts`. Les libellés de `audit.ts` sont en anglais : les traduire côté renderer à partir de `check.id`.
+  3. **Étape 2, Telegram** : validation du jeton par `https://api.telegram.org/bot<token>/getMe`, puis message de test (`sendMessage` vers le chat qui a écrit au bot : `getUpdates`). Vérifier d'abord si le noyau gère déjà Telegram (`grep -ri telegram jarod-core/packages`) et réutiliser son stockage.
+  4. **Étape 2, import `.txt` des clés** (`NOM=clé`) : analyse tolérante, doublons, format par service, correction ligne à ligne. Stockage avec `safeStorage` d'Electron (DPAPI sous Windows) ou dans le magasin de secrets existant du noyau, à vérifier avant d'en créer un. Ne jamais journaliser les valeurs.
+
+**Pour la prochaine session** : donner ce fichier à l'agent et lui demander de reprendre au point « À faire ensuite », étape 1. Points à rappeler :
 - toujours pas de push sans accord ;
 - le propriétaire n'a pas encore validé la tâche 3 de la section 4 (dossier Pinokio géré par Jarod-OS) ;
 - la réinstallation de Windows est envisagée. Placer le dossier Pinokio sur D: (par exemple `D:\pinokio`) pour garder les apps d'IA et leurs modèles.
@@ -52,7 +71,7 @@ Avant de cloner, refaire un bundle si des commits ont été ajoutés après le 1
 
 ## 3. Travail en cours
 
-Aucune tâche entamée et non terminée. L'arbre de travail était propre au moment de cette passation, et la dernière fonctionnalité (Pinokio) est complète et commitée.
+Phase d'initialisation entamée : le moteur de l'audit est fait, mais n'est pas encore branché ni affiché (voir section 0). L'arbre de travail était propre au moment de cette passation, et la dernière fonctionnalité (Pinokio) est complète et commitée.
 
 Points vérifiés seulement en partie :
 - Pinokio n'a pas été testé de bout en bout sur une vraie app d'IA (plusieurs Go de téléchargement).
