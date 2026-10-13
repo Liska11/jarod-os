@@ -5,7 +5,7 @@ import { HeraldLogo } from '../../components/herald-logo.tsx'
 import { GlassButton } from '../../components/ui/glass.tsx'
 import { Spinner } from '../../components/ui/primitives.tsx'
 import { cn } from '../../lib/cn.ts'
-import { type MessageKey, t, useT } from '../../lib/i18n.ts'
+import { $locale, type MessageKey, t, useT } from '../../lib/i18n.ts'
 import { Footer, Heading } from './parts.tsx'
 import { KeysStep } from './KeysStep.tsx'
 import { TelegramStep } from './TelegramStep.tsx'
@@ -83,7 +83,7 @@ export function checkLabel(check: Check): string {
   return text === key ? check.label : text
 }
 
-const gb = (mb: number) => (mb / 1024).toFixed(1)
+const gb = (mb: number) => new Intl.NumberFormat($locale.get(), { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(mb / 1024)
 const yesNo = (value: boolean | null) => t(value === null ? 'setup.detail.unknown' : value ? 'setup.detail.yes' : 'setup.detail.no')
 const TOOLS = new Set(['node', 'npm', 'pnpm', 'git', 'python', 'ollama', 'docker'])
 const MINIMUM: Record<string, string> = { node: '22.12', python: '3.10' }
