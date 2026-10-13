@@ -9,6 +9,7 @@ import { $continuity, forgetThreads, setContinuityEnabled, setExclusions } from 
 import { notify } from '../../../store/notifications.ts'
 import { AuditRow } from './AgentsSection.tsx'
 import { errorText, markSaved, SectionTitle, SettingsBlock, SettingsGroup, SettingsRow } from './shared.tsx'
+import { t, useT } from '../../../lib/i18n.ts'
 
 /*
  * Privacy: what "Pick up where you left off" may look at, the raw permission policy the Jarod-OS
@@ -17,6 +18,7 @@ import { errorText, markSaved, SectionTitle, SettingsBlock, SettingsGroup, Setti
  */
 
 function ContinuitySettings() {
+  useT()
   const continuity = useStore($continuity)
   const home = useStore($env)?.homeDir ?? ''
   const [word, setWord] = useState('')
@@ -29,19 +31,19 @@ function ContinuitySettings() {
   }
 
   return (
-    <SettingsGroup title="Pick up where you left off">
+    <SettingsGroup title={t('settings.privacy.continuity')}>
       <SettingsRow
         icon={<IconBrain />}
-        label="Pick up where you left off"
-        description="When you open Jarod-OS or come back after a break, Hermes reads the names and dates of your recent documents, project folders (with their git state), conversations, open apps and today's calendar, then suggests where to continue. Never file contents, window titles or the screen. Your Hermes model provider writes the suggestions."
+        label={t('settings.privacy.continuity')}
+        description={t('settings.privacy.continuity.hint')}
         keywords="continuity resume catch up brain context recent work suggestions welcome back"
       >
-        <Toggle checked={continuity.enabled === true} onChange={enabled => void setContinuityEnabled(enabled)} label="Pick up where you left off" />
+        <Toggle checked={continuity.enabled === true} onChange={enabled => void setContinuityEnabled(enabled)} label={t('settings.privacy.continuity')} />
       </SettingsRow>
       <SettingsRow
         icon={<IconEyeOff />}
-        label="Never look at"
-        description="Folders and words Jarod-OS leaves out. A word hides every file, project, chat or event whose name contains it, such as a client's name."
+        label={t('settings.privacy.never')}
+        description={t('settings.privacy.never.hint')}
         keywords="exclude hide private confidential folders words clients"
         below={
           <div className="flex flex-col gap-2.5">
@@ -53,7 +55,7 @@ function ContinuitySettings() {
                     <span className="truncate">{entry}</span>
                     <button
                       type="button"
-                      aria-label={`Stop leaving out ${entry}`}
+                      aria-label={t('settings.privacy.never.remove', { entry })}
                       onClick={() => void setExclusions(continuity.exclude.filter(e => e !== entry))}
                       className="flex size-5 shrink-0 items-center justify-center rounded-full text-fg-4 hover:bg-white/10 hover:text-fg"
                     >
@@ -77,24 +79,24 @@ function ContinuitySettings() {
               <input
                 value={word}
                 onChange={event => setWord(event.target.value)}
-                placeholder="Add a word, such as a client's name"
-                aria-label="Word to leave out"
+                placeholder={t('settings.privacy.never.placeholder')}
+                aria-label={t('settings.privacy.never.aria')}
                 className="glass-input h-8 min-w-0 flex-1 rounded-lg px-3 text-[12.5px] text-fg outline-none"
               />
               <GlassButton size="sm" type="submit" disabled={!word.trim()}>
-                Add word
+                {t('settings.privacy.never.addWord')}
               </GlassButton>
             </form>
           </div>
         }
       >
         <GlassButton size="sm" onClick={() => void pickFolders()}>
-          Add folder…
+          {t('settings.privacy.never.addFolder')}
         </GlassButton>
       </SettingsRow>
-      <SettingsRow icon={<IconTrash />} label="Forget suggestions" description="Clear the threads Hermes found. Jarod-OS keeps nothing else from a catch-up." keywords="clear delete reset threads">
+      <SettingsRow icon={<IconTrash />} label={t('settings.privacy.forget')} description={t('settings.privacy.forget.hint')} keywords="clear delete reset threads">
         <GlassButton size="sm" variant="ghost" disabled={!continuity.threads?.length} onClick={() => void forgetThreads()}>
-          Forget
+          {t('settings.privacy.forget.button')}
         </GlassButton>
       </SettingsRow>
     </SettingsGroup>
@@ -102,6 +104,7 @@ function ContinuitySettings() {
 }
 
 export function PrivacySection() {
+  useT()
   const policy = useLocalData(() => window.heraldOS.bridge.readPolicy())
   const [draft, setDraft] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
@@ -120,10 +123,10 @@ export function PrivacySection() {
     try {
       await window.heraldOS.bridge.writePolicy(text)
       markSaved()
-      notify({ title: 'Permissions saved', body: 'The system bridge reads the policy on its next action.', level: 'success' })
+      notify({ title: t('settings.privacy.saved'), body: t('settings.privacy.saved.body'), level: 'success' })
       policy.reload()
     } catch (error) {
-      notify({ title: 'Could not save policy', body: errorText(error), level: 'error' })
+      notify({ title: t('settings.privacy.saveFailed'), body: errorText(error), level: 'error' })
     } finally {
       setSaving(false)
     }
@@ -131,56 +134,56 @@ export function PrivacySection() {
 
   return (
     <>
-      <SectionTitle title="Privacy" subtitle={`What Hermes may look at and do on this ${deviceNoun()}, and the record of what it did.`} />
+      <SectionTitle title={t('settings.privacy.title')} subtitle={t('settings.privacy.subtitle', { device: deviceNoun() })} />
 
       <ContinuitySettings />
 
-      <SettingsBlock title="Permission policy" label="Permission policy" description="Tiers: read runs freely, act runs and is audited, mutate asks first, destructive always asks. Protected paths are never touched." keywords="permissions yaml tiers allow confirm deny bridge">
+      <SettingsBlock title={t('settings.privacy.policy')} label={t('settings.privacy.policy')} description={t('settings.privacy.policy.hint')} keywords="permissions yaml tiers allow confirm deny bridge">
         <GlassCard className="flex flex-col gap-3 p-3.5">
           <div className="text-[12px] leading-snug text-fg-3">
-            Tiers: <span className="text-fg-2">read</span> runs freely, <span className="text-fg-2">act</span> runs and is audited, <span className="text-fg-2">mutate</span> asks first, <span className="text-fg-2">destructive</span> always asks. Each tier takes <span className="font-mono text-fg-2">allow</span>, <span className="font-mono text-fg-2">confirm</span> or <span className="font-mono text-fg-2">deny</span>.
+            {t('settings.privacy.tiers')} <span className="text-fg-2">read</span> {t('settings.privacy.tiers.read')} <span className="text-fg-2">act</span> {t('settings.privacy.tiers.act')} <span className="text-fg-2">mutate</span> {t('settings.privacy.tiers.mutate')} <span className="text-fg-2">destructive</span> {t('settings.privacy.tiers.destructive')} {t('settings.privacy.tiers.takes')} <span className="font-mono text-fg-2">allow</span>, <span className="font-mono text-fg-2">confirm</span> {t('settings.privacy.tiers.or')} <span className="font-mono text-fg-2">deny</span>.
           </div>
           <textarea
             value={text}
             onChange={event => setDraft(event.target.value)}
             spellCheck={false}
-            aria-label="Permission policy"
+            aria-label={t('settings.privacy.policy')}
             className="glass-input min-h-[260px] resize-y rounded-lg p-3 font-mono text-[12px] leading-relaxed text-fg-2 outline-none"
           />
           <div className="flex items-center justify-between gap-3">
-            <span className="text-[11.5px] text-fg-4">{policy.error ? policy.error : dirty ? 'Unsaved changes' : 'Saved on disk'}</span>
+            <span className="text-[11.5px] text-fg-4">{policy.error ? policy.error : dirty ? t('settings.privacy.unsaved') : t('settings.privacy.onDisk')}</span>
             <div className="flex items-center gap-2">
               <GlassButton size="sm" variant="ghost" disabled={!dirty} onClick={() => setDraft(null)}>
-                Revert
+                {t('settings.privacy.revert')}
               </GlassButton>
               <GlassButton size="sm" variant="primary" disabled={!dirty || saving} onClick={() => void save()}>
-                Save policy
+                {t('settings.privacy.save')}
               </GlassButton>
             </div>
           </div>
         </GlassCard>
       </SettingsBlock>
 
-      <SettingsGroup title="Protected paths">
+      <SettingsGroup title={t('settings.privacy.protected')}>
         <SettingsRow
           icon={<IconShieldLock />}
-          label="Protected paths"
-          description="Paths listed under protected_paths are never read, written or moved by the bridge, whatever the tier says. Hermes's own config.yaml and secrets are protected upstream regardless."
+          label={t('settings.privacy.protected')}
+          description={t('settings.privacy.protected.hint')}
           keywords="secrets config.yaml never touched"
         />
       </SettingsGroup>
 
-      <SettingsGroup title="Audit">
+      <SettingsGroup title={t('settings.privacy.audit')}>
         <SettingsRow
           icon={<IconHistory />}
-          label="Audit log"
-          description="Every action the bridge took or refused, newest first."
+          label={t('settings.privacy.auditLog')}
+          description={t('settings.privacy.auditLog.hint')}
           keywords="history activity"
           below={
             showAudit ? (
               <div className="animate-rise flex max-h-[360px] flex-col overflow-y-auto rounded-lg border border-line bg-black/20">
-                {audit.loading && !audit.data?.length && <div className="p-3 text-[12px] text-fg-4">Loading…</div>}
-                {!audit.loading && (audit.data?.length ?? 0) === 0 && <div className="p-3 text-[12px] text-fg-4">No bridge activity yet.</div>}
+                {audit.loading && !audit.data?.length && <div className="p-3 text-[12px] text-fg-4">{t('settings.privacy.loading')}</div>}
+                {!audit.loading && (audit.data?.length ?? 0) === 0 && <div className="p-3 text-[12px] text-fg-4">{t('settings.privacy.noActivity')}</div>}
                 {(audit.data ?? []).map((entry, index) => (
                   <AuditRow key={`${entry.ts}-${index}`} entry={entry} />
                 ))}
@@ -190,10 +193,10 @@ export function PrivacySection() {
         >
           {showAudit && (
             <GlassButton size="sm" variant="ghost" onClick={audit.reload}>
-              Refresh
+              {t('settings.privacy.refresh')}
             </GlassButton>
           )}
-          <LinkAction onClick={() => setShowAudit(o => !o)}>{showAudit ? 'Hide log' : 'View log'}</LinkAction>
+          <LinkAction onClick={() => setShowAudit(o => !o)}>{showAudit ? t('settings.privacy.hideLog') : t('settings.privacy.viewLog')}</LinkAction>
         </SettingsRow>
       </SettingsGroup>
     </>
