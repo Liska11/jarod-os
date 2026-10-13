@@ -41,6 +41,8 @@ export const fr: Record<MessageKey, string> = {
   // Appareils
   'device.this.computer': 'cet ordinateur',
   'device.this.mac': 'ce Mac',
+  'disk.local': 'Disque local ({drive}:)',
+  'disk.computer': 'Ordinateur',
 
   // Barre latérale
   'sidebar.tagline': 'Une meilleure version de vous. Toujours.',

@@ -44,11 +44,11 @@ export function diskLabel(mount: string, platform: NodeJS.Platform | 'unknown' =
   const drive = /^([A-Za-z]):[\\/]?$/.exec(mount)
 
   if (drive) {
-    return `Local Disk (${drive[1].toUpperCase()}:)`
+    return t('disk.local', { drive: drive[1].toUpperCase() })
   }
 
   if (mount === '/') {
-    return platform === 'darwin' ? 'Macintosh HD' : 'Computer'
+    return platform === 'darwin' ? 'Macintosh HD' : t('disk.computer')
   }
 
   return mount.replace(/[\\/]+$/, '') || mount

@@ -43,6 +43,8 @@ export const en = {
   // Devices
   'device.this.computer': 'this computer',
   'device.this.mac': 'this Mac',
+  'disk.local': 'Local Disk ({drive}:)',
+  'disk.computer': 'Computer',
 
   // Sidebar
   'sidebar.tagline': 'A more capable you. Always.',
