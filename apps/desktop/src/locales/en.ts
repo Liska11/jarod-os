@@ -2889,6 +2889,14 @@ export const en = {
   'overview.openAria': 'Open {name}',
   'overview.open': 'Open',
   'overview.step.pending': 'Pending',
+  // Session list (left sidebar)
+  'sessionList.title': 'Sessions',
+  'sessionList.newAria': 'New session',
+  'sessionList.empty': 'No sessions yet. Say something to {assistant}.',
+  'sessionList.ago': '{time} ago',
+  'sessionList.msgs.one': '· {count} message',
+  'sessionList.msgs.other': '· {count} messages',
+  'sessionList.deleteAria': 'Delete session',
   } as const
 
   export type MessageKey = keyof typeof en

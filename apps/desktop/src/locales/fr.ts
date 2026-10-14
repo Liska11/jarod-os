@@ -2887,4 +2887,12 @@ export const fr: Record<MessageKey, string> = {
   'overview.openAria': 'Ouvrir {name}',
   'overview.open': 'Ouvrir',
   'overview.step.pending': 'En attente',
+  // Session list (left sidebar)
+  'sessionList.title': 'Sessions',
+  'sessionList.newAria': 'Nouvelle session',
+  'sessionList.empty': "Aucune session pour l'instant. Dites quelque chose \u00e0 {assistant}.",
+  'sessionList.ago': 'il y a {time}',
+  'sessionList.msgs.one': '· {count} message',
+  'sessionList.msgs.other': '· {count} messages',
+  'sessionList.deleteAria': 'Supprimer la session',
 }
