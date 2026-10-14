@@ -1,5 +1,5 @@
 import { useStore } from '@nanostores/react'
-import { IconCoffee, IconDeviceDesktop, IconDeviceDesktopOff, IconFolder, IconKeyboard, IconLock, IconMaximize, IconMicrophone, IconMoodSmile, IconMoon, IconPower, IconStack2, IconSunset2, IconTerminal2, IconZzz } from '@tabler/icons-react'
+import { IconCoffee, IconDeviceDesktop, IconDeviceDesktopOff, IconDownload, IconFolder, IconKeyboard, IconLock, IconMaximize, IconMicrophone, IconMoodSmile, IconMoon, IconPower, IconRefresh, IconStack2, IconSunset2, IconTerminal2, IconZzz } from '@tabler/icons-react'
 import { useEffect } from 'react'
 import type { SwitchName } from '../../../../shared/ipc.ts'
 import { GlassButton, Toggle } from '../../../components/ui/glass.tsx'
@@ -15,12 +15,15 @@ import { errorText, markSaved, MenuDropdown, SectionTitle, SettingsGroup, Settin
 import { attempt } from '../../../lib/native.ts'
 import { LanguageSettings } from './LanguageSettings.tsx'
 import { t, useT } from '../../../lib/i18n.ts'
+import { KeysStep } from '../../setup/KeysStep.tsx'
+import { useState } from 'react'
 
 export function GeneralSection() {
   useT()
   const prefs = useStore($prefs)
   const spaces = useStore($spaces)
   const activeSpace = spaces.find(space => space.id === prefs.activeSpace) ?? spaces[0]
+  const [showKeysImport, setShowKeysImport] = useState(false)
 
   const save = async (patch: Parameters<typeof updatePrefs>[0]) => {
     try {
@@ -93,20 +96,41 @@ export function GeneralSection() {
 
 
       <SettingsGroup title={t('settings.general.session')}>
-        {hostPlatform() === 'linux' ? (
-          <SettingsRow icon={<IconPower />} label={t('settings.general.restart')} description={t('settings.general.restart.hint')} keywords="exit close quit">
-            <GlassButton size="sm" variant="danger" onClick={() => void attempt('quit Jarod-OS', () => window.heraldOS.window.quit())} aria-label={t('settings.general.restart')}>
-              {t('settings.general.restart.button')}
-            </GlassButton>
-          </SettingsRow>
-        ) : (
-          <SettingsRow icon={<IconPower />} label={t('settings.general.quit')} description={t('settings.general.quit.hint')} keywords="exit close">
-            <GlassButton size="sm" variant="danger" onClick={() => void attempt('quit Jarod-OS', () => window.heraldOS.window.quit())} aria-label={t('settings.general.quit')}>
-              {t('settings.general.quit.button')}
-            </GlassButton>
-          </SettingsRow>
-        )}
-      </SettingsGroup>
+              {hostPlatform() === 'linux' ? (
+                <SettingsRow icon={<IconPower />} label={t('settings.general.restart')} description={t('settings.general.restart.hint')} keywords="exit close quit">
+                  <GlassButton size="sm" variant="danger" onClick={() => void attempt('quit Jarod-OS', () => window.heraldOS.window.quit())} aria-label={t('settings.general.restart')}>
+                    {t('settings.general.restart.button')}
+                  </GlassButton>
+                </SettingsRow>
+              ) : (
+                <SettingsRow icon={<IconPower />} label={t('settings.general.quit')} description={t('settings.general.quit.hint')} keywords="exit close">
+                  <GlassButton size="sm" variant="danger" onClick={() => void attempt('quit Jarod-OS', () => window.heraldOS.window.quit())} aria-label={t('settings.general.quit')}>
+                    {t('settings.general.quit.button')}
+                  </GlassButton>
+                </SettingsRow>
+              )}
+            </SettingsGroup>
+
+            <SettingsGroup title={t('settings.general.system')}>
+              <SettingsRow icon={<IconRefresh />} label={t('settings.general.systemCheck')} description={t('settings.general.systemCheck.hint')} keywords="audit hardware software check">
+                <GlassButton size="sm" onClick={() => void window.heraldOS.systemAudit.run()} aria-label={t('settings.general.systemCheck')}>
+                  {t('settings.general.systemCheck')}
+                </GlassButton>
+              </SettingsRow>
+              <SettingsRow icon={<IconDownload />} label={t('settings.general.importKeys')} description={t('settings.general.importKeys.hint')} keywords="api keys tokens import">
+                <GlassButton size="sm" onClick={() => setShowKeysImport(true)} aria-label={t('settings.general.importKeys')}>
+                  {t('settings.general.importKeys')}
+                </GlassButton>
+              </SettingsRow>
+            </SettingsGroup>
+
+      {showKeysImport && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setShowKeysImport(false)} role="dialog" aria-modal="true">
+          <div className="mx-4 max-h-[85vh] w-full max-w-2xl overflow-auto rounded-2xl bg-card p-6 shadow-2xl" onClick={event => event.stopPropagation()}>
+            <KeysStep onDone={() => setShowKeysImport(false)} />
+          </div>
+        </div>
+      )}
     </>
   )
 }

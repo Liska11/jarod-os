@@ -679,7 +679,12 @@ export const en = {
   'settings.general.sleep': 'Sleep after',
   'settings.general.sleep.never': 'Never: the computer only sleeps when you ask.',
   'settings.general.sleep.minutes': 'Minutes before sleeping',
-  'settings.general.switchFailed': 'Could not change {name}',
+    'settings.general.system': 'System check',
+  'settings.general.systemCheck': 'Re-run system check',
+    'settings.general.systemCheck.hint': 'Run the hardware and tooling audit again to see if anything changed.',
+    'settings.general.importKeys': 'Import API keys',
+    'settings.general.importKeys.hint': 'Import API keys and tokens from a text file (one per line, NAME=value).',
+    'settings.general.switchFailed': 'Could not change {name}',
   'settings.appearance.wallpaperFailed': 'Could not choose wallpaper',
   'settings.appearance.title': 'Appearance',
   'settings.appearance.subtitle': 'Theme, accent, wallpaper, fonts and the menu bar.',
@@ -1280,7 +1285,69 @@ export const en = {
   'kanban.priorityN': 'priority {n}',
   'kanban.folderIs': 'Folder: {path}',
   'kanban.result': 'Result: {text}',
-  'kanban.lastRun': 'Last run: {text}'
-} as const
+  'kanban.lastRun': 'Last run: {text}',
 
-export type MessageKey = keyof typeof en
+    // Status Panel
+    'statuspanel.wifi.noManager': 'This computer has no Wi-Fi, or NetworkManager is not running.',
+    'statuspanel.wifi.connectedThrough': 'Connected through Wi-Fi.',
+    'statuspanel.wifi.changeControlCenter': 'Change networks in Control Center.',
+    'statuspanel.wifi.noNetworks': 'No networks in range.',
+    'statuspanel.wifi.connectedTo': 'Connected to {ssid}.',
+    'statuspanel.wifi.networks': 'Networks',
+    'statuspanel.wifi.scan': 'Look for networks',
+    'statuspanel.wifi.connected': 'Connected',
+    'statuspanel.wifi.saved': 'Saved',
+    'statuspanel.wifi.disconnect': 'Disconnect',
+    'statuspanel.wifi.forget': 'Forget',
+    'statuspanel.wifi.password': 'Password',
+    'statuspanel.wifi.join': 'Join',
+    'statuspanel.wifi.secured': 'Secured',
+
+    // Bluetooth
+    'statuspanel.bluetooth.noAdapter': 'This computer has no Bluetooth adapter.',
+    'statuspanel.bluetooth.controlCenter': 'Pair and connect devices in Control Center.',
+    'statuspanel.bluetooth.looking': 'Looking for devices…',
+    'statuspanel.bluetooth.look': 'Look for devices',
+    'statuspanel.bluetooth.label': 'Bluetooth',
+    'statuspanel.bluetooth.connected': 'Connected',
+    'statuspanel.bluetooth.notConnected': 'Not connected',
+    'statuspanel.bluetooth.nearby': 'Nearby',
+    'statuspanel.bluetooth.battery': '{percent}% battery',
+    'statuspanel.bluetooth.disconnect': 'Disconnect',
+    'statuspanel.bluetooth.connect': 'Connect',
+    'statuspanel.bluetooth.pair': 'Pair',
+
+    // Audio
+    'statuspanel.audio.noDevices': 'No sound devices (PipeWire is not running).',
+    'statuspanel.audio.unmute': 'Unmute',
+    'statuspanel.audio.mute': 'Mute',
+    'statuspanel.audio.outputVolume': 'Output volume',
+    'statuspanel.audio.microphone': 'Microphone',
+    'statuspanel.audio.micLevel': 'Microphone level',
+
+    // Display
+    'statuspanel.display.noInfo': 'No display information from the compositor.',
+    'statuspanel.display.systemSettings': 'Arrange displays and change resolutions in System Settings.',
+    'statuspanel.display.brightness': 'Brightness',
+    'statuspanel.display.resolution': 'Resolution of {label}',
+    'statuspanel.display.scale': 'Scale of {label}',
+    'statuspanel.display.off': 'Off',
+    'statuspanel.display.resolutionOption': '{width} × {height} · {refresh} Hz',
+
+    // Power
+    'statuspanel.power.noBattery': 'Plugged in; this computer has no battery.',
+    'statuspanel.power.mode': 'Power mode',
+    'statuspanel.power.performance': 'Performance',
+    'statuspanel.power.balanced': 'Balanced',
+    'statuspanel.power.powerSaver': 'Power saver',
+
+    // Calendar
+    'statuspanel.calendar.nothingToday': 'Nothing on the calendar today.',
+    'statuspanel.calendar.untitled': 'Untitled event',
+    'statuspanel.calendar.allDay': 'All day',
+    'statuspanel.calendar.automation': 'Automation',
+    'statuspanel.calendar.today': 'Today',
+    'statuspanel.calendar.nothing': 'Nothing on the calendar.'
+  } as const
+
+  export type MessageKey = keyof typeof en

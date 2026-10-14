@@ -677,6 +677,11 @@ export const fr: Record<MessageKey, string> = {
   'settings.general.sleep': 'Mettre en veille après',
   'settings.general.sleep.never': 'Jamais : l’ordinateur ne se met en veille que si vous le demandez.',
   'settings.general.sleep.minutes': 'Minutes avant la mise en veille',
+  'settings.general.system': 'Vérification du système',
+  'settings.general.systemCheck': 'Relancer la vérification du système',
+  'settings.general.systemCheck.hint': 'Relancer l’audit matériel et logiciel pour voir si quelque chose a changé.',
+  'settings.general.importKeys': 'Importer des clés API',
+  'settings.general.importKeys.hint': 'Importer des clés API et jetons depuis un fichier texte (une par ligne, NOM=valeur).',
   'settings.general.switchFailed': 'Impossible de modifier : {name}',
   'settings.appearance.wallpaperFailed': 'Le fond d’écran n’a pas pu être choisi',
   'settings.appearance.title': 'Apparence',
@@ -1278,5 +1283,67 @@ export const fr: Record<MessageKey, string> = {
   'kanban.priorityN': 'priorité {n}',
   'kanban.folderIs': 'Dossier : {path}',
   'kanban.result': 'Résultat : {text}',
-  'kanban.lastRun': 'Dernière exécution : {text}'
+  'kanban.lastRun': 'Dernière exécution : {text}',
+  // Status Panel
+  'statuspanel.wifi.noManager': "Cet ordinateur n'a pas de Wi-Fi, ou NetworkManager n'est pas en cours d'execution.",
+  'statuspanel.wifi.connectedThrough': 'Connecte via Wi-Fi.',
+  'statuspanel.wifi.changeControlCenter': 'Changez de reseau dans le Centre de controle.',
+  'statuspanel.wifi.noNetworks': 'Aucun reseau a portee.',
+  'statuspanel.wifi.connectedTo': 'Connecte a {ssid}.',
+  'statuspanel.wifi.networks': 'Reseaux',
+  'statuspanel.wifi.scan': 'Chercher des reseaux',
+  'statuspanel.wifi.connected': 'Connecte',
+  'statuspanel.wifi.saved': 'Enregistre',
+  'statuspanel.wifi.disconnect': 'Deconnecter',
+  'statuspanel.wifi.forget': 'Oublier',
+  'statuspanel.wifi.password': 'Mot de passe',
+  'statuspanel.wifi.join': 'Rejoindre',
+  'statuspanel.wifi.secured': 'Securise',
+
+  // Bluetooth
+  'statuspanel.bluetooth.noAdapter': "Cet ordinateur n'a pas d'adaptateur Bluetooth.",
+  'statuspanel.bluetooth.controlCenter': 'Associez et connectez les appareils dans le Centre de controle.',
+  'statuspanel.bluetooth.looking': "Recherche d'appareils...",
+  'statuspanel.bluetooth.look': 'Chercher des appareils',
+  'statuspanel.bluetooth.label': 'Bluetooth',
+  'statuspanel.bluetooth.connected': 'Connecte',
+  'statuspanel.bluetooth.notConnected': 'Non connecte',
+  'statuspanel.bluetooth.nearby': 'A proximite',
+  'statuspanel.bluetooth.battery': '{percent}% de batterie',
+  'statuspanel.bluetooth.disconnect': 'Deconnecter',
+  'statuspanel.bluetooth.connect': 'Connecter',
+  'statuspanel.bluetooth.pair': 'Associer',
+
+  // Audio
+  'statuspanel.audio.noDevices': 'Aucun peripherique audio (PipeWire ne tourne pas).',
+  'statuspanel.audio.unmute': 'Activer le son',
+  'statuspanel.audio.mute': 'Couper le son',
+  'statuspanel.audio.outputVolume': 'Volume de sortie',
+  'statuspanel.audio.microphone': 'Microphone',
+  'statuspanel.audio.micLevel': 'Niveau du microphone',
+
+  // Display
+  'statuspanel.display.noInfo': "Aucune information d'affichage depuis le compositeur.",
+  'statuspanel.display.systemSettings': 'Organisez les ecrans et changez les resolutions dans les Reglages systeme.',
+  'statuspanel.display.brightness': 'Luminosite',
+  'statuspanel.display.resolution': 'Resolution de {label}',
+  'statuspanel.display.scale': 'Echelle de {label}',
+  'statuspanel.display.off': 'Eteint',
+  'statuspanel.display.resolutionOption': '{width} x {height} - {refresh} Hz',
+
+  // Power
+  'statuspanel.power.noBattery': "Sur secteur ; cet ordinateur n'a pas de batterie.",
+  'statuspanel.power.mode': "Mode d'alimentation",
+  'statuspanel.power.performance': 'Performance',
+  'statuspanel.power.balanced': 'Equilibre',
+  'statuspanel.power.powerSaver': "Economie d'energie",
+
+  // Calendar
+  'statuspanel.calendar.nothingToday': "Rien a l'agenda aujourd'hui.",
+  'statuspanel.calendar.untitled': 'Evenement sans titre',
+  'statuspanel.calendar.allDay': 'Toute la journee',
+  'statuspanel.calendar.automation': 'Automatisation',
+  'statuspanel.calendar.today': "Aujourd'hui",
+  'statuspanel.calendar.nothing': "Rien a l'agenda."
+
 }

@@ -28,6 +28,8 @@ import { cn } from '../../lib/cn.ts'
 import { $env } from '../../store/backend.ts'
 import { runCommand } from '../../store/os-commands.ts'
 import { $panelStates, loadPanel, PANEL_TITLES, panelAction } from '../../store/status-panel.ts'
+import type { MessageKey } from '../../lib/i18n.ts'
+import { useT } from '../../lib/i18n.ts'
 
 /*
  * The menu bar's quick panels: Wi-Fi, Bluetooth, sound, displays, battery and power, and the
@@ -182,6 +184,7 @@ function signalIcon(signal: number) {
 }
 
 function WifiPanel() {
+  const { t } = useT()
   const { state, busy, error, act } = usePanel('wifi')
   const [asking, setAsking] = useState<string | null>(null)
   const [password, setPassword] = useState('')
@@ -192,12 +195,12 @@ function WifiPanel() {
   }
 
   if (!wifi.available) {
-    return <Note>This computer has no Wi-Fi, or NetworkManager is not running.</Note>
-  }
+      return <Note>{t('statuspanel.wifi.noManager')}</Note>
+    }
 
-  if (isMac()) {
-    return <Note>{wifi.connected ? `Connected to ${wifi.connected}.` : 'Connected through Wi-Fi.'} Change networks in Control Center.</Note>
-  }
+    if (isMac()) {
+      return <Note>{wifi.connected ? t('statuspanel.wifi.connectedTo', { ssid: wifi.connected }) : t('statuspanel.wifi.connectedThrough')} {t('statuspanel.wifi.changeControlCenter')}</Note>
+    }
 
   const join = (ssid: string, secure: boolean, known: boolean) => {
     if (secure && !known) {
@@ -214,56 +217,56 @@ function WifiPanel() {
     <>
       <Row label="Wi-Fi" right={<Toggle checked={wifi.enabled} onChange={enabled => void act({ panel: 'wifi', action: 'enable', enabled })} label="Wi-Fi" disabled={busy} />} />
       {wifi.enabled && (
-        <div className="flex items-center justify-between px-2 pt-1.5 text-[11.5px] text-fg-4">
-          <span>Networks</span>
-          <button type="button" aria-label="Look for networks" disabled={busy} onClick={() => void act({ panel: 'wifi', action: 'scan' })} className="flex size-6 items-center justify-center rounded-md hover:bg-white/10 hover:text-fg disabled:opacity-40">
-            <IconRefresh size={13} className={cn(busy && 'animate-spin')} />
-          </button>
-        </div>
-      )}
+              <div className="flex items-center justify-between px-2 pt-1.5 text-[11.5px] text-fg-4">
+                <span>{t('statuspanel.wifi.networks')}</span>
+                <button type="button" aria-label={t('statuspanel.wifi.scan')} disabled={busy} onClick={() => void act({ panel: 'wifi', action: 'scan' })} className="flex size-6 items-center justify-center rounded-md hover:bg-white/10 hover:text-fg disabled:opacity-40">
+                  <IconRefresh size={13} className={cn(busy && 'animate-spin')} />
+                </button>
+              </div>
+            )}
       {wifi.networks.map(network => (
-        <div key={network.ssid} data-os-target={`wifi:${network.ssid}`}>
-          <Row
-            icon={signalIcon(network.signal)}
-            label={network.ssid}
-            detail={network.active ? 'Connected' : network.known ? 'Saved' : undefined}
-            active={network.active}
-            disabled={busy}
-            onClick={network.active ? undefined : () => join(network.ssid, network.secure, network.known)}
-            right={
-              <span className="flex items-center gap-1 text-fg-4">
-                {network.secure && <IconLock size={13} aria-label="Secured" />}
-                {network.active && (
-                  <GlassButton size="sm" variant="ghost" disabled={busy} onClick={() => void act({ panel: 'wifi', action: 'disconnect' })}>
-                    Disconnect
-                  </GlassButton>
+              <div key={network.ssid} data-os-target={`wifi:${network.ssid}`}>
+                <Row
+                  icon={signalIcon(network.signal)}
+                  label={network.ssid}
+                  detail={network.active ? t('statuspanel.wifi.connected') : network.known ? t('statuspanel.wifi.saved') : undefined}
+                  active={network.active}
+                  disabled={busy}
+                  onClick={network.active ? undefined : () => join(network.ssid, network.secure, network.known)}
+                  right={
+                    <span className="flex items-center gap-1 text-fg-4">
+                      {network.secure && <IconLock size={13} aria-label={t('statuspanel.wifi.secured')} />}
+                      {network.active && (
+                        <GlassButton size="sm" variant="ghost" disabled={busy} onClick={() => void act({ panel: 'wifi', action: 'disconnect' })}>
+                          {t('statuspanel.wifi.disconnect')}
+                        </GlassButton>
+                      )}
+                      {network.known && !network.active && (
+                        <button type="button" aria-label={`${t('statuspanel.wifi.forget')} ${network.ssid}`} disabled={busy} onClick={() => void act({ panel: 'wifi', action: 'forget', ssid: network.ssid })} className="flex size-6 items-center justify-center rounded-md hover:bg-white/10 hover:text-fg">
+                          <IconX size={12} />
+                        </button>
+                      )}
+                    </span>
+                  }
+                />
+                {asking === network.ssid && (
+                  <form
+                    className="flex items-center gap-2 px-2 pb-2"
+                    onSubmit={event => {
+                      event.preventDefault()
+                      setAsking(null)
+                      void act({ panel: 'wifi', action: 'connect', ssid: network.ssid, password })
+                    }}
+                  >
+                    <input type="password" autoFocus value={password} onChange={event => setPassword(event.target.value)} placeholder={t('statuspanel.wifi.password')} aria-label={`${t('statuspanel.wifi.password')} ${network.ssid}`} className="glass-input h-8 min-w-0 flex-1 rounded-lg px-2.5 text-[12.5px] outline-none" />
+                    <GlassButton size="sm" variant="primary" type="submit" disabled={!password}>
+                      {t('statuspanel.wifi.join')}
+                    </GlassButton>
+                  </form>
                 )}
-                {network.known && !network.active && (
-                  <button type="button" aria-label={`Forget ${network.ssid}`} disabled={busy} onClick={() => void act({ panel: 'wifi', action: 'forget', ssid: network.ssid })} className="flex size-6 items-center justify-center rounded-md hover:bg-white/10 hover:text-fg">
-                    <IconX size={12} />
-                  </button>
-                )}
-              </span>
-            }
-          />
-          {asking === network.ssid && (
-            <form
-              className="flex items-center gap-2 px-2 pb-2"
-              onSubmit={event => {
-                event.preventDefault()
-                setAsking(null)
-                void act({ panel: 'wifi', action: 'connect', ssid: network.ssid, password })
-              }}
-            >
-              <input type="password" autoFocus value={password} onChange={event => setPassword(event.target.value)} placeholder="Password" aria-label={`Password for ${network.ssid}`} className="glass-input h-8 min-w-0 flex-1 rounded-lg px-2.5 text-[12.5px] outline-none" />
-              <GlassButton size="sm" variant="primary" type="submit" disabled={!password}>
-                Join
-              </GlassButton>
-            </form>
-          )}
-        </div>
-      ))}
-      {wifi.enabled && wifi.networks.length === 0 && <Note>No networks in range.</Note>}
+              </div>
+            ))}
+            {wifi.enabled && wifi.networks.length === 0 && <Note>{t('statuspanel.wifi.noNetworks')}</Note>}
       {error && <Note tone="danger">{error}</Note>}
     </>
   )
@@ -276,6 +279,7 @@ function deviceIcon(icon: string | undefined) {
 }
 
 function BluetoothPanel() {
+  const { t } = useT()
   const { state, busy, error, act } = usePanel('bluetooth')
   const bluetooth = state?.panel === 'bluetooth' ? state.bluetooth : null
   const mac = isMac()
@@ -292,9 +296,9 @@ function BluetoothPanel() {
     <>
       <Row
         icon={bluetooth.powered ? <IconBluetoothConnected /> : <IconBluetooth />}
-        label="Bluetooth"
+        label={t('statuspanel.bluetooth.label')}
         active={bluetooth.powered}
-        right={mac ? undefined : <Toggle checked={bluetooth.powered} onChange={enabled => void act({ panel: 'bluetooth', action: 'power', enabled })} label="Bluetooth" disabled={busy} />}
+        right={mac ? undefined : <Toggle checked={bluetooth.powered} onChange={enabled => void act({ panel: 'bluetooth', action: 'power', enabled })} label={t('statuspanel.bluetooth.label')} disabled={busy} />}
       />
       {bluetooth.powered &&
         bluetooth.devices.map(device => (
@@ -302,12 +306,12 @@ function BluetoothPanel() {
             <Row
               icon={deviceIcon(device.icon)}
               label={device.name}
-              detail={[device.connected ? 'Connected' : device.paired ? 'Not connected' : 'Nearby', device.battery !== undefined ? `${device.battery}% battery` : null].filter(Boolean).join(' · ')}
+              detail={[device.connected ? t('statuspanel.bluetooth.connected') : device.paired ? t('statuspanel.bluetooth.notConnected') : t('statuspanel.bluetooth.nearby'), device.battery !== undefined ? t('statuspanel.bluetooth.battery', { percent: device.battery }) : null].filter(Boolean).join(' · ')}
               active={device.connected}
               right={
                 mac ? undefined : (
                   <GlassButton size="sm" variant="ghost" disabled={busy} onClick={() => void act({ panel: 'bluetooth', action: device.connected ? 'disconnect' : device.paired ? 'connect' : 'pair', address: device.address })}>
-                    {device.connected ? 'Disconnect' : device.paired ? 'Connect' : 'Pair'}
+                    {device.connected ? t('statuspanel.bluetooth.disconnect') : device.paired ? t('statuspanel.bluetooth.connect') : t('statuspanel.bluetooth.pair')}
                   </GlassButton>
                 )
               }
@@ -318,11 +322,11 @@ function BluetoothPanel() {
         <div className="px-2 pt-1">
           <GlassButton size="sm" variant="ghost" disabled={busy} onClick={() => void act({ panel: 'bluetooth', action: 'scan' })}>
             <IconRefresh className={cn(busy && 'animate-spin')} />
-            {busy ? 'Looking for devices…' : 'Look for devices'}
+            {busy ? t('statuspanel.bluetooth.looking') : t('statuspanel.bluetooth.look')}
           </GlassButton>
         </div>
       )}
-      {mac && <Note>Pair and connect devices in Control Center.</Note>}
+      {mac && <Note>{t('statuspanel.bluetooth.controlCenter')}</Note>}
       {error && <Note tone="danger">{error}</Note>}
     </>
   )
@@ -331,6 +335,7 @@ function BluetoothPanel() {
 // ---- Sound ----------------------------------------------------------------------------------
 
 function AudioPanel() {
+  const { t } = useT()
   const { state, busy, error, act } = usePanel('audio')
   const audio = state?.panel === 'audio' ? state.audio : null
 
@@ -339,7 +344,7 @@ function AudioPanel() {
   }
 
   if (!audio.available) {
-    return <Note>No sound devices (PipeWire is not running).</Note>
+    return <Note>{t('statuspanel.audio.noDevices')}</Note>
   }
 
   const output = audio.outputs.find(device => device.isDefault) ?? audio.outputs[0]
@@ -355,22 +360,22 @@ function AudioPanel() {
     <>
       {output && (
         <div className="flex items-center gap-2.5 px-2 py-2">
-          <button type="button" aria-label={output.muted ? 'Unmute' : 'Mute'} onClick={() => void act({ panel: 'audio', action: 'volume', kind: 'output', id: output.id === 'default' ? undefined : output.id, muted: !output.muted })} className="flex size-7 shrink-0 items-center justify-center rounded-full bg-white/8 text-fg-2 hover:text-fg">
+          <button type="button" aria-label={output.muted ? t('statuspanel.audio.unmute') : t('statuspanel.audio.mute')} onClick={() => void act({ panel: 'audio', action: 'volume', kind: 'output', id: output.id === 'default' ? undefined : output.id, muted: !output.muted })} className="flex size-7 shrink-0 items-center justify-center rounded-full bg-white/8 text-fg-2 hover:text-fg">
             {output.muted ? <IconVolumeOff size={16} /> : <IconVolume size={16} />}
           </button>
-          <Slider value={output.volume} max={100} label="Output volume" disabled={busy} onCommit={percent => void act({ panel: 'audio', action: 'volume', kind: 'output', id: output.id === 'default' ? undefined : output.id, percent })} />
+          <Slider value={output.volume} max={100} label={t('statuspanel.audio.outputVolume')} disabled={busy} onCommit={percent => void act({ panel: 'audio', action: 'volume', kind: 'output', id: output.id === 'default' ? undefined : output.id, percent })} />
           <span className="w-9 text-right text-[12px] tabular-nums text-fg-3">{output.volume}%</span>
         </div>
       )}
       {devices('output', audio.outputs)}
       {input && (
         <>
-          <div className="px-2 pt-2 text-[11.5px] text-fg-4">Microphone</div>
+          <div className="px-2 pt-2 text-[11.5px] text-fg-4">{t('statuspanel.audio.microphone')}</div>
           <div className="flex items-center gap-2.5 px-2 py-2">
             <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-white/8 text-fg-2">
               <IconMicrophone size={16} />
             </span>
-            <Slider value={input.volume} max={100} label="Microphone level" disabled={busy} onCommit={percent => void act({ panel: 'audio', action: 'volume', kind: 'input', id: input.id, percent })} />
+            <Slider value={input.volume} max={100} label={t('statuspanel.audio.micLevel')} disabled={busy} onCommit={percent => void act({ panel: 'audio', action: 'volume', kind: 'input', id: input.id, percent })} />
             <span className="w-9 text-right text-[12px] tabular-nums text-fg-3">{input.volume}%</span>
           </div>
           {devices('input', audio.inputs)}
@@ -386,6 +391,7 @@ function AudioPanel() {
 const SCALES = [1, 1.25, 1.5, 1.75, 2]
 
 function DisplayPanel() {
+  const { t } = useT()
   const { state, busy, error, act } = usePanel('display')
   const display = state?.panel === 'display' ? state.display : null
   const mac = isMac()
@@ -401,21 +407,22 @@ function DisplayPanel() {
           <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-white/8 text-fg-2">
             <IconSun size={16} />
           </span>
-          <Slider value={display.brightness} label="Brightness" disabled={busy || mac} onCommit={percent => void act({ panel: 'display', action: 'brightness', percent: Math.max(1, percent) })} />
+          <Slider value={display.brightness} label={t('statuspanel.display.brightness')} disabled={busy || mac} onCommit={percent => void act({ panel: 'display', action: 'brightness', percent: Math.max(1, percent) })} />
           <span className="w-9 text-right text-[12px] tabular-nums text-fg-3">{display.brightness}%</span>
         </div>
       )}
       {display.displays.map(screen => (
         <DisplayRow key={screen.name} screen={screen} readOnly={mac} canTurnOff={display.displays.filter(d => d.enabled).length > 1} busy={busy} act={act} />
       ))}
-      {!display.available && <Note>No display information from the compositor.</Note>}
-      {mac && <Note>Arrange displays and change resolutions in System Settings.</Note>}
+      {!display.available && <Note>{t('statuspanel.display.noInfo')}</Note>}
+      {mac && <Note>{t('statuspanel.display.systemSettings')}</Note>}
       {error && <Note tone="danger">{error}</Note>}
     </>
   )
 }
 
 function DisplayRow({ screen, readOnly, canTurnOff, busy, act }: { screen: DisplayInfo; readOnly: boolean; canTurnOff: boolean; busy: boolean; act: (action: ControlAction) => Promise<void> }) {
+  const { t } = useT()
   const modes = screen.modes.filter((mode, index, all) => all.findIndex(other => other.width === mode.width && other.height === mode.height && Math.round(other.refresh) === Math.round(mode.refresh)) === index)
   const current = `${screen.width}x${screen.height}@${Math.round(screen.refresh)}`
 
@@ -424,7 +431,7 @@ function DisplayRow({ screen, readOnly, canTurnOff, busy, act }: { screen: Displ
       <Row
         icon={<IconDeviceDesktop />}
         label={screen.label}
-        detail={screen.enabled ? `${screen.width} × ${screen.height}${screen.refresh ? ` at ${Math.round(screen.refresh)} Hz` : ''}${screen.scale !== 1 ? `, scale ${screen.scale}` : ''}` : 'Off'}
+        detail={screen.enabled ? `${screen.width} × ${screen.height}${screen.refresh ? ` at ${Math.round(screen.refresh)} Hz` : ''}${screen.scale !== 1 ? `, scale ${screen.scale}` : ''}` : t('statuspanel.display.off')}
         active={screen.enabled}
         right={!readOnly && (canTurnOff || !screen.enabled) ? <Toggle checked={screen.enabled} onChange={enabled => void act({ panel: 'display', action: 'enable', name: screen.name, enabled })} label={`${screen.label} on`} disabled={busy} /> : undefined}
       />
@@ -432,7 +439,7 @@ function DisplayRow({ screen, readOnly, canTurnOff, busy, act }: { screen: Displ
         <div className="flex items-center gap-2 pl-11">
           {modes.length > 0 && (
             <select
-              aria-label={`Resolution of ${screen.label}`}
+              aria-label={t('statuspanel.display.resolution', { label: screen.label })}
               value={current}
               disabled={busy}
               onChange={event => {
@@ -451,7 +458,7 @@ function DisplayRow({ screen, readOnly, canTurnOff, busy, act }: { screen: Displ
               ))}
             </select>
           )}
-          <select aria-label={`Scale of ${screen.label}`} value={String(screen.scale)} disabled={busy} onChange={event => void act({ panel: 'display', action: 'scale', name: screen.name, scale: Number(event.target.value) })} className="glass-input h-7 w-20 rounded-md px-1.5 text-[12px] outline-none">
+          <select aria-label={t('statuspanel.display.scale', { label: screen.label })} value={String(screen.scale)} disabled={busy} onChange={event => void act({ panel: 'display', action: 'scale', name: screen.name, scale: Number(event.target.value) })} className="glass-input h-7 w-20 rounded-md px-1.5 text-[12px] outline-none">
             {[...new Set([...SCALES, screen.scale])]
               .sort((a, b) => a - b)
               .map(scale => (
@@ -468,9 +475,14 @@ function DisplayRow({ screen, readOnly, canTurnOff, busy, act }: { screen: Displ
 
 // ---- Power ----------------------------------------------------------------------------------
 
-const PROFILE_LABELS: Record<string, string> = { performance: 'Performance', balanced: 'Balanced', 'power-saver': 'Power saver' }
+const PROFILE_LABELS: Record<string, string> = {
+  performance: 'statuspanel.power.performance',
+  balanced: 'statuspanel.power.balanced',
+  'power-saver': 'statuspanel.power.powerSaver'
+}
 
 function PowerPanel() {
+  const { t } = useT()
   const { state, busy, error, act } = usePanel('power')
   const power = state?.panel === 'power' ? state.power : null
 
@@ -486,14 +498,14 @@ function PowerPanel() {
       {battery.present ? (
         <Row icon={icon} label={`${battery.percent ?? '?'}%${battery.charging ? ', charging' : ''}`} detail={power.timeRemaining} active={battery.charging} />
       ) : (
-        <Note>Plugged in; this computer has no battery.</Note>
+        <Note>{t('statuspanel.power.noBattery')}</Note>
       )}
       {power.profiles.length > 0 && (
-        <div className="flex flex-col gap-1.5 px-2 pt-2 pb-1">
-          <span className="text-[11.5px] text-fg-4">Power mode</span>
-          <Chips items={power.profiles.map(profile => ({ id: profile, label: PROFILE_LABELS[profile] ?? profile }))} value={power.profile ?? ''} onChange={profile => !busy && void act({ panel: 'power', action: 'profile', profile })} />
-        </div>
-      )}
+              <div className="flex flex-col gap-1.5 px-2 pt-2 pb-1">
+                <span className="text-[11.5px] text-fg-4">{t('statuspanel.power.mode')}</span>
+                <Chips items={power.profiles.map(profile => ({ id: profile, label: t(PROFILE_LABELS[profile] as MessageKey ?? profile) }))} value={power.profile ?? ''} onChange={profile => !busy && void act({ panel: 'power', action: 'profile', profile })} />
+              </div>
+            )}
       {error && <Note tone="danger">{error}</Note>}
     </>
   )
@@ -502,6 +514,7 @@ function PowerPanel() {
 // ---- Calendar -------------------------------------------------------------------------------
 
 function ClockPanel() {
+  const { t } = useT()
   const [now, setNow] = useState(() => new Date())
   const [events, setEvents] = useState<CalendarEvent[] | null>(null)
 
@@ -522,38 +535,38 @@ function ClockPanel() {
   const cells = [...Array.from({ length: lead }, () => null), ...Array.from({ length: days }, (_, i) => i + 1)]
 
   return (
-    <div className="flex flex-col gap-3 px-2 pb-1">
-      <div>
-        <div className="text-[26px] leading-tight font-semibold tabular-nums text-fg">{now.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}</div>
-        <div className="text-[12.5px] text-fg-3">{now.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</div>
+      <div className="flex flex-col gap-3 px-2 pb-1">
+        <div>
+          <div className="text-[26px] leading-tight font-semibold tabular-nums text-fg">{now.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}</div>
+          <div className="text-[12.5px] text-fg-3">{now.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</div>
+        </div>
+        <div className="grid grid-cols-7 gap-0.5 text-center text-[11.5px]" aria-label={now.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}>
+          {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((day, i) => (
+            <span key={`${day}${i}`} className="py-1 text-fg-4">
+              {day}
+            </span>
+          ))}
+          {cells.map((day, i) => (
+            <span key={i} className={cn('rounded-md py-1 tabular-nums', day === now.getDate() ? 'bg-accent font-semibold text-accent-fg' : day ? 'text-fg-2' : '')}>
+              {day ?? ''}
+            </span>
+          ))}
+        </div>
+        <div className="flex flex-col gap-1">
+          <span className="text-[11.5px] text-fg-4">{t('statuspanel.calendar.today')}</span>
+          {events === null ? (
+            <div className="shimmer h-10 rounded-lg" />
+          ) : events.length === 0 ? (
+            <span className="text-[12px] text-fg-3">{t('statuspanel.calendar.nothing')}</span>
+          ) : (
+            events.slice(0, 6).map(event => (
+              <div key={event.id} className="flex items-baseline gap-2 text-[12px]">
+                <span className="w-12 shrink-0 tabular-nums text-fg-3">{event.allDay ? t('statuspanel.calendar.allDay') : new Date(event.start).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}</span>
+                <span className="min-w-0 flex-1 truncate text-fg">{event.title}</span>
+              </div>
+            ))
+          )}
+        </div>
       </div>
-      <div className="grid grid-cols-7 gap-0.5 text-center text-[11.5px]" aria-label={now.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}>
-        {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((day, i) => (
-          <span key={`${day}${i}`} className="py-1 text-fg-4">
-            {day}
-          </span>
-        ))}
-        {cells.map((day, i) => (
-          <span key={i} className={cn('rounded-md py-1 tabular-nums', day === now.getDate() ? 'bg-accent font-semibold text-accent-fg' : day ? 'text-fg-2' : '')}>
-            {day ?? ''}
-          </span>
-        ))}
-      </div>
-      <div className="flex flex-col gap-1">
-        <span className="text-[11.5px] text-fg-4">Today</span>
-        {events === null ? (
-          <div className="shimmer h-10 rounded-lg" />
-        ) : events.length === 0 ? (
-          <span className="text-[12px] text-fg-3">Nothing on the calendar.</span>
-        ) : (
-          events.slice(0, 6).map(event => (
-            <div key={event.id} className="flex items-baseline gap-2 text-[12px]">
-              <span className="w-12 shrink-0 tabular-nums text-fg-3">{event.allDay ? 'All day' : new Date(event.start).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}</span>
-              <span className="min-w-0 flex-1 truncate text-fg">{event.title}</span>
-            </div>
-          ))
-        )}
-      </div>
-    </div>
-  )
-}
+    )
+  }
