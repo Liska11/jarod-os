@@ -1,4 +1,5 @@
 import { useStore } from '@nanostores/react'
+import { type MessageKey, useT } from '../../../lib/i18n.ts'
 import { IconBellRinging, IconBug, IconChecklist, IconDeviceDesktop, IconShieldCheck, IconVolumeOff, IconX } from '@tabler/icons-react'
 import { useState } from 'react'
 import { Toggle } from '../../../components/ui/glass.tsx'
@@ -20,14 +21,15 @@ export const NOTIFY_KEYS = {
 
 type NotifyKey = keyof typeof NOTIFY_KEYS
 
-const ROWS: { key: NotifyKey; label: string; description: string; icon: React.ReactNode; keywords?: string }[] = [
-  { key: 'toolCompletions', label: 'Tool completions', description: 'A toast when a long-running tool finishes in a session you are not looking at.', icon: <IconChecklist />, keywords: 'toast finished' },
-  { key: 'approvals', label: 'Approvals', description: 'Tell me when Hermes is waiting for a decision.', icon: <IconShieldCheck />, keywords: 'permission request waiting' },
-  { key: 'taskUpdates', label: 'Task updates', description: 'Scheduled tasks that ran, failed or changed.', icon: <IconBellRinging />, keywords: 'cron automations' },
-  { key: 'nativeWhenUnfocused', label: 'Native notifications when unfocused', description: 'Use system notifications while Jarod-OS is in the background.', icon: <IconDeviceDesktop />, keywords: 'macos system background' }
+const ROWS: { key: NotifyKey; label: MessageKey; description: MessageKey; icon: React.ReactNode; keywords: MessageKey }[] = [
+  { key: 'toolCompletions', label: 'notify.toolCompletions', description: 'notify.toolCompletions.desc', icon: <IconChecklist />, keywords: 'notify.kw.tools' },
+  { key: 'approvals', label: 'notify.approvals', description: 'notify.approvals.desc', icon: <IconShieldCheck />, keywords: 'notify.kw.approvals' },
+  { key: 'taskUpdates', label: 'notify.taskUpdates', description: 'notify.taskUpdates.desc', icon: <IconBellRinging />, keywords: 'notify.kw.tasks' },
+  { key: 'nativeWhenUnfocused', label: 'notify.nativeWhenUnfocused', description: 'notify.nativeWhenUnfocused.desc', icon: <IconDeviceDesktop />, keywords: 'notify.kw.native' }
 ]
 
 export function NotificationsSection() {
+  const { t } = useT()
   const [flags, setFlags] = useState<Record<NotifyKey, boolean>>(() => ({
     toolCompletions: readLocalFlag(NOTIFY_KEYS.toolCompletions, true),
     approvals: readLocalFlag(NOTIFY_KEYS.approvals, true),
@@ -43,12 +45,12 @@ export function NotificationsSection() {
 
   return (
     <>
-      <SectionTitle title="Notifications" subtitle="These are Jarod-OS shell preferences. They shape what the shell surfaces; Hermes itself keeps working either way." />
+      <SectionTitle title={t('notify.title')} subtitle={t('notify.subtitle')} />
 
-      <SettingsGroup title="Alerts">
+      <SettingsGroup title={t('notify.alerts')}>
         {ROWS.map(row => (
-          <SettingsRow key={row.key} icon={row.icon} label={row.label} description={row.description} keywords={row.keywords}>
-            <Toggle checked={flags[row.key]} onChange={next => set(row.key, next)} label={row.label} />
+          <SettingsRow key={row.key} icon={row.icon} label={t(row.label)} description={t(row.description)} keywords={t(row.keywords)}>
+            <Toggle checked={flags[row.key]} onChange={next => set(row.key, next)} label={t(row.label)} />
           </SettingsRow>
         ))}
       </SettingsGroup>
@@ -59,6 +61,7 @@ export function NotificationsSection() {
 }
 
 function CrashHelpGroup() {
+  const { t } = useT()
   const { enabled, muted } = useStore($prefs).crashHelp
   const [error, setError] = useState<string | null>(null)
 
@@ -72,28 +75,28 @@ function CrashHelpGroup() {
     )
 
   return (
-    <SettingsGroup title="Crash help">
+    <SettingsGroup title={t('notify.crashGroup')}>
       <SettingsRow
         icon={<IconBug />}
-        label="Offer to explain crashes"
-        description="When a program crashes, a notification offers to have Hermes read the crash report and say what went wrong. Nothing is sent until you ask."
-        keywords="crash report core dump diagnose"
+        label={t('notify.crashOffer')}
+        description={t('notify.crashOffer.desc')}
+        keywords={t('notify.crashKw')}
         below={error ? <InlineNote tone="danger">{error}</InlineNote> : undefined}
       >
-        <Toggle checked={enabled} onChange={next => save(setCrashHelpEnabled(next))} label="Offer to explain crashes" />
+        <Toggle checked={enabled} onChange={next => save(setCrashHelpEnabled(next))} label={t('notify.crashOffer')} />
       </SettingsRow>
       <SettingsRow
         icon={<IconVolumeOff />}
-        label="Muted programs"
-        description={muted.length === 0 ? 'Mute a program from its crash notification to stop hearing about it.' : 'Crashes from these programs stay quiet.'}
-        keywords="mute crash quiet"
+        label={t('notify.muted')}
+        description={muted.length === 0 ? t('notify.muted.none') : t('notify.muted.some')}
+        keywords={t('notify.mutedKw')}
         below={
           muted.length > 0 ? (
             <div className="flex flex-wrap gap-1.5">
               {muted.map(app => (
                 <span key={app} className="inline-flex h-7 items-center gap-1 rounded-full border border-line bg-white/6 pr-1 pl-2.5 text-[12px] text-fg-2">
                   {app}
-                  <button type="button" aria-label={`Unmute ${app}`} onClick={() => save(setCrashMuted(app, false))} className="flex size-5 items-center justify-center rounded-full text-fg-3 hover:bg-white/10 hover:text-fg">
+                  <button type="button" aria-label={t('notify.unmuteAria', { name: app })} onClick={() => save(setCrashMuted(app, false))} className="flex size-5 items-center justify-center rounded-full text-fg-3 hover:bg-white/10 hover:text-fg">
                     <IconX size={12} />
                   </button>
                 </span>
