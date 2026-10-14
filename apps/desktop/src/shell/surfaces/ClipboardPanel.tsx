@@ -1,4 +1,5 @@
 import { IconClipboard, IconFileUnknown, IconSearch } from '@tabler/icons-react'
+import { t, tn, useT } from '../../lib/i18n.ts'
 import { type KeyboardEvent as ReactKeyboardEvent, useEffect, useRef, useState } from 'react'
 import type { ClipboardEntry } from '../../../shared/ipc.ts'
 import { HermesAvatar } from '../../components/app-icon.tsx'
@@ -19,6 +20,7 @@ export const isBinaryEntry = (entry: ClipboardEntry): boolean => BINARY.test(ent
  * pastes one back onto the clipboard and closes the overlay.
  */
 export function ClipboardPanel({ onClose }: { onClose: () => void }) {
+  useT()
   const [entries, setEntries] = useState<ClipboardEntry[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [query, setQuery] = useState('')
@@ -104,8 +106,8 @@ export function ClipboardPanel({ onClose }: { onClose: () => void }) {
     <div className="float flex flex-col overflow-hidden rounded-2xl animate-pop" onKeyDown={onKeyDown}>
       <div className="flex items-center gap-3 px-4 pt-4 pb-3">
         <HermesAvatar size={22} rounded={6} />
-        <span className="text-[14px] font-semibold">Clipboard</span>
-        {entries && entries.length > 0 && <span className="text-[11.5px] text-fg-4 tabular-nums">{entries.length} recent</span>}
+        <span className="text-[14px] font-semibold">{t('clipboard.title')}</span>
+        {entries && entries.length > 0 && <span className="text-[11.5px] text-fg-4 tabular-nums">{tn('clipboard.recent', entries.length)}</span>}
         <span className="flex-1" />
         <Kbd>esc</Kbd>
       </div>
@@ -113,11 +115,11 @@ export function ClipboardPanel({ onClose }: { onClose: () => void }) {
 
       {entries === null ? (
         <div className="flex items-center gap-3 px-4 py-6 text-[12.5px] text-fg-3">
-          <Spinner /> Loading clipboard history…
+          <Spinner /> {t('clipboard.loading')}
         </div>
       ) : entries.length === 0 ? (
         <div className="p-4">
-          <EmptyGlass icon={<IconClipboard />} title="Clipboard history is empty" description={error ?? 'Copies you make on Jarod-OS Linux are collected by cliphist and listed here.'} />
+          <EmptyGlass icon={<IconClipboard />} title={t('clipboard.empty')} description={error ?? t('clipboard.empty.hint')} />
         </div>
       ) : (
         <>
@@ -127,17 +129,17 @@ export function ClipboardPanel({ onClose }: { onClose: () => void }) {
               ref={inputRef}
               value={query}
               onChange={event => setQuery(event.target.value)}
-              placeholder="Type to filter"
-              aria-label="Filter clipboard history"
+              placeholder={t('clipboard.filterPlaceholder')}
+              aria-label={t('clipboard.filterAria')}
               className="min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-fg-4"
             />
             <span className="text-[11px] text-fg-4">
-              <Kbd>↵</Kbd> paste
+              <Kbd>↵</Kbd> {t('clipboard.paste')}
             </span>
           </label>
           {error && <InlineMessage text={error} tone="danger" className="mx-3 mt-2" />}
-          <div ref={listRef} className="flex max-h-[400px] flex-col gap-0.5 overflow-y-auto p-2" role="listbox" aria-label="Clipboard entries">
-            {visible.length === 0 && <div className="px-3 py-6 text-center text-[12.5px] text-fg-4">Nothing matches "{query.trim()}"</div>}
+          <div ref={listRef} className="flex max-h-[400px] flex-col gap-0.5 overflow-y-auto p-2" role="listbox" aria-label={t('clipboard.entriesAria')}>
+            {visible.length === 0 && <div className="px-3 py-6 text-center text-[12.5px] text-fg-4">{t('clipboard.noMatch', { query: query.trim() })}</div>}
             {visible.map((entry, index) => {
               const binary = isBinaryEntry(entry)
               const isActive = index === active

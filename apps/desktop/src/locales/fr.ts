@@ -2777,4 +2777,16 @@ export const fr: Record<MessageKey, string> = {
   'speech.summary.needsKey': ' Il lui faut une cl\u00e9 API (R\u00e9glages \u2192 Fournisseurs et cl\u00e9s).',
   'speech.rateNumber': 'Un nombre comme 1 ou 1.25.',
   'speech.rateRange': 'De 0.25 \u00e0 4.',
+  // Clipboard panel (Mod+Ctrl+V)
+  'clipboard.title': 'Presse-papiers',
+  'clipboard.recent.one': '{count} entr\u00e9e r\u00e9cente',
+  'clipboard.recent.other': '{count} entr\u00e9es r\u00e9centes',
+  'clipboard.loading': 'Chargement de l\u2019historique du presse-papiers\u2026',
+  'clipboard.empty': 'L\u2019historique du presse-papiers est vide',
+  'clipboard.empty.hint': 'Les copies que vous faites sous {assistant} Linux sont collect\u00e9es par cliphist et list\u00e9es ici.',
+  'clipboard.filterPlaceholder': 'Tapez pour filtrer',
+  'clipboard.filterAria': 'Filtrer l\u2019historique du presse-papiers',
+  'clipboard.paste': 'coller',
+  'clipboard.entriesAria': 'Entr\u00e9es du presse-papiers',
+  'clipboard.noMatch': 'Rien ne correspond \u00e0 \u00ab {query} \u00bb',
 }

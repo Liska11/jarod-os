@@ -2779,6 +2779,18 @@ export const en = {
   'speech.summary.needsKey': ' It needs an API key (Settings \u2192 Providers & keys).',
   'speech.rateNumber': 'A number like 1 or 1.25.',
   'speech.rateRange': 'From 0.25 to 4.',
+  // Clipboard panel (Mod+Ctrl+V)
+  'clipboard.title': 'Clipboard',
+  'clipboard.recent.one': '{count} recent entry',
+  'clipboard.recent.other': '{count} recent entries',
+  'clipboard.loading': 'Loading clipboard history\u2026',
+  'clipboard.empty': 'Clipboard history is empty',
+  'clipboard.empty.hint': 'Copies you make on {assistant} Linux are collected by cliphist and listed here.',
+  'clipboard.filterPlaceholder': 'Type to filter',
+  'clipboard.filterAria': 'Filter clipboard history',
+  'clipboard.paste': 'paste',
+  'clipboard.entriesAria': 'Clipboard entries',
+  'clipboard.noMatch': 'Nothing matches \u201c{query}\u201d',
   } as const
 
   export type MessageKey = keyof typeof en
