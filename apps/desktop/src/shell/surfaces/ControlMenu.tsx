@@ -397,7 +397,7 @@ function extensionItem(entry: MenuExtension, close: () => void): MenuItem {
         leaf: {
           kind: 'local',
           run: () => {
-            void attempt('open the link', () => window.heraldOS.shell.openExternal(action.url))
+            void attempt('native.failed.openLink', () => window.heraldOS.shell.openExternal(action.url))
             close()
           }
         }

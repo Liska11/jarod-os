@@ -2252,4 +2252,13 @@ export const fr: Record<MessageKey, string> = {
   'pane.insertItem': '\u00e9l\u00e9ment',
   'file.revealInFinder': 'Afficher dans le Finder',
   'file.revealIn': 'Afficher dans {manager}',
+  // Failures reported by the shared `attempt` helper (open a file or a link, restart the engine…)
+  'native.failed.openFile': 'Impossible d\u2019ouvrir le fichier',
+  'native.failed.openLink': 'Impossible d\u2019ouvrir le lien',
+  'native.failed.showFile': 'Impossible d\u2019afficher le fichier',
+  'native.failed.quit': 'Impossible de quitter Jarod-OS',
+  'native.failed.restartEngine': 'Impossible de red\u00e9marrer le moteur',
+  'native.failed.reloadPreview': 'Impossible de recharger l\u2019aper\u00e7u',
+  'native.failed.openTrash': 'Impossible d\u2019ouvrir la corbeille',
+  'native.failed.pluginsFolder': 'Impossible d\u2019ouvrir le dossier des plugins',
 }

@@ -43,13 +43,13 @@ export function BootScreen({ state, leaving = false }: { state: BackendState; le
           <div className="flex w-full flex-col gap-3">
             <div className="selectable rounded-md bg-danger/10 px-3 py-2 text-left text-[12px] text-danger">{state.error}</div>
             <div className="flex justify-center gap-2">
-              <Button variant="primary" onClick={() => void attempt('restart the engine', () => window.heraldOS.backend.restart())}>
+              <Button variant="primary" onClick={() => void attempt('native.failed.restartEngine', () => window.heraldOS.backend.restart())}>
                 {t('boot.tryAgain')}
               </Button>
               <Button variant="ghost" onClick={() => setShowLog(v => !v)}>
                 {showLog ? t('boot.hideLog') : t('boot.showLog')}
               </Button>
-              <Button variant="ghost" onClick={() => void attempt('quit Jarod-OS', () => window.heraldOS.window.quit())}>
+              <Button variant="ghost" onClick={() => void attempt('native.failed.quit', () => window.heraldOS.window.quit())}>
                 {t('boot.quit')}
               </Button>
             </div>

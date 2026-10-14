@@ -181,7 +181,7 @@ function ProviderItem({ row, onChanged }: { row: ProviderRow; onChanged: () => v
         {pill.label}
       </Pill>
       {row.key_url && state === 'needs-key' && (
-        <GlassButton size="sm" variant="ghost" onClick={() => void attempt('open the link', () => window.heraldOS.shell.openExternal(row.key_url!))} aria-label={`Get an API key for ${row.name}`} title="Open the page where the key is created">
+        <GlassButton size="sm" variant="ghost" onClick={() => void attempt('native.failed.openLink', () => window.heraldOS.shell.openExternal(row.key_url!))} aria-label={`Get an API key for ${row.name}`} title="Open the page where the key is created">
           <IconExternalLink />
         </GlassButton>
       )}

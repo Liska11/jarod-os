@@ -19,7 +19,7 @@ export const Markdown = memo(function Markdown({ text, className }: { text: stri
                 event.preventDefault()
 
                 if (href) {
-                  void attempt('open the link', () => window.heraldOS.shell.openExternal(href))
+                  void attempt('native.failed.openLink', () => window.heraldOS.shell.openExternal(href))
                 }
               }}
             >

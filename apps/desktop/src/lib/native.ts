@@ -1,4 +1,5 @@
 import { notify } from '../store/notifications.ts'
+import { t, type MessageKey } from './i18n.ts'
 import { failureText } from './unavailable.ts'
 
 /*
@@ -7,11 +8,12 @@ import { failureText } from './unavailable.ts'
  */
 
 /** Run a user-initiated host call; a refusal becomes a notification saying what could not be done and why. Never rejects. */
-export async function attempt(action: string, call: () => Promise<unknown> | undefined): Promise<void> {
+/** Run a host call and report a failure with the catalogue's own wording for it (`native.failed.*`). */
+export async function attempt(failure: MessageKey, call: () => Promise<unknown> | undefined): Promise<void> {
   try {
     await call()
   } catch (error) {
-    notify({ title: `Could not ${action}`, body: failureText(error), level: 'error' })
+    notify({ title: t(failure), body: failureText(error), level: 'error' })
   }
 }
 

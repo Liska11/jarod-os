@@ -143,7 +143,7 @@ export function Dock() {
     }
 
     list.push({ id: 'applications', label: t('dock.applications'), render: () => <span className="icon-tile size-11 rounded-[11px]"><AppGlyph id="grid" size={22} /></span>, onClick: () => $applicationsOpen.set(true) })
-    list.push({ id: 'trash', label: platform === 'win32' ? t('dock.recycleBin') : t('dock.trash'), render: () => <span className="flex size-11 items-center justify-center rounded-[11px] bg-white/6 text-fg-2"><AppGlyph id="trash" size={22} /></span>, onClick: () => void attempt('open the Trash', () => window.heraldOS.fs.openPath(trashPath)) })
+    list.push({ id: 'trash', label: platform === 'win32' ? t('dock.recycleBin') : t('dock.trash'), render: () => <span className="flex size-11 items-center justify-center rounded-[11px] bg-white/6 text-fg-2"><AppGlyph id="trash" size={22} /></span>, onClick: () => void attempt('native.failed.openTrash', () => window.heraldOS.fs.openPath(trashPath)) })
 
     return list
     // eslint-disable-next-line react-hooks/exhaustive-deps

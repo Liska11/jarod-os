@@ -167,7 +167,7 @@ function PlatformRow({ platform, onChanged }: { platform: MessagingPlatform; onC
                     </GlassButton>
                   )}
                   {v.url && (
-                    <GlassButton type="button" size="sm" variant="ghost" onClick={() => void attempt('open the link', () => window.heraldOS.shell.openExternal(v.url!))} aria-label={t('messaging.whereToFind', { field: v.prompt || v.key })}>
+                    <GlassButton type="button" size="sm" variant="ghost" onClick={() => void attempt('native.failed.openLink', () => window.heraldOS.shell.openExternal(v.url!))} aria-label={t('messaging.whereToFind', { field: v.prompt || v.key })}>
                       <IconExternalLink />
                     </GlassButton>
                   )}
@@ -183,7 +183,7 @@ function PlatformRow({ platform, onChanged }: { platform: MessagingPlatform; onC
             {test && <InlineNote tone={test.ok ? 'info' : 'warn'}>{test.message}</InlineNote>}
             <div className="flex items-center justify-end gap-2">
               {platform.docs_url && (
-                <GlassButton type="button" size="sm" variant="ghost" onClick={() => void attempt('open the link', () => window.heraldOS.shell.openExternal(platform.docs_url))}>
+                <GlassButton type="button" size="sm" variant="ghost" onClick={() => void attempt('native.failed.openLink', () => window.heraldOS.shell.openExternal(platform.docs_url))}>
                   {t('messaging.setupGuide')}
                 </GlassButton>
               )}

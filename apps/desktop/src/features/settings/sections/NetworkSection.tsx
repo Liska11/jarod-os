@@ -34,7 +34,7 @@ export function NetworkSection() {
           <Pill tone={phaseTone(backend.phase)} dot>
             {backend.phase}
           </Pill>
-          <GlassButton size="sm" variant="ghost" onClick={() => void attempt('restart the engine', () => window.heraldOS.backend.restart())} aria-label="Restart Hermes">
+          <GlassButton size="sm" variant="ghost" onClick={() => void attempt('native.failed.restartEngine', () => window.heraldOS.backend.restart())} aria-label="Restart Hermes">
             Restart
           </GlassButton>
         </SettingsRow>

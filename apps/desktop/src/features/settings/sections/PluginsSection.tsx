@@ -101,7 +101,7 @@ export function PluginsSection() {
           </GlassButton>
         </SettingsRow>
         <SettingsRow icon={<IconFolder />} label={t('plugins.folder')} description={<span className="font-mono text-[11.5px]">~/.config/herald-os/plugins</span>} keywords="plugin folder files">
-          <GlassButton size="sm" variant="ghost" onClick={() => void attempt('open the plugins folder', () => window.heraldOS.fs.openPath('~/.config/herald-os/plugins'))}>
+          <GlassButton size="sm" variant="ghost" onClick={() => void attempt('native.failed.pluginsFolder', () => window.heraldOS.fs.openPath('~/.config/herald-os/plugins'))}>
             {t('plugins.open')}
           </GlassButton>
         </SettingsRow>

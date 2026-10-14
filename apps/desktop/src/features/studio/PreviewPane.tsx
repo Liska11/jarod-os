@@ -108,7 +108,7 @@ export function PreviewPane({ win, target, root, contentKey, compact = false }: 
       const open = idRef.current
 
       if (open) {
-        void attempt('reload the preview', () => window.heraldOS.web.reload(open))
+        void attempt('native.failed.reloadPreview', () => window.heraldOS.web.reload(open))
       }
     }, RELOAD_DEBOUNCE_MS)
 
@@ -126,7 +126,7 @@ export function PreviewPane({ win, target, root, contentKey, compact = false }: 
           <span className="truncate text-fg-2">{label || 'No preview yet'}</span>
           {loading && <Spinner className="ml-auto shrink-0" />}
         </div>
-        <button type="button" disabled={!viewId} onClick={() => viewId && void attempt('reload the preview', () => window.heraldOS.web.reload(viewId))} className="flex size-6 items-center justify-center rounded-md text-fg-3 hover:bg-white/8 hover:text-fg disabled:opacity-40" title="Reload" aria-label="Reload preview">
+        <button type="button" disabled={!viewId} onClick={() => viewId && void attempt('native.failed.reloadPreview', () => window.heraldOS.web.reload(viewId))} className="flex size-6 items-center justify-center rounded-md text-fg-3 hover:bg-white/8 hover:text-fg disabled:opacity-40" title="Reload" aria-label="Reload preview">
           <IconRefresh size={14} />
         </button>
         <button type="button" disabled={!target || !isWeb(target)} onClick={() => target && void openWebWindow(url || target)} className="flex size-6 items-center justify-center rounded-md text-fg-3 hover:bg-white/8 hover:text-fg disabled:opacity-40" title="Open in its own window" aria-label="Open preview in its own window">

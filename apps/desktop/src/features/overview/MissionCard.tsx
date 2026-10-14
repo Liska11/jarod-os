@@ -96,7 +96,7 @@ export function MissionCard({ mission }: { mission: Mission }) {
               <div className="truncate text-[11px] text-fg-4">{artifact.kind === 'folder' ? 'Folder' : 'Draft'}</div>
             </div>
           </div>
-          <GlassButton size="sm" aria-label={`Open ${artifact.name}`} onClick={() => void attempt('open the file', () => window.heraldOS.fs.openPath(artifact.path))}>
+          <GlassButton size="sm" aria-label={`Open ${artifact.name}`} onClick={() => void attempt('native.failed.openFile', () => window.heraldOS.fs.openPath(artifact.path))}>
             Open draft
             <IconExternalLink />
           </GlassButton>

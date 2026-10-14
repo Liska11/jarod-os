@@ -219,7 +219,7 @@ export function ArtifactPane({ chat }: { chat: ChatState | null }) {
               setExportOpen(false)
 
               if (artifact) {
-                void attempt('show the file', () => window.heraldOS.fs.reveal(artifact.path))
+                void attempt('native.failed.showFile', () => window.heraldOS.fs.reveal(artifact.path))
               }
             }}
           >
@@ -242,7 +242,7 @@ export function ArtifactPane({ chat }: { chat: ChatState | null }) {
               setExportOpen(false)
 
               if (artifact) {
-                void attempt('open the file', () => window.heraldOS.fs.openPath(artifact.path))
+                void attempt('native.failed.openFile', () => window.heraldOS.fs.openPath(artifact.path))
               }
             }}
           >
@@ -254,7 +254,7 @@ export function ArtifactPane({ chat }: { chat: ChatState | null }) {
               setExportOpen(false)
 
               if (artifact) {
-                void attempt('show the file', () => window.heraldOS.fs.reveal(artifact.path))
+                void attempt('native.failed.showFile', () => window.heraldOS.fs.reveal(artifact.path))
               }
             }}
           >
@@ -361,7 +361,7 @@ function Document({ artifact, file, loading, error, zoom }: { artifact: Artifact
   if (error || !file) {
     const missing = !error || /ENOENT/.test(error)
 
-    return <EmptyGlass className="h-full" icon={<IconFileText />} title={t('pane.cannotOpen')} description={missing ? t('pane.missing') : error} action={<GlassButton size="sm" onClick={() => void attempt('show the file', () => window.heraldOS.fs.reveal(artifact.path))}>{revealLabel()}</GlassButton>} />
+    return <EmptyGlass className="h-full" icon={<IconFileText />} title={t('pane.cannotOpen')} description={missing ? t('pane.missing') : error} action={<GlassButton size="sm" onClick={() => void attempt('native.failed.showFile', () => window.heraldOS.fs.reveal(artifact.path))}>{revealLabel()}</GlassButton>} />
   }
 
   if (file.kind === 'image' && file.content) {
@@ -405,7 +405,7 @@ function BinaryPreview({ artifact, file, zoom }: { artifact: Artifact; file: Fil
           {extensionOf(artifact.name).toUpperCase() || t('pane.file')} · {formatBytes(file.size)}
         </div>
       </div>
-      <GlassButton size="sm" variant="primary" onClick={() => void attempt('open the file', () => window.heraldOS.fs.openPath(artifact.path))}>
+      <GlassButton size="sm" variant="primary" onClick={() => void attempt('native.failed.openFile', () => window.heraldOS.fs.openPath(artifact.path))}>
         <IconExternalLink />
         {t('pane.openDefault')}
       </GlassButton>
@@ -436,7 +436,7 @@ function Sources({ chat }: { chat: ChatState | null }) {
             </div>
           </div>
           {row.kind === 'file' && (
-            <button type="button" aria-label={revealLabel()} title={revealLabel()} onClick={() => void attempt('show the file', () => window.heraldOS.fs.reveal(row.target))} className="flex size-7 items-center justify-center rounded-lg text-fg-3 hover:bg-white/8 hover:text-fg">
+            <button type="button" aria-label={revealLabel()} title={revealLabel()} onClick={() => void attempt('native.failed.showFile', () => window.heraldOS.fs.reveal(row.target))} className="flex size-7 items-center justify-center rounded-lg text-fg-3 hover:bg-white/8 hover:text-fg">
               <IconFolder size={15} />
             </button>
           )}

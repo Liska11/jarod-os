@@ -98,13 +98,13 @@ export function GeneralSection() {
       <SettingsGroup title={t('settings.general.session')}>
               {hostPlatform() === 'linux' ? (
                 <SettingsRow icon={<IconPower />} label={t('settings.general.restart')} description={t('settings.general.restart.hint')} keywords="exit close quit">
-                  <GlassButton size="sm" variant="danger" onClick={() => void attempt('quit Jarod-OS', () => window.heraldOS.window.quit())} aria-label={t('settings.general.restart')}>
+                  <GlassButton size="sm" variant="danger" onClick={() => void attempt('native.failed.quit', () => window.heraldOS.window.quit())} aria-label={t('settings.general.restart')}>
                     {t('settings.general.restart.button')}
                   </GlassButton>
                 </SettingsRow>
               ) : (
                 <SettingsRow icon={<IconPower />} label={t('settings.general.quit')} description={t('settings.general.quit.hint')} keywords="exit close">
-                  <GlassButton size="sm" variant="danger" onClick={() => void attempt('quit Jarod-OS', () => window.heraldOS.window.quit())} aria-label={t('settings.general.quit')}>
+                  <GlassButton size="sm" variant="danger" onClick={() => void attempt('native.failed.quit', () => window.heraldOS.window.quit())} aria-label={t('settings.general.quit')}>
                     {t('settings.general.quit.button')}
                   </GlassButton>
                 </SettingsRow>

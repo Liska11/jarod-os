@@ -2254,6 +2254,15 @@ export const en = {
   'pane.insertItem': 'item',
   'file.revealInFinder': 'Reveal in Finder',
   'file.revealIn': 'Show in {manager}',
+  // Failures reported by the shared `attempt` helper (open a file or a link, restart the engine…)
+  'native.failed.openFile': 'Could not open the file',
+  'native.failed.openLink': 'Could not open the link',
+  'native.failed.showFile': 'Could not show the file',
+  'native.failed.quit': 'Could not quit Jarod-OS',
+  'native.failed.restartEngine': 'Could not restart the engine',
+  'native.failed.reloadPreview': 'Could not reload the preview',
+  'native.failed.openTrash': 'Could not open the Trash',
+  'native.failed.pluginsFolder': 'Could not open the plugins folder',
   } as const
 
   export type MessageKey = keyof typeof en
