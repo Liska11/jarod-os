@@ -96,10 +96,10 @@ export function MemoryPage() {
     }
   }
 
-  const save = (entry: MemoryEntry, text: string) => mutate('Memory updated', 'Could not update memory', home => updateEntry(home, entry, text))
+  const save = (entry: MemoryEntry, text: string) => mutate(t('memoryPage.updated'), t('memoryPage.updatedFailed'), home => updateEntry(home, entry, text))
 
   const forget = async (entry: MemoryEntry) => {
-    const ok = await mutate('Memory forgotten', 'Could not forget memory', home => forgetEntry(home, entry))
+    const ok = await mutate(t('memoryPage.forgotten'), t('memoryPage.forgottenFailed'), home => forgetEntry(home, entry))
 
     if (ok && selectedId === entry.id) {
       setSelectedId(null)
@@ -110,7 +110,7 @@ export function MemoryPage() {
 
   const add = async (file: MemoryFile, text: string) => {
     const result: { id: string | null } = { id: null }
-    const ok = await mutate('Memory added', 'Could not add memory', async home => {
+    const ok = await mutate(t('memoryPage.added'), t('memoryPage.addedFailed'), async home => {
       result.id = await addEntry(home, file, text)
     })
 
@@ -124,7 +124,7 @@ export function MemoryPage() {
 
   const reload = () => {
     if (hermesHome) {
-      void loadMemory(hermesHome).then(() => notify({ title: 'Memory reloaded', level: 'info', toast: false }))
+      void loadMemory(hermesHome).then(() => notify({ title: t('memoryPage.reloaded'), level: 'info', toast: false }))
     }
   }
 
@@ -134,12 +134,12 @@ export function MemoryPage() {
     }
 
     if (memory.files?.[file]?.remote) {
-      notify({ title: `${file} is kept by the backend`, body: 'There is no file on this computer to open; edit the entries here.', level: 'info', toast: false })
+      notify({ title: t('memoryPage.keptByBackend', { file }), body: t('memoryPage.keptByBackend.hint'), level: 'info', toast: false })
 
       return
     }
 
-    void window.heraldOS.fs.openPath(memoryPath(hermesHome, file)).catch(err => notify({ title: `Could not open ${file}`, body: errorMessage(err), level: 'error' }))
+    void window.heraldOS.fs.openPath(memoryPath(hermesHome, file)).catch(err => notify({ title: t('memoryPage.openFailed', { file }), body: errorMessage(err), level: 'error' }))
   }
 
   const count = filtered.length
@@ -218,7 +218,7 @@ export function MemoryPage() {
                           setFilter('all')
                         }}
                       >
-                        Clear filters
+                        {t('memoryPage.clearFilters')}
                       </GlassButton>
                     }
                   />
@@ -240,7 +240,7 @@ export function MemoryPage() {
 
 function ListSkeleton() {
   return (
-    <div className="flex flex-col gap-3" aria-busy="true" aria-label="Loading memories">
+    <div className="flex flex-col gap-3" aria-busy="true" aria-label={t('memoryPage.loadingAria')}>
       {Array.from({ length: 6 }, (_, index) => (
         <div key={index} className="h-[66px] rounded-xl shimmer" />
       ))}

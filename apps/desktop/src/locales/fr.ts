@@ -2559,4 +2559,17 @@ export const fr: Record<MessageKey, string> = {
   'filesPage.breadcrumb': "Fil d\u2019Ariane",
   'filesPage.view': 'Affichage',
   'filesPage.more': 'Plus',
+  // Memory page — the write notifications and the last bits
+  'memoryPage.updated': 'M\u00e9moire mise \u00e0 jour',
+  'memoryPage.updatedFailed': 'Impossible de mettre \u00e0 jour la m\u00e9moire',
+  'memoryPage.forgotten': 'M\u00e9moire oubli\u00e9e',
+  'memoryPage.forgottenFailed': 'Impossible d\u2019oublier la m\u00e9moire',
+  'memoryPage.added': 'M\u00e9moire ajout\u00e9e',
+  'memoryPage.addedFailed': 'Impossible d\u2019ajouter la m\u00e9moire',
+  'memoryPage.reloaded': 'M\u00e9moire recharg\u00e9e',
+  'memoryPage.clearFilters': 'Effacer les filtres',
+  'memoryPage.loadingAria': 'Chargement des m\u00e9moires',
+  'memoryPage.keptByBackend': '{file} est conserv\u00e9 par le moteur',
+  'memoryPage.keptByBackend.hint': 'Il n\u2019y a aucun fichier \u00e0 ouvrir sur cet ordinateur ; modifiez les entr\u00e9es ici.',
+  'memoryPage.openFailed': 'Impossible d\u2019ouvrir {file}',
 }

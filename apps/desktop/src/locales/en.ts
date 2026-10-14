@@ -2561,6 +2561,19 @@ export const en = {
   'filesPage.breadcrumb': 'Breadcrumb',
   'filesPage.view': 'View',
   'filesPage.more': 'More',
+  // Memory page — the write notifications and the last bits
+  'memoryPage.updated': 'Memory updated',
+  'memoryPage.updatedFailed': 'Could not update memory',
+  'memoryPage.forgotten': 'Memory forgotten',
+  'memoryPage.forgottenFailed': 'Could not forget memory',
+  'memoryPage.added': 'Memory added',
+  'memoryPage.addedFailed': 'Could not add memory',
+  'memoryPage.reloaded': 'Memory reloaded',
+  'memoryPage.clearFilters': 'Clear filters',
+  'memoryPage.loadingAria': 'Loading memories',
+  'memoryPage.keptByBackend': '{file} is kept by the backend',
+  'memoryPage.keptByBackend.hint': 'There is no file on this computer to open; edit the entries here.',
+  'memoryPage.openFailed': 'Could not open {file}',
   } as const
 
   export type MessageKey = keyof typeof en
