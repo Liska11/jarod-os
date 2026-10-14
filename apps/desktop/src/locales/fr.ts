@@ -2789,4 +2789,11 @@ export const fr: Record<MessageKey, string> = {
   'clipboard.paste': 'coller',
   'clipboard.entriesAria': 'Entr\u00e9es du presse-papiers',
   'clipboard.noMatch': 'Rien ne correspond \u00e0 \u00ab {query} \u00bb',
+  // Emoji picker (Mod+Ctrl+E)
+  'emoji.searchPlaceholder': 'Cherchez un \u00e9moji : f\u00eate, fus\u00e9e, pouce lev\u00e9…',
+  'emoji.searchAria': 'Chercher un \u00e9moji',
+  'emoji.recent': 'R\u00e9cents',
+  'emoji.noMatch': 'Rien ne correspond \u00e0 \u00ab {query} \u00bb',
+  'emoji.pick': 'Choisissez un \u00e9moji',
+  'emoji.insert': 'ins\u00e9rer',
 }

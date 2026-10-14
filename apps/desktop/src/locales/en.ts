@@ -2791,6 +2791,13 @@ export const en = {
   'clipboard.paste': 'paste',
   'clipboard.entriesAria': 'Clipboard entries',
   'clipboard.noMatch': 'Nothing matches \u201c{query}\u201d',
+  // Emoji picker (Mod+Ctrl+E)
+  'emoji.searchPlaceholder': 'Search emoji: party, rocket, thumbs up…',
+  'emoji.searchAria': 'Search emoji',
+  'emoji.recent': 'Recent',
+  'emoji.noMatch': 'Nothing matches \u201c{query}\u201d',
+  'emoji.pick': 'Pick an emoji',
+  'emoji.insert': 'insert',
   } as const
 
   export type MessageKey = keyof typeof en

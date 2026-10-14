@@ -1,5 +1,6 @@
 import { useStore } from '@nanostores/react'
 import { IconMoodSmile, IconSearch } from '@tabler/icons-react'
+import { t, useT } from '../../lib/i18n.ts'
 import { type KeyboardEvent as ReactKeyboardEvent, useEffect, useMemo, useRef, useState } from 'react'
 import { Kbd } from '../../components/ui/primitives.tsx'
 import { cn } from '../../lib/cn.ts'
@@ -29,6 +30,7 @@ export function EmojiOverlay() {
  * insert into the field you were typing in. Recent picks come first.
  */
 export function EmojiPicker({ onPick, onClose, className }: { onPick: (char: string) => void; onClose: () => void; className?: string }) {
+  useT()
   const [query, setQuery] = useState('')
   const [active, setActive] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -94,15 +96,15 @@ export function EmojiPicker({ onPick, onClose, className }: { onPick: (char: str
     <div data-edit-ignore className={cn('float flex flex-col overflow-hidden rounded-2xl animate-pop', className)} onKeyDown={onKeyDown}>
       <label className="mx-3 mt-3 flex h-10 items-center gap-2.5 rounded-lg px-3 glass-input">
         <IconSearch size={15} className="shrink-0 text-fg-3" />
-        <input ref={inputRef} value={query} onChange={event => setQuery(event.target.value)} placeholder="Search emoji: party, rocket, thumbs up…" aria-label="Search emoji" className="min-w-0 flex-1 bg-transparent text-[13.5px] outline-none placeholder:text-fg-4" />
+        <input ref={inputRef} value={query} onChange={event => setQuery(event.target.value)} placeholder={t('emoji.searchPlaceholder')} aria-label={t('emoji.searchAria')} className="min-w-0 flex-1 bg-transparent text-[13.5px] outline-none placeholder:text-fg-4" />
         <Kbd>esc</Kbd>
       </label>
-      <div ref={gridRef} role="listbox" aria-label="Emoji" className="grid max-h-[372px] grid-cols-12 gap-0.5 overflow-y-auto p-3">
-        {!results && recents.length > 0 && <div className="col-span-12 px-1 pb-1 text-[11px] font-medium text-fg-4">Recent</div>}
+      <div ref={gridRef} role="listbox" aria-label={t('emoji.searchAria')} className="grid max-h-[372px] grid-cols-12 gap-0.5 overflow-y-auto p-3">
+        {!results && recents.length > 0 && <div className="col-span-12 px-1 pb-1 text-[11px] font-medium text-fg-4">{t('emoji.recent')}</div>}
         {visible.map(cell)}
         {visible.length === 0 && (
           <div className="col-span-12 flex flex-col items-center gap-2 py-8 text-[12.5px] text-fg-4">
-            <IconMoodSmile size={22} /> Nothing matches "{query.trim()}"
+            <IconMoodSmile size={22} /> {t('emoji.noMatch', { query: query.trim() })}
           </div>
         )}
       </div>
@@ -113,10 +115,10 @@ export function EmojiPicker({ onPick, onClose, className }: { onPick: (char: str
             <span className="truncate">{current.name}</span>
           </>
         ) : (
-          <span>Pick an emoji</span>
+          <span>{t('emoji.pick')}</span>
         )}
         <span className="flex-1" />
-        <Kbd>↵</Kbd> insert
+        <Kbd>↵</Kbd> {t('emoji.insert')}
       </div>
     </div>
   )
