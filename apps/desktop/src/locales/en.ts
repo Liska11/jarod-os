@@ -2447,6 +2447,27 @@ export const en = {
   'menubar.date.short': 'Short',
   'menubar.date.long': 'Long',
   'menubar.date.none': 'None',
+  // Memory detail card and the new-memory form
+  'memoryDetail.kind.preference': 'Preference',
+  'memoryDetail.kind.project': 'Project',
+  'memoryDetail.kind.person': 'Person',
+  'memoryDetail.kind.knowledge': 'Knowledge',
+  'memoryDetail.file.memory': 'Hermes memory',
+  'memoryDetail.file.user': 'About you',
+  'memoryDetail.content': 'Content',
+  'memoryDetail.contentAria': 'Memory content',
+  'memoryDetail.source': 'Source',
+  'memoryDetail.updated': 'Last updated',
+  'memoryDetail.usedIn': 'Used in',
+  'memoryDetail.conversations.one': '{count} recent conversation',
+  'memoryDetail.conversations.other': '{count} recent conversations',
+  'memoryDetail.forgetAsk': 'Forget this memory?',
+  'memoryDetail.forget': 'Forget',
+  'memoryDetail.edit': 'Edit memory',
+  'memoryDetail.tooLarge': 'This file is too large to edit safely from here. Open it in an editor from the header menu instead.',
+  'memoryAdd.title': 'New memory',
+  'memoryAdd.textAria': 'Memory text',
+  'memoryAdd.placeholder': 'Something {assistant} should remember\u2026',
   } as const
 
   export type MessageKey = keyof typeof en

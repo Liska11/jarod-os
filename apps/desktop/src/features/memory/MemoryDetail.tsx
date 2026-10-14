@@ -6,7 +6,7 @@ import { MemoryTile } from './memory-icons.tsx'
 import { KIND_LABEL, type MemoryEntry } from './memory-store.ts'
 import { formatShortDate } from './MemoryRow.tsx'
 import type { MemoryToolsetState } from './use-memory-toolset.ts'
-import { t, useT } from '../../lib/i18n.ts'
+import { t, tn, useT } from '../../lib/i18n.ts'
 
 interface DetailProps {
   entry: MemoryEntry | null
@@ -100,7 +100,7 @@ function DetailBody({ entry, related, editable, busy, onSave, onForget }: Omit<D
         <div className="min-w-0 flex-1 pt-0.5">
           <h2 className="selectable text-[18px] leading-tight font-semibold text-fg">{entry.title}</h2>
           <Pill tone="accent" className="mt-2">
-            {KIND_LABEL[entry.kind]}
+            {t(KIND_LABEL[entry.kind])}
           </Pill>
         </div>
       </div>
@@ -108,12 +108,12 @@ function DetailBody({ entry, related, editable, busy, onSave, onForget }: Omit<D
       <KeyValue
         rows={[
           {
-            label: 'Content',
+            label: t('memoryDetail.content'),
             value:
               mode === 'edit' ? (
                 <textarea
                   autoFocus
-                  aria-label="Memory content"
+                  aria-label={t('memoryDetail.contentAria')}
                   value={draft}
                   disabled={busy}
                   onChange={event => setDraft(event.target.value)}
@@ -139,47 +139,47 @@ function DetailBody({ entry, related, editable, busy, onSave, onForget }: Omit<D
 
       <KeyValue
         rows={[
-          { label: 'Source', value: `${entry.file} · ${formatShortDate(entry.date)}` },
-          { label: 'Last updated', value: formatRelative(entry.fileModifiedAt) || '—' },
-          { label: 'Used in', value: related > 0 ? `${related} recent conversation${related === 1 ? '' : 's'}` : '—' }
+          { label: t('memoryDetail.source'), value: `${entry.file} · ${formatShortDate(entry.date)}` },
+          { label: t('memoryDetail.updated'), value: formatRelative(entry.fileModifiedAt) || '—' },
+          { label: t('memoryDetail.usedIn'), value: related > 0 ? tn('memoryDetail.conversations', related) : '—' }
         ]}
       />
 
       {mode === 'confirm' ? (
-        <div className="flex items-center justify-between gap-3 rounded-lg border border-danger/40 bg-danger/10 px-3 py-2.5 animate-rise" role="alertdialog" aria-label="Forget this memory?">
-          <span className="text-[12.5px] text-fg">Forget this memory?</span>
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-danger/40 bg-danger/10 px-3 py-2.5 animate-rise" role="alertdialog" aria-label={t('memoryDetail.forgetAsk')}>
+          <span className="text-[12.5px] text-fg">{t('memoryDetail.forgetAsk')}</span>
           <div className="flex items-center gap-2">
             <GlassButton size="sm" onClick={() => setMode('view')} disabled={busy}>
-              Cancel
+              {t('controls.cancel')}
             </GlassButton>
             <GlassButton size="sm" variant="danger" onClick={() => void forget()} disabled={busy}>
-              Forget
+              {t('memoryDetail.forget')}
             </GlassButton>
           </div>
         </div>
       ) : mode === 'edit' ? (
         <div className="flex items-center gap-2">
           <GlassButton variant="primary" className="flex-1" disabled={!changed || busy} onClick={() => void save()}>
-            Save
+            {t('controls.save')}
           </GlassButton>
           <GlassButton onClick={cancel} disabled={busy}>
-            Cancel
+            {t('controls.cancel')}
           </GlassButton>
         </div>
       ) : (
         <div className="flex items-center gap-2">
           <GlassButton variant="primary" className="flex-1" disabled={!editable || busy} onClick={() => setMode('edit')}>
             <IconPencil />
-            Edit memory
+            {t('memoryDetail.edit')}
           </GlassButton>
           <GlassButton variant="danger" disabled={!editable || busy} onClick={() => setMode('confirm')}>
             <IconTrash />
-            Forget
+            {t('memoryDetail.forget')}
           </GlassButton>
         </div>
       )}
 
-      {!editable && <div className="text-[12px] text-fg-3">This file is too large to edit safely from here. Open it in an editor from the header menu instead.</div>}
+      {!editable && <div className="text-[12px] text-fg-3">{t('memoryDetail.tooLarge')}</div>}
     </div>
   )
 }

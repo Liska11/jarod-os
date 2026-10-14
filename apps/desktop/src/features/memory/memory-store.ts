@@ -2,6 +2,7 @@ import type { SessionListRow } from '@herald-os/client'
 import { atom } from 'nanostores'
 import type { DirEntry } from '../../../shared/ipc.ts'
 import { rest } from '../../lib/rest.ts'
+import type { MessageKey } from '../../lib/i18n.ts'
 
 /*
  * Hermes memory lives in two plain-text files under `$HERMES_HOME/memories/`: MEMORY.md (what the
@@ -22,16 +23,18 @@ export const MEMORY_FILES: readonly MemoryFile[] = ['MEMORY.md', 'USER.md']
 /** Same delimiter Hermes's memory tool writes (`ENTRY_DELIMITER` in tools/memory_tool.py). */
 export const ENTRY_DELIMITER = '\n§\n'
 
-export const KIND_LABEL: Record<MemoryKind, string> = {
-  preference: 'Preference',
-  project: 'Project',
-  person: 'Person',
-  knowledge: 'Knowledge'
+/** Each kind's catalogue key. The UI translates it at draw time. */
+export const KIND_LABEL: Record<MemoryKind, MessageKey> = {
+  preference: 'memoryDetail.kind.preference',
+  project: 'memoryDetail.kind.project',
+  person: 'memoryDetail.kind.person',
+  knowledge: 'memoryDetail.kind.knowledge'
 }
 
-export const FILE_LABEL: Record<MemoryFile, string> = {
-  'MEMORY.md': 'Hermes memory',
-  'USER.md': 'About you'
+/** Each file's catalogue key, same rule. */
+export const FILE_LABEL: Record<MemoryFile, MessageKey> = {
+  'MEMORY.md': 'memoryDetail.file.memory',
+  'USER.md': 'memoryDetail.file.user'
 }
 
 export interface MemoryEntry {
