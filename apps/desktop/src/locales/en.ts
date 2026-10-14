@@ -2486,6 +2486,27 @@ export const en = {
   'accessibility.textSize.default': 'Default',
   'accessibility.textSize.large': 'Large',
   'accessibility.couldNotSave': 'Could not save setting',
+  // Branding (Settings > About)
+  'branding.group': 'Branding',
+  'branding.aboutKw': 'about logo branding version',
+  'branding.logoAlt': 'Logo',
+  'branding.logoAltNamed': '{name} logo',
+  'branding.logoYours': 'Yours, shown above.',
+  'branding.logoDefault': 'The Jarod logo. A PNG, JPEG, WebP or SVG of your own replaces it.',
+  'branding.logoKw': 'branding logo company',
+  'branding.useJarod': 'Use the Jarod logo',
+  'branding.choose': 'Choose\u2026',
+  'branding.name': 'Name',
+  'branding.nameDesc': 'Shown under the logo, such as your company.',
+  'branding.nameKw': 'branding name company organisation',
+  'branding.namePlaceholder': 'None',
+  'branding.nameAria': 'Branding name',
+  'branding.lock': 'Lock screen picture',
+  'branding.lockDesc': 'The theme colours. A PNG or JPEG of your own goes behind the password ring.',
+  'branding.lockKw': 'branding lock screen wallpaper swaylock',
+  'branding.useTheme': 'Use the theme',
+  'branding.changeFailed': 'Could not change the branding',
+  'branding.chooseFailed': 'Could not choose the picture',
   } as const
 
   export type MessageKey = keyof typeof en
