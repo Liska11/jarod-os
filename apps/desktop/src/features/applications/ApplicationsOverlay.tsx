@@ -1,4 +1,5 @@
 import { IconApps, IconX } from '@tabler/icons-react'
+import { t, useT } from '../../lib/i18n.ts'
 import { type KeyboardEvent, useCallback, useMemo, useRef, useState } from 'react'
 import { HermesAvatar } from '../../components/app-icon.tsx'
 import { EmptyGlass, GlassButton, SearchField, Tabs } from '../../components/ui/glass.tsx'
@@ -25,6 +26,7 @@ const HERMES_SUFFIX = '. If this needs an application, open the right one for me
  * match becomes a prompt to Hermes instead.
  */
 export function ApplicationsOverlay() {
+  useT()
   const close = useCallback(() => $applicationsOpen.set(false), [])
 
   return (
@@ -100,7 +102,7 @@ export function ApplicationsPanel({ onClose, standalone = false, className }: Ap
       }
 
       window.heraldOS.apps.launch(tile.app.path).catch((error: unknown) => {
-        notify({ title: `Could not open ${tile.label}`, body: error instanceof Error ? error.message : String(error), level: 'error' })
+        notify({ title: t('applications.openFailed', { label: tile.label }), body: error instanceof Error ? error.message : String(error), level: 'error' })
       })
       close()
     },
@@ -157,24 +159,24 @@ export function ApplicationsPanel({ onClose, standalone = false, className }: Ap
   return (
     <div role="dialog" aria-modal="true" aria-label="Applications" className={cn('float flex flex-col overflow-hidden rounded-2xl', className)} onMouseDown={event => event.stopPropagation()} onKeyDown={onKeyDown}>
       <div className="flex items-center justify-between gap-4 px-7 pt-6 pb-4">
-        <h1 className="text-[26px] leading-tight font-semibold tracking-tight text-fg">Applications</h1>
-        <button type="button" aria-label="Close applications" onClick={close} className="flex size-8 items-center justify-center rounded-lg text-fg-3 transition-colors duration-150 hover:bg-white/8 hover:text-fg">
+        <h1 className="text-[26px] leading-tight font-semibold tracking-tight text-fg">{t('applications.title')}</h1>
+        <button type="button" aria-label={t('applications.close')} onClick={close} className="flex size-8 items-center justify-center rounded-lg text-fg-3 transition-colors duration-150 hover:bg-white/8 hover:text-fg">
           <IconX size={18} />
         </button>
       </div>
 
       <div ref={searchWrapRef} className="px-7">
-        <SearchField autoFocus value={query} onChange={setQuery} onSubmit={submitSearch} placeholder="Search apps or describe what you want to do" trailing={<Kbd>{shortcutLabel('K')}</Kbd>} className="h-10" />
+        <SearchField autoFocus value={query} onChange={setQuery} onSubmit={submitSearch} placeholder={t('applications.search')} trailing={<Kbd>{shortcutLabel('K')}</Kbd>} className="h-10" />
       </div>
 
       <div className="px-7 pt-3 pb-3">
-        <Tabs tabs={LAUNCHER_FILTERS} value={filter} onChange={setFilter} />
+        <Tabs tabs={LAUNCHER_FILTERS.map(item => ({ ...item, label: t(item.label) }))} value={filter} onChange={setFilter} />
       </div>
       <div className="mx-7 h-px bg-line" />
 
       <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
         {tiles.length > 0 ? (
-          <div className="stagger grid grid-cols-6 gap-3" aria-label="Applications">
+          <div className="stagger grid grid-cols-6 gap-3" aria-label={t('applications.gridAria')}>
             {tiles.map((tile, index) => (
               <AppTileButton key={tile.key} tile={tile} index={index} active={index === active} iconFor={iconFor} onActivate={activate} />
             ))}
@@ -182,12 +184,12 @@ export function ApplicationsPanel({ onClose, standalone = false, className }: Ap
         ) : (
           <EmptyGlass
             icon={<IconApps />}
-            title={trimmed ? `No apps match “${trimmed}”` : 'No apps in this category'}
-            description={trimmed ? 'Press Enter to ask Hermes to find the right one.' : undefined}
+            title={trimmed ? t('applications.noMatch', { query: trimmed }) : t('applications.noCategory')}
+            description={trimmed ? t('applications.askFind') : undefined}
             action={
               trimmed ? (
                 <GlassButton size="sm" variant="primary" onClick={() => askHermes(trimmed)}>
-                  Ask Hermes
+                  {t('applications.ask')}
                 </GlassButton>
               ) : undefined
             }
@@ -208,8 +210,8 @@ export function ApplicationsPanel({ onClose, standalone = false, className }: Ap
                 askHermes(ask)
               }
             }}
-            placeholder="Tell Hermes what you need. It will find the right app."
-            aria-label="Tell Hermes what you need"
+            placeholder={t('applications.askPlaceholder')}
+            aria-label={t('applications.askAria')}
             className="min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-fg-4"
           />
           <MicButton size={18} className="size-8" />

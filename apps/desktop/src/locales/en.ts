@@ -2675,6 +2675,23 @@ export const en = {
   'notify.muted.some': 'Crashes from these programs stay quiet.',
   'notify.mutedKw': 'mute crash quiet',
   'notify.unmuteAria': 'Unmute {name}',
+  // Applications launcher
+  'applications.title': 'Applications',
+  'applications.close': 'Close applications',
+  'applications.search': 'Search apps or describe what you want to do',
+  'applications.allApps': 'All apps',
+  'applications.productivity': 'Productivity',
+  'applications.creative': 'Creative',
+  'applications.development': 'Development',
+  'applications.system': 'System',
+  'applications.gridAria': 'Applications',
+  'applications.noMatch': 'No apps match “{query}”',
+  'applications.noCategory': 'No apps in this category',
+  'applications.askFind': 'Ask {assistant} to find the right one',
+  'applications.ask': 'Ask {assistant}',
+  'applications.askPlaceholder': 'Tell {assistant} what you need. It will find the right app.',
+  'applications.askAria': 'Tell {assistant} what you need',
+  'applications.openFailed': 'Could not open {label}',
   } as const
 
   export type MessageKey = keyof typeof en

@@ -8,12 +8,14 @@ import { type AppCategory, type AppIconId, FEATURED_NATIVE, type HermesAppId, ap
 
 export type LauncherFilter = 'all' | AppCategory
 
-export const LAUNCHER_FILTERS: readonly { id: LauncherFilter; label: string }[] = [
-  { id: 'all', label: 'All apps' },
-  { id: 'productivity', label: 'Productivity' },
-  { id: 'creative', label: 'Creative' },
-  { id: 'development', label: 'Development' },
-  { id: 'system', label: 'System' }
+import { type MessageKey } from '../../lib/i18n.ts'
+
+export const LAUNCHER_FILTERS: readonly { id: LauncherFilter; label: MessageKey }[] = [
+  { id: 'all', label: 'applications.allApps' },
+  { id: 'productivity', label: 'applications.productivity' },
+  { id: 'creative', label: 'applications.creative' },
+  { id: 'development', label: 'applications.development' },
+  { id: 'system', label: 'applications.system' }
 ]
 
 interface TileBase {
