@@ -2,11 +2,13 @@ import { IconCopy, IconPlayerPlay, IconTrash } from '@tabler/icons-react'
 import { type ReactNode, useEffect, useRef, useState } from 'react'
 import { MoreButton } from '../../components/ui/glass.tsx'
 import { cn } from '../../lib/cn.ts'
+import { useT } from '../../lib/i18n.ts'
 
 export type JobMenuAction = 'trigger' | 'duplicate' | 'delete'
 
 /** The "⋯" menu on a job card / the detail header: Run now, Duplicate, Delete (with inline confirm). */
 export function JobMenu({ jobName, onAction, className }: { jobName: string; onAction: (action: JobMenuAction) => void; className?: string }) {
+  const { t } = useT()
   const [open, setOpen] = useState(false)
   const [confirming, setConfirming] = useState(false)
   const root = useRef<HTMLDivElement>(null)
@@ -53,7 +55,7 @@ export function JobMenu({ jobName, onAction, className }: { jobName: string; onA
   return (
     <div ref={root} className={cn('relative', className)} onClick={event => event.stopPropagation()}>
       <MoreButton
-        aria-label={`More actions for ${jobName}`}
+        aria-label={t('automation.menu.more', { name: jobName })}
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => {
@@ -63,10 +65,10 @@ export function JobMenu({ jobName, onAction, className }: { jobName: string; onA
       />
       {open && (
         <div role="menu" className="float animate-pop absolute top-full right-0 z-20 mt-1 w-48 rounded-lg p-1">
-          <MenuItem icon={<IconPlayerPlay />} label="Run now" onClick={() => pick('trigger')} />
-          <MenuItem icon={<IconCopy />} label="Duplicate" onClick={() => pick('duplicate')} />
+          <MenuItem icon={<IconPlayerPlay />} label={t('automation.menu.trigger')} onClick={() => pick('trigger')} />
+          <MenuItem icon={<IconCopy />} label={t('automation.menu.duplicate')} onClick={() => pick('duplicate')} />
           <div className="my-1 h-px bg-line" />
-          <MenuItem icon={<IconTrash />} label={confirming ? 'Confirm delete' : 'Delete'} danger onClick={() => pick('delete')} />
+          <MenuItem icon={<IconTrash />} label={confirming ? t('automation.menu.confirmDelete') : t('automation.menu.delete')} danger onClick={() => pick('delete')} />
         </div>
       )}
     </div>

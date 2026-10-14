@@ -1,7 +1,7 @@
 import { useStore } from '@nanostores/react'
 import { IconCheck, IconLoader2, IconPlus, IconRefresh, IconX } from '@tabler/icons-react'
 import { useEffect, useMemo, useState } from 'react'
-import { describeRule } from '../../../shared/events.ts'
+import { t, useT } from '../../lib/i18n.ts'
 import { EmptyGlass, GlassButton, GlassCard, LinkAction, PageHeader, Pill, type PillTone, SearchField, Section, Toggle } from '../../components/ui/glass.tsx'
 import { cn } from '../../lib/cn.ts'
 import type { CronJob } from '../../lib/rest.ts'
@@ -15,7 +15,7 @@ import { AutomationDetail } from './AutomationDetail.tsx'
 import { formatNextRun, formatRunDuration, formatRunTimestamp, humanizeSchedule, toMs } from './cron-humanize.ts'
 import { type JobMenuAction, JobMenu } from './JobMenu.tsx'
 import { type EventTrigger, NewAutomationForm } from './NewAutomationForm.tsx'
-import { JobTile } from './presentation.tsx'
+import { JobTile, ruleText } from './presentation.tsx'
 
 const RUN_SOURCES = 5
 const RUNS_PER_JOB = 10
@@ -38,10 +38,11 @@ const sortByNextRun = (a: CronJob, b: CronJob) => (toMs(a.next_run_at) ?? Infini
 const whenText = (job: CronJob) => {
   const rule = eventRuleFor(job.id)
 
-  return rule ? describeRule(rule) : humanizeSchedule(job)
+  return rule ? ruleText(rule) : humanizeSchedule(job)
 }
 
 export function AutomationsPage() {
+  const { t } = useT()
   const jobs = useBackendData(cronApi.list)
   const targets = useBackendData(cronApi.deliveryTargets)
   // Event rules live in Jarod-OS's preferences; re-render when they change.
@@ -178,12 +179,12 @@ export function AutomationsPage() {
 
     try {
       await cronApi.update(job, edits)
-      toast(job.name || 'Automation', 'Changes saved')
+      toast(job.name || t('automation.title'), t('automation.changesSaved'))
       jobs.reload()
 
       return true
     } catch (error) {
-      toast('Could not save', errorText(error), 'error')
+      toast(t('automation.saveFailed'), errorText(error), 'error')
 
       return false
     } finally {
@@ -198,7 +199,7 @@ export function AutomationsPage() {
       const created = trigger ? await createEventAutomation(draft, trigger.event, trigger.match) : await cronApi.create(draft)
 
       if (!trigger) {
-        toast(draft.name || 'Automation', 'Created')
+        toast(draft.name || t('automation.title'), t('automation.created'))
       }
 
       if (created?.id) {
@@ -210,7 +211,7 @@ export function AutomationsPage() {
 
       return true
     } catch (error) {
-      toast('Could not create automation', errorText(error), 'error')
+      toast(t('automation.createFailed'), errorText(error), 'error')
 
       return false
     } finally {
@@ -224,9 +225,9 @@ export function AutomationsPage() {
   const empty = !initialLoading && !jobs.error && all.length === 0
   const showRight = mode === 'new' || (!empty && !jobs.error)
   const newButton = (
-    <GlassButton variant="primary" onClick={() => setMode('new')} aria-label="New automation">
+    <GlassButton variant="primary" onClick={() => setMode('new')} aria-label={t('automation.new')}>
       <IconPlus />
-      New automation
+      {t('automation.new')}
     </GlassButton>
   )
 
@@ -234,11 +235,11 @@ export function AutomationsPage() {
     <div className="flex h-full flex-col">
       <PageHeader
         icon="automations"
-        title="Automations"
-        subtitle="Good routines, handled."
+        title={t('automation.title')}
+        subtitle={t('automation.subtitle')}
         actions={
           <>
-            <SearchField value={query} onChange={setQuery} placeholder="Search automations..." className="w-64" />
+            <SearchField value={query} onChange={setQuery} placeholder={t('automation.search')} className="w-64" />
             {newButton}
           </>
         }
@@ -249,19 +250,19 @@ export function AutomationsPage() {
           {jobs.error && (
             <EmptyGlass
               icon={<IconX />}
-              title="Couldn't load automations"
+              title={t('automation.loadFailed')}
               description={jobs.error}
               action={
                 <GlassButton onClick={jobs.reload}>
                   <IconRefresh />
-                  Retry
+                  {t('automation.retry')}
                 </GlassButton>
               }
             />
           )}
 
           {initialLoading && (
-            <div className="flex flex-col gap-3" aria-busy="true" aria-label="Loading automations">
+            <div className="flex flex-col gap-3" aria-busy="true" aria-label={t('automation.loadingAria')}>
               {[0, 1, 2].map(i => (
                 <div key={i} className="shimmer h-[84px] rounded-xl" />
               ))}
@@ -269,13 +270,13 @@ export function AutomationsPage() {
           )}
 
           {empty && (
-            <EmptyGlass icon={<IconRefresh />} title="No automations yet" description="Ask Hermes to brief you every morning, tidy your downloads, or check on something while you are away." action={newButton} className="min-h-64" />
+            <EmptyGlass icon={<IconRefresh />} title={t('automation.empty')} description={t('automation.empty.hint')} action={newButton} className="min-h-64" />
           )}
 
           {!initialLoading && !jobs.error && all.length > 0 && (
             <>
               {filtered.length === 0 ? (
-                <EmptyGlass title={`No automations match “${query.trim()}”`} description="Try a different name, schedule or delivery target." />
+                <EmptyGlass title={t('automation.noMatch', { query: query.trim() })} description={t('automation.noMatch.hint')} />
               ) : (
                 <ul className="stagger flex flex-col gap-3">
                   {filtered.map(job => {
@@ -303,10 +304,10 @@ export function AutomationsPage() {
               )}
 
               <Section
-                title="Recent runs"
+                title={t('automation.recentRuns')}
                 action={
                   runRows.length > RUNS_COLLAPSED ? (
-                    <LinkAction onClick={() => setAllRuns(v => !v)}>{allRuns ? 'Show fewer' : 'View all'}</LinkAction>
+                    <LinkAction onClick={() => setAllRuns(v => !v)}>{allRuns ? t('automation.showFewer') : t('automation.viewAll')}</LinkAction>
                   ) : undefined
                 }
               >
@@ -333,7 +334,7 @@ export function AutomationsPage() {
             ) : initialLoading ? (
               <div className="shimmer h-full rounded-xl" />
             ) : (
-              <EmptyGlass title="Select an automation" description="Pick one on the left to see when it runs, what it gathers and where it delivers." className="h-full" />
+              <EmptyGlass title={t('automation.select')} description={t('automation.select.hint')} className="h-full" />
             )}
           </div>
         )}
@@ -345,13 +346,14 @@ export function AutomationsPage() {
 /* ---- Pieces ------------------------------------------------------------------------------------ */
 
 function JobCard({ job, enabled, selected, onSelect, onToggle, onAction }: { job: CronJob; enabled: boolean; selected: boolean; onSelect: () => void; onToggle: (value: boolean) => void; onAction: (action: JobMenuAction) => void }) {
+  const { t } = useT()
   const name = job.name || job.prompt?.slice(0, 40) || job.id
   const event = Boolean(eventRuleFor(job.id))
-  const nextLine = event ? (enabled ? 'Runs each time it happens' : 'Off') : enabled ? formatNextRun({ ...job, enabled: true, state: job.state === 'paused' ? 'scheduled' : job.state }) : 'Paused'
+  const nextLine = event ? (enabled ? t('automation.job.runsWhen') : t('automation.off')) : enabled ? formatNextRun({ ...job, enabled: true, state: job.state === 'paused' ? 'scheduled' : job.state }) : t('automation.paused')
 
   return (
     <GlassCard interactive selected={selected} onClick={onSelect} className="flex items-center gap-3.5 p-3.5" data-os-target={`automation:${job.id}`}>
-      <button type="button" className="flex min-w-0 flex-1 items-center gap-3.5 text-left" aria-label={`Open ${name}`} aria-current={selected ? 'true' : undefined}>
+      <button type="button" className="flex min-w-0 flex-1 items-center gap-3.5 text-left" aria-label={t('automation.job.open', { name })} aria-current={selected ? 'true' : undefined}>
         <JobTile job={job} size={44} />
         <span className="min-w-0 flex-1">
           <span className="block truncate text-[13.5px] font-medium text-fg">{name}</span>
@@ -360,7 +362,7 @@ function JobCard({ job, enabled, selected, onSelect, onToggle, onAction }: { job
         </span>
       </button>
       <span className="flex shrink-0 items-center gap-1.5" onClick={event => event.stopPropagation()}>
-        <Toggle checked={enabled} onChange={onToggle} label={`${enabled ? 'Pause' : 'Resume'} ${name}`} />
+        <Toggle checked={enabled} onChange={onToggle} label={t('automation.job.pauseResume', { action: enabled ? t('automation.job.pause') : t('automation.job.resume'), name })} />
         <JobMenu jobName={name} onAction={onAction} />
       </span>
     </GlassCard>
@@ -368,6 +370,7 @@ function JobCard({ job, enabled, selected, onSelect, onToggle, onAction }: { job
 }
 
 function RecentRuns({ rows, loading }: { rows: RunRow[]; loading: boolean }) {
+  const { t } = useT()
   if (loading) {
     return (
       <div className="flex flex-col gap-2" aria-busy="true">
@@ -379,7 +382,7 @@ function RecentRuns({ rows, loading }: { rows: RunRow[]; loading: boolean }) {
   }
 
   if (rows.length === 0) {
-    return <EmptyGlass title="No runs yet" description="Runs appear here as your automations fire. Use “Run now” to try one." className="min-h-24 py-5" />
+    return <EmptyGlass title={t('automation.recentRuns.empty')} description={t('automation.recentRuns.empty.hint')} className="min-h-24 py-5" />
   }
 
   return (
@@ -414,18 +417,18 @@ type RunKind = 'ok' | 'failed' | 'running'
 
 function runStatus(row: RunRow): { kind: RunKind; label: string; tone: PillTone } {
   if (row.run.is_active) {
-    return { kind: 'running', label: 'Running', tone: 'progress' }
+    return { kind: 'running', label: t('automation.runStatus.running'), tone: 'progress' }
   }
 
   if (row.latest && isFailedStatus(row.job.last_status)) {
-    return { kind: 'failed', label: 'Failed', tone: 'danger' }
+    return { kind: 'failed', label: t('automation.runStatus.failed'), tone: 'danger' }
   }
 
   if (/error|fail/i.test(row.run.end_reason ?? '')) {
-    return { kind: 'failed', label: 'Failed', tone: 'danger' }
+    return { kind: 'failed', label: t('automation.runStatus.failed'), tone: 'danger' }
   }
 
-  return { kind: 'ok', label: 'Completed', tone: 'ok' }
+  return { kind: 'ok', label: t('automation.runStatus.ok'), tone: 'ok' }
 }
 
 function RunStatusIcon({ status }: { status: RunKind }) {

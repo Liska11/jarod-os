@@ -1,14 +1,13 @@
 import { IconMessageChatbot, IconPlus, IconSparkles, IconX } from '@tabler/icons-react'
+import { t, type MessageKey, useT } from '../../lib/i18n.ts'
 import { useState } from 'react'
 import { HERALD_EVENTS, type HeraldEventName } from '../../../shared/events.ts'
 import { Chips, GlassButton, GlassCard } from '../../components/ui/glass.tsx'
 import { sendPrompt } from '../../store/chat.ts'
 import { showPage } from '../../store/windows.ts'
 import type { CronJobDraft, DeliveryTarget } from './api.ts'
-import { SCHEDULE_FORMATS_HINT, SCHEDULE_PLACEHOLDER, humanizeCronExpr } from './cron-humanize.ts'
-import { FieldLabel, GlyphTile, Hint, SelectInput, TextArea, TextInput, isLocalDelivery } from './presentation.tsx'
-
-const DESCRIBE_PROMPT = 'Help me set up a new scheduled automation. Ask me what it should do and when, then create it with the cronjob tool.'
+import { SCHEDULE_FORMATS_HINT, humanizeCronExpr } from './cron-humanize.ts'
+import { eventLabel, FieldLabel, GlyphTile, Hint, SelectInput, TextArea, TextInput, isLocalDelivery } from './presentation.tsx'
 
 /** Runs on an event instead of a schedule; the page turns it into a paused job plus a rule. */
 export interface EventTrigger {
@@ -17,20 +16,21 @@ export interface EventTrigger {
 }
 
 const TRIGGER_MODES = [
-  { id: 'schedule', label: 'On a schedule' },
-  { id: 'event', label: 'When something happens' }
+  { id: 'schedule', label: t('automation.schedule') },
+  { id: 'event', label: t('automation.trigger') }
 ] as const
 
 const EVENT_CHOICES = HERALD_EVENTS.filter(event => event.automation)
 
 /** Events that can be narrowed down, and the detail they match on. */
-const MATCHES: Partial<Record<HeraldEventName, { key: string; label: string; placeholder: string }>> = {
-  crash: { key: 'app', label: 'Which program (optional)', placeholder: 'Any program' },
-  'network-change': { key: 'wifi', label: 'Wi-Fi network (optional)', placeholder: 'Any network' }
+const MATCHES: Partial<Record<HeraldEventName, { key: string; label: MessageKey; placeholder: MessageKey }>> = {
+  crash: { key: 'app', label: 'automation.match.app', placeholder: 'automation.match.app.placeholder' },
+  'network-change': { key: 'wifi', label: 'automation.match.wifi', placeholder: 'automation.match.wifi.placeholder' }
 }
 
 /** Inline "New automation" form shown in the detail column. */
 export function NewAutomationForm({ targets, creating, onCreate, onCancel }: { targets: readonly DeliveryTarget[]; creating: boolean; onCreate: (draft: CronJobDraft, trigger?: EventTrigger) => Promise<boolean>; onCancel: () => void }) {
+  const { t } = useT()
   const [name, setName] = useState('')
   const [mode, setMode] = useState<'schedule' | 'event'>('schedule')
   const [schedule, setSchedule] = useState('')
@@ -58,10 +58,10 @@ export function NewAutomationForm({ targets, creating, onCreate, onCancel }: { t
       <div className="flex items-start gap-3.5 px-5 pt-5 pb-4">
         <GlyphTile icon={<IconSparkles />} size={44} />
         <div className="min-w-0 flex-1">
-          <h2 className="text-[18px] leading-tight font-semibold text-fg">New automation</h2>
-          <p className="mt-1 text-[12.5px] text-fg-3">Tell Hermes what to do and when. It runs even while you are away.</p>
+          <h2 className="text-[18px] leading-tight font-semibold text-fg">{t('automation.new')}</h2>
+          <p className="mt-1 text-[12.5px] text-fg-3">{t('automation.subtitle')}</p>
         </div>
-        <GlassButton size="icon" variant="ghost" onClick={onCancel} aria-label="Close new automation form" className="-mt-1 -mr-2">
+        <GlassButton size="icon" variant="ghost" onClick={onCancel} aria-label={t('automation.new.aria')} className="-mt-1 -mr-2">
           <IconX />
         </GlassButton>
       </div>
@@ -74,24 +74,18 @@ export function NewAutomationForm({ targets, creating, onCreate, onCancel }: { t
         }}
       >
         <div className="flex flex-col gap-1.5">
-          <FieldLabel htmlFor="new-automation-name">Name</FieldLabel>
-          <TextInput id="new-automation-name" value={name} onChange={e => setName(e.target.value)} placeholder="Morning briefing" autoFocus />
+          <FieldLabel htmlFor="new-automation-name">{t('automation.name')}</FieldLabel>
+          <TextInput id="new-automation-name" value={name} onChange={e => setName(e.target.value)} placeholder={t('automation.name.placeholder')} autoFocus />
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <FieldLabel htmlFor="new-automation-schedule">When</FieldLabel>
+          <FieldLabel htmlFor="new-automation-schedule">{t('automation.when')}</FieldLabel>
           <Chips items={TRIGGER_MODES} value={mode} onChange={setMode} className="self-start" />
           {mode === 'schedule' ? (
             <>
-              <TextInput id="new-automation-schedule" value={schedule} onChange={e => setSchedule(e.target.value)} placeholder={SCHEDULE_PLACEHOLDER} required />
+              <TextInput id="new-automation-schedule" value={schedule} onChange={e => setSchedule(e.target.value)} placeholder={t('automation.schedule.placeholder')} required />
               <Hint>
-                {preview ? (
-                  <span className="text-accent-strong">{preview}</span>
-                ) : (
-                  <>
-                    Accepted: {SCHEDULE_FORMATS_HINT}.
-                  </>
-                )}
+                {preview ? <span className="text-accent-strong">{preview}</span> : t('automation.schedule.hint', { hint: SCHEDULE_FORMATS_HINT })}
               </Hint>
             </>
           ) : (
@@ -99,32 +93,32 @@ export function NewAutomationForm({ targets, creating, onCreate, onCancel }: { t
               <SelectInput id="new-automation-schedule" value={event} onChange={e => setEvent(e.target.value as HeraldEventName)}>
                 {EVENT_CHOICES.map(choice => (
                   <option key={choice.name} value={choice.name}>
-                    {choice.label}
+                    {eventLabel(choice.name)}
                   </option>
                 ))}
               </SelectInput>
-              {matcher && <TextInput aria-label={matcher.label} value={matchValue} onChange={e => setMatchValue(e.target.value)} placeholder={matcher.placeholder} />}
-              <Hint>Hermes runs it each time this happens on this computer while Jarod-OS is open.</Hint>
+              {matcher && <TextInput aria-label={t(matcher.label)} value={matchValue} onChange={e => setMatchValue(e.target.value)} placeholder={t(matcher.placeholder)} />}
+              <Hint>{t('automation.eventHint')}</Hint>
             </>
           )}
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <FieldLabel htmlFor="new-automation-prompt">What Hermes should do</FieldLabel>
-          <TextArea id="new-automation-prompt" value={prompt} onChange={e => setPrompt(e.target.value)} rows={6} placeholder="Gather my calendar, priority mail and active missions, then write a short briefing for the day." required />
+          <FieldLabel htmlFor="new-automation-prompt">{t('automation.gather')}</FieldLabel>
+          <TextArea id="new-automation-prompt" value={prompt} onChange={e => setPrompt(e.target.value)} rows={6} placeholder={t('automation.gather.placeholder')} required />
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <FieldLabel htmlFor="new-automation-deliver">Deliver to</FieldLabel>
+          <FieldLabel htmlFor="new-automation-deliver">{t('automation.deliver')}</FieldLabel>
           <SelectInput id="new-automation-deliver" value={deliver} onChange={e => setDeliver(e.target.value)}>
             {targets.map(target => (
               <option key={target.id} value={target.id} disabled={target.home_target_set === false}>
                 {target.name}
-                {target.home_target_set === false ? ' (set a home channel first)' : ''}
+                {target.home_target_set === false ? t('automation.deliver.homeMissing') : ''}
               </option>
             ))}
           </SelectInput>
-          <Hint>{isLocalDelivery(deliver) ? 'Results are saved as a briefing you can open in Hermes.' : 'Hermes posts the result to the platform’s home channel when the run finishes.'}</Hint>
+          <Hint>{isLocalDelivery(deliver) ? t('automation.deliver.hint.local') : t('automation.deliver.hint.remote')}</Hint>
         </div>
       </form>
 
@@ -133,15 +127,15 @@ export function NewAutomationForm({ targets, creating, onCreate, onCancel }: { t
           variant="secondary"
           onClick={() => {
             showPage('hermes')
-            void sendPrompt(DESCRIBE_PROMPT)
+            void sendPrompt(t('automation.describePrompt'))
           }}
         >
           <IconMessageChatbot />
-          Describe it to Hermes
+          {t('automation.describe')}
         </GlassButton>
-        <GlassButton variant="primary" disabled={!canCreate} onClick={() => void submit()} aria-label="Create automation">
+        <GlassButton variant="primary" disabled={!canCreate} onClick={() => void submit()} aria-label={t('automation.new')}>
           <IconPlus />
-          {creating ? 'Creating…' : 'Create'}
+          {creating ? t('automation.creating') : t('automation.create')}
         </GlassButton>
       </div>
     </GlassCard>

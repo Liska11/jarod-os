@@ -1,6 +1,8 @@
 import { IconDatabase, IconDownload, IconEye, IconFileText, IconRefresh, IconSunrise, type IconProps } from '@tabler/icons-react'
 import type React from 'react'
+import { type EventAutomation, type HeraldEventName } from '../../../shared/events.ts'
 import { cn } from '../../lib/cn.ts'
+import { t, type MessageKey } from '../../lib/i18n.ts'
 import type { CronJob } from '../../lib/rest.ts'
 import type { DeliveryTarget } from './api.ts'
 
@@ -10,6 +12,34 @@ import type { DeliveryTarget } from './api.ts'
  */
 
 type TablerIcon = React.ComponentType<IconProps>
+
+/** Each event's name in the catalogue. `HERALD_EVENTS` keeps its English label: the main process reports it. */
+const EVENT_KEY: Record<HeraldEventName, MessageKey> = {
+  login: 'automation.event.login',
+  wake: 'automation.event.wake',
+  sleep: 'automation.event.sleep',
+  lock: 'automation.event.lock',
+  unlock: 'automation.event.unlock',
+  returned: 'automation.event.returned',
+  'battery-low': 'automation.event.batteryLow',
+  'network-change': 'automation.event.networkChange',
+  'theme-set': 'automation.event.themeSet',
+  crash: 'automation.event.crash',
+  'after-update': 'automation.event.afterUpdate'
+}
+
+/** 'When I log in', in the current language. */
+export function eventLabel(event: HeraldEventName): string {
+  return t(EVENT_KEY[event])
+}
+
+/** An event rule as a line: 'When a program crashes (Safari)'. */
+export function ruleText(rule: Pick<EventAutomation, 'event' | 'match'>): string {
+  const label = eventLabel(rule.event)
+  const values = Object.values(rule.match ?? {}).filter(Boolean)
+
+  return values.length ? t('automation.rule.withDetail', { label, detail: values.join(', ') }) : label
+}
 
 const ICON_RULES: readonly { pattern: RegExp; icon: TablerIcon }[] = [
   { pattern: /brief|morning|wake|start of day|daily digest/i, icon: IconSunrise },
@@ -51,7 +81,7 @@ export function describeJob(job: Pick<CronJob, 'prompt' | 'name'> & { script?: u
   const prompt = cleanPrompt(job.prompt)
 
   if (!prompt) {
-    return typeof job.script === 'string' && job.script ? 'Runs a script on a schedule.' : 'Runs on a schedule.'
+    return typeof job.script === 'string' && job.script ? t('automation.describe.script') : t('automation.describe.schedule')
   }
 
   const sentence = prompt.split(/(?<=[.!?])\s+/)[0] ?? prompt
@@ -60,35 +90,35 @@ export function describeJob(job: Pick<CronJob, 'prompt' | 'name'> & { script?: u
   return /[.!?…]$/.test(text) ? text : `${text}.`
 }
 
-const GATHER_RULES: readonly { pattern: RegExp; label: string }[] = [
-  { pattern: /calendar|meeting|schedule|agenda|event/i, label: 'calendar' },
-  { pattern: /\bmail\b|e-?mail|inbox|message/i, label: 'priority mail' },
-  { pattern: /mission|task|todo|to-do|project/i, label: 'active missions' },
-  { pattern: /\bfiles?\b|folder|download|document|desktop/i, label: 'files' },
-  { pattern: /\bweb\b|search|news|browse|website|internet|headline/i, label: 'the web' },
-  { pattern: /github|pull request|\bpr\b|repo/i, label: 'GitHub' },
-  { pattern: /slack|discord|telegram/i, label: 'chat channels' },
-  { pattern: /weather|forecast/i, label: 'weather' },
-  { pattern: /memory|remember|notes/i, label: 'memory' }
+const GATHER_RULES: readonly { pattern: RegExp; label: MessageKey }[] = [
+  { pattern: /calendar|meeting|schedule|agenda|event/i, label: 'automation.gather.calendar' },
+  { pattern: /\bmail\b|e-?mail|inbox|message/i, label: 'automation.gather.mail' },
+  { pattern: /mission|task|todo|to-do|project/i, label: 'automation.gather.missions' },
+  { pattern: /\bfiles?\b|folder|download|document|desktop/i, label: 'automation.gather.files' },
+  { pattern: /\bweb\b|search|news|browse|website|internet|headline/i, label: 'automation.gather.web' },
+  { pattern: /github|pull request|\bpr\b|repo/i, label: 'automation.gather.github' },
+  { pattern: /slack|discord|telegram/i, label: 'automation.gather.chat' },
+  { pattern: /weather|forecast/i, label: 'automation.gather.weather' },
+  { pattern: /memory|remember|notes/i, label: 'automation.gather.memory' }
 ]
 
 /** 'Calendar, priority mail and active missions' derived from prompt keywords, else the prompt's opening. */
 export function describeGather(job: Pick<CronJob, 'prompt' | 'skills'>): string {
   const prompt = cleanPrompt(job.prompt)
-  const labels = GATHER_RULES.filter(rule => rule.pattern.test(prompt)).map(rule => rule.label)
+  const labels = GATHER_RULES.filter(rule => rule.pattern.test(prompt)).map(rule => t(rule.label))
 
   if (labels.length === 0 && job.skills?.length) {
     labels.push(...job.skills.slice(0, 3))
   }
 
   if (labels.length > 0) {
-    const list = labels.length <= 2 ? labels.join(' and ') : `${labels.slice(0, -1).join(', ')} and ${labels[labels.length - 1]}`
+    const list = labels.length <= 2 ? t('automation.join.two', { first: labels[0], second: labels[1] ?? '' }) : t('automation.join.many', { head: labels.slice(0, -1).join(', '), last: labels[labels.length - 1] })
 
     return list.charAt(0).toUpperCase() + list.slice(1)
   }
 
   if (!prompt) {
-    return 'Nothing to gather yet — add a prompt.'
+    return t('automation.gather.none')
   }
 
   return prompt.length > 90 ? `${prompt.slice(0, 89).trimEnd()}…` : prompt
@@ -98,12 +128,12 @@ export const isLocalDelivery = (deliver: string | null | undefined): boolean => 
 
 export function describeDeliver(deliver: string | null | undefined, targets: readonly DeliveryTarget[] = []): string {
   if (isLocalDelivery(deliver)) {
-    return 'Create a briefing in Hermes'
+    return t('automation.deliver.local')
   }
 
-  const target = targets.find(t => t.id === deliver)
+  const target = targets.find(candidate => candidate.id === deliver)
 
-  return `Send to ${target?.name ?? deliver}`
+  return t('automation.deliver.sendTo', { name: target?.name ?? deliver ?? '' })
 }
 
 /* ---- Field chrome shared by the editors ------------------------------------------------------ */

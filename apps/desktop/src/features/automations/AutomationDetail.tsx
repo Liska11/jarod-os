@@ -1,7 +1,8 @@
 import { useStore } from '@nanostores/react'
 import { IconBell, IconBolt, IconCalendar, IconClock, IconDatabase, IconDeviceFloppy, IconFileText, IconPencil, IconPlayerPlay } from '@tabler/icons-react'
 import { type ReactNode, useEffect, useState } from 'react'
-import { describeRule, type EventAutomation, HERALD_EVENTS, type HeraldEventName } from '../../../shared/events.ts'
+import { t, useT } from '../../lib/i18n.ts'
+import { type EventAutomation, HERALD_EVENTS, type HeraldEventName } from '../../../shared/events.ts'
 import { GlassButton, GlassCard, Pill, Toggle } from '../../components/ui/glass.tsx'
 import { cn } from '../../lib/cn.ts'
 import { formatRelative } from '../../lib/format.ts'
@@ -9,9 +10,9 @@ import type { CronJob } from '../../lib/rest.ts'
 import { eventRuleFor, updateEventRule } from '../../store/automations.ts'
 import { $prefs } from '../../store/backend.ts'
 import { type CronJobEdits, type CronRun, type DeliveryTarget, isFailedStatus, isPaused } from './api.ts'
-import { SCHEDULE_FORMATS_HINT, SCHEDULE_PLACEHOLDER, formatRunDuration, humanizeSchedule, localTimezoneCity, scheduleToString, toMs } from './cron-humanize.ts'
+import { SCHEDULE_FORMATS_HINT, formatRunDuration, humanizeSchedule, localTimezoneCity, scheduleToString, toMs } from './cron-humanize.ts'
 import { JobMenu, type JobMenuAction } from './JobMenu.tsx'
-import { FieldLabel, GlyphTile, Hint, JobTile, SelectInput, TextArea, TextInput, describeDeliver, describeGather, describeJob, isLocalDelivery } from './presentation.tsx'
+import { FieldLabel, GlyphTile, Hint, JobTile, SelectInput, TextArea, TextInput, describeDeliver, describeGather, describeJob, eventLabel, isLocalDelivery, ruleText } from './presentation.tsx'
 
 type StepId = 'when' | 'gather' | 'deliver'
 
@@ -45,6 +46,7 @@ export interface AutomationDetailProps {
 
 /** Right column: header, the numbered When / Gather / Deliver step editor, notify row and footer actions. */
 export function AutomationDetail({ job, targets, lastRun, saving, onSave, onAction }: AutomationDetailProps) {
+  const { t } = useT()
   const [edits, setEdits] = useState<CronJobEdits>({})
   const [editing, setEditing] = useState<StepId | null>(null)
   const [notifyPref, setNotifyPref] = useState(() => readNotifyPref(job.id))
@@ -109,7 +111,7 @@ export function AutomationDetail({ job, targets, lastRun, saving, onSave, onActi
     }
   }
 
-  const whenSummary = rule ? describeRule(rule) : `${edits.schedule !== undefined ? capitalize(edits.schedule) : humanizeSchedule(job)} · ${localTimezoneCity()}`
+  const whenSummary = rule ? ruleText(rule) : `${edits.schedule !== undefined ? capitalize(edits.schedule) : humanizeSchedule(job)} · ${localTimezoneCity()}`
   const selectableTargets = targets.some(t => t.id === currentDeliver) ? targets : [...targets, { id: currentDeliver, name: currentDeliver }]
 
   return (
@@ -118,12 +120,12 @@ export function AutomationDetail({ job, targets, lastRun, saving, onSave, onActi
         <JobTile job={job} size={44} />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2.5">
-            <h2 className="truncate text-[18px] leading-tight font-semibold text-fg">{job.name || 'Untitled automation'}</h2>
-            <Pill tone={job.state === 'error' ? 'danger' : paused ? 'muted' : 'ok'}>{job.state === 'error' ? 'Error' : paused ? (rule ? 'Off' : 'Paused') : 'Active'}</Pill>
+            <h2 className="truncate text-[18px] leading-tight font-semibold text-fg">{job.name || t('automation.job.untitled')}</h2>
+            <Pill tone={job.state === 'error' ? 'danger' : paused ? 'muted' : 'ok'}>{job.state === 'error' ? t('automation.error') : paused ? (rule ? t('automation.off') : t('automation.paused')) : t('automation.active')}</Pill>
           </div>
           <p className="mt-1 text-[12.5px] text-fg-3">{describeJob(previewJob)}</p>
         </div>
-        <JobMenu jobName={job.name || 'automation'} onAction={onAction} className="-mt-1 -mr-2" />
+        <JobMenu jobName={job.name || t('automation.title')} onAction={onAction} className="-mt-1 -mr-2" />
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-5 pb-4">
@@ -133,7 +135,7 @@ export function AutomationDetail({ job, targets, lastRun, saving, onSave, onActi
           <Step
             index={1}
             icon={rule ? <IconBolt /> : <IconCalendar />}
-            title="When"
+            title={t('automation.step.when')}
             summary={whenSummary}
             editing={editing === 'when'}
             onEdit={() => setEditing(editing === 'when' ? null : 'when')}
@@ -142,12 +144,12 @@ export function AutomationDetail({ job, targets, lastRun, saving, onSave, onActi
               <EventRuleEditor rule={rule} onDone={() => setEditing(null)} />
             ) : (
               <>
-                <FieldLabel htmlFor="automation-schedule">Schedule</FieldLabel>
+                <FieldLabel htmlFor="automation-schedule">{t('automation.scheduleLabel')}</FieldLabel>
                 <TextInput
                   id="automation-schedule"
                   value={currentSchedule}
                   autoFocus
-                  placeholder={SCHEDULE_PLACEHOLDER}
+                  placeholder={t('automation.schedule.placeholder')}
                   onChange={e => setField('schedule', e.target.value)}
                   onKeyDown={e => {
                     if (e.key === 'Enter') {
@@ -155,7 +157,7 @@ export function AutomationDetail({ job, targets, lastRun, saving, onSave, onActi
                     }
                   }}
                 />
-                <Hint>Accepted: {SCHEDULE_FORMATS_HINT}.</Hint>
+                <Hint>{t('automation.schedule.hint', { hint: SCHEDULE_FORMATS_HINT })}</Hint>
                 <StepActions disabled={saving || edits.schedule === undefined} onSave={() => void saveStep('schedule')} onCancel={() => cancelStep('schedule')} />
               </>
             )}
@@ -164,34 +166,34 @@ export function AutomationDetail({ job, targets, lastRun, saving, onSave, onActi
           <Step
             index={2}
             icon={<IconDatabase />}
-            title="Gather"
+            title={t('automation.step.gather')}
             summary={describeGather(previewJob)}
             editing={editing === 'gather'}
             onEdit={() => setEditing(editing === 'gather' ? null : 'gather')}
           >
-            <FieldLabel htmlFor="automation-prompt">What Hermes should do</FieldLabel>
-            <TextArea id="automation-prompt" value={currentPrompt} autoFocus rows={5} placeholder="Describe what to gather and produce each run…" onChange={e => setField('prompt', e.target.value)} />
+            <FieldLabel htmlFor="automation-prompt">{t('automation.gather')}</FieldLabel>
+            <TextArea id="automation-prompt" value={currentPrompt} autoFocus rows={5} placeholder={t('automation.gather.placeholder')} onChange={e => setField('prompt', e.target.value)} />
             <StepActions disabled={saving || edits.prompt === undefined} onSave={() => void saveStep('prompt')} onCancel={() => cancelStep('prompt')} />
           </Step>
 
           <Step
             index={3}
             icon={<IconFileText />}
-            title="Deliver"
+            title={t('automation.step.deliver')}
             summary={describeDeliver(currentDeliver, targets)}
             editing={editing === 'deliver'}
             onEdit={() => setEditing(editing === 'deliver' ? null : 'deliver')}
           >
-            <FieldLabel htmlFor="automation-deliver">Deliver to</FieldLabel>
+            <FieldLabel htmlFor="automation-deliver">{t('automation.deliver')}</FieldLabel>
             <SelectInput id="automation-deliver" value={currentDeliver} onChange={e => setField('deliver', e.target.value)}>
               {selectableTargets.map(target => (
                 <option key={target.id} value={target.id} disabled={target.home_target_set === false}>
                   {target.name}
-                  {target.home_target_set === false ? ' (set a home channel first)' : ''}
+                  {target.home_target_set === false ? t('automation.deliver.homeMissing') : ''}
                 </option>
               ))}
             </SelectInput>
-            <Hint>{isLocalDelivery(currentDeliver) ? 'Results are saved as a briefing you can open in Hermes.' : 'Hermes posts the result to the platform’s home channel when the run finishes.'}</Hint>
+            <Hint>{isLocalDelivery(currentDeliver) ? t('automation.deliver.hint.local') : t('automation.deliver.hint.remote')}</Hint>
             <StepActions disabled={saving || edits.deliver === undefined} onSave={() => void saveStep('deliver')} onCancel={() => cancelStep('deliver')} />
           </Step>
         </ol>
@@ -199,12 +201,12 @@ export function AutomationDetail({ job, targets, lastRun, saving, onSave, onActi
         <GlassCard className="flex items-center gap-3.5 px-4 py-3">
           <IconBell size={20} className="shrink-0 text-fg-2" aria-hidden="true" />
           <div className="min-w-0 flex-1">
-            <div className="text-[13px] font-medium text-fg">Notify me when ready</div>
-            <div className="text-[12px] text-fg-3">Get a system notification when the automation has completed.</div>
+            <div className="text-[13px] font-medium text-fg">{t('automation.notify')}</div>
+            <div className="text-[12px] text-fg-3">{t('automation.notify.hint')}</div>
           </div>
           <Toggle
             checked={notifyPref}
-            label="Notify me when this automation completes"
+            label={t('automation.notify.label')}
             onChange={value => {
               setNotifyPref(value)
               writeNotifyPref(job.id, value)
@@ -219,13 +221,13 @@ export function AutomationDetail({ job, targets, lastRun, saving, onSave, onActi
           <span className="truncate">{lastRunSummary(job, lastRun)}</span>
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          <GlassButton onClick={() => onAction('trigger')} aria-label="Run now">
+          <GlassButton onClick={() => onAction('trigger')} aria-label={t('automation.runNow')}>
             <IconPlayerPlay />
-            Run now
+            {t('automation.runNow')}
           </GlassButton>
-          <GlassButton variant="primary" disabled={!dirty || saving} onClick={() => void saveAll()} aria-label="Save changes">
+          <GlassButton variant="primary" disabled={!dirty || saving} onClick={() => void saveAll()} aria-label={t('automation.save')}>
             <IconDeviceFloppy />
-            {saving ? 'Saving…' : 'Save changes'}
+            {saving ? t('automation.saving') : t('automation.save')}
           </GlassButton>
         </div>
       </div>
@@ -248,9 +250,9 @@ function Step({ index, icon, title, summary, editing, onEdit, children }: { inde
               {summary}
             </div>
           </div>
-          <GlassButton size="sm" variant={editing ? 'ghost' : 'secondary'} onClick={onEdit} aria-label={editing ? `Close ${title} editor` : `Edit ${title}`} aria-expanded={editing}>
+          <GlassButton size="sm" variant={editing ? 'ghost' : 'secondary'} onClick={onEdit} aria-label={editing ? t('automation.step.closeAria', { title }) : t('automation.step.editAria', { title })} aria-expanded={editing}>
             <IconPencil />
-            {editing ? 'Close' : 'Edit'}
+            {editing ? t('automation.step.close') : t('automation.step.edit')}
           </GlassButton>
         </div>
         {editing && <div className="animate-rise mt-3 flex flex-col gap-2 border-t border-line pt-3">{children}</div>}
@@ -280,15 +282,15 @@ function EventRuleEditor({ rule, onDone }: { rule: EventAutomation; onDone: () =
 
   return (
     <>
-      <FieldLabel htmlFor="automation-event">When this happens</FieldLabel>
+      <FieldLabel htmlFor="automation-event">{t('automation.event')}</FieldLabel>
       <SelectInput id="automation-event" value={event} onChange={e => setEvent(e.target.value as HeraldEventName)}>
         {HERALD_EVENTS.filter(choice => choice.automation).map(choice => (
           <option key={choice.name} value={choice.name}>
-            {choice.label}
+            {eventLabel(choice.name)}
           </option>
         ))}
       </SelectInput>
-      {matchKey && <TextInput aria-label={matchKey === 'app' ? 'Which program' : 'Which Wi-Fi network'} value={matchValue} onChange={e => setMatchValue(e.target.value)} placeholder={matchKey === 'app' ? 'Any program' : 'Any network'} />}
+      {matchKey && <TextInput aria-label={matchKey === 'app' ? t('automation.match.app') : t('automation.match.wifi')} value={matchValue} onChange={e => setMatchValue(e.target.value)} placeholder={matchKey === 'app' ? t('automation.match.app.placeholder') : t('automation.match.wifi.placeholder')} />}
       <StepActions disabled={saving || !changed} onSave={() => void save()} onCancel={onDone} />
     </>
   )
@@ -298,10 +300,10 @@ function StepActions({ disabled, onSave, onCancel }: { disabled: boolean; onSave
   return (
     <div className="flex items-center justify-end gap-2 pt-1">
       <GlassButton size="sm" variant="ghost" onClick={onCancel}>
-        Cancel
+        {t('automation.step.cancel')}
       </GlassButton>
       <GlassButton size="sm" variant="primary" disabled={disabled} onClick={onSave}>
-        Save
+        {t('automation.step.save')}
       </GlassButton>
     </div>
   )
@@ -314,22 +316,22 @@ function lastRunSummary(job: CronJob, lastRun: CronRun | undefined): string {
   const ended = toMs(lastRun?.ended_at)
 
   if (lastRun?.is_active) {
-    return 'Running now…'
+    return t('automation.runningNow')
   }
 
   if (started !== undefined && ended !== undefined && ended >= started) {
     const duration = formatRunDuration((ended - started) / 1000)
 
-    return failed ? `Last run failed after ${duration}` : `Last run completed in ${duration}`
+    return failed ? t('automation.lastRun.failed', { duration }) : t('automation.lastRun.done', { duration })
   }
 
   if (lastMs === undefined) {
-    return 'Not run yet'
+    return t('automation.notRun')
   }
 
-  const status = failed ? 'failed' : job.last_status ? job.last_status.replace(/[_-]/g, ' ') : 'completed'
+  const status = failed ? t('automation.status.failed') : job.last_status ? job.last_status.replace(/[_-]/g, ' ') : t('automation.status.completed')
 
-  return `Last run: ${formatRelative(lastMs)} · ${status}`
+  return t('automation.lastRun', { when: formatRelative(lastMs), status })
 }
 
 const capitalize = (text: string): string => (text ? text.charAt(0).toUpperCase() + text.slice(1) : text)
