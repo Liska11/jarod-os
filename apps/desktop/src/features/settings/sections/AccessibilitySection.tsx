@@ -1,4 +1,5 @@
 import { useStore } from '@nanostores/react'
+import { type MessageKey, useT } from '../../../lib/i18n.ts'
 import { IconContrast, IconSparkles, IconTextSize } from '@tabler/icons-react'
 import { useState } from 'react'
 import { Chips, Toggle } from '../../../components/ui/glass.tsx'
@@ -16,10 +17,10 @@ export type TextSize = 'small' | 'default' | 'large'
 
 const TEXT_SIZE_KEY = 'herald-os.a11y.text-size'
 const CONTRAST_KEY = 'herald-os.a11y.high-contrast'
-const TEXT_SIZES: { id: TextSize; label: string; px: string }[] = [
-  { id: 'small', label: 'Small', px: '12px' },
-  { id: 'default', label: 'Default', px: '13px' },
-  { id: 'large', label: 'Large', px: '14.5px' }
+const TEXT_SIZES: { id: TextSize; label: MessageKey; px: string }[] = [
+  { id: 'small', label: 'accessibility.textSize.small', px: '12px' },
+  { id: 'default', label: 'accessibility.textSize.default', px: '13px' },
+  { id: 'large', label: 'accessibility.textSize.large', px: '14.5px' }
 ]
 
 function readTextSize(): TextSize {
@@ -53,6 +54,7 @@ export function applyAccessibility(): void {
 }
 
 export function AccessibilitySection() {
+  const { t } = useT()
   const prefs = useStore($prefs)
   const [textSize, setTextSize] = useState<TextSize>(readTextSize)
   const [contrast, setContrast] = useState(() => readLocalFlag(CONTRAST_KEY, false))
@@ -62,7 +64,7 @@ export function AccessibilitySection() {
       await updatePrefs({ reduceMotion: next })
       markSaved()
     } catch (error) {
-      notify({ title: 'Could not save setting', body: errorText(error), level: 'error' })
+      notify({ title: t('accessibility.couldNotSave'), body: errorText(error), level: 'error' })
     }
   }
 
@@ -82,20 +84,20 @@ export function AccessibilitySection() {
 
   return (
     <>
-      <SectionTitle title="Accessibility" subtitle="Make Jarod-OS easier to read and calmer to watch." />
+      <SectionTitle title={t('accessibility.title')} subtitle={t('accessibility.subtitle')} />
 
-      <SettingsGroup title="Vision">
-        <SettingsRow icon={<IconTextSize />} label="Text size" description="Scales the whole interface." keywords="font zoom bigger smaller">
+      <SettingsGroup title={t('accessibility.vision')}>
+        <SettingsRow icon={<IconTextSize />} label={t('accessibility.textSize')} description={t('accessibility.textSizeDesc')} keywords={t('accessibility.textSize.kw')}>
           <Chips items={TEXT_SIZES} value={textSize} onChange={changeText} />
         </SettingsRow>
-        <SettingsRow icon={<IconContrast />} label="High contrast" description="Stronger strokes and text. Marks the document with data-contrast for the stylesheet." keywords="contrast readability">
-          <Toggle checked={contrast} onChange={changeContrast} label="High contrast" />
+        <SettingsRow icon={<IconContrast />} label={t('accessibility.highContrast')} description={t('accessibility.highContrastDesc')} keywords={t('accessibility.highContrast.kw')}>
+          <Toggle checked={contrast} onChange={changeContrast} label={t('accessibility.highContrast')} />
         </SettingsRow>
       </SettingsGroup>
 
-      <SettingsGroup title="Motion">
-        <SettingsRow icon={<IconSparkles />} label="Reduce motion" description="Collapse non-essential animation across the shell. Same setting as in Appearance." keywords="animation">
-          <Toggle checked={prefs.reduceMotion} onChange={next => void setMotion(next)} label="Reduce motion" />
+      <SettingsGroup title={t('accessibility.motion')}>
+        <SettingsRow icon={<IconSparkles />} label={t('accessibility.reduceMotion')} description={t('accessibility.reduceMotionDesc')} keywords={t('accessibility.reduceMotion.kw')}>
+          <Toggle checked={prefs.reduceMotion} onChange={next => void setMotion(next)} label={t('accessibility.reduceMotion')} />
         </SettingsRow>
       </SettingsGroup>
     </>

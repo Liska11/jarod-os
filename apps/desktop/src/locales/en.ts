@@ -2468,6 +2468,24 @@ export const en = {
   'memoryAdd.title': 'New memory',
   'memoryAdd.textAria': 'Memory text',
   'memoryAdd.placeholder': 'Something {assistant} should remember\u2026',
+  // Accessibility (Settings > Accessibility)
+  'accessibility.title': 'Accessibility',
+  'accessibility.subtitle': 'Make {assistant} easier to read and calmer to watch.',
+  'accessibility.vision': 'Vision',
+  'accessibility.motion': 'Motion',
+  'accessibility.textSize': 'Text size',
+  'accessibility.textSizeDesc': 'Scales the whole interface.',
+  'accessibility.textSize.kw': 'font zoom bigger smaller',
+  'accessibility.highContrast': 'High contrast',
+  'accessibility.highContrastDesc': 'Stronger strokes and text. Marks the document with data-contrast for the stylesheet.',
+  'accessibility.highContrast.kw': 'contrast readability',
+  'accessibility.reduceMotion': 'Reduce motion',
+  'accessibility.reduceMotionDesc': 'Collapse non-essential animation across the shell. Same setting as in Appearance.',
+  'accessibility.reduceMotion.kw': 'animation',
+  'accessibility.textSize.small': 'Small',
+  'accessibility.textSize.default': 'Default',
+  'accessibility.textSize.large': 'Large',
+  'accessibility.couldNotSave': 'Could not save setting',
   } as const
 
   export type MessageKey = keyof typeof en
