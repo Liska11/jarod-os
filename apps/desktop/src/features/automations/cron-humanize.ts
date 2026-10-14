@@ -1,14 +1,48 @@
+import { t, type MessageKey } from '../../lib/i18n.ts'
 import type { CronJob } from '../../lib/rest.ts'
 
 /*
  * Turns the cron backend's schedule shapes into the short human lines the Automations page shows:
  * 'Weekdays at 8:00', 'Fridays at 16:00', 'Every evening at 18:00', 'Every 6 hours', 'Once on Sep 21 at 09:00'.
- * Everything falls back to the backend's own `schedule_display` when an expression is too exotic.
+ * Everything falls back to the backend's own `schedule_display` when an expression is too exotic. The
+ * wording comes from the catalogue (`automation.time.*`), so the same shapes read naturally in French.
  */
 
-const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
-const MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+const DAY_KEY: readonly MessageKey[] = [
+  'automation.day.sunday',
+  'automation.day.monday',
+  'automation.day.tuesday',
+  'automation.day.wednesday',
+  'automation.day.thursday',
+  'automation.day.friday',
+  'automation.day.saturday'
+]
+
+const MONTH_KEY: readonly MessageKey[] = [
+  'automation.month.jan',
+  'automation.month.feb',
+  'automation.month.mar',
+  'automation.month.apr',
+  'automation.month.may',
+  'automation.month.jun',
+  'automation.month.jul',
+  'automation.month.aug',
+  'automation.month.sep',
+  'automation.month.oct',
+  'automation.month.nov',
+  'automation.month.dec'
+]
+
 const NAMED_DOW: Record<string, number> = { sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 }
+
+const dayName = (day: number): string => t(DAY_KEY[day] ?? 'automation.day.sunday')
+const monthName = (month: number): string => t(MONTH_KEY[month] ?? 'automation.month.jan')
+
+/** 'Fridays' in English, 'les vendredis' in French — the language decides how a repeated weekday reads. */
+const dayMany = (day: number): string => t('automation.dayPlural', { day: dayName(day) })
+
+/** ', 2027' when the year is not this one, in the language's own punctuation: ' 2027' in French. */
+const yearSuffix = (year: number, current: number): string => (year === current ? '' : t('automation.time.yearSuffix', { year }))
 
 const pad = (n: number): string => String(n).padStart(2, '0')
 
@@ -36,23 +70,24 @@ export function toMs(value: string | number | null | undefined): number | undefi
   return Number.isNaN(parsed) ? undefined : parsed
 }
 
+/** '1st' / '2nd' / '3rd' / '21st' in English, '1er' / '21e' in French. */
 const ordinal = (n: number): string => {
   const rem10 = n % 10
   const rem100 = n % 100
 
   if (rem10 === 1 && rem100 !== 11) {
-    return `${n}st`
+    return t('automation.ordinal.one', { n })
   }
 
   if (rem10 === 2 && rem100 !== 12) {
-    return `${n}nd`
+    return t('automation.ordinal.two', { n })
   }
 
   if (rem10 === 3 && rem100 !== 13) {
-    return `${n}rd`
+    return t('automation.ordinal.few', { n })
   }
 
-  return `${n}th`
+  return t('automation.ordinal.other', { n })
 }
 
 /** Expand a cron day-of-week field ('1-5', 'MON,WED', '0,6', '7') into sorted day numbers, or undefined when not simple. */
@@ -100,36 +135,56 @@ function expandDow(field: string): number[] | undefined {
 
 const sameSet = (a: number[], b: number[]): boolean => a.length === b.length && a.every((v, i) => v === b[i])
 
+/** 'files', 'files and the web', 'a, b and c' — one item takes no conjunction. */
+export function joinList(items: readonly string[]): string {
+  if (items.length === 0) {
+    return ''
+  }
+
+  if (items.length === 1) {
+    return items[0]
+  }
+
+  if (items.length === 2) {
+    return t('automation.join.two', { first: items[0], second: items[1] })
+  }
+
+  return t('automation.join.many', { head: items.slice(0, -1).join(', '), last: items[items.length - 1] })
+}
+
 function dailyPrefix(hour: number): string {
   if (hour >= 5 && hour < 12) {
-    return 'Every morning'
+    return t('automation.time.everyMorning')
   }
 
   if (hour >= 12 && hour < 17) {
-    return 'Every afternoon'
+    return t('automation.time.everyAfternoon')
   }
 
   if (hour >= 17 && hour < 22) {
-    return 'Every evening'
+    return t('automation.time.everyEvening')
   }
 
-  return 'Every day'
+  return t('automation.time.everyDay')
 }
+
+/** 'Every morning at 8:00' / 'Chaque matin à 8:00'. */
+const dailyAt = (hour: number, time: string): string => t('automation.time.dailyAt', { period: dailyPrefix(hour), time })
 
 function humanizeInterval(minutes: number): string {
   if (minutes % 1440 === 0) {
     const days = minutes / 1440
 
-    return days === 1 ? 'Every day' : `Every ${days} days`
+    return days === 1 ? t('automation.time.everyDay') : t('automation.time.everyNDays', { days })
   }
 
   if (minutes % 60 === 0) {
     const hours = minutes / 60
 
-    return hours === 1 ? 'Every hour' : `Every ${hours} hours`
+    return hours === 1 ? t('automation.time.everyHour') : t('automation.time.everyNHours', { hours })
   }
 
-  return minutes === 1 ? 'Every minute' : `Every ${minutes} minutes`
+  return minutes === 1 ? t('automation.time.everyMinute') : t('automation.time.everyNMinutes', { minutes })
 }
 
 /** Humanize a 5+ field cron expression, or undefined when it is not one of the simple shapes. */
@@ -149,7 +204,7 @@ export function humanizeCronExpr(expr: string): string | undefined {
   // Sub-daily cadences: '*/15 * * * *', '0 * * * *', '0 */6 * * *'.
   if (hourField === '*' && domField === '*' && dowField === '*') {
     if (minuteField === '*') {
-      return 'Every minute'
+      return t('automation.time.everyMinute')
     }
 
     const step = /^\*\/(\d+)$/.exec(minuteField)
@@ -159,7 +214,7 @@ export function humanizeCronExpr(expr: string): string | undefined {
     }
 
     if (/^\d+$/.test(minuteField)) {
-      return Number(minuteField) === 0 ? 'Every hour' : `Every hour at :${pad(Number(minuteField))}`
+      return Number(minuteField) === 0 ? t('automation.time.everyHour') : t('automation.time.hourAt', { minutes: pad(Number(minuteField)) })
     }
 
     return undefined
@@ -180,7 +235,7 @@ export function humanizeCronExpr(expr: string): string | undefined {
   // Monthly: '0 9 1 * *'.
   if (domField !== '*' && dowField === '*') {
     if (/^\d+$/.test(domField)) {
-      return `Monthly on the ${ordinal(Number(domField))} at ${time}`
+      return t('automation.time.monthly', { day: ordinal(Number(domField)), time })
     }
 
     return undefined
@@ -191,7 +246,7 @@ export function humanizeCronExpr(expr: string): string | undefined {
   }
 
   if (dowField === '*') {
-    return `${dailyPrefix(Number(hourField))} at ${time}`
+    return dailyAt(Number(hourField), time)
   }
 
   const days = expandDow(dowField)
@@ -201,21 +256,21 @@ export function humanizeCronExpr(expr: string): string | undefined {
   }
 
   if (sameSet(days, [1, 2, 3, 4, 5])) {
-    return `Weekdays at ${time}`
+    return t('automation.time.weekdays', { time })
   }
 
   if (sameSet(days, [0, 6])) {
-    return `Weekends at ${time}`
+    return t('automation.time.weekends', { time })
   }
 
   if (days.length === 7) {
-    return `${dailyPrefix(Number(hourField))} at ${time}`
+    return dailyAt(Number(hourField), time)
   }
 
-  const names = days.map(d => `${DAY_NAMES[d]}s`)
-  const list = names.length <= 2 ? names.join(' and ') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`
+  const names = days.map(dayMany)
+  const list = joinList(names)
 
-  return `${list} at ${time}`
+  return t('automation.time.named', { names: capitalize(list), time })
 }
 
 /** 'Once on Sep 21 at 09:00' (adds the year when it is not this year). */
@@ -227,9 +282,9 @@ export function humanizeOnce(runAt: string | number): string | undefined {
   }
 
   const date = new Date(ms)
-  const year = date.getFullYear() === new Date().getFullYear() ? '' : `, ${date.getFullYear()}`
+  const year = yearSuffix(date.getFullYear(), new Date().getFullYear())
 
-  return `Once on ${MONTH_SHORT[date.getMonth()]} ${date.getDate()}${year} at ${pad(date.getHours())}:${pad(date.getMinutes())}`
+  return t('automation.time.once', { day: date.getDate(), month: monthName(date.getMonth()), year, time: formatTimeOfDay(date) })
 }
 
 /** The card's schedule line. Falls back to the backend's display text. */
@@ -297,50 +352,50 @@ export function formatRunMoment(ms: number, now: Date = new Date()): string {
   const time = formatTimeOfDay(date)
 
   if (dayDelta === 0) {
-    return `Today, ${time}`
+    return t('automation.time.today', { time })
   }
 
   if (dayDelta === 1) {
-    return `Tomorrow, ${time}`
+    return t('automation.time.tomorrow', { time })
   }
 
   if (dayDelta === -1) {
-    return `Yesterday, ${time}`
+    return t('automation.time.yesterday', { time })
   }
 
   if (dayDelta > 1 && dayDelta < 7) {
-    return `${DAY_NAMES[date.getDay()]}, ${time}`
+    return t('automation.time.weekday', { weekday: capitalize(dayName(date.getDay())), time })
   }
 
-  const year = date.getFullYear() === now.getFullYear() ? '' : `, ${date.getFullYear()}`
+  const year = yearSuffix(date.getFullYear(), now.getFullYear())
 
-  return `${MONTH_SHORT[date.getMonth()]} ${date.getDate()}${year}, ${time}`
+  return t('automation.time.date', { day: date.getDate(), month: monthName(date.getMonth()), year, time })
 }
 
 /** The third card line: 'Next run: Monday, 8:00', or 'Paused' / 'Completed' when there is no next run. */
 export function formatNextRun(job: Pick<CronJob, 'next_run_at' | 'state' | 'enabled'>): string {
   if (job.state === 'paused' || job.enabled === false) {
-    return 'Paused'
+    return t('automation.paused')
   }
 
   if (job.state === 'completed') {
-    return 'Completed'
+    return t('automation.completed')
   }
 
   if (job.state === 'error') {
-    return 'Needs attention'
+    return t('automation.needsAttention')
   }
 
   const ms = toMs(job.next_run_at)
 
-  return ms === undefined ? 'Not scheduled' : `Next run: ${formatRunMoment(ms)}`
+  return ms === undefined ? t('automation.time.notScheduled') : t('automation.time.nextRun', { time: formatRunMoment(ms) })
 }
 
 /** 'Sep 17, 2024 8:00' for run history rows. */
 export function formatRunTimestamp(ms: number): string {
   const date = new Date(ms)
 
-  return `${MONTH_SHORT[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()} ${formatTimeOfDay(date)}`
+  return t('automation.runTimestamp', { day: date.getDate(), month: monthName(date.getMonth()), year: date.getFullYear(), time: formatTimeOfDay(date) })
 }
 
 /** '42 seconds', '1 minute 12 seconds', '2 hours 5 minutes'. */
@@ -348,23 +403,33 @@ export function formatRunDuration(seconds: number): string {
   const total = Math.max(0, Math.round(seconds))
 
   if (total < 60) {
-    return `${total} second${total === 1 ? '' : 's'}`
+    return total === 1 ? t('automation.duration.second', { count: total }) : t('automation.duration.seconds', { count: total })
   }
 
   const minutes = Math.floor(total / 60)
   const rest = total % 60
 
   if (minutes < 60) {
-    const m = `${minutes} minute${minutes === 1 ? '' : 's'}`
+    const m = minutes === 1 ? t('automation.duration.minute', { count: minutes }) : t('automation.duration.minutes', { count: minutes })
 
-    return rest ? `${m} ${rest} second${rest === 1 ? '' : 's'}` : m
+    return rest
+      ? t('automation.duration.pair', {
+          head: m,
+          tail: rest === 1 ? t('automation.duration.second', { count: rest }) : t('automation.duration.seconds', { count: rest })
+        })
+      : m
   }
 
   const hours = Math.floor(minutes / 60)
   const restMinutes = minutes % 60
-  const h = `${hours} hour${hours === 1 ? '' : 's'}`
+  const h = hours === 1 ? t('automation.duration.hour', { count: hours }) : t('automation.duration.hours', { count: hours })
 
-  return restMinutes ? `${h} ${restMinutes} minute${restMinutes === 1 ? '' : 's'}` : h
+  return restMinutes
+    ? t('automation.duration.pair', {
+        head: h,
+        tail: restMinutes === 1 ? t('automation.duration.minute', { count: restMinutes }) : t('automation.duration.minutes', { count: restMinutes })
+      })
+    : h
 }
 
 /** 'Sydney' from 'Australia/Sydney'; 'UTC' when the zone is unknown. */
@@ -379,10 +444,12 @@ export function localTimezoneCity(): string {
   }
 }
 
-/** Formats the backend accepts, shown as helper text next to schedule inputs. */
-export const SCHEDULE_FORMATS_HINT = "'every 30m', 'every 6h', 'weekdays at 8:00', 'every monday 9am', 'daily at 7am', a cron expression ('0 9 * * 1-5') or a timestamp ('2026-02-03T14:00')"
-
-export const SCHEDULE_PLACEHOLDER = 'weekdays at 8:00 · every 6h · 0 9 * * 1-5'
+/*
+ * The formats the backend accepts, shown as helper text next to schedule inputs. These are literal
+ * strings a person types, not prose, so they stay the same in both languages.
+ */
+export const SCHEDULE_FORMATS_HINT =
+  "'every 30m', 'every 6h', 'weekdays at 8:00', 'every monday 9am', 'daily at 7am', a cron expression ('0 9 * * 1-5') or a timestamp ('2026-02-03T14:00')"
 
 function capitalize(text: string): string {
   return text ? text.charAt(0).toUpperCase() + text.slice(1) : text

@@ -5,6 +5,7 @@ import { cn } from '../../lib/cn.ts'
 import { t, type MessageKey } from '../../lib/i18n.ts'
 import type { CronJob } from '../../lib/rest.ts'
 import type { DeliveryTarget } from './api.ts'
+import { joinList } from './cron-humanize.ts'
 
 /*
  * Presentation-only derivations for the Automations page: which glyph a job gets, how its prompt is
@@ -112,7 +113,7 @@ export function describeGather(job: Pick<CronJob, 'prompt' | 'skills'>): string 
   }
 
   if (labels.length > 0) {
-    const list = labels.length <= 2 ? t('automation.join.two', { first: labels[0], second: labels[1] ?? '' }) : t('automation.join.many', { head: labels.slice(0, -1).join(', '), last: labels[labels.length - 1] })
+    const list = joinList(labels)
 
     return list.charAt(0).toUpperCase() + list.slice(1)
   }
