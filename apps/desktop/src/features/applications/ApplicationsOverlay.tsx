@@ -157,7 +157,7 @@ export function ApplicationsPanel({ onClose, standalone = false, className }: Ap
   }
 
   return (
-    <div role="dialog" aria-modal="true" aria-label="Applications" className={cn('float flex flex-col overflow-hidden rounded-2xl', className)} onMouseDown={event => event.stopPropagation()} onKeyDown={onKeyDown}>
+    <div role="dialog" aria-modal="true" aria-label={t('applications.title')} className={cn('float flex flex-col overflow-hidden rounded-2xl', className)} onMouseDown={event => event.stopPropagation()} onKeyDown={onKeyDown}>
       <div className="flex items-center justify-between gap-4 px-7 pt-6 pb-4">
         <h1 className="text-[26px] leading-tight font-semibold tracking-tight text-fg">{t('applications.title')}</h1>
         <button type="button" aria-label={t('applications.close')} onClick={close} className="flex size-8 items-center justify-center rounded-lg text-fg-3 transition-colors duration-150 hover:bg-white/8 hover:text-fg">
