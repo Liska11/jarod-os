@@ -2632,6 +2632,24 @@ export const en = {
   'studio.openChatAria': 'Open the conversation',
   'studio.openEditorAria': 'Open the project in an editor',
   'studio.noProject': 'No project folder yet.',
+  // Menu bar (the bar itself)
+  'menubar.wifiSsid': 'Wi-Fi {ssid}',
+  'menubar.wired': 'Wired',
+  'menubar.offlineShort': 'Offline',
+  'menubar.windowControls': 'Window controls',
+  'menubar.stopDictating': 'Stop dictating',
+  'menubar.stopDictating.title': 'Dictating into the focused app: click (or the dictation key) to stop',
+  'menubar.dictating': 'Dictating',
+  'menubar.typing': 'Typing\u2026',
+  'menubar.stopRecording': 'Stop recording',
+  'menubar.stopRecording.title': 'Recording the screen: click to stop',
+  'menubar.recording': 'Recording',
+  'menubar.turnOff': 'Turn off {name}',
+  'menubar.switchOn': '{name} is on',
+  'menubar.switch.nightLight': 'Night light',
+  'menubar.switch.doNotDisturb': 'Do not disturb',
+  'menubar.switch.stayAwake': 'Stay awake',
+  'menubar.switch.screensaver': 'Screensaver',
   } as const
 
   export type MessageKey = keyof typeof en

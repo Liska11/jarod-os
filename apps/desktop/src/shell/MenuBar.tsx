@@ -14,7 +14,7 @@ import { runCommand } from '../store/os-commands.ts'
 import { $usage, loadUsage } from '../store/usage.ts'
 import { $activeSpace, $spaces, setActiveSpace } from '../store/spaces.ts'
 import { $statusPanel, openStatusPanel } from '../store/status-panel.ts'
-import { $switches, setSwitch, SWITCH_LABELS } from '../store/switches.ts'
+import { $switches, setSwitch } from '../store/switches.ts'
 import { $recording } from '../store/capture.ts'
 import { $dictation, toggleDictation } from '../store/dictation.ts'
 import { MenuBarWidgets } from '../features/plugins/PluginSlots.tsx'
@@ -24,7 +24,7 @@ import { $systemStats, useNetworkStatus, useSystemStats } from '../store/system.
 import { $focusedTitle } from '../store/windows.ts'
 import { VoiceIndicator } from '../features/voice/VoiceIndicator.tsx'
 import { quietly } from '../lib/native.ts'
-import { t, useT } from '../lib/i18n.ts'
+import { type MessageKey, t, useT } from '../lib/i18n.ts'
 
 export function useClock(intervalMs = 10_000): Date {
   const [now, setNow] = useState(() => new Date())
@@ -72,17 +72,17 @@ export function MenuBarStatus({ onSearch, onBell, bellActive }: { onSearch: () =
     indicators: <SwitchIndicators />,
     usage: <UsageMeter />,
     wifi: (
-      <button type="button" aria-label="Wi-Fi" title={network?.wifi?.connected ? `Wi-Fi ${network.wifi.ssid ?? ''}`.trim() : network?.online ? 'Wired' : 'Offline'} onClick={() => openStatusPanel('wifi')} className={iconButton('wifi')}>
+      <button type="button" aria-label={t('menubar.item.wifi')} title={network?.wifi?.connected ? t('menubar.wifiSsid', { ssid: network.wifi.ssid ?? '' }).trim() : network?.online ? t('menubar.wired') : t('menubar.offlineShort')} onClick={() => openStatusPanel('wifi')} className={iconButton('wifi')}>
         {network?.online === false ? <IconWifiOff size={15} className="text-fg-3" /> : <IconWifi size={15} />}
       </button>
     ),
     bluetooth: (
-      <button type="button" aria-label="Bluetooth" onClick={() => openStatusPanel('bluetooth')} className={iconButton('bluetooth')}>
+      <button type="button" aria-label={t('menubar.item.bluetooth')} onClick={() => openStatusPanel('bluetooth')} className={iconButton('bluetooth')}>
         <IconBluetooth size={15} />
       </button>
     ),
     sound: (
-      <button type="button" aria-label="Sound" onClick={() => openStatusPanel('audio')} className={iconButton('audio')}>
+      <button type="button" aria-label={t('menubar.item.sound')} onClick={() => openStatusPanel('audio')} className={iconButton('audio')}>
         <IconVolume size={15} />
       </button>
     ),
@@ -131,7 +131,7 @@ export function WindowControls() {
   const base = 'flex h-6 w-8 items-center justify-center rounded-md text-fg-2 hover:text-fg'
 
   return (
-    <div className="no-drag flex items-center gap-0.5" role="group" aria-label="Window controls">
+    <div className="no-drag flex items-center gap-0.5" role="group" aria-label={t('menubar.windowControls')}>
       <button type="button" aria-label={t('menubar.minimize')} title={t('menubar.minimize')} onClick={() => void quietly(() => window.heraldOS.window.minimize())} className={cn(base, 'hover:bg-white/10')}>
         <IconMinus size={15} />
       </button>
@@ -159,19 +159,19 @@ function SwitchIndicators() {
   return (
     <>
       {dictation.phase !== 'idle' && (
-        <button type="button" aria-label="Stop dictating" title="Dictating into the focused app: click (or the dictation key) to stop" onClick={() => (isMainSurface ? toggleDictation() : relayToMain({ type: 'dictate' }))} className="flex h-6 items-center gap-1.5 rounded-md px-1.5 text-[12px] text-accent-strong hover:bg-white/10">
+        <button type="button" aria-label={t('menubar.stopDictating')} title={t('menubar.stopDictating.title')} onClick={() => (isMainSurface ? toggleDictation() : relayToMain({ type: 'dictate' }))} className="flex h-6 items-center gap-1.5 rounded-md px-1.5 text-[12px] text-accent-strong hover:bg-white/10">
           <span className={cn('size-2 rounded-full bg-accent-strong', dictation.phase === 'listening' && 'animate-pulse-soft')} />
-          {dictation.phase === 'listening' ? 'Dictating' : 'Typing…'}
+          {dictation.phase === 'listening' ? t('menubar.dictating') : t('menubar.typing')}
         </button>
       )}
       {recording.recording && (
-        <button type="button" aria-label="Stop recording" title="Recording the screen: click to stop" onClick={() => void window.heraldOS.capture.record('stop').catch(() => undefined)} className="flex h-6 items-center gap-1.5 rounded-md px-1.5 text-[12px] text-danger hover:bg-white/10">
+        <button type="button" aria-label={t('menubar.stopRecording')} title={t('menubar.stopRecording.title')} onClick={() => void window.heraldOS.capture.record('stop').catch(() => undefined)} className="flex h-6 items-center gap-1.5 rounded-md px-1.5 text-[12px] text-danger hover:bg-white/10">
           <span className="size-2 animate-pulse-soft rounded-full bg-danger" />
-          Recording
+          {t('menubar.recording')}
         </button>
       )}
       {items.map(item => (
-        <button key={item.name} type="button" aria-label={`Turn off ${SWITCH_LABELS[item.name].toLowerCase()}`} title={`${SWITCH_LABELS[item.name]} is on`} onClick={() => void setSwitch(item.name, false).catch(() => undefined)} className="flex size-6 items-center justify-center rounded-md text-accent-strong hover:bg-white/10">
+        <button key={item.name} type="button" aria-label={t('menubar.turnOff', { name: t(SWITCH_KEY[item.name]).toLowerCase() })} title={t('menubar.switchOn', { name: t(SWITCH_KEY[item.name]) })} onClick={() => void setSwitch(item.name, false).catch(() => undefined)} className="flex size-6 items-center justify-center rounded-md text-accent-strong hover:bg-white/10">
           {item.icon}
         </button>
       ))}
@@ -224,6 +224,17 @@ export function BackendBadge() {
   }
 
   return <span className="ml-2 rounded-full bg-warn/20 px-2 py-0.5 text-[11px] text-warn">{backend.phase === 'failed' ? t('menubar.offline') : t('menubar.starting')}</span>
+}
+
+/*
+ * The switch names in the catalogue. `SWITCH_LABELS` in the store keeps its English
+ * labels: the command registry answers with them ('Night light on'), so they are a contract.
+ */
+const SWITCH_KEY: Record<SwitchName, MessageKey> = {
+  nightLight: 'menubar.switch.nightLight',
+  doNotDisturb: 'menubar.switch.doNotDisturb',
+  stayAwake: 'menubar.switch.stayAwake',
+  screensaver: 'menubar.switch.screensaver'
 }
 
 export function MenuBar() {
