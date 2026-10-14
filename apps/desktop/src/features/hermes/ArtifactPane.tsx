@@ -64,7 +64,7 @@ const PDF_STYLE = `
 `
 
 export function ArtifactPane({ chat }: { chat: ChatState | null }) {
-  useT()
+  const { t } = useT()
   const artifact = useStore($selectedArtifact)
   const tab = useStore($paneTab)
   const editing = useStore($editing)
@@ -121,7 +121,7 @@ export function ArtifactPane({ chat }: { chat: ChatState | null }) {
     const text = editing ? draft : file.data?.kind === 'text' ? (file.data.content ?? '') : ''
 
     if (!text && kind !== 'markdown' && kind !== 'text') {
-      notify({ title: 'PDF export', body: 'Only text documents can be exported as PDF. Use "Open in default app" instead.', level: 'warn', surface: 'hermes' })
+      notify({ title: t('pane.exportPdf'), body: t('pane.exportPdf.onlyText'), level: 'warn', surface: 'hermes' })
 
       return
     }
@@ -131,7 +131,7 @@ export function ArtifactPane({ chat }: { chat: ChatState | null }) {
     const saved = await window.heraldOS.fs.exportPdf(html, artifact.name.replace(/\.[a-z0-9]{1,6}$/i, ''))
 
     if (saved) {
-      notify({ title: 'Exported PDF', body: saved, level: 'success', surface: 'hermes' })
+      notify({ title: t('pane.exported'), body: saved, level: 'success', surface: 'hermes' })
     }
   }
 
@@ -167,10 +167,10 @@ export function ArtifactPane({ chat }: { chat: ChatState | null }) {
     })
   }
 
-  const inline = (marker: string, close = marker) => applyFormat(sel => ({ text: `${marker}${sel || 'text'}${close}`, cursor: sel ? undefined : marker.length + 4 }))
+  const inline = (marker: string, close = marker) => applyFormat(sel => ({ text: `${marker}${sel || t('pane.insertText')}${close}`, cursor: sel ? undefined : marker.length + 4 }))
   const prefixLines = (prefix: (index: number) => string) =>
     applyFormat(sel => ({
-      text: (sel || 'item')
+      text: (sel || t('pane.insertItem'))
         .split('\n')
         .map((line, index) => `${prefix(index)}${line}`)
         .join('\n')
@@ -223,7 +223,7 @@ export function ArtifactPane({ chat }: { chat: ChatState | null }) {
               }
             }}
           >
-            Markdown file
+            {t('pane.markdownFile')}
           </MenuItem>
           <MenuItem
             icon={<IconFileTypePdf />}
@@ -233,7 +233,7 @@ export function ArtifactPane({ chat }: { chat: ChatState | null }) {
               void exportPdf()
             }}
           >
-            PDF…
+            {t('pane.pdf')}
           </MenuItem>
           <MenuDivider />
           <MenuItem
@@ -246,7 +246,7 @@ export function ArtifactPane({ chat }: { chat: ChatState | null }) {
               }
             }}
           >
-            Open in default app
+            {t('pane.openDefault')}
           </MenuItem>
           <MenuItem
             icon={<IconFolder />}
@@ -264,30 +264,30 @@ export function ArtifactPane({ chat }: { chat: ChatState | null }) {
       </div>
 
       {showToolbar && (
-        <div className="flex items-center gap-1 border-b border-line px-3 py-2" role="toolbar" aria-label="Formatting">
-          <Dropdown label="Paragraph" />
+        <div className="flex items-center gap-1 border-b border-line px-3 py-2" role="toolbar" aria-label={t('pane.formatting')}>
+          <Dropdown label={t('pane.paragraph')} />
           <ToolbarDivider />
-          <ToolbarButton label="Bold" onClick={() => inline('**')}>
+          <ToolbarButton label={t('pane.bold')} onClick={() => inline('**')}>
             <IconBold size={15} />
           </ToolbarButton>
-          <ToolbarButton label="Italic" onClick={() => inline('*')}>
+          <ToolbarButton label={t('pane.italic')} onClick={() => inline('*')}>
             <IconItalic size={15} />
           </ToolbarButton>
-          <ToolbarButton label="Underline" onClick={() => inline('<u>', '</u>')}>
+          <ToolbarButton label={t('pane.underline')} onClick={() => inline('<u>', '</u>')}>
             <IconUnderline size={15} />
           </ToolbarButton>
           <ToolbarDivider />
-          <ToolbarButton label="Bulleted list" onClick={() => prefixLines(() => '- ')}>
+          <ToolbarButton label={t('pane.bulleted')} onClick={() => prefixLines(() => '- ')}>
             <IconList size={15} />
           </ToolbarButton>
-          <ToolbarButton label="Numbered list" onClick={() => prefixLines(i => `${i + 1}. `)}>
+          <ToolbarButton label={t('pane.numbered')} onClick={() => prefixLines(i => `${i + 1}. `)}>
             <IconListNumbers size={15} />
           </ToolbarButton>
-          <ToolbarButton label="Align left" disabled title="Markdown documents are always left-aligned">
+          <ToolbarButton label={t('pane.alignLeft')} disabled title={t('pane.alignLeft.title')}>
             <IconAlignLeft size={15} />
           </ToolbarButton>
           <ToolbarDivider />
-          <ToolbarButton label="Link" onClick={() => applyFormat(sel => ({ text: `[${sel || 'link text'}](https://)`, cursor: (sel || 'link text').length + 11 }))}>
+          <ToolbarButton label={t('pane.link')} onClick={() => applyFormat(sel => ({ text: `[${sel || t('pane.insertText')}](https://)`, cursor: (sel || t('pane.insertText')).length + 11 }))}>
             <IconLink size={15} />
           </ToolbarButton>
           <span className="flex-1" />
@@ -319,7 +319,7 @@ export function ArtifactPane({ chat }: { chat: ChatState | null }) {
             value={draft}
             onChange={event => setDraft(event.target.value)}
             spellCheck
-            aria-label={`Edit ${artifact.name}`}
+            aria-label={t('pane.editAria', { name: artifact.name })}
             className="selectable min-h-full w-full resize-none rounded-xl bg-white/95 px-10 py-9 text-[14px] leading-[1.6] text-[#0b1230] shadow-card outline-none placeholder:text-black/30"
             style={{ zoom: zoom / 100 }}
           />
@@ -348,7 +348,7 @@ function Document({ artifact, file, loading, error, zoom }: { artifact: Artifact
 
   if (loading && !file) {
     return (
-      <div className="rounded-xl bg-white/95 px-10 py-9 shadow-card" aria-label="Loading document">
+      <div className="rounded-xl bg-white/95 px-10 py-9 shadow-card" aria-label={t('pane.loadingDocument')}>
         <div className="shimmer h-7 w-1/2 rounded-md" />
         <div className="shimmer mt-3 h-3.5 w-1/4 rounded-sm" />
         <div className="shimmer mt-8 h-3.5 w-11/12 rounded-sm" />
@@ -376,7 +376,7 @@ function Document({ artifact, file, loading, error, zoom }: { artifact: Artifact
     return (
       <div className="rounded-xl bg-white/95 px-10 py-9 text-[#0b1230] shadow-card [&_code]:bg-black/6! [&_pre]:border-black/10! [&_pre]:bg-black/4!" style={{ ...DOCUMENT_VARS, zoom: zoom / 100 }}>
         <Markdown text={file.content ?? ''} className="prose-document" />
-        {file.truncated && <div className="mt-6 text-[12px] text-black/50">Preview truncated. Open the file to see everything.</div>}
+        {file.truncated && <div className="mt-6 text-[12px] text-black/50">{t('pane.truncated')}</div>}
       </div>
     )
   }
@@ -402,7 +402,7 @@ function BinaryPreview({ artifact, file, zoom }: { artifact: Artifact; file: Fil
       <div className="text-center">
         <div className="text-[14px] font-semibold">{artifact.name}</div>
         <div className="text-[12px] text-black/55">
-          {extensionOf(artifact.name).toUpperCase() || 'File'} · {formatBytes(file.size)}
+          {extensionOf(artifact.name).toUpperCase() || t('pane.file')} · {formatBytes(file.size)}
         </div>
       </div>
       <GlassButton size="sm" variant="primary" onClick={() => void attempt('open the file', () => window.heraldOS.fs.openPath(artifact.path))}>

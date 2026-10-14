@@ -71,8 +71,9 @@ export function thisDevice(): string {
   return t(hostPlatform() === 'darwin' ? 'device.this.mac' : 'device.this.computer')
 }
 
+/** "Reveal in Finder" on macOS, "Show in Explorer" on Windows, in the interface's language. */
 export function revealLabel(): string {
-  return hostPlatform() === 'darwin' ? 'Reveal in Finder' : `Show in ${fileManagerName()}`
+  return hostPlatform() === 'darwin' ? t('file.revealInFinder') : t('file.revealIn', { manager: fileManagerName() })
 }
 
 /** A shell shortcut as the keyboard spells it: `⌘⇧A` on macOS, `Ctrl+Shift+A` elsewhere (the shell takes either). */
