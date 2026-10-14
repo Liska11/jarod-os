@@ -3,6 +3,8 @@
  * back, so a row only says whether one is saved. Client checks here mirror the engine's (the engine stays the authority) to answer at once.
  */
 
+import { t, tn } from '../../../lib/i18n.ts'
+
 export interface ProviderRow {
   id: string
   name: string
@@ -43,16 +45,18 @@ export function providerState(row: ProviderRow): ProviderState {
 }
 
 export function providerSummary(row: ProviderRow): string {
-  const models = row.models.length === 0 ? 'models listed by the server' : `${row.models.length} model${row.models.length === 1 ? '' : 's'}`
-  const extra = row.extra_keys > 0 ? ` · +${row.extra_keys} backup key${row.extra_keys === 1 ? '' : 's'}` : ''
+  const models = row.models.length === 0 ? t('providers.modelsFromServer') : tn('providers.model', row.models.length)
+  const extra = row.extra_keys > 0 ? tn('providers.backupKey', row.extra_keys) : ''
 
   switch (providerState(row)) {
     case 'ready':
-      return row.key_source === 'env' ? `Key from the ${row.env_var ?? 'environment'} variable · ${models}${extra}` : `Key saved · ${models}${extra}`
+      return row.key_source === 'env'
+        ? t('providers.summaryFromEnv', { variable: row.env_var ?? t('providers.envVariable'), models, extra })
+        : t('providers.summaryKeySaved', { models, extra })
     case 'local':
-      return `${row.base_url} · ${models}`
+      return t('providers.summaryLocal', { url: row.base_url, models })
     default:
-      return `No key yet · ${models}`
+      return t('providers.summaryNoKey', { models })
   }
 }
 
@@ -73,15 +77,15 @@ export function keyProblem(value: string): string | null {
   const key = value.trim()
 
   if (!key) {
-    return 'Paste the key first.'
+    return t('providers.keyEmpty')
   }
 
   if (key.length > MAX_KEY_CHARS) {
-    return 'That is too long to be a key.'
+    return t('providers.keyTooLong')
   }
 
   if (/[\s"'`]/.test(key) || /[^\x21-\x7e]/.test(key)) {
-    return 'The key has a space, a quote or an unusual character. Copy it again, with nothing around it.'
+    return t('providers.keyOddChars')
   }
 
   return null
@@ -100,15 +104,15 @@ export function addressProblem(value: string): string | null {
   try {
     url = new URL(text)
   } catch {
-    return 'Use a full address, like http://127.0.0.1:1234/v1.'
+    return t('providers.addressFull')
   }
 
   if (url.protocol !== 'http:' && url.protocol !== 'https:') {
-    return 'The address must start with http:// or https://.'
+    return t('providers.addressProtocol')
   }
 
   if (url.username || url.password) {
-    return 'Do not put a login in the address; save the key separately.'
+    return t('providers.addressNoLogin')
   }
 
   return null
