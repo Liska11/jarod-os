@@ -2,6 +2,7 @@ import { IconBrandHipchat, IconDownload, IconFolder, IconSearch } from '@tabler/
 import { useEffect, useMemo, useState } from 'react'
 import { GlassButton, Pill, ProgressBar } from '../../../components/ui/glass.tsx'
 import { cn } from '../../../lib/cn.ts'
+import { useT } from '../../../lib/i18n.ts'
 import { jarod, onJarodEvent } from '../../../lib/jarod.ts'
 import { useBackendData } from '../../../lib/use-async.ts'
 import { notify } from '../../../store/notifications.ts'
@@ -18,6 +19,7 @@ import { errorText, InlineNote, markSaved, SettingsGroup, SettingsRow } from './
 const CONTEXT_FOR_FIT = 8192
 
 export function HuggingFaceBlock() {
+  const { t } = useT()
   const dir = useBackendData(() => jarod<{ dir: string | null }>('hf-models-dir'))
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<HfSearchRow[] | null>(null)
@@ -45,7 +47,7 @@ export function HuggingFaceBlock() {
     try {
       setResults(await jarod<HfSearchRow[]>('hf-search', { query: query.trim() }))
     } catch (e) {
-      fail('Search failed', e)
+      fail(t('hf.searchFailed'), e)
     } finally {
       setSearching(false)
     }
@@ -57,7 +59,7 @@ export function HuggingFaceBlock() {
     try {
       setRepo(await jarod<HfRepoView>('hf-repo', { repo: id }))
     } catch (e) {
-      fail('Could not read that repository', e)
+      fail(t('hf.repoFailed'), e)
     }
   }
 
@@ -70,19 +72,19 @@ export function HuggingFaceBlock() {
         dir.reload()
       }
     } catch (e) {
-      notify({ title: 'Models folder', body: hfErrorText(errorText(e)), level: 'error' })
+      notify({ title: t('hf.folderTitle'), body: hfErrorText(errorText(e)), level: 'error' })
     }
   }
 
   return (
     <>
-      <SettingsGroup title="Download from Hugging Face">
-        <SettingsRow icon={<IconFolder />} label="Models folder" description={dir.data?.dir ?? 'Not chosen yet. Models are downloaded here, one folder per repository.'} keywords="hugging face models folder download directory">
+      <SettingsGroup title={t('hf.group')}>
+        <SettingsRow icon={<IconFolder />} label={t('hf.folder')} description={dir.data?.dir ?? t('hf.folder.hint')} keywords="hugging face models folder download directory">
           <GlassButton size="sm" variant={dir.data?.dir ? 'secondary' : 'primary'} onClick={() => void choose()}>
-            {dir.data?.dir ? 'Change…' : 'Choose folder…'}
+            {dir.data?.dir ? t('hf.folder.change') : t('hf.folder.choose')}
           </GlassButton>
         </SettingsRow>
-        <SettingsRow icon={<IconSearch />} label="Search" description="Looks for GGUF models on huggingface.co. Nothing is sent until you press Search." keywords="hugging face search gguf models find">
+        <SettingsRow icon={<IconSearch />} label={t('hf.search')} description={t('hf.search.hint')} keywords="hugging face search gguf models find">
           <form
             className="flex items-center gap-2"
             onSubmit={event => {
@@ -94,19 +96,19 @@ export function HuggingFaceBlock() {
             }}
           >
             <label className="glass-input flex h-8 w-[260px] items-center rounded-lg px-2.5">
-              <span className="sr-only">Search Hugging Face</span>
-              <input value={query} onChange={event => setQuery(event.target.value)} placeholder="e.g. qwen 8b instruct" maxLength={100} className="min-w-0 flex-1 bg-transparent text-[12.5px] outline-none placeholder:text-fg-4" />
+              <span className="sr-only">{t('hf.searchAria')}</span>
+              <input value={query} onChange={event => setQuery(event.target.value)} placeholder={t('hf.search.placeholder')} maxLength={100} className="min-w-0 flex-1 bg-transparent text-[12.5px] outline-none placeholder:text-fg-4" />
             </label>
             <GlassButton type="submit" size="sm" variant="primary" disabled={searching || !query.trim()}>
-              {searching ? 'Searching…' : 'Search'}
+              {searching ? t('hf.searching') : t('hf.search')}
             </GlassButton>
           </form>
         </SettingsRow>
-        {results && results.length === 0 && <SettingsRow icon={<IconBrandHipchat />} label="No result" description="Try fewer or different words." keywords="hugging face no result" />}
+        {results && results.length === 0 && <SettingsRow icon={<IconBrandHipchat />} label={t('hf.noResult')} description={t('hf.noResult.hint')} keywords="hugging face no result" />}
         {results?.map(row => (
-          <SettingsRow key={row.id} icon={<IconBrandHipchat />} label={row.id} description={`${formatCount(row.downloads)} downloads · ${formatCount(row.likes)} likes`} keywords={`hugging face ${row.id}`}>
-            <GlassButton size="sm" variant={repo?.repo === row.id ? 'primary' : 'secondary'} onClick={() => void open(row.id)} aria-label={`Open ${row.id}`}>
-              Open
+          <SettingsRow key={row.id} icon={<IconBrandHipchat />} label={row.id} description={t('hf.stats', { downloads: formatCount(row.downloads), likes: formatCount(row.likes) })} keywords={`hugging face ${row.id}`}>
+            <GlassButton size="sm" variant={repo?.repo === row.id ? 'primary' : 'secondary'} onClick={() => void open(row.id)} aria-label={t('hf.openAria', { name: row.id })}>
+              {t('hf.open')}
             </GlassButton>
           </SettingsRow>
         ))}
@@ -118,6 +120,7 @@ export function HuggingFaceBlock() {
 }
 
 function RepoPanel({ repo, hasFolder, onError }: { repo: HfRepoView; hasFolder: boolean; onError: (title: string, e: unknown) => void }) {
+  const { t, tn } = useT()
   const downloadable = useMemo(() => repo.entries.filter(entry => entry.complete), [repo])
   const [picked, setPicked] = useState<string[]>([])
   const [fits, setFits] = useState<Record<string, HfFitEntry>>({})
@@ -137,12 +140,12 @@ function RepoPanel({ repo, hasFolder, onError }: { repo: HfRepoView; hasFolder: 
       setFits(Object.fromEntries(out.results.map(result => [result.key, result])))
 
       if (out.rateLimited) {
-        notify({ title: 'Hugging Face is limiting requests', body: 'Some models were not checked. Try again later.', level: 'warn' })
+        notify({ title: t('hf.rateLimited'), body: t('hf.rateLimited.body'), level: 'warn' })
       } else if (out.budgetExhausted) {
-        notify({ title: 'Check stopped', body: 'The read budget for one check was used up. Check fewer models at a time.', level: 'info' })
+        notify({ title: t('hf.budgetStop'), body: t('hf.budgetStop.body'), level: 'info' })
       }
     } catch (e) {
-      onError('Could not check the models', e)
+      onError(t('hf.checkFailed'), e)
     } finally {
       setChecking(false)
     }
@@ -157,9 +160,9 @@ function RepoPanel({ repo, hasFolder, onError }: { repo: HfRepoView; hasFolder: 
       const out = await jarod<{ destDir: string; files: { name: string; verified: boolean }[] }>('hf-download', { repo: repo.repo, sha: repo.sha, keys: picked })
 
       markSaved()
-      setDone(`Downloaded ${out.files.length} file${out.files.length === 1 ? '' : 's'} into ${out.destDir}. Add the .gguf as a preset above to run it.`)
+      setDone(tn('hf.downloaded', out.files.length, { dir: out.destDir }))
     } catch (e) {
-      onError('Download failed', e)
+      onError(t('hf.downloadFailed'), e)
     } finally {
       setDownloading(false)
       setProgress(null)
@@ -172,15 +175,15 @@ function RepoPanel({ repo, hasFolder, onError }: { repo: HfRepoView; hasFolder: 
     <SettingsGroup title={repo.repo}>
       <SettingsRow
         icon={<IconDownload />}
-        label={repo.license ? `Licence: ${repo.license}` : 'Licence not stated'}
-        description={`Revision ${repo.sha.slice(0, 7)}${repo.gated !== false ? ` · gated: ${repo.gated}` : ''}${repo.truncated ? ' · the list was cut short' : ''}`}
+        label={repo.license ? t('hf.licence', { licence: repo.license }) : t('hf.licence.none')}
+        description={`${t('hf.revision', { sha: repo.sha.slice(0, 7) })}${repo.gated !== false ? t('hf.gated', { gated: repo.gated }) : ''}${repo.truncated ? t('hf.truncated') : ''}`}
         keywords={`${repo.repo} licence license revision`}
       >
         <GlassButton size="sm" variant="secondary" disabled={checking || downloadable.length === 0} onClick={() => void checkFit()}>
-          {checking ? 'Checking…' : 'Will they fit?'}
+          {checking ? t('hf.checking') : t('hf.willFit')}
         </GlassButton>
       </SettingsRow>
-      {repo.entries.length === 0 && <SettingsRow icon={<IconDownload />} label="No GGUF file in this repository" description="Look for a repository whose name ends in -GGUF." keywords={`${repo.repo} empty`} />}
+      {repo.entries.length === 0 && <SettingsRow icon={<IconDownload />} label={t('hf.noGguf')} description={t('hf.noGguf.hint')} keywords={`${repo.repo} empty`} />}
       {repo.entries.map(entry => {
         const fit = fits[entry.key]
 
@@ -189,21 +192,31 @@ function RepoPanel({ repo, hasFolder, onError }: { repo: HfRepoView; hasFolder: 
             key={entry.key}
             icon={<IconDownload />}
             label={entry.key}
-            description={[formatBytes(entry.totalBytes), entry.shardCount > 1 ? `${entry.shardCount} parts` : null, entry.projector ? 'vision projector' : null, entry.complete ? null : `incomplete: missing ${entry.missing.join(', ')}`, fit?.state === 'checked' ? fitSummary(fit.report) : fit ? (fit.reason ?? 'not checked') : entry.analyzed ? 'already checked' : null].filter(Boolean).join(' · ')}
+            description={[
+              formatBytes(entry.totalBytes),
+              entry.shardCount > 1 ? t('hf.parts', { count: entry.shardCount }) : null,
+              entry.projector ? t('hf.projector') : null,
+              entry.complete ? null : t('hf.incomplete', { files: entry.missing.join(', ') }),
+              fit?.state === 'checked' ? fitSummary(fit.report) : fit ? (fit.reason ?? t('hf.notChecked')) : entry.analyzed ? t('hf.alreadyChecked') : null
+            ]
+              .filter(Boolean)
+              .join(' · ')}
             keywords={`${repo.repo} ${entry.key}`}
           >
-            {fit?.state === 'checked' && fit.report && <Pill tone={fit.report.fit.status === 'fits' ? 'ok' : fit.report.fit.status === 'does-not-fit' ? 'warn' : 'muted'}>{fit.report.fit.status === 'fits' ? 'Fits' : fit.report.fit.status === 'does-not-fit' ? 'Too big' : 'Estimated'}</Pill>}
+            {fit?.state === 'checked' && fit.report && <Pill tone={fit.report.fit.status === 'fits' ? 'ok' : fit.report.fit.status === 'does-not-fit' ? 'warn' : 'muted'}>
+              {fit.report.fit.status === 'fits' ? t('hf.fit.fits') : fit.report.fit.status === 'does-not-fit' ? t('hf.fit.tooBig') : t('hf.fit.estimated')}
+            </Pill>}
             <label className={cn('flex items-center gap-1.5 text-[12px]', entry.complete ? 'text-fg-2' : 'text-fg-4')}>
-              <input type="checkbox" disabled={!entry.complete || downloading} checked={picked.includes(entry.key)} onChange={() => toggle(entry.key)} aria-label={`Select ${entry.key}`} />
-              Select
+              <input type="checkbox" disabled={!entry.complete || downloading} checked={picked.includes(entry.key)} onChange={() => toggle(entry.key)} aria-label={t('hf.selectAria', { name: entry.key })} />
+              {t('hf.select')}
             </label>
           </SettingsRow>
         )
       })}
       <SettingsRow
         icon={<IconDownload />}
-        label={picked.length === 0 ? 'Select what to download' : `${picked.length} selected`}
-        description={!hasFolder ? 'Choose a models folder first.' : 'You will see every file, its size and hash, and the destination, and confirm before anything is downloaded.'}
+        label={picked.length === 0 ? t('hf.selectWhat') : t('hf.selected', { count: picked.length })}
+        description={!hasFolder ? t('hf.needFolder') : t('hf.download.hint')}
         keywords={`${repo.repo} download`}
         below={
           <>
@@ -211,7 +224,13 @@ function RepoPanel({ repo, hasFolder, onError }: { repo: HfRepoView; hasFolder: 
               <div className="flex flex-col gap-1">
                 <ProgressBar value={percent(progress.received, progress.total)} />
                 <div className="text-[11.5px] text-fg-4">
-                  {progress.stage} · file {progress.index + 1} of {progress.count} · {formatBytes(progress.received)} of {formatBytes(progress.total)}
+                  {t('hf.progress', {
+                    stage: progress.stage,
+                    index: progress.index + 1,
+                    count: progress.count,
+                    received: formatBytes(progress.received),
+                    total: formatBytes(progress.total)
+                  })}
                 </div>
               </div>
             )}
@@ -221,11 +240,11 @@ function RepoPanel({ repo, hasFolder, onError }: { repo: HfRepoView; hasFolder: 
       >
         {downloading ? (
           <GlassButton size="sm" variant="secondary" onClick={() => void jarod('hf-download-cancel')}>
-            Cancel
+            {t('hf.cancel')}
           </GlassButton>
         ) : (
           <GlassButton size="sm" variant="primary" disabled={picked.length === 0 || !hasFolder} onClick={() => void download()}>
-            Download…
+            {t('hf.download')}
           </GlassButton>
         )}
       </SettingsRow>
