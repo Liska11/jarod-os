@@ -36,7 +36,7 @@ export function fileManagerName(): string {
 
 /** "Mac" on macOS, "computer" elsewhere, for copy such as "Everything on this Mac". */
 export function deviceNoun(): string {
-  return hostPlatform() === 'darwin' ? 'Mac' : 'computer'
+  return hostPlatform() === 'darwin' ? t('platform.device.mac') : t('platform.device.computer')
 }
 
 /** What a disk or volume is called where the person lives: `Local Disk (C:)` on Windows, `Macintosh HD` for macOS' `/`. */
