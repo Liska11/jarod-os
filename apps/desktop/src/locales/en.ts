@@ -2574,6 +2574,27 @@ export const en = {
   'memoryPage.keptByBackend': '{file} is kept by the backend',
   'memoryPage.keptByBackend.hint': 'There is no file on this computer to open; edit the entries here.',
   'memoryPage.openFailed': 'Could not open {file}',
+  // Capture markup (screenshot annotation)
+  'capture.tool.arrow': 'Arrow',
+  'capture.tool.pen': 'Pen',
+  'capture.tool.box': 'Box',
+  'capture.tool.highlight': 'Highlight',
+  'capture.tool.hide': 'Hide (black out)',
+  'capture.tool.text': 'Text',
+  'capture.colorAria': 'Colour {color}',
+  'capture.undo': 'Undo',
+  'capture.clear': 'Clear everything',
+  'capture.copy': 'Copy',
+  'capture.ask': 'Ask {assistant}',
+  'capture.copied': 'Copied',
+  'capture.copied.hint': 'The marked-up picture is on the clipboard.',
+  'capture.saved': 'Saved',
+  'capture.show': 'Show',
+  'capture.markupError': 'Markup',
+  'capture.noShot': 'Take a screenshot to mark it up.',
+  'capture.canvasAria': 'Screenshot to mark up',
+  'capture.typePlaceholder': 'Type, then Enter',
+  'capture.textAria': 'Text to add',
   } as const
 
   export type MessageKey = keyof typeof en

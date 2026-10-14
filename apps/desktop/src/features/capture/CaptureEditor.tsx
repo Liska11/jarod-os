@@ -1,3 +1,4 @@
+import { type MessageKey, useT } from '../../lib/i18n.ts'
 import { IconArrowUpRight, IconArrowBackUp, IconCopy, IconDeviceFloppy, IconEyeOff, IconHighlight, IconPencil, IconSquare, IconTrash, IconTypography } from '@tabler/icons-react'
 import { type PointerEvent as ReactPointerEvent, useEffect, useRef, useState } from 'react'
 import { HermesAvatar } from '../../components/app-icon.tsx'
@@ -27,13 +28,13 @@ interface Shape {
   text?: string
 }
 
-const TOOLS: { id: Tool; label: string; icon: React.ReactNode }[] = [
-  { id: 'arrow', label: 'Arrow', icon: <IconArrowUpRight /> },
-  { id: 'pen', label: 'Pen', icon: <IconPencil /> },
-  { id: 'box', label: 'Box', icon: <IconSquare /> },
-  { id: 'highlight', label: 'Highlight', icon: <IconHighlight /> },
-  { id: 'hide', label: 'Hide (black out)', icon: <IconEyeOff /> },
-  { id: 'text', label: 'Text', icon: <IconTypography /> }
+const TOOLS: { id: Tool; label: MessageKey; icon: React.ReactNode }[] = [
+  { id: 'arrow', label: 'capture.tool.arrow', icon: <IconArrowUpRight /> },
+  { id: 'pen', label: 'capture.tool.pen', icon: <IconPencil /> },
+  { id: 'box', label: 'capture.tool.box', icon: <IconSquare /> },
+  { id: 'highlight', label: 'capture.tool.highlight', icon: <IconHighlight /> },
+  { id: 'hide', label: 'capture.tool.hide', icon: <IconEyeOff /> },
+  { id: 'text', label: 'capture.tool.text', icon: <IconTypography /> }
 ]
 
 // Annotation ink is part of the picture, not the interface, so it keeps its own fixed colours.
@@ -97,6 +98,7 @@ function drawShape(ctx: CanvasRenderingContext2D, shape: Shape, scale: number): 
 }
 
 export function CaptureEditor({ file }: { file?: string }) {
+  const { t } = useT()
   const canvas = useRef<HTMLCanvasElement>(null)
   const [image, setImage] = useState<HTMLImageElement | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -194,39 +196,39 @@ export function CaptureEditor({ file }: { file?: string }) {
     try {
       await work()
     } catch (reason) {
-      notify({ title: 'Markup', body: reason instanceof Error ? reason.message : String(reason), level: 'error' })
+      notify({ title: t('capture.markupError'), body: reason instanceof Error ? reason.message : String(reason), level: 'error' })
     } finally {
       setBusy(false)
     }
   }
 
   if (!file) {
-    return <div className="flex h-full items-center justify-center text-[13px] text-fg-3">Take a screenshot to mark it up.</div>
+    return <div className="flex h-full items-center justify-center text-[13px] text-fg-3">{t('capture.noShot')}</div>
   }
 
   return (
     <div className="flex h-full flex-col">
       <div className="flex flex-wrap items-center gap-1.5 border-b border-line px-3 py-2">
         {TOOLS.map(item => (
-          <button key={item.id} type="button" aria-label={item.label} title={item.label} aria-pressed={tool === item.id} onClick={() => setTool(item.id)} className={cn('flex size-8 items-center justify-center rounded-lg [&_svg]:size-4', tool === item.id ? 'bg-accent text-accent-fg' : 'text-fg-2 hover:bg-white/10 hover:text-fg')}>
+          <button key={item.id} type="button" aria-label={t(item.label)} title={t(item.label)} aria-pressed={tool === item.id} onClick={() => setTool(item.id)} className={cn('flex size-8 items-center justify-center rounded-lg [&_svg]:size-4', tool === item.id ? 'bg-accent text-accent-fg' : 'text-fg-2 hover:bg-white/10 hover:text-fg')}>
             {item.icon}
           </button>
         ))}
         <span className="mx-1 h-5 w-px bg-line" aria-hidden="true" />
         {COLORS.map(swatch => (
-          <button key={swatch} type="button" aria-label={`Colour ${swatch}`} aria-pressed={color === swatch} onClick={() => setColor(swatch)} className={cn('size-6 rounded-full border border-line', color === swatch && 'ring-2 ring-accent-strong')} style={{ background: swatch }} />
+          <button key={swatch} type="button" aria-label={t('capture.colorAria', { color: swatch })} aria-pressed={color === swatch} onClick={() => setColor(swatch)} className={cn('size-6 rounded-full border border-line', color === swatch && 'ring-2 ring-accent-strong')} style={{ background: swatch }} />
         ))}
         <span className="mx-1 h-5 w-px bg-line" aria-hidden="true" />
-        <GlassButton size="icon" variant="ghost" aria-label="Undo" disabled={shapes.length === 0} onClick={() => setShapes(current => current.slice(0, -1))}>
+        <GlassButton size="icon" variant="ghost" aria-label={t('capture.undo')} disabled={shapes.length === 0} onClick={() => setShapes(current => current.slice(0, -1))}>
           <IconArrowBackUp />
         </GlassButton>
-        <GlassButton size="icon" variant="ghost" aria-label="Clear everything" disabled={shapes.length === 0} onClick={() => setShapes([])}>
+        <GlassButton size="icon" variant="ghost" aria-label={t('capture.clear')} disabled={shapes.length === 0} onClick={() => setShapes([])}>
           <IconTrash />
         </GlassButton>
         <span className="flex-1" />
-        <GlassButton size="sm" variant="ghost" disabled={busy || !image} onClick={() => void act(async () => window.heraldOS.capture.copyImage(exportPng()).then(() => notify({ title: 'Copied', body: 'The marked-up picture is on the clipboard.', level: 'success' })))}>
+        <GlassButton size="sm" variant="ghost" disabled={busy || !image} onClick={() => void act(async () => window.heraldOS.capture.copyImage(exportPng()).then(() => notify({ title: t('capture.copied'), body: t('capture.copied.hint'), level: 'success' })))}>
           <IconCopy />
-          Copy
+          {t('capture.copy')}
         </GlassButton>
         <GlassButton
           size="sm"
@@ -240,11 +242,11 @@ export function CaptureEditor({ file }: { file?: string }) {
           }
         >
           <HermesAvatar size={16} rounded={4} />
-          Ask Hermes
+          {t('capture.ask')}
         </GlassButton>
-        <GlassButton size="sm" variant="primary" disabled={busy || !image} onClick={() => void act(async () => window.heraldOS.capture.saveImage(markedUpName(file), exportPng()).then(saved => notify({ title: 'Saved', body: baseName(saved), level: 'success', actions: [{ label: 'Show', command: 'files.show', args: { path: saved } }] })))}>
+        <GlassButton size="sm" variant="primary" disabled={busy || !image} onClick={() => void act(async () => window.heraldOS.capture.saveImage(markedUpName(file), exportPng()).then(saved => notify({ title: t('capture.saved'), body: baseName(saved), level: 'success', actions: [{ label: t('capture.show'), command: 'files.show', args: { path: saved } }] })))}>
           <IconDeviceFloppy />
-          Save
+          {t('controls.save')}
         </GlassButton>
       </div>
       <div className="relative min-h-0 flex-1 overflow-auto p-3">
@@ -254,7 +256,7 @@ export function CaptureEditor({ file }: { file?: string }) {
           <div className="shimmer h-full w-full rounded-xl" />
         ) : (
           <div className="relative mx-auto w-fit">
-            <canvas ref={canvas} onPointerDown={down} onPointerMove={move} onPointerUp={up} className="block max-h-[calc(100vh-140px)] max-w-full cursor-crosshair rounded-lg shadow-(--shadow-card)" aria-label="Screenshot to mark up" />
+            <canvas ref={canvas} onPointerDown={down} onPointerMove={move} onPointerUp={up} className="block max-h-[calc(100vh-140px)] max-w-full cursor-crosshair rounded-lg shadow-(--shadow-card)" aria-label={t('capture.canvasAria')} />
             {typing && (
               <input
                 autoFocus
@@ -269,8 +271,8 @@ export function CaptureEditor({ file }: { file?: string }) {
                   }
                 }}
                 onBlur={() => setTyping(null)}
-                placeholder="Type, then Enter"
-                aria-label="Text to add"
+                placeholder={t('capture.typePlaceholder')}
+                aria-label={t('capture.textAria')}
                 className="glass-input absolute h-8 w-56 rounded-md px-2 text-[13px] outline-none"
                 style={{ left: typing.css.x, top: typing.css.y }}
               />
