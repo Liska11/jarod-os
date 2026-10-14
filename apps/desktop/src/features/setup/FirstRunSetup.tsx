@@ -5,6 +5,7 @@ import { HeraldLogo } from '../../components/herald-logo.tsx'
 import { GlassButton } from '../../components/ui/glass.tsx'
 import { Spinner } from '../../components/ui/primitives.tsx'
 import { cn } from '../../lib/cn.ts'
+import { useT } from '../../lib/i18n.ts'
 import { $hermesAuth, refreshHermesAuth, requestHermesLogin } from '../../store/hermes-auth.ts'
 import { $setupRequested } from '../../store/setup.ts'
 import { StatusPanel } from '../status/StatusPanel.tsx'
@@ -19,6 +20,7 @@ type Step = 'welcome' | 'account' | 'wifi' | 'hermes' | 'done'
  * waiting for them at the next start.
  */
 export function FirstRunSetup() {
+  const { t } = useT()
   const [due, setDue] = useState(false)
   const [mode, setMode] = useState<'image' | 'desktop'>('image')
   const [step, setStep] = useState<Step>('welcome')
@@ -63,7 +65,7 @@ export function FirstRunSetup() {
   const next = () => setStep(steps[Math.min(steps.length - 1, steps.indexOf(step) + 1)] ?? 'done')
 
   return (
-    <div className="absolute inset-0 z-(--z-boot) flex items-center justify-center bg-bg/85 backdrop-blur-md animate-fade-in" role="dialog" aria-label="Set up Jarod-OS">
+    <div className="absolute inset-0 z-(--z-boot) flex items-center justify-center bg-bg/85 backdrop-blur-md animate-fade-in" role="dialog" aria-label={t('setup.title')}>
       <div className="float flex w-[min(560px,92vw)] flex-col gap-5 rounded-2xl p-7">
         <div className="flex items-center gap-3">
           <HeraldLogo height={22} />
@@ -86,11 +88,11 @@ export function FirstRunSetup() {
         {step === 'account' && <Account onDone={next} />}
         {step === 'wifi' && (
           <div className="flex flex-col gap-4">
-            <Heading icon={<IconWifi size={18} />} title="Get online" text="Pick a network; you can also plug in a cable. Skip it to stay offline for now." />
+            <Heading icon={<IconWifi size={18} />} title={t('firstrun.wifi.title')} text={t('firstrun.wifi.text')} />
             <div className="max-h-[320px] overflow-y-auto rounded-xl">
               <StatusPanel panel="wifi" />
             </div>
-            <Footer onNext={next} label="Next" />
+            <Footer onNext={next} label={t('setup.next')} />
           </div>
         )}
         {step === 'hermes' && <HermesStep onDone={next} />}
@@ -98,10 +100,10 @@ export function FirstRunSetup() {
           <div className="flex flex-col gap-4">
             <Heading
               icon={forSomeoneElse ? <IconGift size={18} /> : <IconCheck size={18} />}
-              title={forSomeoneElse ? 'Ready to hand over' : 'You are all set'}
-              text={forSomeoneElse ? 'The next time it starts, it asks its new owner for a name, a password and their Hermes sign-in.' : 'Press Super+Space to ask Hermes about anything on screen, or Super+M for the Jarod-OS menu.'}
+              title={forSomeoneElse ? t('firstrun.done.handOver') : t('setup.done.title')}
+              text={forSomeoneElse ? t('firstrun.done.handOverText') : t('firstrun.done.text')}
             />
-            <Footer onNext={() => void finish()} label={forSomeoneElse ? 'Done' : 'Start using Jarod-OS'} />
+            <Footer onNext={() => void finish()} label={forSomeoneElse ? t('firstrun.done.handOverButton') : t('setup.done.start')} />
           </div>
         )}
       </div>
@@ -110,17 +112,19 @@ export function FirstRunSetup() {
 }
 
 function Welcome({ onChoose }: { onChoose: (someoneElse: boolean) => void }) {
+  const { t } = useT()
+
   return (
     <div className="flex flex-col gap-4">
-      <Heading icon={<IconUser size={18} />} title="Welcome to Jarod-OS" text="A computer you can talk to. A few questions and it is yours." />
+      <Heading icon={<IconUser size={18} />} title={t('setup.welcome.title')} text={t('firstrun.welcome.text')} />
       <div className="grid grid-cols-2 gap-3">
         <button type="button" onClick={() => onChoose(false)} className="glass-input flex flex-col items-start gap-1 rounded-xl p-4 text-left hover:border-line-strong">
-          <span className="text-[14px] font-medium text-fg">It is for me</span>
-          <span className="text-[12px] text-fg-3">Choose your name, a password and sign in to Hermes.</span>
+          <span className="text-[14px] font-medium text-fg">{t('firstrun.forMe')}</span>
+          <span className="text-[12px] text-fg-3">{t('firstrun.forMe.hint')}</span>
         </button>
         <button type="button" onClick={() => onChoose(true)} className="glass-input flex flex-col items-start gap-1 rounded-xl p-4 text-left hover:border-line-strong">
-          <span className="text-[14px] font-medium text-fg">For someone else</span>
-          <span className="text-[12px] text-fg-3">Get it online now; they finish setup when they first start it.</span>
+          <span className="text-[14px] font-medium text-fg">{t('firstrun.forSomeone')}</span>
+          <span className="text-[12px] text-fg-3">{t('firstrun.forSomeone.hint')}</span>
         </button>
       </div>
     </div>
@@ -128,6 +132,7 @@ function Welcome({ onChoose }: { onChoose: (someoneElse: boolean) => void }) {
 }
 
 function Account({ onDone }: { onDone: () => void }) {
+  const { t } = useT()
   const [name, setName] = useState('')
   const [password, setPassword] = useState('')
   const [again, setAgain] = useState('')
@@ -146,7 +151,7 @@ function Account({ onDone }: { onDone: () => void }) {
       if (result.ok) {
         onDone()
       } else {
-        setError(result.error ?? 'The password was not set.')
+        setError(result.error ?? t('firstrun.passwordNotSet'))
       }
     } finally {
       setBusy(false)
@@ -161,26 +166,27 @@ function Account({ onDone }: { onDone: () => void }) {
         void save()
       }}
     >
-      <Heading icon={<IconLock size={18} />} title="Your name and password" text="Jarod-OS greets you by name. The password unlocks the screen and approves changes to the system." />
+      <Heading icon={<IconLock size={18} />} title={t('firstrun.account.title')} text={t('firstrun.account.text')} />
       <label className="flex flex-col gap-1.5 text-[12px] text-fg-3">
-        Name
+        {t('firstrun.name')}
         <input value={name} onChange={event => setName(event.target.value)} autoFocus autoComplete="name" className="glass-input h-10 rounded-lg px-3 text-[14px] text-fg outline-none" />
       </label>
       <label className="flex flex-col gap-1.5 text-[12px] text-fg-3">
-        Password (at least 8 characters)
+        {t('firstrun.password')}
         <input type="password" value={password} onChange={event => setPassword(event.target.value)} autoComplete="new-password" className="glass-input h-10 rounded-lg px-3 text-[14px] text-fg outline-none" />
       </label>
       <label className="flex flex-col gap-1.5 text-[12px] text-fg-3">
-        The same password again
+        {t('firstrun.passwordAgain')}
         <input type="password" value={again} onChange={event => setAgain(event.target.value)} autoComplete="new-password" className="glass-input h-10 rounded-lg px-3 text-[14px] text-fg outline-none" />
       </label>
-      {(error || mismatch) && <p className="text-[12.5px] text-danger">{mismatch ? 'The passwords do not match.' : error}</p>}
-      <Footer onNext={() => void save()} label="Next" busy={busy} disabled={!name.trim() || password.length < 8 || password !== again} />
+      {(error || mismatch) && <p className="text-[12.5px] text-danger">{mismatch ? t('firstrun.mismatch') : error}</p>}
+      <Footer onNext={() => void save()} label={t('setup.next')} busy={busy} disabled={!name.trim() || password.length < 8 || password !== again} />
     </form>
   )
 }
 
 function HermesStep({ onDone }: { onDone: () => void }) {
+  const { t } = useT()
   const auth = useStore($hermesAuth)
   const [checking, setChecking] = useState(true)
 
@@ -194,20 +200,20 @@ function HermesStep({ onDone }: { onDone: () => void }) {
     <div className="flex flex-col gap-4">
       <Heading
         icon={<IconUser size={18} />}
-        title="Sign in to Hermes"
-        text={signedIn ? `Hermes is signed in${auth.activeProvider ? ` with ${auth.activeProvider}` : ''}.` : 'Hermes needs a model provider to think with. Signing in opens the provider page beside a short code.'}
+        title={t('firstrun.hermes.title')}
+        text={signedIn ? (auth.activeProvider ? t('firstrun.hermes.signedInNamed', { provider: auth.activeProvider }) : t('firstrun.hermes.signedIn')) : t('firstrun.hermes.text')}
       />
       <div className="flex justify-end gap-2">
         {!signedIn && (
           <GlassButton variant="ghost" onClick={onDone}>
-            Later
+            {t('setup.later')}
           </GlassButton>
         )}
         {signedIn ? (
-          <Footer onNext={onDone} label="Next" />
+          <Footer onNext={onDone} label={t('setup.next')} />
         ) : (
           <GlassButton variant="primary" onClick={() => requestHermesLogin('setup')} disabled={checking}>
-            {checking ? <Spinner /> : null} Sign in <IconArrowRight size={15} />
+            {checking ? <Spinner /> : null} {t('firstrun.hermes.signIn')} <IconArrowRight size={15} />
           </GlassButton>
         )}
       </div>
