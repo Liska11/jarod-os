@@ -2622,6 +2622,16 @@ export const en = {
   'software.use': 'Use with {assistant}',
   'software.modelOnAria': 'Model on {label}',
   'software.chooseModel': 'Choose a model',
+  // Studio window (Hermes build watcher)
+  'studio.opening': 'Opening the session…',
+  'studio.noSession': 'This Studio is not attached to a Hermes session.',
+  'studio.placeholder': 'Ask for a change, or just say it',
+  'studio.placeholderAria': 'Ask {assistant} for a change',
+  'studio.sendAria': 'Send',
+  'studio.stop': 'Stop',
+  'studio.openChatAria': 'Open the conversation',
+  'studio.openEditorAria': 'Open the project in an editor',
+  'studio.noProject': 'No project folder yet.',
   } as const
 
   export type MessageKey = keyof typeof en

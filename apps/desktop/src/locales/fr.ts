@@ -2620,4 +2620,14 @@ export const fr: Record<MessageKey, string> = {
   'software.use': 'Utiliser avec {assistant}',
   'software.modelOnAria': 'Mod\u00e8le sur {label}',
   'software.chooseModel': 'Choisir un mod\u00e8le',
+  // Studio window (Hermes build watcher)
+  'studio.opening': 'Ouverture de la session…',
+  'studio.noSession': 'Ce Studio n\u2019est pas attach\u00e9 \u00e0 une session Hermes.',
+  'studio.placeholder': 'Demandez un changement, ou dites-le simplement',
+  'studio.placeholderAria': 'Demandez \u00e0 {assistant} un changement',
+  'studio.sendAria': 'Envoyer',
+  'studio.stop': 'Arr\u00eater',
+  'studio.openChatAria': 'Ouvrir la conversation',
+  'studio.openEditorAria': "Ouvrir le projet dans l'\u00e9diteur",
+  'studio.noProject': 'Aucun dossier de projet pour l\u2019instant.',
 }

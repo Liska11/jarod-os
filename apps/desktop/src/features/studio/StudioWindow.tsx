@@ -1,4 +1,5 @@
 import { useStore } from '@nanostores/react'
+import { useT } from '../../lib/i18n.ts'
 import { IconExternalLink, IconMessage, IconPlayerStopFilled, IconSend } from '@tabler/icons-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { StatusDot } from '../../components/ui/glass.tsx'
@@ -43,6 +44,7 @@ const clamp = (value: number, min: number, max: number) => Math.min(max, Math.ma
  * commands and dev-server output, and the running site, side by side for one session.
  */
 export function StudioWindow({ win }: { win: OSWindow }) {
+  const { t } = useT()
   const requested = typeof win.payload?.sessionId === 'string' ? win.payload.sessionId : null
   const storedSessionId = typeof win.payload?.storedSessionId === 'string' ? win.payload.storedSessionId : null
   const studios = useStore($studios)
@@ -120,7 +122,7 @@ export function StudioWindow({ win }: { win: OSWindow }) {
   const status = studio?.status || (running ? 'Working…' : plan.length && done === plan.length ? 'Done' : 'Idle')
 
   if (!sessionId) {
-    return <div className="flex h-full items-center justify-center text-[13px] text-fg-3">{storedSessionId ? 'Opening the session…' : 'This Studio is not attached to a Hermes session.'}</div>
+    return <div className="flex h-full items-center justify-center text-[13px] text-fg-3">{storedSessionId ? t('studio.opening') : t('studio.noSession')}</div>
   }
 
   const send = () => {
@@ -165,21 +167,21 @@ export function StudioWindow({ win }: { win: OSWindow }) {
             send()
           }}
         >
-          <input value={draft} onChange={event => setDraft(event.target.value)} placeholder="Ask for a change, or just say it" className="min-w-0 flex-1 bg-transparent text-[12px] text-fg outline-none placeholder:text-fg-4" aria-label="Ask Hermes for a change" />
-          <button type="submit" disabled={!draft.trim()} className="flex size-5 items-center justify-center rounded-md text-fg-3 hover:text-fg disabled:opacity-40" aria-label="Send">
+          <input value={draft} onChange={event => setDraft(event.target.value)} placeholder={t('studio.placeholder')} className="min-w-0 flex-1 bg-transparent text-[12px] text-fg outline-none placeholder:text-fg-4" aria-label={t('studio.placeholderAria')} />
+          <button type="submit" disabled={!draft.trim()} className="flex size-5 items-center justify-center rounded-md text-fg-3 hover:text-fg disabled:opacity-40" aria-label={t('studio.sendAria')}>
             <IconSend size={13} />
           </button>
         </form>
         {running && (
           <button type="button" onClick={() => void interruptChat(sessionId)} className="flex h-7 shrink-0 items-center gap-1.5 rounded-lg bg-danger/15 px-2.5 text-[12px] text-danger hover:bg-danger/25">
-            <IconPlayerStopFilled size={12} /> Stop
+            <IconPlayerStopFilled size={12} /> {t('studio.stop')}
           </button>
         )}
-        <button type="button" onClick={() => openApp('chat-popout', { payload: { sessionId: chat?.storedSessionId ?? sessionId }, title: chat?.title || 'Hermes' })} className="flex size-7 shrink-0 items-center justify-center rounded-lg text-fg-3 hover:bg-white/8 hover:text-fg" title="Open the conversation" aria-label="Open the conversation">
+        <button type="button" onClick={() => openApp('chat-popout', { payload: { sessionId: chat?.storedSessionId ?? sessionId }, title: chat?.title || 'Hermes' })} className="flex size-7 shrink-0 items-center justify-center rounded-lg text-fg-3 hover:bg-white/8 hover:text-fg" title={t('studio.openChatAria')} aria-label={t('studio.openChatAria')}>
           <IconMessage size={15} />
         </button>
         {root && (
-          <button type="button" onClick={() => openInEditor(root)} className="flex size-7 shrink-0 items-center justify-center rounded-lg text-fg-3 hover:bg-white/8 hover:text-fg" title="Open the project in an editor" aria-label="Open the project in an editor">
+          <button type="button" onClick={() => openInEditor(root)} className="flex size-7 shrink-0 items-center justify-center rounded-lg text-fg-3 hover:bg-white/8 hover:text-fg" title={t('studio.openEditorAria')} aria-label={t('studio.openEditorAria')}>
             <IconExternalLink size={15} />
           </button>
         )}
@@ -187,7 +189,7 @@ export function StudioWindow({ win }: { win: OSWindow }) {
 
       <div ref={body} className="flex min-h-0 flex-1">
         <div className="min-h-0 shrink-0 overflow-auto" style={{ width: treeWidth }}>
-          {root ? <FileTree root={root} files={files} activeFile={shownFile} revision={studio?.revision ?? 0} onOpen={path => (setPinned(path), focusStudioFile(sessionId, path))} /> : <div className="p-3 text-[12px] text-fg-3">No project folder yet.</div>}
+          {root ? <FileTree root={root} files={files} activeFile={shownFile} revision={studio?.revision ?? 0} onOpen={path => (setPinned(path), focusStudioFile(sessionId, path))} /> : <div className="p-3 text-[12px] text-fg-3">{t('studio.noProject')}</div>}
         </div>
         <Splitter axis="x" onDrag={dragTree} />
         <div ref={center} className="flex min-h-0 min-w-0 flex-1 flex-col">
