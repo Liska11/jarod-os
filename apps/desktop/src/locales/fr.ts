@@ -2219,4 +2219,13 @@ export const fr: Record<MessageKey, string> = {
   'conn.added': '{name} ajout\u00e9',
   'conn.installingBackground': 'Hermes l\u2019installe en arri\u00e8re-plan ; il appara\u00eetra d\u00e8s qu\u2019il sera pr\u00eat.',
   'conn.availableNextSession': 'Disponible pour Hermes \u00e0 sa prochaine session.',
+  'conn.browseNoMatch': 'Rien ne correspond \u00e0 \u00ab {query} \u00bb',
+  'conn.browseNoMatch.hint': 'Essayez un nom plus court, ou demandez \u00e0 Hermes de configurer autre chose.',
+  'conn.browseAllConnected': 'Tout ce qui est disponible est d\u00e9j\u00e0 connect\u00e9',
+  'conn.browseAllConnected.hint': 'De nouveaux serveurs MCP apparaissent ici \u00e0 mesure que le catalogue grandit.',
+  'conn.storedEnv': 'Stock\u00e9 dans le .env de Hermes, plus jamais affich\u00e9.',
+  'conn.addAria': 'Ajouter {name}',
+  'conn.adding': 'Ajout\u2026',
+  'conn.install': 'Installer',
+  'conn.addAction': 'Ajouter',
 }

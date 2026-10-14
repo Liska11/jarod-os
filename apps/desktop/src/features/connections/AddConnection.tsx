@@ -1,6 +1,7 @@
 import { IconKey, IconLayoutGrid, IconPlus } from '@tabler/icons-react'
 import { useState } from 'react'
 import { EmptyGlass, GlassButton, GlassCard, Pill } from '../../components/ui/glass.tsx'
+import { useT } from '../../lib/i18n.ts'
 import { BrandLogo } from './brand-logos.tsx'
 import type { BrowseItem, McpCatalogEntry } from './connections-model.ts'
 
@@ -11,8 +12,17 @@ import type { BrowseItem, McpCatalogEntry } from './connections-model.ts'
  */
 
 export function AddConnection({ items, query, onAdd, busyId }: { items: BrowseItem[]; query: string; onAdd: (item: BrowseItem, env?: Record<string, string>) => void; busyId: string | null }) {
+  const { t } = useT()
+
   if (items.length === 0) {
-    return <EmptyGlass icon={<IconLayoutGrid />} title={query ? `Nothing matches “${query}”` : 'Everything available is already connected'} description={query ? 'Try a shorter name, or ask Hermes to set up something new.' : 'New MCP servers show up here as the catalog grows.'} className="flex-1" />
+    return (
+      <EmptyGlass
+        icon={<IconLayoutGrid />}
+        title={query ? t('conn.browseNoMatch', { query }) : t('conn.browseAllConnected')}
+        description={query ? t('conn.browseNoMatch.hint') : t('conn.browseAllConnected.hint')}
+        className="flex-1"
+      />
+    )
   }
 
   return (
@@ -29,6 +39,7 @@ function requiredEnv(entry: McpCatalogEntry): { name: string; prompt?: string; r
 }
 
 function BrowseCard({ item, onAdd, busy }: { item: BrowseItem; onAdd: (item: BrowseItem, env?: Record<string, string>) => void; busy: boolean }) {
+  const { t } = useT()
   const needsEnv = item.install.kind === 'mcp-catalog' ? requiredEnv(item.install.entry) : []
   const [open, setOpen] = useState(false)
   const [values, setValues] = useState<Record<string, string>>({})
@@ -75,19 +86,19 @@ function BrowseCard({ item, onAdd, busy }: { item: BrowseItem; onAdd: (item: Bro
               />
             </label>
           ))}
-          <div className="text-[11.5px] text-fg-4">Stored in Hermes’s .env, never shown again.</div>
+          <div className="text-[11.5px] text-fg-4">{t('conn.storedEnv')}</div>
         </div>
       )}
 
       <div className="mt-auto flex items-center justify-end gap-2 pt-3">
         {open && (
           <GlassButton size="sm" variant="ghost" onClick={() => setOpen(false)} disabled={busy}>
-            Cancel
+            {t('conn.cancel')}
           </GlassButton>
         )}
-        <GlassButton size="sm" variant={open ? 'primary' : 'secondary'} onClick={add} disabled={busy || (open && !complete)} aria-label={`Add ${item.name}`}>
+        <GlassButton size="sm" variant={open ? 'primary' : 'secondary'} onClick={add} disabled={busy || (open && !complete)} aria-label={t('conn.addAria', { name: item.name })}>
           <IconPlus />
-          {busy ? 'Adding…' : open ? 'Install' : 'Add'}
+          {busy ? t('conn.adding') : open ? t('conn.install') : t('conn.addAction')}
         </GlassButton>
       </div>
     </GlassCard>

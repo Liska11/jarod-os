@@ -2221,6 +2221,15 @@ export const en = {
   'conn.added': '{name} added',
   'conn.installingBackground': 'Hermes is installing it in the background; it appears once ready.',
   'conn.availableNextSession': 'Available to Hermes on its next session.',
+  'conn.browseNoMatch': 'Nothing matches \u201c{query}\u201d',
+  'conn.browseNoMatch.hint': 'Try a shorter name, or ask Hermes to set up something new.',
+  'conn.browseAllConnected': 'Everything available is already connected',
+  'conn.browseAllConnected.hint': 'New MCP servers show up here as the catalog grows.',
+  'conn.storedEnv': 'Stored in Hermes\u2019s .env, never shown again.',
+  'conn.addAria': 'Add {name}',
+  'conn.adding': 'Adding\u2026',
+  'conn.install': 'Install',
+  'conn.addAction': 'Add',
   } as const
 
   export type MessageKey = keyof typeof en
