@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { HermesAvatar } from '../../components/app-icon.tsx'
 import { GlassButton, Pill } from '../../components/ui/glass.tsx'
 import { cn } from '../../lib/cn.ts'
+import { useT } from '../../lib/i18n.ts'
 import {
   $hermesAuth,
   cancelDeviceLogin,
@@ -41,6 +42,7 @@ type Phase = { kind: 'idle' } | { kind: 'starting' } | { kind: 'code'; login: De
  * persists the credentials itself. The portal never opens in the system browser.
  */
 export function HermesLoginCard() {
+  const { t } = useT()
   const auth = useStore($hermesAuth)
   const webWindows = useStore($webWindows)
   const [phase, setPhase] = useState<Phase>({ kind: 'idle' })
@@ -100,7 +102,7 @@ export function HermesLoginCard() {
     }
 
     try {
-      const id = await openWebWindow(url, { title: `Sign in to ${target.name}`, bounds: signInBounds() })
+      const id = await openWebWindow(url, { title: t('signin.signInWith', { name: target.name }), bounds: signInBounds() })
       webRef.current = id
       setWebId(id)
     } catch {
@@ -212,13 +214,13 @@ export function HermesLoginCard() {
           <HermesAvatar size={36} rounded={10} />
           <div className="min-w-0 flex-1">
             <h2 id="hermes-login-title" className="text-[15px] font-semibold text-fg">
-              Sign in to Hermes
+              {t('signin.title')}
             </h2>
             <p className="mt-0.5 text-[12.5px] leading-snug text-fg-2">
-              Hermes uses <span className="font-medium text-fg">{target.name}</span> for its model and is signed out, so it cannot answer until you sign in.
+              {t('signin.usesBefore')} <span className="font-medium text-fg">{target.name}</span> {t('signin.usesAfter')}
             </p>
           </div>
-          <button type="button" aria-label="Not now" onClick={close} className="-mt-1 -mr-1 flex size-7 items-center justify-center rounded-md text-fg-3 hover:bg-white/10 hover:text-fg">
+          <button type="button" aria-label={t('signin.notNow')} onClick={close} className="-mt-1 -mr-1 flex size-7 items-center justify-center rounded-md text-fg-3 hover:bg-white/10 hover:text-fg">
             <IconX size={15} />
           </button>
         </div>
@@ -231,17 +233,17 @@ export function HermesLoginCard() {
           ) : phase.kind === 'idle' || phase.kind === 'failed' ? (
             <>
               {phase.kind === 'failed' && <div className="mb-3 text-[12px] text-danger">{phase.message}</div>}
-              <GlassButton variant="primary" className="w-full justify-center" onClick={() => void begin()} aria-label={`Sign in with ${target.name}`}>
+              <GlassButton variant="primary" className="w-full justify-center" onClick={() => void begin()} aria-label={t('signin.signInWith', { name: target.name })}>
                 <IconKey />
-                Sign in with {target.name}
+                {t('signin.signInWith', { name: target.name })}
               </GlassButton>
-              <p className="mt-2 text-center text-[11.5px] text-fg-3">Opens {target.name} right here in Jarod-OS with a one-time code. Nothing to type in a terminal.</p>
+              <p className="mt-2 text-center text-[11.5px] text-fg-3">{t('signin.opens', { name: target.name })}</p>
             </>
           ) : phase.kind === 'starting' ? (
-            <div className="flex h-11 items-center justify-center text-[12.5px] text-fg-2">Requesting a sign-in code…</div>
+            <div className="flex h-11 items-center justify-center text-[12.5px] text-fg-2">{t('signin.requesting')}</div>
           ) : phase.kind === 'done' ? (
             <div className="flex h-11 items-center justify-center gap-2 text-[13px] text-ok">
-              <IconCheck size={16} /> Signed in
+              <IconCheck size={16} /> {t('signin.signedIn')}
             </div>
           ) : (
             <CodePanel phase={phase} copied={copied} beside={beside} onCopy={copyCode} onRetry={() => void begin()} onOpenPage={() => void openSignInPage(phase.login.verificationUrl)} />
@@ -252,15 +254,15 @@ export function HermesLoginCard() {
           <span className="min-w-0 flex-1">
             {others.length > 0 ? (
               <>
-                {others.map(p => p.name).join(', ')} {others.length === 1 ? 'is' : 'are'} already signed in.{' '}
+                {others.map(p => p.name).join(', ')} {others.length === 1 ? t('signin.alreadyOne') : t('signin.alreadyMany')}{' '}
               </>
             ) : null}
             <button type="button" className="text-accent-strong hover:underline" onClick={() => showPage('settings')}>
-              Change provider in Settings
+              {t('signin.changeProvider')}
             </button>
           </span>
-          <GlassButton size="sm" variant="ghost" onClick={close} aria-label="Not now">
-            Not now
+          <GlassButton size="sm" variant="ghost" onClick={close} aria-label={t('signin.notNow')}>
+            {t('signin.notNow')}
           </GlassButton>
         </div>
       </div>
@@ -284,6 +286,7 @@ function CodePanel({
   onRetry: () => void
   onOpenPage: () => void
 }) {
+  const { t } = useT()
   const { login, status, error, secondsLeft } = phase
   const pending = status === 'pending'
   const minutes = Math.floor(secondsLeft / 60)
@@ -291,26 +294,26 @@ function CodePanel({
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="text-center text-[12px] text-fg-2">{beside ? 'Enter this code on the sign-in page beside this card:' : 'Enter this code on the sign-in page:'}</div>
+      <div className="text-center text-[12px] text-fg-2">{beside ? t('signin.codeBeside') : t('signin.code')}</div>
       <button
         type="button"
         onClick={() => onCopy(login.userCode)}
-        aria-label="Copy sign-in code"
-        title="Copy"
+        aria-label={t('signin.copyAria')}
+        title={t('signin.copy')}
         className="glass-input mx-auto flex h-14 items-center justify-center gap-3 rounded-xl px-6 font-mono text-[26px] font-semibold tracking-[0.18em] text-fg hover:border-line-strong"
       >
         {login.userCode}
         {copied ? <IconCheck size={18} className="text-ok" /> : <IconCopy size={18} className="text-fg-3" />}
       </button>
       <div className="flex items-center justify-center gap-2">
-        <GlassButton size="sm" onClick={onOpenPage} aria-label={beside ? 'Show the sign-in page' : 'Open the sign-in page in Jarod-OS'}>
+        <GlassButton size="sm" onClick={onOpenPage} aria-label={beside ? t('signin.showPageAria') : t('signin.openPageAria')}>
           <IconWorld />
-          {beside ? 'Show sign-in page' : 'Open sign-in page'}
+          {beside ? t('signin.showPage') : t('signin.openPage')}
         </GlassButton>
         {!pending && (
-          <GlassButton size="sm" variant="primary" onClick={onRetry} aria-label="Get a new code">
+          <GlassButton size="sm" variant="primary" onClick={onRetry} aria-label={t('signin.newCodeAria')}>
             <IconRefresh />
-            New code
+            {t('signin.newCode')}
           </GlassButton>
         )}
       </div>
@@ -318,14 +321,12 @@ function CodePanel({
         {pending ? (
           <>
             <Pill tone="progress" dot>
-              Waiting for approval
+              {t('signin.waiting')}
             </Pill>
-            <span className="tabular-nums">
-              code expires in {minutes}:{seconds}
-            </span>
+            <span className="tabular-nums">{t('signin.expiresIn', { time: `${minutes}:${seconds}` })}</span>
           </>
         ) : (
-          <span>{status === 'expired' ? 'The code expired.' : status === 'denied' ? 'The sign-in was denied.' : error || 'The sign-in failed.'} Get a new code to try again.</span>
+          <span>{status === 'expired' ? t('signin.expired') : status === 'denied' ? t('signin.denied') : error || t('signin.failed')} {t('signin.tryAgain')}</span>
         )}
       </div>
     </div>
@@ -333,14 +334,16 @@ function CodePanel({
 }
 
 function ExternalInstructions({ name, command, docsUrl }: { name: string; command: string | null; docsUrl: string | null }) {
+  const { t } = useT()
+
   return (
     <div className="flex flex-col gap-2 text-[12.5px] text-fg-2">
-      <p>{name} signs in through its own tool; Hermes picks the credentials up automatically afterwards.</p>
+      <p>{t('signin.external', { name })}</p>
       {command && <code className="selectable rounded-lg border border-line bg-black/25 px-3 py-2 font-mono text-[12px] text-fg">{command}</code>}
       {docsUrl && (
-        <GlassButton size="sm" onClick={() => void openWebWindow(docsUrl, { title: `${name} sign-in` }).catch(() => undefined)} aria-label={`Open ${name} documentation`}>
+        <GlassButton size="sm" onClick={() => void openWebWindow(docsUrl, { title: t('signin.windowTitle', { name }) }).catch(() => undefined)} aria-label={t('signin.docsAria', { name })}>
           <IconExternalLink />
-          How to sign in
+          {t('signin.howTo')}
         </GlassButton>
       )}
     </div>
