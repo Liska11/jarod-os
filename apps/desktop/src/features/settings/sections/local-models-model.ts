@@ -3,6 +3,8 @@
  * `local-engine-*`, `hf-*`; see jarod-core/packages/bridge) so a change there shows up here as a type error.
  */
 
+import { t } from '../../../lib/i18n.ts'
+
 export type LocalBackend = 'llamacpp' | 'lmstudio'
 
 export interface LocalModelEntry {
@@ -169,12 +171,12 @@ export function formatCount(n: number): string {
   return n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}M` : n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n)
 }
 
-const FIT_LABEL: Record<string, string> = {
-  fits: 'Fits in memory',
-  'does-not-fit': 'Does not fit',
-  estimated: 'Estimated (memory budget unknown)',
-  'beyond-native-context': 'Beyond the model’s own context',
-  'not-estimated': 'Not estimated'
+const FIT_KEY: Record<string, 'local.fit.fits' | 'local.fit.doesNotFit' | 'local.fit.estimated' | 'local.fit.beyondNative' | 'local.fit.notEstimated'> = {
+  fits: 'local.fit.fits',
+  'does-not-fit': 'local.fit.doesNotFit',
+  estimated: 'local.fit.estimated',
+  'beyond-native-context': 'local.fit.beyondNative',
+  'not-estimated': 'local.fit.notEstimated'
 }
 
 /** One line for a "does it fit?" report: the verdict, then the memory it would take when known. An indication, never a blocker. */
@@ -183,17 +185,18 @@ export function fitSummary(view: FitView | undefined | null): string {
     return ''
   }
 
-  const label = FIT_LABEL[view.fit.status] ?? view.fit.status
+  const key = FIT_KEY[view.fit.status]
+  const label = key ? t(key) : view.fit.status
   const b = view.fit.breakdown
 
   if (!b) {
-    return view.fit.reason ? `${label} — ${view.fit.reason}` : label
+    return view.fit.reason ? t('local.fit.reason', { label, reason: view.fit.reason }) : label
   }
 
   const total = b.weightsBytes + b.kvBytes + b.stateBytes + b.headroomBytes
-  const budget = view.budgetBytes ? ` of ${formatBytes(view.budgetBytes)}` : ''
+  const budget = view.budgetBytes ? t('local.fit.budgetOf', { budget: formatBytes(view.budgetBytes) }) : ''
 
-  return `${label} — about ${formatBytes(total)}${budget} (weights ${formatBytes(b.weightsBytes)}, context ${formatBytes(b.kvBytes)})`
+  return t('local.fit.about', { label, total: formatBytes(total), budget, weights: formatBytes(b.weightsBytes), context: formatBytes(b.kvBytes) })
 }
 
 // ---- validation (mirrors the engine; the engine stays the authority) ------------------------
@@ -203,24 +206,24 @@ export const MAX_CONTEXT = 16_777_216
 
 /** Why a context length is refused, or null. Empty means "the server's own default" and is fine where `allowEmpty`. */
 export function contextProblem(text: string, options: { allowEmpty?: boolean; max?: number | null } = {}): string | null {
-  const t = text.trim()
+  const value = text.trim()
 
-  if (!t) {
-    return options.allowEmpty ? null : 'Enter a number of tokens.'
+  if (!value) {
+    return options.allowEmpty ? null : t('local.ctx.required')
   }
 
-  if (!/^\d+$/.test(t)) {
-    return 'Whole number of tokens only.'
+  if (!/^\d+$/.test(value)) {
+    return t('local.ctx.integer')
   }
 
-  const n = Number(t)
+  const n = Number(value)
 
   if (n < MIN_CONTEXT) {
-    return `At least ${MIN_CONTEXT} tokens (the agent’s tool list alone needs about 6000).`
+    return t('local.ctx.min', { min: MIN_CONTEXT })
   }
 
   if (n > MAX_CONTEXT || (options.max && n > options.max)) {
-    return `At most ${(options.max && options.max < MAX_CONTEXT ? options.max : MAX_CONTEXT).toLocaleString('en-US')} tokens.`
+    return t('local.ctx.max', { max: (options.max && options.max < MAX_CONTEXT ? options.max : MAX_CONTEXT).toLocaleString('en-US') })
   }
 
   return null
@@ -230,7 +233,7 @@ export function contextProblem(text: string, options: { allowEmpty?: boolean; ma
 export const TOOL_TURN_CONTEXT = 16_384
 
 export function contextAdvice(loadedContext: number | null): string | null {
-  return loadedContext !== null && loadedContext < TOOL_TURN_CONTEXT ? `Loaded with ${loadedContext.toLocaleString('en-US')} tokens: too small for a conversation with tools. Reload it with ${TOOL_TURN_CONTEXT.toLocaleString('en-US')} or more.` : null
+  return loadedContext !== null && loadedContext < TOOL_TURN_CONTEXT ? t('local.ctx.advice', { loaded: loadedContext.toLocaleString('en-US'), min: TOOL_TURN_CONTEXT.toLocaleString('en-US') }) : null
 }
 
 /** A Hugging Face error from the engine starts with `HF_<CODE>: `; show the sentence, not the code. */
@@ -282,12 +285,12 @@ const NUM = /^\d+(\.\d+)?$/
 
 function intIn(label: string, value: string, min: number, max: number, optional = false): string | null {
   if (!value.trim()) {
-    return optional ? null : `${label}: required.`
+    return optional ? null : t('local.field.required', { label })
   }
 
   const n = Number(value.trim())
 
-  return INT.test(value.trim()) && n >= min && n <= max ? null : `${label}: a whole number from ${min} to ${max}.`
+  return INT.test(value.trim()) && n >= min && n <= max ? null : t('local.field.intRange', { label, min, max })
 }
 
 function numIn(label: string, value: string, max: number): string | null {
@@ -297,7 +300,7 @@ function numIn(label: string, value: string, max: number): string | null {
 
   const n = Number(value.trim())
 
-  return NUM.test(value.trim()) && n >= 0 && n <= max ? null : `${label}: a number from 0 to ${max}, or empty.`
+  return NUM.test(value.trim()) && n >= 0 && n <= max ? null : t('local.field.numRange', { label, max })
 }
 
 /** Every reason the draft would be refused (same bounds as the engine), in field order. Empty list = savable. */
@@ -305,14 +308,14 @@ export function presetProblems(draft: PresetDraft): string[] {
   const name = draft.name.trim()
 
   return [
-    !name || name.length > 60 ? 'Name: 1 to 60 characters.' : null,
-    intIn('Context size', draft.ctxSize, 512, 2_097_152),
-    intIn('GPU layers', draft.gpuLayers, -1, 999),
-    intIn('Parallel slots', draft.parallelSlots, 1, 16, true),
-    numIn('Temperature', draft.temperature, 5),
-    numIn('Top P', draft.topP, 1),
-    intIn('Top K', draft.topK, 0, 1000, true),
-    numIn('Min P', draft.minP, 1)
+    !name || name.length > 60 ? t('local.preset.nameBad') : null,
+    intIn(t('local.field.label.ctx'), draft.ctxSize, 512, 2_097_152),
+    intIn(t('local.field.label.gpuLayers'), draft.gpuLayers, -1, 999),
+    intIn(t('local.field.label.slots'), draft.parallelSlots, 1, 16, true),
+    numIn(t('local.field.label.temperature'), draft.temperature, 5),
+    numIn(t('local.field.label.topP'), draft.topP, 1),
+    intIn(t('local.field.label.topK'), draft.topK, 0, 1000, true),
+    numIn(t('local.field.label.minP'), draft.minP, 1)
   ].filter((p): p is string => p !== null)
 }
 

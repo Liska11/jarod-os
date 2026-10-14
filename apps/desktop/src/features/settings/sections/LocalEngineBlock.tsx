@@ -2,6 +2,7 @@ import { IconDownload, IconFileImport, IconPlayerPlay, IconPlayerStop, IconSetti
 import { useEffect, useState } from 'react'
 import { GlassButton, Pill, ProgressBar, Toggle } from '../../../components/ui/glass.tsx'
 import { jarod, onJarodEvent } from '../../../lib/jarod.ts'
+import { useT } from '../../../lib/i18n.ts'
 import { useBackendData } from '../../../lib/use-async.ts'
 import { notify } from '../../../store/notifications.ts'
 import { draftOf, type EnginePreset, type EngineProgress, type EngineView, type FitView, fitSummary, formatBytes, percent, type PresetDraft, presetFromDraft, presetProblems } from './local-models-model.ts'
@@ -14,6 +15,7 @@ import { errorText, InlineNote, markSaved, SettingsGroup, SettingsRow } from './
  */
 
 export function EngineBlock() {
+  const { t } = useT()
   const engine = useBackendData(() => jarod<EngineView>('local-engine-status'))
   const [progress, setProgress] = useState<EngineProgress | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
@@ -36,7 +38,7 @@ export function EngineBlock() {
       markSaved()
       notify({ title, level: 'success' })
     } catch (error) {
-      notify({ title: 'llama.cpp engine', body: errorText(error), level: 'error' })
+      notify({ title: t('engine.notify'), body: errorText(error), level: 'error' })
     } finally {
       setBusy(null)
       setProgress(null)
@@ -45,7 +47,7 @@ export function EngineBlock() {
   }
 
   if (!data) {
-    return engine.error ? <InlineNote tone="danger">Could not read the engine: {engine.error}</InlineNote> : null
+    return engine.error ? <InlineNote tone="danger">{t('engine.readFailed', { error: engine.error })}</InlineNote> : null
   }
 
   const installing = busy === 'install' || data.installing
@@ -53,50 +55,50 @@ export function EngineBlock() {
 
   return (
     <>
-      <SettingsGroup title="llama.cpp engine">
+      <SettingsGroup title={t('engine.group')}>
         <SettingsRow
           icon={<IconDownload />}
-          label={data.installed ? `Installed: ${data.installed.tag} (${data.installed.backend})` : 'Not installed'}
+          label={data.installed ? t('engine.installed', { tag: data.installed.tag, backend: data.installed.backend }) : t('engine.notInstalled')}
           description={
             data.installed && !data.installed.present
-              ? 'The engine files are missing. Install it again.'
-              : `Jarod downloads the official llama.cpp build for ${data.backend || data.detectedBackend} from github.com/ggml-org/llama.cpp and checks its SHA-256 when GitHub publishes one.`
+              ? t('engine.missingFiles')
+              : t('engine.downloadHint', { backend: data.backend || data.detectedBackend })
           }
           keywords="llama.cpp engine install update download"
           below={installing && <EngineProgressBar progress={progress} />}
         >
           {installing ? (
             <GlassButton size="sm" variant="secondary" onClick={() => void jarod('local-engine-install-cancel')}>
-              Cancel
+              {t('engine.cancel')}
             </GlassButton>
           ) : (
-            <GlassButton size="sm" variant={data.installed ? 'secondary' : 'primary'} disabled={Boolean(busy)} onClick={() => void run('install', 'Engine installed', () => jarod('local-engine-install'))}>
-              {data.installed ? 'Update' : 'Download'}
+            <GlassButton size="sm" variant={data.installed ? 'secondary' : 'primary'} disabled={Boolean(busy)} onClick={() => void run('install', t('engine.installedTitle'), () => jarod('local-engine-install'))}>
+              {data.installed ? t('engine.update') : t('engine.download')}
             </GlassButton>
           )}
         </SettingsRow>
-        <SettingsRow icon={<IconPlayerPlay />} label={server.running ? (server.ready ? `Running on port ${server.port}` : 'Starting…') : 'Server stopped'} description={server.lastError ? `Last error: ${server.lastError}` : server.model ? `Model: ${server.model}` : 'Starts when you load a preset.'} keywords="llama.cpp server running stopped">
+        <SettingsRow icon={<IconPlayerPlay />} label={server.running ? (server.ready ? t('engine.runningPort', { port: server.port ?? '' }) : t('engine.starting')) : t('engine.stopped')} description={server.lastError ? t('engine.lastError', { error: server.lastError }) : server.model ? t('engine.model', { model: server.model }) : t('engine.startsOnPreset')} keywords="llama.cpp server running stopped">
           {server.running && (
-            <GlassButton size="sm" variant="secondary" disabled={Boolean(busy)} onClick={() => void run('stop', 'Server stopped', () => jarod('local-engine-stop'))}>
+            <GlassButton size="sm" variant="secondary" disabled={Boolean(busy)} onClick={() => void run('stop', t('engine.stopTitle'), () => jarod('local-engine-stop'))}>
               <IconPlayerStop />
-              Stop
+              {t('engine.stop')}
             </GlassButton>
           )}
         </SettingsRow>
-        <SettingsRow icon={<IconSettings />} label="Start with Jarod" description="Start the active preset when Jarod opens." keywords="autostart launch llama.cpp">
-          <Toggle checked={data.autoStart} label="Start the engine with Jarod" disabled={Boolean(busy) || !data.activePreset} onChange={value => void run('auto', 'Setting saved', () => jarod('local-engine-configure', { autoStart: value }))} />
+        <SettingsRow icon={<IconSettings />} label={t('engine.autostart')} description={t('engine.autostart.hint')} keywords="autostart launch llama.cpp">
+          <Toggle checked={data.autoStart} label={t('engine.autostart.toggle')} disabled={Boolean(busy) || !data.activePreset} onChange={value => void run('auto', t('engine.saved'), () => jarod('local-engine-configure', { autoStart: value }))} />
         </SettingsRow>
-        <SettingsRow icon={<IconSettings />} label="This PC" description={`${data.hardware.cpu} · ${data.hardware.ramGb} GB RAM${data.hardware.gpus.length ? ` · ${data.hardware.gpus.map(g => `${g.name}${g.vramGb ? ` ${g.vramGb} GB` : ''}`).join(', ')}` : ''} · memory budget ${data.hardware.budgetGb} GB (${data.hardware.budgetBasis})`} keywords="hardware gpu ram memory budget" />
+        <SettingsRow icon={<IconSettings />} label={t('engine.thisPc')} description={t('engine.hardware', { cpu: data.hardware.cpu, ram: data.hardware.ramGb, gpus: data.hardware.gpus.length ? t('engine.gpus', { list: data.hardware.gpus.map(g => (g.vramGb ? t('engine.gpuVram', { name: g.name, vram: g.vramGb }) : g.name)).join(', ') }) : '', budget: data.hardware.budgetGb, basis: data.hardware.budgetBasis })} keywords="hardware gpu ram memory budget" />
       </SettingsGroup>
 
-      <SettingsGroup title="Presets">
-        {data.presets.length === 0 && <SettingsRow icon={<IconFileImport />} label="No preset yet" description="A preset is a .gguf model file with its settings. Add one to run it with the engine." keywords="preset empty" />}
+      <SettingsGroup title={t('engine.presets')}>
+        {data.presets.length === 0 && <SettingsRow icon={<IconFileImport />} label={t('engine.noPreset')} description={t('engine.noPreset.hint')} keywords="preset empty" />}
         {data.presets.map(preset => (
           <PresetRow key={preset.id} preset={preset} active={data.activePreset === preset.id} running={server.running && server.model === preset.name} editing={editing === preset.id} busy={Boolean(busy)} onEdit={open => setEditing(open ? preset.id : null)} run={run} reload={reload} />
         ))}
-        <SettingsRow icon={<IconFileImport />} label="Add a model file" description="Pick a .gguf file on this PC." keywords="add preset gguf file">
-          <GlassButton size="sm" variant="primary" disabled={Boolean(busy)} onClick={() => void run('add', 'Preset added', () => jarod('local-engine-add-preset'))}>
-            Choose file…
+        <SettingsRow icon={<IconFileImport />} label={t('engine.addFile')} description={t('engine.addFile.hint')} keywords="add preset gguf file">
+          <GlassButton size="sm" variant="primary" disabled={Boolean(busy)} onClick={() => void run('add', t('engine.presetAdded'), () => jarod('local-engine-add-preset'))}>
+            {t('engine.chooseFile')}
           </GlassButton>
         </SettingsRow>
       </SettingsGroup>
@@ -105,6 +107,7 @@ export function EngineBlock() {
 }
 
 function EngineProgressBar({ progress }: { progress: EngineProgress | null }) {
+  const { t } = useT()
   const received = progress?.received ?? 0
   const total = progress?.total ?? 0
 
@@ -112,8 +115,8 @@ function EngineProgressBar({ progress }: { progress: EngineProgress | null }) {
     <div className="flex flex-col gap-1">
       <ProgressBar value={percent(received, total)} />
       <div className="text-[11.5px] text-fg-4">
-        {progress?.stage ?? 'Working'}
-        {total > 0 ? ` · ${formatBytes(received)} of ${formatBytes(total)}` : ''}
+        {progress?.stage ?? t('engine.working')}
+        {total > 0 ? t('engine.progressOf', { received: formatBytes(received), total: formatBytes(total) }) : ''}
       </div>
     </div>
   )
@@ -122,27 +125,29 @@ function EngineProgressBar({ progress }: { progress: EngineProgress | null }) {
 type Run = (key: string, title: string, action: () => Promise<unknown>) => Promise<void>
 
 function PresetRow({ preset, active, running, editing, busy, onEdit, run, reload }: { preset: EnginePreset; active: boolean; running: boolean; editing: boolean; busy: boolean; onEdit: (open: boolean) => void; run: Run; reload: () => void }) {
+  const { t } = useT()
+
   return (
     <SettingsRow
       icon={<IconPlayerPlay />}
       label={preset.name}
-      description={`${preset.modelName}${preset.modelPresent ? '' : ' (file missing)'} · context ${preset.ctxSize.toLocaleString('en-US')} · GPU layers ${preset.gpuLayers}`}
+      description={t('engine.presetDetail', { model: preset.modelName, missing: preset.modelPresent ? '' : t('engine.fileMissing'), ctx: preset.ctxSize.toLocaleString('en-US'), layers: preset.gpuLayers })}
       keywords={`preset ${preset.modelName}`}
       below={editing && <PresetEditor preset={preset} onClose={() => onEdit(false)} run={run} reload={reload} />}
     >
       {running && (
         <Pill tone="ok" dot>
-          Running
+          {t('engine.running')}
         </Pill>
       )}
-      {!running && active && <Pill tone="info">Active</Pill>}
-      <GlassButton size="sm" variant="primary" disabled={busy || !preset.modelPresent} onClick={() => void run(`start-${preset.id}`, `${preset.name} loaded`, () => jarod('local-engine-start', preset.id))} aria-label={`Start ${preset.name}`}>
-        Start
+      {!running && active && <Pill tone="info">{t('engine.active')}</Pill>}
+      <GlassButton size="sm" variant="primary" disabled={busy || !preset.modelPresent} onClick={() => void run(`start-${preset.id}`, t('engine.loadedTitle', { name: preset.name }), () => jarod('local-engine-start', preset.id))} aria-label={t('engine.startAria', { name: preset.name })}>
+        {t('engine.start')}
       </GlassButton>
-      <GlassButton size="sm" variant="ghost" disabled={busy} onClick={() => onEdit(!editing)} aria-label={`Edit ${preset.name}`}>
-        Edit
+      <GlassButton size="sm" variant="ghost" disabled={busy} onClick={() => onEdit(!editing)} aria-label={t('engine.editAria', { name: preset.name })}>
+        {t('engine.edit')}
       </GlassButton>
-      <GlassButton size="sm" variant="ghost" disabled={busy} onClick={() => void run(`rm-${preset.id}`, 'Preset removed', () => jarod('local-engine-preset-remove', preset.id))} aria-label={`Remove ${preset.name}`}>
+      <GlassButton size="sm" variant="ghost" disabled={busy} onClick={() => void run(`rm-${preset.id}`, t('engine.removeTitle'), () => jarod('local-engine-preset-remove', preset.id))} aria-label={t('engine.removeAria', { name: preset.name })}>
         <IconTrash />
       </GlassButton>
     </SettingsRow>
@@ -156,6 +161,7 @@ const SELECTS = {
 } as const
 
 function PresetEditor({ preset, onClose, run, reload }: { preset: EnginePreset; onClose: () => void; run: Run; reload: () => void }) {
+  const { t } = useT()
   const [draft, setDraft] = useState<PresetDraft>(() => draftOf(preset))
   const [fit, setFit] = useState<FitView | null>(null)
   const [fitting, setFitting] = useState(false)
@@ -169,7 +175,7 @@ function PresetEditor({ preset, onClose, run, reload }: { preset: EnginePreset; 
     try {
       setFit(await jarod<FitView>('local-engine-fit', { id: preset.id, ctxSize: Number(draft.ctxSize), gpuLayers: Number(draft.gpuLayers), cacheType: draft.cacheType, parallelSlots: draft.parallelSlots.trim() ? Number(draft.parallelSlots) : null }))
     } catch (error) {
-      notify({ title: 'Could not estimate memory', body: errorText(error), level: 'error' })
+      notify({ title: t('engine.fitFailed'), body: errorText(error), level: 'error' })
     } finally {
       setFitting(false)
     }
@@ -202,35 +208,35 @@ function PresetEditor({ preset, onClose, run, reload }: { preset: EnginePreset; 
         event.preventDefault()
 
         if (problems.length === 0) {
-          void run(`save-${preset.id}`, 'Preset saved', () => jarod('local-engine-preset-save', presetFromDraft(preset, draft))).then(onClose)
+          void run(`save-${preset.id}`, t('engine.presetSaved'), () => jarod('local-engine-preset-save', presetFromDraft(preset, draft))).then(onClose)
         }
       }}
     >
       <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-        {field('name', 'Name')}
-        {field('ctxSize', 'Context size (tokens)')}
-        {field('gpuLayers', 'GPU layers (-1 = all)')}
-        {field('parallelSlots', 'Parallel slots', 'default')}
-        {select('flashAttn', 'Flash attention')}
-        {select('cacheType', 'Context cache type')}
-        {select('reasoning', 'Reasoning')}
+        {field('name', t('engine.field.name'))}
+        {field('ctxSize', t('engine.field.ctx'))}
+        {field('gpuLayers', t('engine.field.gpuLayers'))}
+        {field('parallelSlots', t('engine.field.slots'), t('engine.optional'))}
+        {select('flashAttn', t('engine.field.flashAttn'))}
+        {select('cacheType', t('engine.field.cache'))}
+        {select('reasoning', t('engine.field.reasoning'))}
         <span />
-        {field('temperature', 'Temperature', 'default')}
-        {field('topP', 'Top P', 'default')}
-        {field('topK', 'Top K', 'default')}
-        {field('minP', 'Min P', 'default')}
+        {field('temperature', t('engine.field.temperature'), t('engine.optional'))}
+        {field('topP', t('engine.field.topP'), t('engine.optional'))}
+        {field('topK', t('engine.field.topK'), t('engine.optional'))}
+        {field('minP', t('engine.field.minP'), t('engine.optional'))}
       </div>
       <div className="flex items-center gap-2 text-[11.5px] text-fg-3">
         <span className="min-w-0 flex-1 truncate" title={preset.model}>
-          Model file: {preset.modelName}
+          {t('engine.modelFile', { name: preset.modelName })}
         </span>
-        <GlassButton type="button" size="sm" variant="ghost" onClick={() => void run(`pick-${preset.id}`, 'Model file changed', () => jarod('local-engine-pick-model', preset.id, 'model')).then(reload)}>
-          Choose another…
+        <GlassButton type="button" size="sm" variant="ghost" onClick={() => void run(`pick-${preset.id}`, t('engine.modelChanged'), () => jarod('local-engine-pick-model', preset.id, 'model')).then(reload)}>
+          {t('engine.chooseAnother')}
         </GlassButton>
       </div>
       {preset.extraArgs.length > 0 && (
         <div className="flex items-center gap-2 text-[11.5px] text-fg-3">
-          <span className="min-w-0 flex-1 truncate">Advanced arguments kept as they are: {preset.extraArgs.join(' ')}</span>
+          <span className="min-w-0 flex-1 truncate">{t('engine.extraArgs', { args: preset.extraArgs.join(' ') })}</span>
         </div>
       )}
       {problems.length > 0 && (
@@ -243,13 +249,13 @@ function PresetEditor({ preset, onClose, run, reload }: { preset: EnginePreset; 
       {fit && <InlineNote tone={fit.fit.status === 'does-not-fit' ? 'warn' : 'info'}>{fitSummary(fit)}</InlineNote>}
       <div className="flex justify-end gap-2">
         <GlassButton type="button" size="sm" variant="ghost" disabled={fitting || problems.length > 0} onClick={() => void check()}>
-          {fitting ? 'Estimating…' : 'Will it fit?'}
+          {fitting ? t('engine.estimating') : t('engine.willItFit')}
         </GlassButton>
         <GlassButton type="button" size="sm" variant="ghost" onClick={onClose}>
-          Cancel
+          {t('engine.cancel')}
         </GlassButton>
         <GlassButton type="submit" size="sm" variant="primary" disabled={problems.length > 0}>
-          Save
+          {t('engine.save')}
         </GlassButton>
       </div>
     </form>
