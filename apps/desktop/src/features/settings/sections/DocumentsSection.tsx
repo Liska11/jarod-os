@@ -2,6 +2,7 @@ import { IconDatabase, IconFileSearch, IconRefresh } from '@tabler/icons-react'
 import { useEffect, useState } from 'react'
 import { GlassButton, ProgressBar } from '../../../components/ui/glass.tsx'
 import { jarod } from '../../../lib/jarod.ts'
+import { useT } from '../../../lib/i18n.ts'
 import { useBackendData } from '../../../lib/use-async.ts'
 import { NumberRow, reportEngineError, SwitchRow, TextRow, useJarodSettings } from './jarod-controls.tsx'
 import { intProblem } from './jarod-settings-model.ts'
@@ -16,6 +17,7 @@ import { InlineNote, markSaved, SectionTitle, SettingsGroup, SettingsRow } from 
  */
 
 export function DocumentsSection() {
+  const { t } = useT()
   const api = useJarodSettings()
   const status = useBackendData(() => jarod<RagIndexStatus>('rag-index-status'))
   const [busy, setBusy] = useState(false)
@@ -35,8 +37,8 @@ export function DocumentsSection() {
   if (isUnsupported(api.error) || isUnsupported(status.error)) {
     return (
       <>
-        <SectionTitle title="Documents" subtitle="Search inside your documents." />
-        <InlineNote tone="info">Document search is set up here with the Jarod engine.</InlineNote>
+        <SectionTitle title={t('documents.title')} subtitle={t('documents.subtitle')} />
+        <InlineNote tone="info">{t('documents.engineNote')}</InlineNote>
       </>
     )
   }
@@ -44,7 +46,7 @@ export function DocumentsSection() {
   const rag = api.settings?.rag
   const s = status.data
 
-  const save = async (patch: Record<string, unknown>, title = 'Setting saved') => {
+  const save = async (patch: Record<string, unknown>, title = t('documents.saved')) => {
     const ok = await api.save({ rag: patch }, title)
 
     reload()
@@ -59,7 +61,7 @@ export function DocumentsSection() {
       await jarod('rag-reindex')
       markSaved()
     } catch (error) {
-      reportEngineError('Reindex', error)
+      reportEngineError(t('documents.reindex'), error)
     } finally {
       setBusy(false)
       reload()
@@ -68,21 +70,21 @@ export function DocumentsSection() {
 
   return (
     <>
-      <SectionTitle title="Documents" subtitle="Search inside your documents." />
-      {api.error && <InlineNote tone="danger">Could not read the settings: {api.error}</InlineNote>}
+      <SectionTitle title={t('documents.title')} subtitle={t('documents.subtitle')} />
+      {api.error && <InlineNote tone="danger">{t('documents.readFailed', { error: api.error })}</InlineNote>}
       {rag && (
-        <SettingsGroup title="Search">
-          <SwitchRow icon={<IconFileSearch />} label="Search my documents" description="Lets the agent index files and answer from them." keywords="rag documents search index embeddings enable" value={rag.enabled} disabled={api.saving} onChange={value => void save({ enabled: value })} />
-          <TextRow icon={<IconDatabase />} label="Embeddings server" description="An OpenAI-compatible address that turns text into numbers. A model on this PC keeps your documents here; any other address is confirmed first." keywords="rag embeddings url server lm studio ollama" value={rag.embeddingsUrl} mono allowEmpty placeholder="http://127.0.0.1:1234/v1" validate={embeddingsUrlProblem} disabled={api.saving} onSave={value => save({ embeddingsUrl: value })} />
-          <TextRow icon={<IconDatabase />} label="Embeddings model" description="The model name the server knows, like text-embedding-nomic-embed-text-v1.5." keywords="rag embeddings model name" value={rag.embeddingsModel} mono allowEmpty disabled={api.saving} onSave={value => save({ embeddingsModel: value })} />
-          <NumberRow icon={<IconDatabase />} label="Passage size" description="Characters per passage." keywords="rag chunk size passage" value={rag.chunkSize} validate={text => intProblem(text, 100, 4000)} disabled={api.saving} onSave={value => save({ chunkSize: value })} />
-          <NumberRow icon={<IconDatabase />} label="Overlap" description="Characters shared by neighbouring passages (at most half a passage)." keywords="rag chunk overlap" value={rag.chunkOverlap} validate={text => intProblem(text, 0, 1000) ?? overlapProblem(Number(text), rag.chunkSize)} disabled={api.saving} onSave={value => save({ chunkOverlap: value })} />
-          <NumberRow icon={<IconDatabase />} label="Passages kept per document" description="At most this many passages of one document in an answer." keywords="rag max chunks per document" value={rag.maxChunksPerDoc} validate={text => intProblem(text, 1, 20)} disabled={api.saving} onSave={value => save({ maxChunksPerDoc: value })} />
-          <NumberRow icon={<IconDatabase />} label="Passages per question" description="How many passages are looked at to answer." keywords="rag top k results" value={rag.topK} validate={text => intProblem(text, 1, 50)} disabled={api.saving} onSave={value => save({ topK: value })} />
+        <SettingsGroup title={t('documents.search')}>
+          <SwitchRow icon={<IconFileSearch />} label={t('documents.enable')} description={t('documents.enable.hint')} keywords="rag documents search index embeddings enable" value={rag.enabled} disabled={api.saving} onChange={value => void save({ enabled: value })} />
+          <TextRow icon={<IconDatabase />} label={t('documents.server')} description={t('documents.server.hint')} keywords="rag embeddings url server lm studio ollama" value={rag.embeddingsUrl} mono allowEmpty placeholder="http://127.0.0.1:1234/v1" validate={embeddingsUrlProblem} disabled={api.saving} onSave={value => save({ embeddingsUrl: value })} />
+          <TextRow icon={<IconDatabase />} label={t('documents.model')} description={t('documents.model.hint')} keywords="rag embeddings model name" value={rag.embeddingsModel} mono allowEmpty disabled={api.saving} onSave={value => save({ embeddingsModel: value })} />
+          <NumberRow icon={<IconDatabase />} label={t('documents.chunkSize')} description={t('documents.chunkSize.hint')} keywords="rag chunk size passage" value={rag.chunkSize} validate={text => intProblem(text, 100, 4000)} disabled={api.saving} onSave={value => save({ chunkSize: value })} />
+          <NumberRow icon={<IconDatabase />} label={t('documents.overlap')} description={t('documents.overlap.hint')} keywords="rag chunk overlap" value={rag.chunkOverlap} validate={text => intProblem(text, 0, 1000) ?? overlapProblem(Number(text), rag.chunkSize)} disabled={api.saving} onSave={value => save({ chunkOverlap: value })} />
+          <NumberRow icon={<IconDatabase />} label={t('documents.maxPerDoc')} description={t('documents.maxPerDoc.hint')} keywords="rag max chunks per document" value={rag.maxChunksPerDoc} validate={text => intProblem(text, 1, 20)} disabled={api.saving} onSave={value => save({ maxChunksPerDoc: value })} />
+          <NumberRow icon={<IconDatabase />} label={t('documents.topK')} description={t('documents.topK.hint')} keywords="rag top k results" value={rag.topK} validate={text => intProblem(text, 1, 50)} disabled={api.saving} onSave={value => save({ topK: value })} />
         </SettingsGroup>
       )}
       {s && (
-        <SettingsGroup title="Index">
+        <SettingsGroup title={t('documents.index')}>
           <SettingsRow
             icon={<IconRefresh />}
             label={indexSummary(s)}
@@ -97,11 +99,11 @@ export function DocumentsSection() {
           >
             {running ? (
               <GlassButton size="sm" variant="secondary" disabled={s.run.cancelling} onClick={() => void jarod('rag-reindex-cancel').then(reload)}>
-                Stop
+                {t('documents.stop')}
               </GlassButton>
             ) : (
               <GlassButton size="sm" variant="primary" disabled={busy || !s.enabled || s.reindexable === 0} onClick={() => void reindex()}>
-                Reindex…
+                {t('documents.reindexNow')}
               </GlassButton>
             )}
           </SettingsRow>

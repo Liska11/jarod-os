@@ -1,6 +1,9 @@
 /*
  * Document search (RAG): the data side of the section. Mirrors `get-jarod-settings.rag` and `rag-index-status` / `rag-reindex`.
+ * The prose goes through the catalogue (`t` / `tn`), so it follows the interface language.
  */
+
+import { t, tn } from '../../../lib/i18n.ts'
 
 export interface RagRun {
   state: 'idle' | 'running' | 'done' | 'cancelled' | 'failed'
@@ -24,41 +27,42 @@ export interface RagIndexStatus {
   run: RagRun
 }
 
-const plural = (n: number, one: string, many: string): string => `${n.toLocaleString('en-US')} ${n === 1 ? one : many}`
+const count = (n: number, base: 'rag.count.document' | 'rag.count.passage'): string => tn(base, n)
 
 export function indexSummary(status: RagIndexStatus): string {
   if (!status.enabled) {
-    return 'Document search is off.'
+    return t('rag.summary.off')
   }
 
-  const base = `${plural(status.documents, 'document', 'documents')} · ${plural(status.passages, 'passage', 'passages')} indexed`
-  const where = status.endpoint ? ` · embeddings from ${status.endpoint}` : ''
+  const base = t('rag.summary.indexed', { documents: count(status.documents, 'rag.count.document'), passages: count(status.passages, 'rag.count.passage') })
 
-  return base + where
+  return status.endpoint ? base + t('rag.summary.endpoint', { endpoint: status.endpoint }) : base
 }
 
 export function reindexAdvice(status: RagIndexStatus): string {
   if (status.run.state === 'running') {
-    return 'Working…'
+    return t('rag.advice.working')
   }
 
   if (status.reindexable === 0) {
-    return status.missing > 0 ? `${plural(status.missing, 'document', 'documents')} indexed before the text was kept cannot be redone; index their files again.` : 'Nothing to redo yet.'
+    return status.missing > 0 ? t('rag.advice.missingOnly', { missing: count(status.missing, 'rag.count.document') }) : t('rag.advice.nothing')
   }
 
-  return `${plural(status.reindexable, 'document', 'documents')} can be re-cut and re-embedded with the current settings${status.missing > 0 ? ` (${status.missing} cannot: index their files again)` : ''}.`
+  const reindexable = count(status.reindexable, 'rag.count.document')
+
+  return status.missing > 0 ? t('rag.advice.reindexableMissing', { reindexable, missing: status.missing }) : t('rag.advice.reindexable', { reindexable })
 }
 
 export function runText(run: RagRun): string | null {
   switch (run.state) {
     case 'running':
-      return `Reindexing ${run.done} of ${run.total}${run.cancelling ? ' (stopping…)' : ''}`
+      return run.cancelling ? t('rag.run.runningStopping', { done: run.done, total: run.total }) : t('rag.run.running', { done: run.done, total: run.total })
     case 'done':
-      return `Done: ${plural(run.documents, 'document', 'documents')}, ${plural(run.passages, 'passage', 'passages')}.`
+      return t('rag.run.done', { documents: count(run.documents, 'rag.count.document'), passages: count(run.passages, 'rag.count.passage') })
     case 'cancelled':
-      return `Stopped. ${plural(run.documents, 'document', 'documents')} were redone and stay redone.`
+      return t('rag.run.cancelled', { documents: count(run.documents, 'rag.count.document') })
     case 'failed':
-      return run.error ?? 'Reindexing failed.'
+      return run.error ?? t('rag.run.failed')
     default:
       return null
   }
@@ -79,14 +83,14 @@ export function embeddingsUrlProblem(text: string): string | null {
   try {
     url = new URL(text)
   } catch {
-    return 'A full address, like http://127.0.0.1:1234/v1.'
+    return t('rag.error.address')
   }
 
   if (url.protocol !== 'http:' && url.protocol !== 'https:') {
-    return 'http:// or https:// only.'
+    return t('rag.error.protocol')
   }
 
-  return url.username || url.password ? 'No login in the address.' : null
+  return url.username || url.password ? t('rag.error.login') : null
 }
 
 export function isLocalUrl(text: string): boolean {
@@ -101,5 +105,5 @@ export function isLocalUrl(text: string): boolean {
 
 /** The overlap never exceeds half a chunk (the engine refuses otherwise). */
 export function overlapProblem(overlap: number, chunkSize: number): string | null {
-  return overlap > Math.floor(chunkSize / 2) ? `At most half a chunk (${Math.floor(chunkSize / 2)}).` : null
+  return overlap > Math.floor(chunkSize / 2) ? t('rag.error.overlap', { half: Math.floor(chunkSize / 2) }) : null
 }
