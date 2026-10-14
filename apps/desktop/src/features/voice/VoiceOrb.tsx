@@ -1,4 +1,5 @@
 import { useStore } from '@nanostores/react'
+import { type MessageKey, t, useT } from '../../lib/i18n.ts'
 import { IconMicrophone, IconMicrophoneOff, IconPlayerStop, IconX } from '@tabler/icons-react'
 import { cn } from '../../lib/cn.ts'
 import { AvoidedByViews } from './ActionHud.tsx'
@@ -6,14 +7,14 @@ import type { VoiceState } from '../../lib/voice/engine.ts'
 import { $prefs } from '../../store/backend.ts'
 import { $voice, $voiceActive, $voiceLevel, endConversation, interruptSpeech, LIVE_RATE_PER_MINUTE, toggleMute } from '../../store/voice.ts'
 
-const LABEL: Record<VoiceState, string> = {
-  off: '',
-  armed: 'Say "hey hermes"',
-  connecting: 'Connecting…',
-  listening: 'Listening',
-  transcribing: 'Got it…',
-  thinking: 'Thinking',
-  speaking: 'Speaking'
+const LABEL: Record<VoiceState, MessageKey | null> = {
+  off: null,
+  armed: 'voiceOrb.armed',
+  connecting: 'voiceOrb.connecting',
+  listening: 'voiceOrb.listening',
+  transcribing: 'voiceOrb.transcribing',
+  thinking: 'voiceOrb.thinking',
+  speaking: 'voiceOrb.speaking'
 }
 
 const TONE: Record<VoiceState, string> = {
@@ -58,9 +59,12 @@ export function Orb({ state, level, size = 44, className }: { state: VoiceState;
  * armed/mic state instead), so it never steals attention on its own.
  */
 export function VoiceOrb({ offsetClass = 'bottom-24' }: { offsetClass?: string }) {
+  useT()
   const voice = useStore($voice)
   const active = useStore($voiceActive)
   const level = useStore($voiceLevel)
+
+  const label = LABEL[voice.state]
 
   if (!active) {
     return null
@@ -77,11 +81,11 @@ export function VoiceOrb({ offsetClass = 'bottom-24' }: { offsetClass?: string }
 
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 text-[11.5px] text-fg-3">
-            <span className="font-medium text-fg-2">{LABEL[voice.state]}</span>
+            <span className="font-medium text-fg-2">{label && t(label)}</span>
             {voice.muted && <span className="rounded-full bg-warn/20 px-1.5 text-warn">muted</span>}
             {voice.engine === 'live' ? (
-              <span className="ml-auto flex items-center gap-1.5 tabular-nums" title="GPT-Live session time and today's estimated cost">
-                <span className="rounded-full bg-accent-soft px-1.5 text-accent-strong">Live</span>
+              <span className="ml-auto flex items-center gap-1.5 tabular-nums" title={t('voiceOrb.costTitle')}>
+                <span className="rounded-full bg-accent-soft px-1.5 text-accent-strong">{t('voiceOrb.live')}</span>
                 <span>{fmtSeconds(liveSeconds)}</span>
                 <span className="text-fg-4">·</span>
                 <span>≈ ${estimate.toFixed(2)} today</span>
@@ -97,18 +101,18 @@ export function VoiceOrb({ offsetClass = 'bottom-24' }: { offsetClass?: string }
         <div className="flex shrink-0 items-center gap-1">
           <button
             type="button"
-            aria-label={voice.muted ? 'Unmute microphone' : 'Mute microphone'}
+            aria-label={voice.muted ? t('voiceOrb.unmute') : t('voiceOrb.mute')}
             onClick={toggleMute}
             className={cn('flex size-8 items-center justify-center rounded-lg text-fg-2 hover:bg-white/10 hover:text-fg', voice.muted && 'text-warn')}
           >
             {voice.muted ? <IconMicrophoneOff size={16} /> : <IconMicrophone size={16} />}
           </button>
           {(voice.state === 'speaking' || voice.state === 'thinking') && (
-            <button type="button" aria-label="Stop talking" onClick={interruptSpeech} className="flex size-8 items-center justify-center rounded-lg text-fg-2 hover:bg-white/10 hover:text-fg">
+            <button type="button" aria-label={t('voiceOrb.stop')} onClick={interruptSpeech} className="flex size-8 items-center justify-center rounded-lg text-fg-2 hover:bg-white/10 hover:text-fg">
               <IconPlayerStop size={16} />
             </button>
           )}
-          <button type="button" aria-label="End conversation" onClick={() => void endConversation('user')} className="flex size-8 items-center justify-center rounded-lg text-fg-2 hover:bg-danger/20 hover:text-danger">
+          <button type="button" aria-label={t('voiceOrb.end')} onClick={() => void endConversation('user')} className="flex size-8 items-center justify-center rounded-lg text-fg-2 hover:bg-danger/20 hover:text-danger">
             <IconX size={16} />
           </button>
         </div>

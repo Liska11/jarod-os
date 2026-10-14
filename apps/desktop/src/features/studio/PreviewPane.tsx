@@ -1,4 +1,5 @@
 import { IconAppWindow, IconRefresh, IconWorld } from '@tabler/icons-react'
+import { t, useT } from '../../lib/i18n.ts'
 import { useEffect, useRef, useState } from 'react'
 import { Spinner } from '../../components/ui/primitives.tsx'
 import { cn } from '../../lib/cn.ts'
@@ -18,6 +19,7 @@ const isWeb = (target: string): boolean => /^https?:\/\//i.test(target)
  * site. Waits while the server is still starting and refreshes after Hermes changes files.
  */
 export function PreviewPane({ win, target, root, contentKey, compact = false }: { win: OSWindow; target: string | null; root: string | null; contentKey: number; compact?: boolean }) {
+  useT()
   const [viewId, setViewId] = useState<string | null>(null)
   const [url, setUrl] = useState('')
   const [loading, setLoading] = useState(false)
@@ -73,7 +75,7 @@ export function PreviewPane({ win, target, root, contentKey, compact = false }: 
     }
 
     void window.heraldOS.web
-      .openPreview(target, { root: root ?? undefined, title: 'Preview' })
+      .openPreview(target, { root: root ?? undefined, title: t('missionPreview.title') })
       .then(id => {
         idRef.current = id
         setViewId(id)
@@ -126,10 +128,10 @@ export function PreviewPane({ win, target, root, contentKey, compact = false }: 
           <span className="truncate text-fg-2">{label || 'No preview yet'}</span>
           {loading && <Spinner className="ml-auto shrink-0" />}
         </div>
-        <button type="button" disabled={!viewId} onClick={() => viewId && void attempt('native.failed.reloadPreview', () => window.heraldOS.web.reload(viewId))} className="flex size-6 items-center justify-center rounded-md text-fg-3 hover:bg-white/8 hover:text-fg disabled:opacity-40" title="Reload" aria-label="Reload preview">
+        <button type="button" disabled={!viewId} onClick={() => viewId && void attempt('native.failed.reloadPreview', () => window.heraldOS.web.reload(viewId))} className="flex size-6 items-center justify-center rounded-md text-fg-3 hover:bg-white/8 hover:text-fg disabled:opacity-40" title={t('preview.reload')} aria-label={t('preview.reloadAria')}>
           <IconRefresh size={14} />
         </button>
-        <button type="button" disabled={!target || !isWeb(target)} onClick={() => target && void openWebWindow(url || target)} className="flex size-6 items-center justify-center rounded-md text-fg-3 hover:bg-white/8 hover:text-fg disabled:opacity-40" title="Open in its own window" aria-label="Open preview in its own window">
+        <button type="button" disabled={!target || !isWeb(target)} onClick={() => target && void openWebWindow(url || target)} className="flex size-6 items-center justify-center rounded-md text-fg-3 hover:bg-white/8 hover:text-fg disabled:opacity-40" title={t('preview.ownWindow')} aria-label={t('preview.ownWindowAria')}>
           <IconAppWindow size={14} />
         </button>
       </div>
@@ -139,16 +141,16 @@ export function PreviewPane({ win, target, root, contentKey, compact = false }: 
             {error && target ? <Spinner /> : <IconWorld size={26} className="text-fg-4" />}
             <span>
               {!target
-                ? 'The site appears here once Hermes starts it or writes an index.html.'
+                ? t('preview.onceBuilt')
                 : error
                   ? retries.current >= MAX_RETRIES
                     ? `The site did not load: ${error}`
-                    : 'Waiting for the site to start…'
+                    : t('preview.awaitStart')
                   : covered
-                    ? 'The preview is hidden while a Hermes panel is open.'
+                    ? t('preview.hiddenByPanel')
                     : occluded
-                      ? 'Bring the Studio forward to see the preview.'
-                      : 'Opening…'}
+                      ? t('preview.bringForward')
+                      : t('preview.loading')}
             </span>
           </div>
         )}
