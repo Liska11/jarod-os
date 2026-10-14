@@ -3,6 +3,8 @@
  * every write and asks for a native confirmation when a change gives the agent more power or sends data elsewhere; the checks here only answer quickly.
  */
 
+import { dateLocale, t, type MessageKey } from '../../../lib/i18n.ts'
+
 export type Decision = 'allow' | 'ask' | 'deny'
 
 export interface PermissionRule {
@@ -59,43 +61,45 @@ export interface JarodOptions {
 
 // ---- validation (mirrors the engine) ---------------------------------------------------------
 
+const num = (value: number): string => value.toLocaleString(dateLocale() ?? 'en-US')
+
 /** Why a whole number is refused, or null. `zeroOff`: 0 is allowed and means "off". */
 export function intProblem(text: string, min: number, max: number, zeroOff = false): string | null {
-  const t = text.trim()
+  const value = text.trim()
 
-  if (!/^-?\d+$/.test(t)) {
-    return 'Whole number only.'
+  if (!/^-?\d+$/.test(value)) {
+    return t('validate.int')
   }
 
-  const n = Number(t)
+  const n = Number(value)
 
   if (zeroOff && n === 0) {
     return null
   }
 
-  return n >= min && n <= max ? null : `Between ${zeroOff ? '0 (off) or ' : ''}${min.toLocaleString('en-US')} and ${max.toLocaleString('en-US')}.`
+  return n >= min && n <= max ? null : t(zeroOff ? 'validate.intRangeOff' : 'validate.intRange', { min: num(min), max: num(max) })
 }
 
 /** A dollar amount: 0 (no limit) up to a million, at most four decimals. */
 export function moneyProblem(text: string): string | null {
-  const t = text.trim()
+  const value = text.trim()
 
-  if (!/^\d+(\.\d{1,4})?$/.test(t)) {
-    return 'An amount in dollars, like 2.50 (0 = no limit).'
+  if (!/^\d+(\.\d{1,4})?$/.test(value)) {
+    return t('validate.money')
   }
 
-  return Number(t) <= 1_000_000 ? null : 'At most 1,000,000.'
+  return Number(value) <= 1_000_000 ? null : t('validate.moneyMax')
 }
 
 /** A permission rule's tool: a tool name, a family segment or `*`. */
 export function ruleToolProblem(tool: string): string | null {
-  const t = tool.trim()
+  const value = tool.trim()
 
-  if (!t || t.length > 64) {
-    return 'A tool name of 1 to 64 characters.'
+  if (!value || value.length > 64) {
+    return t('validate.tool')
   }
 
-  return /^[A-Za-z0-9_./*-]+$/.test(t) ? null : 'Letters, digits and . _ / - only (or * for every tool).'
+  return /^[A-Za-z0-9_./*-]+$/.test(value) ? null : t('validate.toolChars')
 }
 
 /** A program the shell guard names: a bare name or an absolute path, nothing a shell would interpret. */
@@ -103,10 +107,10 @@ export function programProblem(program: string): string | null {
   const p = program.trim()
 
   if (!p || p.length > 260) {
-    return 'A program name or path.'
+    return t('validate.program')
   }
 
-  return /^[^\s"'`;&|<>*?$%(){}[\]^!]+$/.test(p) ? null : 'No space, quote or shell character.'
+  return /^[^\s"'`;&|<>*?$%(){}[\]^!]+$/.test(p) ? null : t('validate.programChars')
 }
 
 /** A writable folder: relative to the work folder, no `..`, no drive. */
@@ -114,10 +118,10 @@ export function rootProblem(root: string): string | null {
   const r = root.trim()
 
   if (!r || r.length > 200) {
-    return 'A folder path.'
+    return t('validate.root')
   }
 
-  return /^([a-zA-Z]:|[\\/])/.test(r) || /(^|[\\/])\.\.([\\/]|$)/.test(r) ? 'Relative to the work folder: no “..”, no drive, no leading slash.' : null
+  return /^([a-zA-Z]:|[\\/])/.test(r) || /(^|[\\/])\.\.([\\/]|$)/.test(r) ? t('validate.rootRelative') : null
 }
 
 /** Rules apply in order and a tool appears once. */
@@ -128,13 +132,13 @@ export function ruleListProblem(rules: readonly PermissionRule[]): string | null
     const tool = rule.tool.trim()
 
     if (seen.has(tool)) {
-      return `“${tool}” appears twice.`
+      return t('validate.ruleTwice', { tool })
     }
 
     seen.add(tool)
   }
 
-  return rules.length > 200 ? 'At most 200 rules.' : null
+  return rules.length > 200 ? t('validate.rulesMax') : null
 }
 
 export function moveItem<T>(items: readonly T[], from: number, to: number): T[] {
@@ -162,6 +166,8 @@ export function isUserRefusal(message: string): boolean {
   return /refusé par l.utilisateur/i.test(message)
 }
 
-export const DECISION_LABEL: Record<Decision, string> = { allow: 'Allow', ask: 'Ask', deny: 'Deny' }
+/** Each decision's name in the catalogue. */
+export const DECISION_LABEL: Record<Decision, MessageKey> = { allow: 'settings.decision.allow', ask: 'settings.decision.ask', deny: 'settings.decision.deny' }
 
-export const TOOL_SEARCH_LABEL: Record<JarodSettings['toolSearch'], string> = { auto: 'Automatic', on: 'Always', off: 'Never (show every tool to the model)' }
+/** Each tool-search mode's name in the catalogue. */
+export const TOOL_SEARCH_LABEL: Record<JarodSettings['toolSearch'], MessageKey> = { auto: 'settings.toolSearch.auto', on: 'settings.toolSearch.on', off: 'settings.toolSearch.off' }

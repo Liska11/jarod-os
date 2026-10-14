@@ -99,7 +99,7 @@ function BehaviourGroup({ s, api }: Props) {
         description={t('settings.agent.toolSearch.hint')}
         keywords="tool search tools hidden local model run_shell core"
         value={s.toolSearch}
-        options={(Object.keys(TOOL_SEARCH_LABEL) as JarodSettings['toolSearch'][]).map(id => ({ id, label: TOOL_SEARCH_LABEL[id] }))}
+        options={(Object.keys(TOOL_SEARCH_LABEL) as JarodSettings['toolSearch'][]).map(id => ({ id, label: t(TOOL_SEARCH_LABEL[id]) }))}
         disabled={saving}
         onChange={value => void save({ toolSearch: value })}
       />
@@ -156,7 +156,7 @@ function PermissionsGroup({ s, api }: Props) {
                   <select value={rule.decision} disabled={saving} onChange={event => setRules(draft.map((r, i) => (i === index ? { ...r, decision: event.target.value as Decision } : r)))} aria-label={t('settings.agent.decisionFor', { tool: rule.tool })} style={{ colorScheme: 'dark' }} className="glass-input h-7 rounded-md px-1.5 text-[12px] text-fg outline-none">
                     {(Object.keys(DECISION_LABEL) as Decision[]).map(d => (
                       <option key={d} value={d}>
-                        {DECISION_LABEL[d]}
+                        {t(DECISION_LABEL[d])}
                       </option>
                     ))}
                   </select>
@@ -189,7 +189,7 @@ function PermissionsGroup({ s, api }: Props) {
                 <select value={decision} onChange={event => setDecision(event.target.value as Decision)} aria-label={t('settings.agent.newRule.decision')} style={{ colorScheme: 'dark' }} className="glass-input h-8 rounded-lg px-2 text-[12.5px] text-fg outline-none">
                   {(Object.keys(DECISION_LABEL) as Decision[]).map(d => (
                     <option key={d} value={d}>
-                      {DECISION_LABEL[d]}
+                      {t(DECISION_LABEL[d])}
                     </option>
                   ))}
                 </select>

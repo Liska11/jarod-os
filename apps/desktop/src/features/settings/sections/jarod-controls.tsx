@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { dateLocale, t, useT } from '../../../lib/i18n.ts'
 import { GlassButton, Toggle } from '../../../components/ui/glass.tsx'
 import { jarod } from '../../../lib/jarod.ts'
 import { useBackendData } from '../../../lib/use-async.ts'
@@ -26,7 +27,7 @@ export function reportEngineError(title: string, error: unknown): void {
   const message = error instanceof Error ? error.message : String(error)
 
   if (isUserRefusal(message)) {
-    notify({ title: 'Not changed', body: 'You cancelled the confirmation.', level: 'info' })
+    notify({ title: t('controls.notChanged'), body: t('controls.cancelled'), level: 'info' })
   } else {
     notify({ title, body: settingErrorText(message), level: 'error' })
   }
@@ -37,7 +38,7 @@ export function useJarodSettings(): JarodSettingsApi {
   const [saving, setSaving] = useState(false)
   const reload = data.reload
 
-  const save = async (patch: Record<string, unknown>, title = 'Setting saved'): Promise<boolean> => {
+  const save = async (patch: Record<string, unknown>, title = t('controls.saved')): Promise<boolean> => {
     setSaving(true)
 
     try {
@@ -47,7 +48,7 @@ export function useJarodSettings(): JarodSettingsApi {
 
       return true
     } catch (error) {
-      reportEngineError('Could not save the setting', error)
+      reportEngineError(t('controls.saveFailed'), error)
 
       return false
     } finally {
@@ -85,6 +86,7 @@ export function ChoiceRow<T extends string>({ value, options, onChange, disabled
 
 /** A value shown in the description, edited inline as text; Save sends the parsed number. */
 export function NumberRow({ value, format, validate, onSave, disabled, hint, ...row }: RowShell & { value: number; format?: (value: number) => string; validate: (text: string) => string | null; onSave: (value: number) => Promise<boolean>; disabled?: boolean; hint?: string }) {
+  const { t } = useT()
   const [editing, setEditing] = useState(false)
   const [text, setText] = useState('')
   const problem = editing ? validate(text) : null
@@ -94,7 +96,7 @@ export function NumberRow({ value, format, validate, onSave, disabled, hint, ...
       {...row}
       description={
         <>
-          {row.description} <span className="text-fg-2">Now: {format ? format(value) : value.toLocaleString('en-US')}.</span>
+          {row.description} <span className="text-fg-2">{t('controls.now', { value: format ? format(value) : value.toLocaleString(dateLocale() ?? 'en-US') })}</span>
         </>
       }
       below={
@@ -117,18 +119,18 @@ export function NumberRow({ value, format, validate, onSave, disabled, hint, ...
             {hint && <div className="text-[11.5px] text-fg-4">{hint}</div>}
             <div className="flex justify-end gap-2">
               <GlassButton type="button" size="sm" variant="ghost" onClick={() => setEditing(false)}>
-                Cancel
+                {t('controls.cancel')}
               </GlassButton>
               <GlassButton type="submit" size="sm" variant="primary" disabled={Boolean(problem) || disabled}>
-                Save
+                {t('controls.save')}
               </GlassButton>
             </div>
           </form>
         )
       }
     >
-      <GlassButton size="sm" variant="secondary" disabled={disabled} onClick={() => (setText(String(value)), setEditing(true))} aria-label={`Change ${row.label}`}>
-        Change
+      <GlassButton size="sm" variant="secondary" disabled={disabled} onClick={() => (setText(String(value)), setEditing(true))} aria-label={t('controls.changeAria', { label: row.label })}>
+        {t('controls.change')}
       </GlassButton>
     </SettingsRow>
   )
@@ -136,16 +138,20 @@ export function NumberRow({ value, format, validate, onSave, disabled, hint, ...
 
 /** A text value shown in the description, edited inline; Save sends the trimmed text (empty allowed when `allowEmpty`). */
 export function TextRow({ value, validate, onSave, disabled, placeholder, mono, allowEmpty, ...row }: RowShell & { value: string; validate?: (text: string) => string | null; onSave: (value: string) => Promise<boolean>; disabled?: boolean; placeholder?: string; mono?: boolean; allowEmpty?: boolean }) {
+  const { t } = useT()
   const [editing, setEditing] = useState(false)
   const [text, setText] = useState('')
-  const problem = editing ? (!text.trim() && !allowEmpty ? 'Required.' : (validate?.(text.trim()) ?? null)) : null
+  const problem = editing ? (!text.trim() && !allowEmpty ? t('controls.required') : (validate?.(text.trim()) ?? null)) : null
 
   return (
     <SettingsRow
       {...row}
       description={
         <>
-          {row.description} <span className="text-fg-2">Now: {value ? <span className={mono ? 'font-mono' : ''}>{value}</span> : 'not set'}.</span>
+          {row.description}{' '}
+          <span className="text-fg-2">
+            {t('controls.nowPrefix')} {value ? <span className={mono ? 'font-mono' : ''}>{value}</span> : t('controls.notSet')}.
+          </span>
         </>
       }
       below={
@@ -167,18 +173,18 @@ export function TextRow({ value, validate, onSave, disabled, placeholder, mono, 
             {problem && <InlineNote tone="warn">{problem}</InlineNote>}
             <div className="flex justify-end gap-2">
               <GlassButton type="button" size="sm" variant="ghost" onClick={() => setEditing(false)}>
-                Cancel
+                {t('controls.cancel')}
               </GlassButton>
               <GlassButton type="submit" size="sm" variant="primary" disabled={Boolean(problem) || disabled}>
-                Save
+                {t('controls.save')}
               </GlassButton>
             </div>
           </form>
         )
       }
     >
-      <GlassButton size="sm" variant="secondary" disabled={disabled} onClick={() => (setText(value), setEditing(true))} aria-label={`Change ${row.label}`}>
-        Change
+      <GlassButton size="sm" variant="secondary" disabled={disabled} onClick={() => (setText(value), setEditing(true))} aria-label={t('controls.changeAria', { label: row.label })}>
+        {t('controls.change')}
       </GlassButton>
     </SettingsRow>
   )
@@ -186,6 +192,7 @@ export function TextRow({ value, validate, onSave, disabled, placeholder, mono, 
 
 /** A list of short strings (programs, folders, tool names): remove with the cross, add through the field. `validate` answers instantly; the engine decides. */
 export function ChipsEditor({ items, validate, onChange, disabled, placeholder, label }: { items: readonly string[]; validate: (item: string) => string | null; onChange: (items: string[]) => Promise<boolean>; disabled?: boolean; placeholder: string; label: string }) {
+  const { t } = useT()
   const [draft, setDraft] = useState('')
   const problem = draft.trim() ? validate(draft) : null
   const duplicate = items.includes(draft.trim())
@@ -201,11 +208,11 @@ export function ChipsEditor({ items, validate, onChange, disabled, placeholder, 
   return (
     <div className="flex flex-col gap-2">
       <div className="flex flex-wrap gap-1.5">
-        {items.length === 0 && <span className="text-[12px] text-fg-4">None.</span>}
+        {items.length === 0 && <span className="text-[12px] text-fg-4">{t('controls.none')}</span>}
         {items.map(item => (
           <span key={item} className="flex items-center gap-1 rounded-md bg-white/8 px-2 py-1 font-mono text-[12px] text-fg-2">
             {item}
-            <button type="button" disabled={disabled} onClick={() => void onChange(items.filter(other => other !== item))} aria-label={`Remove ${item} from ${label}`} className="text-fg-4 hover:text-fg disabled:opacity-40">
+            <button type="button" disabled={disabled} onClick={() => void onChange(items.filter(other => other !== item))} aria-label={t('controls.removeAria', { item, label })} className="text-fg-4 hover:text-fg disabled:opacity-40">
               ×
             </button>
           </span>
@@ -219,14 +226,14 @@ export function ChipsEditor({ items, validate, onChange, disabled, placeholder, 
         }}
       >
         <label className="glass-input flex h-8 min-w-0 flex-1 items-center rounded-lg px-2.5">
-          <span className="sr-only">Add to {label}</span>
+          <span className="sr-only">{t('controls.addToAria', { label })}</span>
           <input value={draft} onChange={event => setDraft(event.target.value)} placeholder={placeholder} spellCheck={false} className="min-w-0 flex-1 bg-transparent font-mono text-[12.5px] outline-none placeholder:text-fg-4" />
         </label>
         <GlassButton type="submit" size="sm" variant="secondary" disabled={disabled || !draft.trim() || Boolean(problem) || duplicate}>
-          Add
+          {t('controls.add')}
         </GlassButton>
       </form>
-      {(problem || duplicate) && <InlineNote tone="warn">{duplicate ? 'Already in the list.' : problem}</InlineNote>}
+      {(problem || duplicate) && <InlineNote tone="warn">{duplicate ? t('controls.alreadyListed') : problem}</InlineNote>}
     </div>
   )
 }
