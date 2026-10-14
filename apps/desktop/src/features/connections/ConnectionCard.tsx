@@ -2,8 +2,9 @@ import { IconPlugOff, IconPower, IconRefresh, IconTrash } from '@tabler/icons-re
 import { useEffect, useRef, useState } from 'react'
 import { GlassButton, GlassCard, MoreButton, StatusDot } from '../../components/ui/glass.tsx'
 import { cn } from '../../lib/cn.ts'
+import { useT } from '../../lib/i18n.ts'
 import { BrandLogo } from './brand-logos.tsx'
-import { type Connection, STATUS_LABEL, STATUS_TONE } from './connections-model.ts'
+import { type Connection, statusLabel, STATUS_TONE } from './connections-model.ts'
 
 export interface ConnectionActions {
   reconnect: (connection: Connection) => void
@@ -17,6 +18,8 @@ export function canToggle(connection: Connection): boolean {
 }
 
 export function ConnectionCard({ connection, selected, onSelect, actions, busy }: { connection: Connection; selected: boolean; onSelect: () => void; actions: ConnectionActions; busy?: boolean }) {
+  const { t } = useT()
+
   return (
     <GlassCard
       interactive
@@ -37,20 +40,20 @@ export function ConnectionCard({ connection, selected, onSelect, actions, busy }
 
       <div className="mt-3.5 flex items-center gap-2 text-[12.5px]">
         <StatusDot tone={STATUS_TONE[connection.status]} pulse={connection.status === 'error'} />
-        <span className={cn(connection.status === 'connected' ? 'text-ok' : connection.status === 'needs-auth' ? 'text-warn' : connection.status === 'error' ? 'text-danger' : 'text-fg-3')}>{STATUS_LABEL[connection.status]}</span>
+        <span className={cn(connection.status === 'connected' ? 'text-ok' : connection.status === 'needs-auth' ? 'text-warn' : connection.status === 'error' ? 'text-danger' : 'text-fg-3')}>{statusLabel(connection.status)}</span>
       </div>
       <div className="mt-1.5 truncate text-[12.5px] text-fg-3">{connection.scope}</div>
 
       <div className="mt-auto flex justify-end pt-3">
         <GlassButton
           size="sm"
-          aria-label={`Manage ${connection.name}`}
+          aria-label={t('conn.manageAria', { name: connection.name })}
           onClick={event => {
             event.stopPropagation()
             onSelect()
           }}
         >
-          Manage
+          {t('conn.manage')}
           <span aria-hidden="true">→</span>
         </GlassButton>
       </div>
@@ -59,7 +62,9 @@ export function ConnectionCard({ connection, selected, onSelect, actions, busy }
 }
 
 /** The "…" menu shared by cards and the detail header: Reconnect, Disable/Enable, Remove. */
-export function ConnectionMenu({ connection, actions, label = 'Connection options' }: { connection: Connection; actions: ConnectionActions; label?: string }) {
+export function ConnectionMenu({ connection, actions, label }: { connection: Connection; actions: ConnectionActions; label?: string }) {
+  const { t } = useT()
+  const title = label ?? t('conn.options')
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
@@ -93,16 +98,16 @@ export function ConnectionMenu({ connection, actions, label = 'Connection option
   }
   const enabled = connection.status !== 'disabled'
   const items = [
-    { label: 'Reconnect', icon: <IconRefresh size={15} />, onClick: pick(() => actions.reconnect(connection)), danger: false, hidden: false },
-    { label: enabled ? 'Disable' : 'Enable', icon: enabled ? <IconPlugOff size={15} /> : <IconPower size={15} />, onClick: pick(() => actions.setEnabled(connection, !enabled)), danger: false, hidden: !canToggle(connection) },
-    { label: connection.kind === 'provider' ? 'Sign out' : 'Remove', icon: <IconTrash size={15} />, onClick: pick(() => actions.remove(connection)), danger: true, hidden: false }
+    { label: t('conn.reconnect'), icon: <IconRefresh size={15} />, onClick: pick(() => actions.reconnect(connection)), danger: false, hidden: false },
+    { label: enabled ? t('conn.disable') : t('conn.enable'), icon: enabled ? <IconPlugOff size={15} /> : <IconPower size={15} />, onClick: pick(() => actions.setEnabled(connection, !enabled)), danger: false, hidden: !canToggle(connection) },
+    { label: connection.kind === 'provider' ? t('conn.signOut') : t('conn.remove'), icon: <IconTrash size={15} />, onClick: pick(() => actions.remove(connection)), danger: true, hidden: false }
   ].filter(item => !item.hidden)
 
   return (
     <div ref={ref} className="relative">
-      <MoreButton aria-label={`${label} for ${connection.name}`} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(value => !value)} />
+      <MoreButton aria-label={t('conn.optionsAria', { label: title, name: connection.name })} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(value => !value)} />
       {open && (
-        <div role="menu" aria-label={label} className="float absolute top-9 right-0 z-20 w-44 overflow-hidden rounded-xl p-1 animate-pop">
+        <div role="menu" aria-label={title} className="float absolute top-9 right-0 z-20 w-44 overflow-hidden rounded-xl p-1 animate-pop">
           {items.map(item => (
             <button
               key={item.label}

@@ -1,7 +1,7 @@
 import { findConnection, setConnectionEnabled } from '../store/connections-actions.ts'
 import { fail, ok, type OsCommand } from '../store/os-commands.ts'
 import { showPage } from '../store/windows.ts'
-import { loadConnections, STATUS_LABEL } from '../features/connections/connections-model.ts'
+import { loadConnections, statusLabel } from '../features/connections/connections-model.ts'
 
 /* Connections: MCP servers, messaging platforms, toolsets, provider sign-ins. */
 
@@ -21,7 +21,7 @@ export const connectionCommands: readonly OsCommand[] = [
       return ok(`${connected.length} of ${connections.length} connections connected`, {
         page: 'connections',
         spoken: connected.length ? `${connected.length} connected: ${connected.slice(0, 5).map(c => c.name).join(', ')}.` : 'Nothing is connected yet.',
-        items: connections.map(c => ({ id: c.id, name: c.name, kind: c.kind, status: STATUS_LABEL[c.status], scope: c.scope }))
+        items: connections.map(c => ({ id: c.id, name: c.name, kind: c.kind, status: statusLabel(c.status), scope: c.scope }))
       })
     }
   },
@@ -41,7 +41,7 @@ export const connectionCommands: readonly OsCommand[] = [
 
       showPage('connections')
 
-      return ok(`${connection.name}: ${STATUS_LABEL[connection.status]}`, { page: 'connections', highlight: { kind: 'connection', id: connection.id }, data: { id: connection.id, status: connection.status, tools: connection.tools.map(t => t.label) } })
+      return ok(`${connection.name}: ${statusLabel(connection.status)}`, { page: 'connections', highlight: { kind: 'connection', id: connection.id }, data: { id: connection.id, status: connection.status, tools: connection.tools.map(t => t.label) } })
     }
   },
   {

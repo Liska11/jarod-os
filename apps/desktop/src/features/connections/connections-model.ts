@@ -1,4 +1,5 @@
 import { rest } from '../../lib/rest.ts'
+import { t, type MessageKey } from '../../lib/i18n.ts'
 import type { ActivityEntry } from '../../store/missions.ts'
 import { failureText, isNotAvailable } from '../../lib/unavailable.ts'
 import { baseName } from '../../../shared/path-names.ts'
@@ -173,12 +174,18 @@ export interface ConnectionsSnapshot {
   warnings: string[]
 }
 
-export const STATUS_LABEL: Record<ConnectionStatus, string> = {
-  connected: 'Connected',
-  'needs-auth': 'Needs setup',
-  error: 'Error',
-  disabled: 'Disabled',
-  available: 'Available'
+/** Each status's name in the catalogue. */
+const STATUS_KEY: Record<ConnectionStatus, MessageKey> = {
+  connected: 'conn.status.connected',
+  'needs-auth': 'conn.status.needsAuth',
+  error: 'conn.status.error',
+  disabled: 'conn.status.disabled',
+  available: 'conn.status.available'
+}
+
+/** The status's name in the current language. */
+export function statusLabel(status: ConnectionStatus): string {
+  return t(STATUS_KEY[status])
 }
 
 export const STATUS_TONE: Record<ConnectionStatus, 'ok' | 'warn' | 'danger' | 'muted'> = {
