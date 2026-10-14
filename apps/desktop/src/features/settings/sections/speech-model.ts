@@ -2,6 +2,8 @@
  * Speech settings of the Jarod engine: the data side. Mirrors `get-jarod-options` (`sttProviders`, `voices`) and the `voice` entry of `set-jarod-settings`.
  */
 
+import { t } from '../../../lib/i18n.ts'
+
 export interface SttProviderOption {
   id: string
   name: string
@@ -13,23 +15,23 @@ export interface SttProviderOption {
 /** What choosing this transcription service means for your recordings. */
 export function speechSummary(provider: SttProviderOption | undefined): string {
   if (!provider) {
-    return 'Which service turns your voice into text.'
+    return t('speech.summary.none')
   }
 
-  const where = provider.local ? 'Runs on this PC: your voice stays here.' : 'Hosted: each recording is sent to it.'
+  const where = provider.local ? t('speech.summary.local') : t('speech.summary.hosted')
 
-  return provider.configured ? where : `${where} It needs an API key (Settings → Providers & keys).`
+  return provider.configured ? where : `${where}${t('speech.summary.needsKey')}`
 }
 
 /** The speaking speed: 0.25 to 4, decimals allowed. */
 export function rateProblem(text: string): string | null {
-  const t = text.trim()
+  const value = text.trim()
 
-  if (!/^\d+(\.\d+)?$/.test(t)) {
-    return 'A number like 1 or 1.25.'
+  if (!/^\d+(\.\d+)?$/.test(value)) {
+    return t('speech.rateNumber')
   }
 
-  const n = Number(t)
+  const n = Number(value)
 
-  return n >= 0.25 && n <= 4 ? null : 'From 0.25 to 4.'
+  return n >= 0.25 && n <= 4 ? null : t('speech.rateRange')
 }
