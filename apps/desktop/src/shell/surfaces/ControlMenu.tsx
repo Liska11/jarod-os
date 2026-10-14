@@ -65,6 +65,7 @@ import { $catalog, loadCatalog } from '../../store/catalog.ts'
 import { openSurface, relayToMain } from '../../store/shell.ts'
 import { openApp, showPage } from '../../store/windows.ts'
 import { attempt } from '../../lib/native.ts'
+import { t, type MessageKey } from '../../lib/i18n.ts'
 
 /*
  * The Jarod-OS control menu (Mod+M or Mod+Alt+Space), modelled on Omarchy's: a tree of groups whose leaves
@@ -113,8 +114,9 @@ export interface MenuItem {
 
 export interface PowerItem {
   action: PowerAction
-  label: string
-  hint: string
+  /** Catalogue keys: the language is read when the menu is drawn, not when this list is built. */
+  label: MessageKey
+  hint: MessageKey
   icon: Icon
   /** Destructive actions ask before running. */
   confirm: boolean
@@ -122,20 +124,24 @@ export interface PowerItem {
 }
 
 export const POWER_ITEMS: PowerItem[] = [
-  { action: 'lock', label: 'Lock', hint: 'Lock the session', icon: IconLock, confirm: false },
-  { action: 'suspend', label: 'Suspend', hint: 'Sleep now', icon: IconMoon, confirm: false },
-  { action: 'reboot', label: 'Restart', hint: 'Reboot the machine', icon: IconRotateClockwise, confirm: true },
-  { action: 'poweroff', label: 'Shut down', hint: 'Power off', icon: IconPower, confirm: true, danger: true },
-  { action: 'logout', label: 'Log out', hint: 'End the session', icon: IconLogout, confirm: true }
+  { action: 'lock', label: 'cm.power.lock', hint: 'cm.power.lock.hint', icon: IconLock, confirm: false },
+  { action: 'suspend', label: 'cm.power.suspend', hint: 'cm.power.suspend.hint', icon: IconMoon, confirm: false },
+  { action: 'reboot', label: 'cm.power.reboot', hint: 'cm.power.reboot.hint', icon: IconRotateClockwise, confirm: true },
+  { action: 'poweroff', label: 'cm.power.poweroff', hint: 'cm.power.poweroff.hint', icon: IconPower, confirm: true, danger: true },
+  { action: 'logout', label: 'cm.power.logout', hint: 'cm.power.logout.hint', icon: IconLogout, confirm: true }
 ]
 
-const powerItemLabel = (action: PowerAction): string => POWER_ITEMS.find(item => item.action === action)?.label ?? action
+const powerItemLabel = (action: PowerAction): string => {
+  const item = POWER_ITEMS.find(candidate => candidate.action === action)
 
-/** Confirmation copy for the destructive power actions. */
-const POWER_CONFIRM: Partial<Record<PowerAction, string>> = {
-  reboot: 'Open windows close and the machine restarts.',
-  poweroff: 'Open windows close and the machine powers off.',
-  logout: 'Open windows close and you return to the login screen.'
+  return item ? t(item.label) : action
+}
+
+/** Catalogue keys for the confirmation copy of the destructive power actions. */
+const POWER_CONFIRM: Partial<Record<PowerAction, MessageKey>> = {
+  reboot: 'cm.confirm.reboot',
+  poweroff: 'cm.confirm.poweroff',
+  logout: 'cm.confirm.logout'
 }
 
 /** Run a power action; resolves to an inline message when the machine cannot do it here. */
@@ -166,27 +172,27 @@ function buildMenu(actions: { applications: () => void; close: () => void }): Me
   return [
     {
       id: 'install',
-      label: 'Install',
-      hint: 'Apps, tools and web apps',
+      label: t('cm.install'),
+      hint: t('cm.install.hint'),
       icon: IconDownload,
       children: [
-        { id: 'install-catalog', label: 'From the catalog…', hint: 'AI agents, languages, editors, games, Windows', icon: IconApps, leaf: { kind: 'catalog', mode: 'install' } },
+        { id: 'install-catalog', label: t('cm.fromCatalog'), hint: t('cm.fromCatalog.hint'), icon: IconApps, leaf: { kind: 'catalog', mode: 'install' } },
         {
           id: 'install-app',
-          label: 'App…',
-          hint: 'Package name',
+          label: t('cm.app'),
+          hint: t('cm.package.hint'),
           icon: IconAppWindow,
-          leaf: { kind: 'form', submitLabel: 'Install', fields: [field('name', 'Package', 'e.g. firefox')], argv: values => ['install', 'app', values.name] }
+          leaf: { kind: 'form', submitLabel: t('cm.install'), fields: [field('name', t('cm.package'), t('cm.package.example'))], argv: values => ['install', 'app', values.name] }
         },
         {
           id: 'install-webapp',
-          label: 'Web App…',
-          hint: 'Name and URL',
+          label: t('cm.webapp'),
+          hint: t('cm.webapp.hint'),
           icon: IconWorld,
           leaf: {
             kind: 'form',
-            submitLabel: 'Install',
-            fields: [field('name', 'Name', 'e.g. Linear'), field('url', 'URL', 'https://')],
+            submitLabel: t('cm.install'),
+            fields: [field('name', t('cm.name'), t('cm.name.example')), field('url', t('cm.url'), 'https://')],
             argv: values => ['install', 'webapp', values.name, values.url]
           }
         }
@@ -194,112 +200,112 @@ function buildMenu(actions: { applications: () => void; close: () => void }): Me
     },
     {
       id: 'remove',
-      label: 'Remove',
-      hint: 'Uninstall',
+      label: t('cm.remove'),
+      hint: t('cm.remove.hint'),
       icon: IconTrash,
       children: [
-        { id: 'remove-catalog', label: 'From the catalog…', hint: 'What you installed from it', icon: IconApps, leaf: { kind: 'catalog', mode: 'remove' } },
+        { id: 'remove-catalog', label: t('cm.fromCatalog'), hint: t('cm.fromCatalogInstalled.hint'), icon: IconApps, leaf: { kind: 'catalog', mode: 'remove' } },
         {
           id: 'remove-app',
-          label: 'App…',
-          hint: 'Package name',
+          label: t('cm.app'),
+          hint: t('cm.package.hint'),
           icon: IconAppWindow,
-          leaf: { kind: 'form', submitLabel: 'Remove', fields: [field('name', 'Package', 'e.g. firefox')], argv: values => ['remove', 'app', values.name] }
+          leaf: { kind: 'form', submitLabel: t('cm.remove'), fields: [field('name', t('cm.package'), t('cm.package.example'))], argv: values => ['remove', 'app', values.name] }
         },
         {
           id: 'remove-webapp',
-          label: 'Web App…',
-          hint: 'Web app name',
+          label: t('cm.webapp'),
+          hint: t('cm.webappName.hint'),
           icon: IconWorld,
-          leaf: { kind: 'form', submitLabel: 'Remove', fields: [field('name', 'Name', 'e.g. Linear')], argv: values => ['remove', 'webapp', values.name] }
+          leaf: { kind: 'form', submitLabel: t('cm.remove'), fields: [field('name', t('cm.name'), t('cm.name.example'))], argv: values => ['remove', 'webapp', values.name] }
         }
       ]
     },
     {
       id: 'update',
-      label: 'Update',
-      hint: 'Jarod-OS',
+      label: t('cm.update'),
+      hint: t('cm.update.hint'),
       icon: IconRefresh,
       children: [
-        { id: 'update-herald-os', label: 'Jarod-OS', hint: 'The shell, system packages, apps and Hermes', icon: IconRefresh, leaf: { kind: 'cli', argv: ['update'] } },
-        { id: 'update-firmware-check', label: 'Firmware', hint: 'Check the BIOS, docks and drives (fwupd)', icon: IconCpu, leaf: { kind: 'cli', argv: ['firmware', 'check'] } },
-        { id: 'update-firmware', label: 'Install firmware updates', hint: 'Some finish on the next restart', icon: IconCpu, leaf: { kind: 'cli', argv: ['firmware', 'update'] } },
-        { id: 'update-rollback', label: 'Go back to the previous version', hint: 'The Jarod-OS image; it applies on restart', icon: IconHistory, leaf: { kind: 'cli', argv: ['rollback'] } }
+        { id: 'update-herald-os', label: 'Jarod-OS', hint: t('cm.updateShell.hint'), icon: IconRefresh, leaf: { kind: 'cli', argv: ['update'] } },
+        { id: 'update-firmware-check', label: t('cm.firmware'), hint: t('cm.firmware.hint'), icon: IconCpu, leaf: { kind: 'cli', argv: ['firmware', 'check'] } },
+        { id: 'update-firmware', label: t('cm.firmwareInstall'), hint: t('cm.firmwareInstall.hint'), icon: IconCpu, leaf: { kind: 'cli', argv: ['firmware', 'update'] } },
+        { id: 'update-rollback', label: t('cm.rollback'), hint: t('cm.rollback.hint'), icon: IconHistory, leaf: { kind: 'cli', argv: ['rollback'] } }
       ]
     },
     {
       id: 'style',
-      label: 'Style',
-      hint: 'Theme and wallpaper',
+      label: t('cm.style'),
+      hint: t('cm.style.hint'),
       icon: IconPalette,
       children: [
-        { id: 'style-theme', label: 'Theme…', hint: 'Pick a system theme', icon: IconBrush, leaf: { kind: 'theme' } },
-        { id: 'style-wallpaper', label: 'Wallpaper…', hint: 'Choose an image', icon: IconPhoto, leaf: { kind: 'wallpaper' } }
+        { id: 'style-theme', label: t('cm.theme'), hint: t('cm.theme.hint'), icon: IconBrush, leaf: { kind: 'theme' } },
+        { id: 'style-wallpaper', label: t('cm.wallpaper'), hint: t('cm.wallpaper.hint'), icon: IconPhoto, leaf: { kind: 'wallpaper' } }
       ]
     },
     {
       id: 'trigger',
-      label: 'Trigger',
-      hint: 'Reminders, capture, notices',
+      label: t('cm.trigger'),
+      hint: t('cm.trigger.hint'),
       icon: IconBolt,
       children: [
         {
           id: 'trigger-reminder',
-          label: 'Reminder…',
-          hint: 'In a while',
+          label: t('cm.reminder'),
+          hint: t('cm.reminder.hint'),
           icon: IconAlarm,
           leaf: {
             kind: 'form',
-            submitLabel: 'Set reminder',
-            fields: [field('duration', 'In', 'e.g. 10m, 1h30m'), field('message', 'Message', 'What to remind you of')],
+            submitLabel: t('cm.setReminder'),
+            fields: [field('duration', t('cm.in'), t('cm.in.example')), field('message', t('cm.message'), t('cm.message.example'))],
             argv: values => ['reminder', values.duration, values.message]
           }
         },
-        { id: 'trigger-ask-region', label: 'Ask about part of the screen', hint: 'Select a region, then ask Hermes', icon: IconCamera, leaf: { kind: 'cli', argv: ['capture', 'region', '--ask'], detached: true } },
-        { id: 'trigger-notice-time', label: 'Notice: Time', icon: IconClock, leaf: { kind: 'cli', argv: ['notice', 'time'] } },
-        { id: 'trigger-notice-battery', label: 'Notice: Battery', icon: IconBattery, leaf: { kind: 'cli', argv: ['notice', 'battery'] } },
-        { id: 'trigger-notice-weather', label: 'Notice: Weather', icon: IconCloud, leaf: { kind: 'cli', argv: ['notice', 'weather'] } }
+        { id: 'trigger-ask-region', label: t('cm.askRegion'), hint: t('cm.askRegion.hint'), icon: IconCamera, leaf: { kind: 'cli', argv: ['capture', 'region', '--ask'], detached: true } },
+        { id: 'trigger-notice-time', label: t('cm.noticeTime'), icon: IconClock, leaf: { kind: 'cli', argv: ['notice', 'time'] } },
+        { id: 'trigger-notice-battery', label: t('cm.noticeBattery'), icon: IconBattery, leaf: { kind: 'cli', argv: ['notice', 'battery'] } },
+        { id: 'trigger-notice-weather', label: t('cm.noticeWeather'), icon: IconCloud, leaf: { kind: 'cli', argv: ['notice', 'weather'] } }
       ]
     },
     {
       id: 'capture',
-      label: 'Capture',
-      hint: 'Screenshots, recording, colour, QR, text',
+      label: t('cm.capture'),
+      hint: t('cm.capture.hint'),
       icon: IconCamera,
       children: [
-        { id: 'capture-region', label: 'Screenshot a region', hint: 'Print', icon: IconCamera, leaf: { kind: 'cli', argv: ['capture', 'screenshot', 'region'], detached: true } },
-        { id: 'capture-window', label: 'Screenshot the window', hint: 'Super+Print', icon: IconAppWindow, leaf: { kind: 'cli', argv: ['capture', 'screenshot', 'window'], detached: true } },
-        { id: 'capture-screen', label: 'Screenshot the screen', hint: 'Super+Shift+Print', icon: IconDeviceDesktop, leaf: { kind: 'cli', argv: ['capture', 'screenshot', 'screen'], detached: true } },
-        { id: 'capture-record', label: 'Record the screen', hint: 'Again to stop · Super+Alt+Print', icon: IconVideo, leaf: { kind: 'cli', argv: ['capture', 'record'], detached: true } },
-        { id: 'capture-record-audio', label: 'Record with the microphone', hint: 'Again to stop', icon: IconMicrophone, leaf: { kind: 'cli', argv: ['capture', 'record', 'audio'], detached: true } },
-        { id: 'capture-camera', label: 'Camera bubble', hint: 'Your face in the corner', icon: IconCamera, leaf: { kind: 'local', run: () => openApp('camera') } },
-        { id: 'capture-color', label: 'Pick a colour', hint: 'Copies #rrggbb · Super+Ctrl+Print', icon: IconColorPicker, leaf: { kind: 'cli', argv: ['capture', 'color'], detached: true } },
-        { id: 'capture-qr', label: 'Read a QR code', hint: 'Copies what it says', icon: IconQrcode, leaf: { kind: 'cli', argv: ['capture', 'qr'], detached: true } },
-        { id: 'capture-text', label: 'Copy text (OCR)', hint: 'Select a region', icon: IconTextRecognition, leaf: { kind: 'cli', argv: ['capture', 'text'], detached: true } }
+        { id: 'capture-region', label: t('cm.shotRegion'), hint: 'Print', icon: IconCamera, leaf: { kind: 'cli', argv: ['capture', 'screenshot', 'region'], detached: true } },
+        { id: 'capture-window', label: t('cm.shotWindow'), hint: 'Super+Print', icon: IconAppWindow, leaf: { kind: 'cli', argv: ['capture', 'screenshot', 'window'], detached: true } },
+        { id: 'capture-screen', label: t('cm.shotScreen'), hint: 'Super+Shift+Print', icon: IconDeviceDesktop, leaf: { kind: 'cli', argv: ['capture', 'screenshot', 'screen'], detached: true } },
+        { id: 'capture-record', label: t('cm.record'), hint: t('cm.record.hint'), icon: IconVideo, leaf: { kind: 'cli', argv: ['capture', 'record'], detached: true } },
+        { id: 'capture-record-audio', label: t('cm.recordAudio'), hint: t('cm.recordAudio.hint'), icon: IconMicrophone, leaf: { kind: 'cli', argv: ['capture', 'record', 'audio'], detached: true } },
+        { id: 'capture-camera', label: t('cm.camera'), hint: t('cm.camera.hint'), icon: IconCamera, leaf: { kind: 'local', run: () => openApp('camera') } },
+        { id: 'capture-color', label: t('cm.colour'), hint: t('cm.colour.hint'), icon: IconColorPicker, leaf: { kind: 'cli', argv: ['capture', 'color'], detached: true } },
+        { id: 'capture-qr', label: t('cm.qr'), hint: t('cm.qr.hint'), icon: IconQrcode, leaf: { kind: 'cli', argv: ['capture', 'qr'], detached: true } },
+        { id: 'capture-text', label: t('cm.ocr'), hint: t('cm.ocr.hint'), icon: IconTextRecognition, leaf: { kind: 'cli', argv: ['capture', 'text'], detached: true } }
       ]
     },
     {
       id: 'toggle',
-      label: 'Toggle',
-      hint: 'Night light, do not disturb, stay awake',
+      label: t('cm.toggle'),
+      hint: t('cm.toggle.hint'),
       icon: IconToggleRight,
       children: [
-        { id: 'toggle-nightlight', label: 'Night light', hint: 'Warmer colours', icon: IconSunset2, leaf: { kind: 'cli', argv: ['toggle', 'nightlight'] } },
-        { id: 'toggle-dnd', label: 'Do not disturb', hint: 'Notifications stay in the bell', icon: IconMoon, leaf: { kind: 'cli', argv: ['toggle', 'dnd'] } },
-        { id: 'toggle-idle', label: 'Stay awake', hint: 'No lock, no sleep, screens on', icon: IconCoffee, leaf: { kind: 'cli', argv: ['toggle', 'idle'] } },
-        { id: 'toggle-screensaver', label: 'Screensaver', hint: 'After a few idle minutes', icon: IconDeviceDesktop, leaf: { kind: 'cli', argv: ['toggle', 'screensaver'] } },
-        { id: 'toggle-screensaver-now', label: 'Show the screensaver', hint: 'Now', icon: IconDeviceDesktop, leaf: { kind: 'cli', argv: ['screensaver'], detached: true } }
+        { id: 'toggle-nightlight', label: t('cm.nightLight'), hint: t('cm.nightLight.hint'), icon: IconSunset2, leaf: { kind: 'cli', argv: ['toggle', 'nightlight'] } },
+        { id: 'toggle-dnd', label: t('cm.dnd'), hint: t('cm.dnd.hint'), icon: IconMoon, leaf: { kind: 'cli', argv: ['toggle', 'dnd'] } },
+        { id: 'toggle-idle', label: t('cm.stayAwake'), hint: t('cm.stayAwake.hint'), icon: IconCoffee, leaf: { kind: 'cli', argv: ['toggle', 'idle'] } },
+        { id: 'toggle-screensaver', label: t('cm.screensaver'), hint: t('cm.screensaver.hint'), icon: IconDeviceDesktop, leaf: { kind: 'cli', argv: ['toggle', 'screensaver'] } },
+        { id: 'toggle-screensaver-now', label: t('cm.screensaverNow'), hint: t('cm.now'), icon: IconDeviceDesktop, leaf: { kind: 'cli', argv: ['screensaver'], detached: true } }
       ]
     },
     {
       id: 'system',
-      label: 'System',
-      hint: 'Lock, sleep, power',
+      label: t('cm.system'),
+      hint: t('cm.system.hint'),
       icon: IconPower,
       children: POWER_ITEMS.map(item => ({
         id: `system-${item.action}`,
-        label: item.label,
-        hint: item.hint,
+        label: t(item.label),
+        hint: t(item.hint),
         icon: item.icon,
         danger: item.danger,
         leaf: { kind: 'power', action: item.action, confirm: item.confirm }
@@ -307,15 +313,15 @@ function buildMenu(actions: { applications: () => void; close: () => void }): Me
     },
     {
       id: 'hermes',
-      label: 'Hermes',
-      hint: 'Shell windows',
+      label: t('cm.hermes'),
+      hint: t('cm.hermes.hint'),
       icon: IconApps,
       children: [
-        { id: 'hermes-applications', label: 'Applications', hint: 'Launcher', icon: IconApps, leaf: { kind: 'local', run: actions.applications } },
+        { id: 'hermes-applications', label: t('cm.applications'), hint: t('cm.applications.hint'), icon: IconApps, leaf: { kind: 'local', run: actions.applications } },
         {
           id: 'hermes-terminal',
-          label: 'Terminal',
-          hint: 'Open a shell',
+          label: t('cm.terminal'),
+          hint: t('cm.terminal.hint'),
           icon: IconTerminal2,
           leaf: {
             kind: 'local',
@@ -327,8 +333,8 @@ function buildMenu(actions: { applications: () => void; close: () => void }): Me
         },
         {
           id: 'hermes-files',
-          label: 'Files',
-          hint: 'Hermes window',
+          label: t('cm.files'),
+          hint: t('cm.window.hint'),
           icon: IconFolder,
           leaf: {
             kind: 'local',
@@ -340,8 +346,8 @@ function buildMenu(actions: { applications: () => void; close: () => void }): Me
         },
         {
           id: 'hermes-settings',
-          label: 'Settings',
-          hint: 'Hermes window',
+          label: t('cm.settings'),
+          hint: t('cm.window.hint'),
           icon: IconSettings,
           leaf: {
             kind: 'local',
@@ -351,7 +357,7 @@ function buildMenu(actions: { applications: () => void; close: () => void }): Me
             }
           }
         },
-        { id: 'hermes-hotkeys', label: 'Hotkeys', hint: 'Show the overlay', icon: IconKeyboard, leaf: { kind: 'cli', argv: ['wm', 'show-hotkey-overlay'], detached: true } }
+        { id: 'hermes-hotkeys', label: t('cm.hotkeys'), hint: t('cm.hotkeys.hint'), icon: IconKeyboard, leaf: { kind: 'cli', argv: ['wm', 'show-hotkey-overlay'], detached: true } }
       ]
     }
   ]
@@ -427,10 +433,10 @@ export function withExtensions(menu: MenuItem[], extensions: MenuExtensions, clo
   }
 
   if (extensions.errors.length > 0) {
-    yours.push({ id: 'yours-problems', label: 'menu.json has problems', hint: extensions.errors[0], icon: IconAlertTriangle, danger: true, leaf: { kind: 'message', text: extensions.errors.join('\n') } })
+    yours.push({ id: 'yours-problems', label: t('cm.menuProblems'), hint: extensions.errors[0], icon: IconAlertTriangle, danger: true, leaf: { kind: 'message', text: extensions.errors.join('\n') } })
   }
 
-  return yours.length > 0 ? [...groups, { id: 'yours', label: 'Yours', hint: 'Your entries from menu.json', icon: IconStar, children: yours }] : groups
+  return yours.length > 0 ? [...groups, { id: 'yours', label: t('cm.yours'), hint: t('cm.yours.hint'), icon: IconStar, children: yours }] : groups
 }
 
 interface FlatItem {
@@ -686,7 +692,7 @@ export function ControlMenu({ onClose, onApplications, initialItem }: ControlMen
     <div className="float flex flex-col overflow-hidden rounded-2xl animate-pop" onKeyDown={onKeyDown}>
       <div className="flex items-center gap-3 px-4 pt-4 pb-3">
         {path.length > 0 || step ? (
-          <button type="button" aria-label="Back" onClick={back} className="flex size-6 items-center justify-center rounded-md text-fg-3 hover:bg-white/10 hover:text-fg">
+          <button type="button" aria-label={t('cm.back')} onClick={back} className="flex size-6 items-center justify-center rounded-md text-fg-3 hover:bg-white/10 hover:text-fg">
             <IconChevronLeft size={16} />
           </button>
         ) : (
@@ -716,13 +722,13 @@ export function ControlMenu({ onClose, onApplications, initialItem }: ControlMen
               ref={inputRef}
               value={query}
               onChange={event => setQuery(event.target.value)}
-              placeholder={path.length > 0 ? `Filter ${path[path.length - 1]?.label ?? ''}` : 'Type to filter'}
-              aria-label="Filter menu"
+              placeholder={path.length > 0 ? t('cm.filter', { name: path[path.length - 1]?.label ?? '' }) : t('cm.typeToFilter')}
+              aria-label={t('cm.filterMenu')}
               className="min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-fg-4"
             />
           </label>
           <div ref={listRef} className="flex max-h-[400px] flex-col gap-0.5 overflow-y-auto p-2" role="menu">
-            {visible.length === 0 && <div className="px-3 py-6 text-center text-[12.5px] text-fg-4">Nothing matches "{query.trim()}"</div>}
+            {visible.length === 0 && <div className="px-3 py-6 text-center text-[12.5px] text-fg-4">{t('cm.nothingMatches', { query: query.trim() })}</div>}
             {visible.map(({ item, trail }, index) => {
               const ItemIcon = item.icon
               const isActive = index === active
@@ -828,11 +834,11 @@ function FormStep({ item, leaf, onCancel, onSubmit }: { item: MenuItem; leaf: Fo
       ))}
       <div className="flex items-center justify-between gap-3 pt-1">
         <span className="text-[11.5px] text-fg-4">
-          <Kbd>↵</Kbd> {leaf.submitLabel.toLowerCase()} · <Kbd>esc</Kbd> back
+          <Kbd>↵</Kbd> {leaf.submitLabel.toLowerCase()} · <Kbd>esc</Kbd> {t('cm.back').toLowerCase()}
         </span>
         <div className="flex items-center gap-2">
           <GlassButton size="sm" variant="ghost" onClick={onCancel}>
-            Cancel
+            {t('cm.cancel')}
           </GlassButton>
           <GlassButton size="sm" variant="primary" type="submit" disabled={!complete}>
             {leaf.submitLabel}
@@ -872,24 +878,24 @@ export function PowerConfirm({ action, onCancel, onDone }: { action: PowerAction
   }
 
   return (
-    <div className="flex flex-col gap-3 p-4" role="alertdialog" aria-label={`${label}?`}>
+    <div className="flex flex-col gap-3 p-4" role="alertdialog" aria-label={t('cm.requires', { name: label })}>
       <div className="flex items-start gap-3">
         <span className={cn('icon-tile size-9 rounded-lg', danger && 'text-danger')}>
           <IconAlertTriangle size={18} />
         </span>
         <div className="min-w-0">
-          <div className="text-[13px] font-medium text-fg">{label} now?</div>
-          <div className="text-[12px] text-fg-3">{POWER_CONFIRM[action] ?? 'This cannot be undone.'}</div>
+          <div className="text-[13px] font-medium text-fg">{t('cm.nowQuestion', { name: label })}</div>
+          <div className="text-[12px] text-fg-3">{POWER_CONFIRM[action] ? t(POWER_CONFIRM[action]) : t('cm.irreversible')}</div>
         </div>
       </div>
       {message && <InlineMessage text={message} tone={message === CLI_UNAVAILABLE_MESSAGE ? 'muted' : 'danger'} />}
       <div className="flex items-center justify-between gap-3">
         <span className="text-[11.5px] text-fg-4">
-          <Kbd>↵</Kbd> confirm · <Kbd>esc</Kbd> back
+          <Kbd>↵</Kbd> {t('cm.confirmWord')} · <Kbd>esc</Kbd> {t('cm.back').toLowerCase()}
         </span>
         <div className="flex items-center gap-2">
           <GlassButton size="sm" variant="ghost" onClick={onCancel}>
-            Cancel
+            {t('cm.cancel')}
           </GlassButton>
           <GlassButton ref={confirmRef} size="sm" variant={danger ? 'danger' : 'primary'} onClick={confirm} disabled={busy || message === CLI_UNAVAILABLE_MESSAGE}>
             {busy && <Spinner />}
@@ -936,23 +942,23 @@ function RunStep({ title, argv, onClose, onBack }: { title: string; argv: string
           {!outcome ? <Spinner className="size-4" /> : outcome.ok ? <IconCheck size={18} /> : outcome.unavailable ? <IconTerminal2 size={18} /> : <IconAlertTriangle size={18} />}
         </span>
         <div className="min-w-0 flex-1">
-          <div className="text-[13px] font-medium text-fg">{!outcome ? `${title}…` : outcome.ok ? `${title} done` : outcome.unavailable ? title : `${title} failed`}</div>
+          <div className="text-[13px] font-medium text-fg">{!outcome ? t('cm.running.title', { title }) : outcome.ok ? t('cm.done.title', { title }) : outcome.unavailable ? title : t('cm.failed.title', { title })}</div>
           <div className="truncate font-mono text-[11.5px] text-fg-4" title={command}>
             {command}
           </div>
         </div>
       </div>
-      {outcome && <InlineMessage text={outcome.output || (outcome.ok ? 'Finished with no output.' : `Exited with code ${outcome.code}.`)} tone={outcome.unavailable ? 'muted' : outcome.ok ? 'ok' : 'danger'} />}
+      {outcome && <InlineMessage text={outcome.output || (outcome.ok ? t('cm.noOutput') : t('cm.exitedCode', { code: outcome.code }))} tone={outcome.unavailable ? 'muted' : outcome.ok ? 'ok' : 'danger'} />}
       <div className="flex items-center justify-between gap-3">
-        <span className="text-[11.5px] text-fg-4">{outcome ? <><Kbd>↵</Kbd> close · <Kbd>esc</Kbd> back</> : 'Running'}</span>
+        <span className="text-[11.5px] text-fg-4">{outcome ? <><Kbd>↵</Kbd> {t('cm.closeWord')} · <Kbd>esc</Kbd> {t('cm.back').toLowerCase()}</> : t('cm.running')}</span>
         <div className="flex items-center gap-2">
           {outcome && (
             <GlassButton size="sm" variant="ghost" onClick={onBack}>
-              Back
+              {t('cm.back')}
             </GlassButton>
           )}
           <GlassButton ref={doneRef} size="sm" variant="primary" onClick={onClose} disabled={!outcome}>
-            Close
+            {t('cm.close')}
           </GlassButton>
         </div>
       </div>
@@ -977,7 +983,7 @@ function ThemeStep({ onBack, onRun }: { onBack: () => void; onRun: (title: strin
       }
 
       if (!list.ok) {
-        setMessage(list.output || `theme list exited with code ${list.code}`)
+        setMessage(list.output || t('cm.themeListFailed', { code: list.code }))
         setThemes([])
 
         return
@@ -1000,7 +1006,7 @@ function ThemeStep({ onBack, onRun }: { onBack: () => void; onRun: (title: strin
     setActive(0)
   }, [trimmed])
 
-  const choose = (name: string) => onRun(`Theme ${name}`, ['theme', 'set', name])
+  const choose = (name: string) => onRun(t('cm.themeSet', { name }), ['theme', 'set', name])
 
   const onKeyDown = (event: ReactKeyboardEvent<HTMLElement>) => {
     if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
@@ -1025,23 +1031,23 @@ function ThemeStep({ onBack, onRun }: { onBack: () => void; onRun: (title: strin
   if (!themes) {
     return (
       <div className="flex items-center gap-3 px-4 py-6 text-[12.5px] text-fg-3">
-        <Spinner /> Loading themes…
+        <Spinner /> {t('cm.loadingThemes')}
       </div>
     )
   }
 
   if (message || themes.length === 0) {
-    return <MessageStep title="Theme" text={message ?? 'No themes were listed.'} tone={message === CLI_UNAVAILABLE_MESSAGE ? 'muted' : 'danger'} onBack={onBack} />
+    return <MessageStep title={t('cm.themeTitle')} text={message ?? t('cm.noThemes')} tone={message === CLI_UNAVAILABLE_MESSAGE ? 'muted' : 'danger'} onBack={onBack} />
   }
 
   return (
     <div className="flex flex-col" onKeyDown={onKeyDown}>
       <label className="mx-3 mt-3 flex h-9 items-center gap-2.5 rounded-lg px-3 glass-input">
         <IconSearch size={15} className="shrink-0 text-fg-3" />
-        <input ref={inputRef} value={query} onChange={event => setQuery(event.target.value)} placeholder="Filter themes" aria-label="Filter themes" className="min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-fg-4" />
+        <input ref={inputRef} value={query} onChange={event => setQuery(event.target.value)} placeholder={t('cm.filterThemes')} aria-label={t('cm.filterThemes')} className="min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-fg-4" />
       </label>
-      <div className="flex max-h-[360px] flex-col gap-0.5 overflow-y-auto p-2" role="listbox" aria-label="Themes">
-        {visible.length === 0 && <div className="px-3 py-6 text-center text-[12.5px] text-fg-4">No theme matches "{query.trim()}"</div>}
+      <div className="flex max-h-[360px] flex-col gap-0.5 overflow-y-auto p-2" role="listbox" aria-label={t('cm.themes')}>
+        {visible.length === 0 && <div className="px-3 py-6 text-center text-[12.5px] text-fg-4">{t('cm.noThemeMatches', { query: query.trim() })}</div>}
         {visible.map((name, index) => (
           <button
             key={name}
@@ -1056,7 +1062,7 @@ function ThemeStep({ onBack, onRun }: { onBack: () => void; onRun: (title: strin
               <IconBrush size={16} />
             </span>
             <span className="flex-1 truncate text-left">{name}</span>
-            {name === current && <IconCheck size={14} className="text-accent-strong" aria-label="Current theme" />}
+            {name === current && <IconCheck size={14} className="text-accent-strong" aria-label={t('cm.currentTheme')} />}
           </button>
         ))}
       </div>
@@ -1092,7 +1098,7 @@ function CatalogStep({ mode, onBack, onRun }: { mode: 'install' | 'remove'; onBa
     listRef.current?.querySelector<HTMLElement>('[data-active="true"]')?.scrollIntoView({ block: 'nearest' })
   }, [active])
 
-  const choose = (entry: CatalogEntryView) => onRun(`${mode === 'install' ? 'Install' : 'Remove'} ${entry.label}`, [mode, entry.id])
+  const choose = (entry: CatalogEntryView) => onRun(`${mode === 'install' ? t('cm.install') : t('cm.remove')} ${entry.label}`, [mode, entry.id])
 
   const onKeyDown = (event: ReactKeyboardEvent<HTMLElement>) => {
     if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
@@ -1117,23 +1123,23 @@ function CatalogStep({ mode, onBack, onRun }: { mode: 'install' | 'remove'; onBa
   if (!catalog.loaded) {
     return (
       <div className="flex items-center gap-3 px-4 py-6 text-[12.5px] text-fg-3">
-        <Spinner /> Checking what is installed…
+        <Spinner /> {t('cm.checkingInstalled')}
       </div>
     )
   }
 
   if (catalog.error) {
-    return <MessageStep title="Catalog" text={catalog.error} tone="danger" onBack={onBack} />
+    return <MessageStep title={t('cm.catalog')} text={catalog.error} tone="danger" onBack={onBack} />
   }
 
   return (
     <div className="flex flex-col" onKeyDown={onKeyDown}>
       <label className="mx-3 mt-3 flex h-9 items-center gap-2.5 rounded-lg px-3 glass-input">
         <IconSearch size={15} className="shrink-0 text-fg-3" />
-        <input ref={inputRef} value={query} onChange={event => setQuery(event.target.value)} placeholder={mode === 'install' ? 'Filter: claude, node, steam, windows…' : 'Filter installed'} aria-label="Filter the catalog" className="min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-fg-4" />
+        <input ref={inputRef} value={query} onChange={event => setQuery(event.target.value)} placeholder={mode === 'install' ? t('cm.filterCatalog.example') : t('cm.filterInstalled')} aria-label={t('cm.filterCatalog')} className="min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-fg-4" />
       </label>
-      <div ref={listRef} className="flex max-h-[360px] flex-col gap-0.5 overflow-y-auto p-2" role="listbox" aria-label="Catalog">
-        {rows.length === 0 && <div className="px-3 py-6 text-center text-[12.5px] text-fg-4">{trimmed ? `Nothing matches "${query.trim()}"` : mode === 'install' ? 'Everything here is installed.' : 'Nothing from the catalog is installed yet.'}</div>}
+      <div ref={listRef} className="flex max-h-[360px] flex-col gap-0.5 overflow-y-auto p-2" role="listbox" aria-label={t('cm.catalog')}>
+        {rows.length === 0 && <div className="px-3 py-6 text-center text-[12.5px] text-fg-4">{trimmed ? t('cm.nothingMatches', { query: query.trim() }) : mode === 'install' ? t('cm.catalogEmptyInstall') : t('cm.catalogEmptyRemove')}</div>}
         {rows.map(({ entry, group }, index) => (
           <button
             key={entry.id}
@@ -1150,7 +1156,7 @@ function CatalogStep({ mode, onBack, onRun }: { mode: 'install' | 'remove'; onBa
               <span className="truncate text-fg-4">{group} ›</span>
               <span className="truncate">{entry.label}</span>
             </span>
-            <span className="truncate text-[11px] text-fg-4">{entry.method === 'link' ? 'download page' : entry.method}</span>
+            <span className="truncate text-[11px] text-fg-4">{entry.method === 'link' ? t('cm.downloadPage') : entry.method}</span>
           </button>
         ))}
       </div>
@@ -1171,7 +1177,7 @@ function MessageStep({ title, text, tone, onBack }: { title: string; text: strin
       <InlineMessage text={text} tone={tone} />
       <div className="flex justify-end">
         <GlassButton ref={backRef} size="sm" onClick={onBack}>
-          Back
+          {t('cm.back')}
         </GlassButton>
       </div>
     </div>
@@ -1252,7 +1258,7 @@ export function PowerCard({ onClose }: { onClose: () => void }) {
     <div className="float flex flex-col overflow-hidden rounded-2xl animate-pop" onKeyDown={onKeyDown}>
       <div className="flex items-center gap-3 px-4 pt-4 pb-3">
         <HermesAvatar size={22} rounded={6} />
-        <span className="text-[14px] font-semibold">Power</span>
+        <span className="text-[14px] font-semibold">{t('cm.power')}</span>
         <span className="flex-1" />
         <Kbd>esc</Kbd>
       </div>
@@ -1261,7 +1267,7 @@ export function PowerCard({ onClose }: { onClose: () => void }) {
         <PowerConfirm action={confirm} onCancel={() => setConfirm(null)} onDone={onClose} />
       ) : (
         <div className="flex flex-col gap-3 p-4">
-          <div ref={gridRef} className="grid grid-cols-5 gap-3" role="menu" aria-label="Power actions">
+          <div ref={gridRef} className="grid grid-cols-5 gap-3" role="menu" aria-label={t('cm.powerActions')}>
             {POWER_ITEMS.map((item, index) => {
               const ItemIcon = item.icon
 
@@ -1282,7 +1288,7 @@ export function PowerCard({ onClose }: { onClose: () => void }) {
                   )}
                 >
                   <span className={cn('icon-tile size-11 rounded-xl', item.danger && 'text-danger')}>{busy === item.action ? <Spinner className="size-4" /> : <ItemIcon size={22} />}</span>
-                  {item.label}
+                  {t(item.label)}
                 </button>
               )
             })}
