@@ -88,7 +88,7 @@ Avant de cloner, refaire un bundle si des commits ont été ajoutés après le 1
 
 - **Windows** : installeur NSIS non signé et paquet appx ; instance unique ; mode sans échec (`--safe-mode`) ; récupération après plantage du rendu ; géométrie de fenêtre mémorisée ; icône de notification ; réglages du shell sous `%APPDATA%\Jarod-OS\config`, avec migration automatique ; écritures atomiques des réglages.
 - **Sécurité** : sockets de contrôle limités (1 Mo par ligne, jeton comparé à temps constant) ; `nodemailer` 10, `pnpm audit --prod` à 0 faille.
-- **i18n** : infrastructure typée en/fr ; langue et nom de l'assistant réglables ; **539** chaînes restent en anglais, et c'est un plancher (le rapport ne compte que le JSX ; voir 4.B.6).
+- **i18n** : infrastructure typée en/fr ; langue et nom de l'assistant réglables ; **493** chaînes restent en anglais, et c'est un plancher (le rapport ne compte que le JSX ; voir 4.B.6).
 - **Premier lancement (Windows)** : assistant avec audit du système, bot Telegram, import des clés API ; rouvrable avec la commande `setup.open` ; commande `system.audit` pour l'agent. Détail en section 0.
 - **Pinokio** (ADR-022, commits `a49c985`, `d581ed2`, `8e27c66`, `23e0d6b`) :
   - Le moteur `pinokiod` est embarqué. Il démarre à la demande et s'arrête à la sortie de Jarod-OS.
@@ -103,7 +103,7 @@ Avant de cloner, refaire un bundle si des commits ont été ajoutés après le 1
 
 ## 3. Travail en cours
 
-Rien n'est en cours : l'arbre de travail est propre, et la dernière tâche (traduction de la section Plugins, plus la correction des accents français) est commitée.
+Rien n'est en cours : l'arbre de travail est propre, et la dernière tâche (la page Automatisations et ses phrases de planning) est commitée.
 
 ## 4. Ce qui reste à faire (par priorité)
 
@@ -115,17 +115,20 @@ Rien n'est en cours : l'arbre de travail est propre, et la dernière tâche (tra
 5. **Paquet `.appx`** : **construit le 14/10** (193 974 260 octets, SHA-256 `64a91c4d…`, en section 2) mais **non signé** et jamais installé ni lancé. Reste : **option réseau `JAROD_PINOKIO_LAN=1`** — jamais testée.
 
 ### B. À finir (petites tâches)
-6. **Traductions** : **539** chaînes restent en anglais (`npm run i18n:report --workspace apps/desktop` les liste par fichier).
-   - Déjà fait : les sections de Réglages Général, Apparence, Confidentialité, Voix, Appareils et API, Agent et sécurité, Règles d'automatisation, {assistant} et agents, Persona et profils, Secrets, Serveurs MCP, Documents (RAG), Skills, Plugins, plus la page Kanban, le panneau d'état (Wi-Fi, Bluetooth, Son, Écrans, Alimentation, horloge), le bloc du moteur local llama.cpp et **le menu de contrôle (Mod+M)** en entier (arbre de menus, items d'alimentation, confirmations, étapes formulaire/confirmation/exécution/thème/catalogue/message).
-   - Modèles traduits : `kanban-model`, `rag-model`, `local-models-model`, `skills-model` (`KIND_KEY` + `kindLabel()` remplacent `KIND_LABEL`).
-   - **Le rapport ne compte que le JSX** (texte entre balises et attributs `title`/`label`/`placeholder`/`description`/`aria-label`/`hint`). Les chaînes des modules de données et de présentation n'y figurent pas alors qu'elles s'affichent : `automations/cron-humanize.ts` (phrases de planning, jours, mois, durées), `automations/presentation.tsx` (`describeJob`, `describeGather`, `describeDeliver`, libellés `GATHER_RULES`), `shared/events.ts` (`HERALD_EVENTS[].label`, `describeRule`), `shared/plugins.ts` (`describePermissions`), `Kanban`/`jarod-settings-model`/`devices-model`/`mcp-model`/`rules-model`/`vault-model`. **539 est donc un plancher, pas le total réel.**
-   - Pour ces modules partagés avec le processus principal (`shared/events.ts`, `shared/plugins.ts` sont importés par `electron/`), **ne pas** rendre la fonction elle-même dépendante de la langue : garder la fonction anglaise (contrat de l'API de contrôle, assertée par les tests) et formater côté interface avec `t('clé')` — c'est ce qui a été fait pour `plugins.perm.*`.
-   - Suivants, dans l'ordre du rapport : `automations/AutomationDetail.tsx` (17), `settings/sections/LocalModelsSection.tsx` (17), `automations/AutomationsPage.tsx` (16), `settings/sections/DataSection.tsx` (16), `MessagingSection.tsx` (16), `setup/FirstRunSetup.tsx` (16)…
+6. **Traductions** : **493** chaînes restent en anglais (`npm run i18n:report --workspace apps/desktop` les liste par fichier).
+   - Déjà fait : les sections de Réglages Général, Apparence, Confidentialité, Voix, Appareils et API, Agent et sécurité, Règles d'automatisation, {assistant} et agents, Persona et profils, Secrets, Serveurs MCP, Documents (RAG), Skills, Plugins, **toute la page Automatisations** (page, cartes, historique, colonne de détail Quand/Rassembler/Livrer, formulaire, menu d'un job) plus **les phrases de planning de `cron-humanize.ts`**, la page Kanban, le panneau d'état (Wi-Fi, Bluetooth, Son, Écrans, Alimentation, horloge), le bloc du moteur local llama.cpp et le menu de contrôle (Mod+M) en entier.
+   - Modèles traduits : `kanban-model`, `rag-model`, `local-models-model`, `skills-model` (`KIND_KEY` + `kindLabel()` remplacent `KIND_LABEL`), `automations/presentation.tsx` (`describeJob`, `describeGather`, `describeDeliver`, `eventLabel`, `ruleText`), `automations/cron-humanize.ts`.
+   - **Le rapport ne compte que le JSX** (texte entre balises et attributs `title`/`label`/`placeholder`/`description`/`aria-label`/`hint`). Celles des modules de données et de présentation n'y figurent pas alors qu'elles s'affichent : `shared/events.ts` (`HERALD_EVENTS[].label`, `describeRule`), `shared/plugins.ts` (`describePermissions`), `kanban-model`, `jarod-settings-model`, `devices-model`, `mcp-model`, `rules-model`, `vault-model`. **493 est donc un plancher, pas le total réel.**
+   - Pour ces modules partagés avec le processus principal (`shared/events.ts`, `shared/plugins.ts` sont importés par `electron/`), **ne pas** rendre la fonction elle-même dépendante de la langue : garder la fonction anglaise (contrat de l'API de contrôle, assertée par les tests) et formater côté interface avec `t('clé')` — fait pour `plugins.perm.*`, `eventLabel()` et `ruleText()`.
+   - Suivants, dans l'ordre du rapport : `settings/sections/LocalModelsSection.tsx` (17), `DataSection.tsx` (16), `MessagingSection.tsx` (16), `setup/FirstRunSetup.tsx` (16), `auth/HermesLoginCard.tsx` (14), `connections/ConnectionDetail.tsx` (14)…
+   - **Vérification qui a payé** : après avoir traduit les phrases de planning, les fonctions ont été exécutées dans les deux langues (petit test jetable qui importe `cron-humanize.ts`, règle `$prefs.language`, écrit les résultats puis est supprimé) — trois défauts sont sortis que le typecheck et les tests ne voyaient pas : un jour unique rendu « Fridays and », la virgule anglaise devant l'année qui fuyait en français, et une minuscule en début de phrase. **Refaire ce contrôle à chaque module de phrases.**
    - Méthode : remplacer chaque littéral par `t('clé')`, appeler `useT()` dans chaque composant, ajouter la clé dans `src/locales/en.ts` **et** `fr.ts`, avec les mêmes `{placeholders}`. Le test `src/lib/i18n.test.ts` le vérifie.
-   - **Pièges rencontrés le 14/10, à ne pas répéter** :
+   - **Pièges rencontrés, à ne pas répéter** :
      - `fr.ts` et plusieurs composants sont en **CRLF** : lire avec `io.open(..., encoding='utf-8')` (fin de lignes universelles) et réécrire avec `newline=''`, sinon les motifs multi-lignes ne matchent pas.
-     - Écrire le **français accentué** (é, è, à, ç, ô…) : les premiers blocs ajoutés étaient sans accents, ce qui détonnait avec le reste du fichier ; corrigé au commit `086e339`. Utiliser l'espace insécable avant `:` et `?`, et `…` plutôt que `...`.
+     - **Ne jamais ouvrir un fichier en écriture avant d'avoir construit la chaîne à écrire** : `io.open(p, 'w')` tronque immédiatement, et une erreur ensuite laisse le fichier à 0 octet (c'est arrivé à `en.ts`, restauré par `git checkout`).
+     - Écrire le **français accentué** (é, è, à, ç, ô…) : les premiers blocs étaient sans accents ; corrigé au commit `086e339`. Utiliser l'espace insécable avant `:` et `?`, et `…` plutôt que `...`.
      - Une chaîne TS entre guillemets simples ne doit pas contenir d'apostrophe : utiliser `"..."` ou `\u2019`.
+     - Une jointure « a et b » ne doit pas s'appliquer à un seul élément : `joinList()` dans `cron-humanize.ts` gère les cas 0/1/2/n.
    - Toujours lancer typecheck et tests **avant** de committer.
 7. ~~**Réglages**~~ : **fait le 14/10** — groupe « Vérification du système » dans la section Général : « Relancer la vérification du système » (`window.heraldOS.systemAudit.run()`) et « Importer des clés API » (ouvre `KeysStep.tsx` dans une fenêtre modale).
 8. **Assistant sur Linux et macOS** : l'assistant `desktop` n'est activé que sous Windows (`setupState()` dans `apps/desktop/electron/ipc/setup.ts`). L'audit fonctionne partout ; il faut décider si l'assistant s'affiche aussi sur macOS et sur Linux hors image.
