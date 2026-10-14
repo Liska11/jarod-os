@@ -2,6 +2,7 @@ import { useStore } from '@nanostores/react'
 import { IconLayoutGrid, IconPlugConnected, IconPlus, IconRefresh } from '@tabler/icons-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { EmptyGlass, GlassButton, GlassCard, PageHeader, SearchField, Tabs, type TabDef } from '../../components/ui/glass.tsx'
+import { t as translate, tn as translateCount, useT } from '../../lib/i18n.ts'
 import { useBackendData } from '../../lib/use-async.ts'
 import { sendPrompt } from '../../store/chat.ts'
 import { $connectionsTick, setConnectionEnabled } from '../../store/connections-actions.ts'
@@ -20,6 +21,7 @@ type TabId = 'connected' | 'browse'
 const probeCache = new Map<string, McpProbeResult>()
 
 export function ConnectionsPage() {
+  const { t } = useT()
   const activity = useStore($activity)
   // Reload when a command (voice, agent) changed a connection outside this page.
   const connectionsTick = useStore($connectionsTick)
@@ -54,8 +56,8 @@ export function ConnectionsPage() {
   const selected = connections.find(c => c.id === selectedId) ?? visibleConnections[0] ?? null
 
   const tabs: readonly TabDef<TabId>[] = [
-    { id: 'connected', label: 'Connected', count: connections.length },
-    { id: 'browse', label: 'Browse', icon: <IconLayoutGrid size={14} /> }
+    { id: 'connected', label: t('conn.tabConnected'), count: connections.length },
+    { id: 'browse', label: t('conn.tabBrowse'), icon: <IconLayoutGrid size={14} /> }
   ]
 
   const runProbe = useCallback(async (connection: Connection, options: { force?: boolean; announce?: boolean } = {}) => {
@@ -69,7 +71,7 @@ export function ConnectionsPage() {
         setProbes(p => ({ ...p, [connection.id]: { phase: 'ok' } }))
         setProbeTools(t => ({ ...t, [connection.id]: result.tools.map(tool => tool.name) }))
       } else {
-        setProbes(p => ({ ...p, [connection.id]: { phase: 'failed', error: result.error ?? 'The server did not answer.' } }))
+        setProbes(p => ({ ...p, [connection.id]: { phase: 'failed', error: result.error ?? translate('conn.serverNoAnswer') } }))
       }
     }
     const cached = probeCache.get(name)
@@ -88,7 +90,7 @@ export function ConnectionsPage() {
       apply(result)
 
       if (result.ok && options.announce) {
-        notify({ title: `${connection.name} is reachable`, body: `${result.tools.length} tool${result.tools.length === 1 ? '' : 's'} available.`, level: 'success' })
+        notify({ title: translate('conn.reachable', { name: connection.name }), body: translateCount('conn.toolsAvailable', result.tools.length), level: 'success' })
       }
 
       return result
@@ -114,7 +116,7 @@ export function ConnectionsPage() {
     try {
       await work()
     } catch (err) {
-      notify({ title: 'Connection update failed', body: errorText(err), level: 'error' })
+      notify({ title: t('conn.updateFailed'), body: errorText(err), level: 'error' })
     } finally {
       setBusyId(null)
       reload()
@@ -123,7 +125,7 @@ export function ConnectionsPage() {
 
   const openHermesFor = (name: string) => {
     showPage('hermes')
-    void sendPrompt(`Help me set up the ${name} integration in Hermes.`)
+    void sendPrompt(t('conn.helpSetUp', { name }))
   }
 
   /** Channel tokens and MCP servers are edited in one place: Settings (this page only switches them on and off). */
@@ -135,7 +137,7 @@ export function ConnectionsPage() {
   const setEnabled = (connection: Connection, enabled: boolean) => {
     void withBusy(connection.id, async () => {
       if (connection.source.kind === 'provider') {
-        notify({ title: 'Providers are signed in or out', body: 'Use Sign out to remove this account.', level: 'info' })
+        notify({ title: t('conn.providersSignedInOut'), body: t('conn.useSignOut'), level: 'info' })
 
         return
       }
@@ -163,12 +165,12 @@ export function ConnectionsPage() {
 
             if (flow.authorization_url) {
               await window.heraldOS.shell.openExternal(flow.authorization_url)
-              notify({ title: `Finish signing in to ${connection.name}`, body: 'Approve access in your browser, then reconnect.', level: 'info' })
+              notify({ title: t('conn.finishSignIn', { name: connection.name }), body: t('conn.approveInBrowser'), level: 'info' })
             } else {
-              notify({ title: `Could not start sign-in for ${connection.name}`, body: flow.error ?? 'No authorization link was returned.', level: 'error' })
+              notify({ title: t('conn.signInStartFailed', { name: connection.name }), body: flow.error ?? t('conn.noAuthLink'), level: 'error' })
             }
           } else if (result && !result.ok) {
-            notify({ title: `${connection.name} is not reachable`, body: result.error, level: 'warn' })
+            notify({ title: t('conn.notReachable', { name: connection.name }), body: result.error, level: 'warn' })
           }
 
           break
@@ -178,7 +180,7 @@ export function ConnectionsPage() {
             openSettings('messaging')
           } else {
             await api.setPlatformEnabled(source.platform.id, true)
-            notify({ title: `${connection.name} enabled`, body: 'Restart the gateway to reconnect the channel.', level: 'success' })
+            notify({ title: t('conn.enabled', { name: connection.name }), body: t('conn.restartGateway'), level: 'success' })
           }
 
           break
@@ -187,7 +189,7 @@ export function ConnectionsPage() {
             openHermesFor(connection.name)
           } else {
             await api.setToolsetEnabled(source.toolset.name, true)
-            notify({ title: `${connection.name} enabled`, level: 'success' })
+            notify({ title: t('conn.enabled', { name: connection.name }), level: 'success' })
           }
 
           break
@@ -201,7 +203,7 @@ export function ConnectionsPage() {
   const startProviderSignIn = async (id: string, name: string, flow: string, cliCommand?: string | null) => {
     if (flow !== 'device_code') {
       showPage('hermes')
-      void sendPrompt(`Help me sign in to ${name}${cliCommand ? ` by running \`${cliCommand}\`` : ''}.`)
+      void sendPrompt(cliCommand ? t('conn.helpSignInByCommand', { name, command: cliCommand }) : t('conn.helpSignIn', { name }))
 
       return
     }
@@ -212,7 +214,11 @@ export function ConnectionsPage() {
       await window.heraldOS.shell.openExternal(started.verification_url)
     }
 
-    notify({ title: `Sign in to ${name}`, body: started.user_code ? `Enter code ${started.user_code} in your browser, then come back.` : 'Approve access in your browser, then come back.', level: 'info' })
+    notify({
+      title: t('conn.signInTo', { name }),
+      body: started.user_code ? t('conn.enterCode', { code: started.user_code }) : t('conn.approveInBrowser'),
+      level: 'info'
+    })
   }
 
   const remove = (connection: Connection) => {
@@ -230,23 +236,23 @@ export function ConnectionsPage() {
         case 'mcp':
           await api.removeMcp(source.server.name)
           probeCache.delete(source.server.name)
-          notify({ title: `${connection.name} disconnected`, body: 'The MCP server was removed from Hermes.', level: 'success' })
+          notify({ title: t('conn.disconnected', { name: connection.name }), body: t('conn.mcpRemoved'), level: 'success' })
           break
         case 'messaging':
           await api.setPlatformEnabled(source.platform.id, false)
           await Promise.all(source.toolsets.map(ts => api.setToolsetEnabled(ts.name, false)))
-          notify({ title: `${connection.name} disconnected`, body: 'Credentials stay in .env; enable it again any time.', level: 'success' })
+          notify({ title: t('conn.disconnected', { name: connection.name }), body: t('conn.credsStay'), level: 'success' })
           break
         case 'toolset':
           await api.setToolsetEnabled(source.toolset.name, false)
-          notify({ title: `${connection.name} disconnected`, level: 'success' })
+          notify({ title: t('conn.disconnected', { name: connection.name }), level: 'success' })
           break
         case 'provider':
           if (source.provider.disconnectable === false) {
-            notify({ title: `${connection.name} cannot be signed out here`, body: source.provider.disconnect_hint ?? 'Sign out from the provider’s own tool.', level: 'warn' })
+            notify({ title: t('conn.cannotSignOutHere', { name: connection.name }), body: source.provider.disconnect_hint ?? t('conn.signOutFromTool'), level: 'warn' })
           } else {
             await api.disconnectProvider(source.provider.id)
-            notify({ title: `Signed out of ${connection.name}`, level: 'success' })
+            notify({ title: t('conn.signedOutOf', { name: connection.name }), level: 'success' })
           }
 
           break
@@ -287,7 +293,11 @@ export function ConnectionsPage() {
       switch (install.kind) {
         case 'mcp-catalog': {
           const result = await api.installCatalog(install.entry.name, env)
-          notify({ title: `${item.name} added`, body: result.background ? 'Hermes is installing it in the background; it appears once ready.' : 'Available to Hermes on its next session.', level: 'success' })
+          notify({
+            title: t('conn.added', { name: item.name }),
+            body: result.background ? t('conn.installingBackground') : t('conn.availableNextSession'),
+            level: 'success'
+          })
           setTab('connected')
           setSelectedId(`mcp:${install.entry.name}`)
           break
@@ -318,19 +328,19 @@ export function ConnectionsPage() {
     <div className="page-enter flex h-full flex-col">
       <PageHeader
         icon="connections"
-        title="Connections"
-        subtitle="Bring your tools into one workspace."
+        title={t('conn.title')}
+        subtitle={t('conn.subtitle')}
         actions={
           <>
             <div ref={searchRef}>
-              <SearchField value={query} onChange={setQuery} placeholder="Find a connection" className="w-56" />
+              <SearchField value={query} onChange={setQuery} placeholder={t('conn.search')} className="w-56" />
             </div>
-            <GlassButton variant="ghost" onClick={() => openSettings('mcp')} aria-label="Add or edit MCP servers">
-              MCP servers…
+            <GlassButton variant="ghost" onClick={() => openSettings('mcp')} aria-label={t('conn.mcpServersAria')}>
+              {t('conn.mcpServers')}
             </GlassButton>
-            <GlassButton variant="primary" onClick={openBrowse} aria-label="Add connection">
+            <GlassButton variant="primary" onClick={openBrowse} aria-label={t('conn.add')}>
               <IconPlus />
-              Add connection
+              {t('conn.add')}
             </GlassButton>
           </>
         }
@@ -339,19 +349,19 @@ export function ConnectionsPage() {
       <div className="flex min-h-0 flex-1 flex-col gap-4 px-6 pb-6">
         <div className="flex items-center justify-between gap-3">
           <Tabs tabs={tabs} value={tab} onChange={setTab} />
-          {data?.warnings.length ? <span className="truncate text-[12px] text-warn" title={data.warnings.join('\n')}>Some sources did not load</span> : null}
+          {data?.warnings.length ? <span className="truncate text-[12px] text-warn" title={data.warnings.join('\n')}>{t('conn.someSourcesFailed')}</span> : null}
         </div>
 
         {failed ? (
           <EmptyGlass
             icon={<IconPlugConnected />}
-            title="Hermes did not answer"
+            title={t('conn.noAnswer')}
             description={error ?? undefined}
             className="flex-1"
             action={
               <GlassButton size="sm" onClick={reload}>
                 <IconRefresh />
-                Try again
+                {t('conn.tryAgain')}
               </GlassButton>
             }
           />
@@ -379,13 +389,13 @@ export function ConnectionsPage() {
               ) : visibleConnections.length === 0 ? (
                 <EmptyGlass
                   icon={<IconPlugConnected />}
-                  title={needle ? `Nothing matches “${query}”` : 'No connections yet'}
-                  description={needle ? 'Try another name, or browse what you can add.' : 'Connect the tools you use and Hermes can work inside them.'}
+                  title={needle ? t('conn.noMatch', { query }) : t('conn.none')}
+                  description={needle ? t('conn.noMatch.hint') : t('conn.none.hint')}
                   className="h-full"
                   action={
                     <GlassButton size="sm" variant="primary" onClick={openBrowse}>
                       <IconLayoutGrid />
-                      Browse
+                      {t('conn.tabBrowse')}
                     </GlassButton>
                   }
                 />
@@ -415,7 +425,7 @@ export function ConnectionsPage() {
                   busy={busyId === selected.id}
                 />
               ) : (
-                <div className="flex flex-1 items-center justify-center text-center text-[12.5px] text-fg-4">Select a connection to manage what Hermes may do with it.</div>
+                <div className="flex flex-1 items-center justify-center text-center text-[12.5px] text-fg-4">{t('conn.selectPrompt')}</div>
               )}
             </GlassCard>
           </div>
