@@ -2876,4 +2876,15 @@ export const fr: Record<MessageKey, string> = {
   'settings.devices.ssh.userRequired': 'Utilisateur : requis, sans espaces.',
   'settings.devices.ssh.portRange': 'Port : de 1 \u00e0 65535.',
   'settings.devices.ssh.keyRequired': 'Cl\u00e9 : choisissez le fichier de cl\u00e9 priv\u00e9e.',
+  // Overview mission card
+  'overview.status.review': 'Pr\u00eate \u00e0 relire',
+  'overview.steps': '{done} sur {total} \u00e9tapes',
+  'overview.files.one': '{count} fichier',
+  'overview.files.other': '{count} fichiers',
+  'overview.folder': 'Dossier',
+  'overview.draft': 'Brouillon',
+  'overview.openDraft': 'Ouvrir le brouillon',
+  'overview.openAria': 'Ouvrir {name}',
+  'overview.open': 'Ouvrir',
+  'overview.step.pending': 'En attente',
 }

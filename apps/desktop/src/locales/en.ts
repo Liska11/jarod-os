@@ -2878,6 +2878,17 @@ export const en = {
   'settings.devices.ssh.userRequired': 'User: required, without spaces.',
   'settings.devices.ssh.portRange': 'Port: 1 to 65535.',
   'settings.devices.ssh.keyRequired': 'Key: choose the private key file.',
+  // Overview mission card
+  'overview.status.review': 'Ready for review',
+  'overview.steps': '{done} of {total} steps',
+  'overview.files.one': '{count} file',
+  'overview.files.other': '{count} files',
+  'overview.folder': 'Folder',
+  'overview.draft': 'Draft',
+  'overview.openDraft': 'Open draft',
+  'overview.openAria': 'Open {name}',
+  'overview.open': 'Open',
+  'overview.step.pending': 'Pending',
   } as const
 
   export type MessageKey = keyof typeof en
