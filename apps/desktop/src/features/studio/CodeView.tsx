@@ -1,4 +1,5 @@
 import { IconCode, IconExternalLink, IconPin, IconPinnedOff } from '@tabler/icons-react'
+import { type MessageKey, t, useT } from '../../lib/i18n.ts'
 import type { ThemedToken } from 'shiki/core'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { EmptyState, Spinner } from '../../components/ui/primitives.tsx'
@@ -13,13 +14,13 @@ const REVEAL_MS = 1400
 
 const relative = (path: string, root: string | null): string => (root && path.startsWith(`${root}/`) ? path.slice(root.length + 1) : path)
 
-const STATUS_LABEL: Partial<Record<StudioFile['status'], string>> = {
-  writing: 'Hermes is writing this file',
-  editing: 'Hermes is editing this file',
-  written: 'Created',
-  edited: 'Edited',
-  failed: 'The last change failed',
-  changed: 'Changed on disk'
+const STATUS_LABEL: Partial<Record<StudioFile['status'], MessageKey>> = {
+  writing: 'studio.file.writing',
+  editing: 'studio.file.editing',
+  written: 'studio.file.created',
+  edited: 'studio.file.edited',
+  failed: 'studio.file.failed',
+  changed: 'studio.file.changed'
 }
 
 /** Reveal `text` progressively while Hermes writes it, so the file visibly appears line by line. */
@@ -68,10 +69,10 @@ function useElapsed(since: number | null): number {
   return since === null ? 0 : Math.max(0, Math.round((now - since) / 1000))
 }
 
-const COMPOSING: Record<string, string> = {
-  write_file: 'Hermes is writing a file',
-  patch: 'Hermes is preparing an edit',
-  terminal: 'Hermes is preparing a command'
+const COMPOSING: Record<string, MessageKey> = {
+  write_file: 'studio.tool.write',
+  patch: 'studio.tool.patch',
+  terminal: 'studio.tool.terminal'
 }
 
 /** A model composes a whole file before the write runs; say so instead of looking stuck. */
@@ -86,7 +87,7 @@ function ComposingBanner({ generating }: { generating: StudioState['generating']
   return (
     <div className="flex h-7 shrink-0 items-center gap-2 border-b border-line bg-accent/10 px-3 text-[11.5px] text-accent-strong">
       <Spinner />
-      <span>{label}…</span>
+      <span>{t(label)}…</span>
       <span className="ml-auto tabular-nums text-fg-3">{seconds}s</span>
     </div>
   )
@@ -94,7 +95,8 @@ function ComposingBanner({ generating }: { generating: StudioState['generating']
 
 /** The file Hermes is working on: syntax coloured, changed lines marked, following along as it writes. */
 export function CodeView({ path, file, root, pinned, onTogglePin, running = false, generating = null }: { path: string | null; file: StudioFile | undefined; root: string | null; pinned: boolean; onTogglePin: () => void; running?: boolean; generating?: StudioState['generating'] }) {
-  const [disk, setDisk] = useState<{ path: string; text: string | null; note?: string } | null>(null)
+  useT()
+  const [disk, setDisk] = useState<{ path: string; text: string | null; note?: MessageKey } | null>(null)
   const [tokens, setTokens] = useState<ThemedToken[][] | null>(null)
   const scroller = useRef<HTMLDivElement>(null)
   const revealed = useReveal(file?.pending)
@@ -114,12 +116,12 @@ export function CodeView({ path, file, root, pinned, onTogglePin, running = fals
         }
 
         if (preview.kind === 'text') {
-          setDisk({ path, text: preview.content ?? '', note: preview.truncated ? 'Only the first 2 MB are shown.' : undefined })
+          setDisk({ path, text: preview.content ?? '', note: preview.truncated ? 'studio.truncatedNote' : undefined })
         } else {
-          setDisk({ path, text: null, note: preview.kind === 'image' ? 'An image; see it in the preview.' : preview.kind === 'directory' ? 'A folder.' : 'Not a text file.' })
+          setDisk({ path, text: null, note: preview.kind === 'image' ? 'studio.isImage' : preview.kind === 'directory' ? 'studio.isFolder' : 'studio.notText' })
         }
       })
-      .catch(() => !cancelled && setDisk({ path, text: null, note: 'Hermes has not saved this file yet.' }))
+      .catch(() => !cancelled && setDisk({ path, text: null, note: 'studio.notSaved' }))
 
     return () => {
       cancelled = true
@@ -171,14 +173,16 @@ export function CodeView({ path, file, root, pinned, onTogglePin, running = fals
     }
   }, [writing, revealed, file?.changedLines, tokens])
 
+  const statusKey = file ? STATUS_LABEL[file.status] : undefined
+
   if (!path) {
     return (
       <div className="flex h-full min-h-0 flex-col">
         <ComposingBanner generating={generating} />
         {running ? (
-          <EmptyState icon={<Spinner />} title={generating?.tool === 'write_file' ? 'Hermes is writing the first file' : 'Hermes is planning the build'} description="Each file appears here the moment Hermes saves it." className="min-h-0 flex-1" />
+          <EmptyState icon={<Spinner />} title={generating?.tool === 'write_file' ? t('studio.firstFile') : t('studio.planning')} description={t('studio.emptyHint')} className="min-h-0 flex-1" />
         ) : (
-          <EmptyState icon={<IconCode size={28} />} title="Nothing written yet" description="The file Hermes is writing shows here as it types." className="min-h-0 flex-1" />
+          <EmptyState icon={<IconCode size={28} />} title={t('studio.empty')} description={t('studio.emptyDesc')} className="min-h-0 flex-1" />
         )}
       </div>
     )
@@ -189,20 +193,20 @@ export function CodeView({ path, file, root, pinned, onTogglePin, running = fals
       <ComposingBanner generating={generating} />
       <div className="flex h-8 shrink-0 items-center gap-2 border-b border-line px-3 text-[12px]">
         <span className="truncate text-fg">{relative(path, root)}</span>
-        {file && <span className={cn('shrink-0 text-fg-3', writing && 'text-accent-strong')}>{STATUS_LABEL[file.status]}</span>}
+        {statusKey && <span className={cn('shrink-0 text-fg-3', writing && 'text-accent-strong')}>{t(statusKey)}</span>}
         {writing && <Spinner className="shrink-0" />}
         <span className="ml-auto flex shrink-0 items-center gap-1">
-          <button type="button" onClick={onTogglePin} className="flex size-6 items-center justify-center rounded-md text-fg-3 hover:bg-white/8 hover:text-fg" title={pinned ? 'Follow Hermes from file to file' : 'Stay on this file'} aria-label={pinned ? 'Follow Hermes' : 'Stay on this file'}>
+          <button type="button" onClick={onTogglePin} className="flex size-6 items-center justify-center rounded-md text-fg-3 hover:bg-white/8 hover:text-fg" title={pinned ? t('studio.followHint') : t('studio.stayHint')} aria-label={pinned ? t('studio.followAria') : t('studio.stayHint')}>
             {pinned ? <IconPinnedOff size={14} /> : <IconPin size={14} />}
           </button>
-          <button type="button" onClick={() => openInEditor(path)} className="flex size-6 items-center justify-center rounded-md text-fg-3 hover:bg-white/8 hover:text-fg" title="Open in editor" aria-label="Open in editor">
+          <button type="button" onClick={() => openInEditor(path)} className="flex size-6 items-center justify-center rounded-md text-fg-3 hover:bg-white/8 hover:text-fg" title={t('studio.openInEditor')} aria-label={t('studio.openInEditor')}>
             <IconExternalLink size={14} />
           </button>
         </span>
       </div>
       <div ref={scroller} className="min-h-0 flex-1 overflow-auto bg-[#0d1117] py-2 font-mono text-[12.5px] leading-[1.55]">
         {text === null ? (
-          <div className="px-4 text-fg-3">{disk?.note ?? 'Loading…'}</div>
+          <div className="px-4 text-fg-3">{disk?.note ? t(disk.note) : t('studio.loading')}</div>
         ) : (
           <table className="w-full border-collapse">
             <tbody>
@@ -228,7 +232,7 @@ export function CodeView({ path, file, root, pinned, onTogglePin, running = fals
             </tbody>
           </table>
         )}
-        {disk?.note && text !== null && <div className="px-4 pt-2 text-[11.5px] text-fg-3">{disk.note}</div>}
+        {disk?.note && text !== null && <div className="px-4 pt-2 text-[11.5px] text-fg-3">{t(disk.note)}</div>}
       </div>
     </div>
   )

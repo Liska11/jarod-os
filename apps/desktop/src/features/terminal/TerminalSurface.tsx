@@ -14,6 +14,7 @@ import { $catalog, loadCatalog } from '../../store/catalog.ts'
 import { $terminalRequest } from '../../store/terminal.ts'
 import { baseName } from '../../../shared/path-names.ts'
 import { quietly } from '../../lib/native.ts'
+import { t, useT } from '../../lib/i18n.ts'
 
 const MONO_STACK = 'SF Mono, JetBrains Mono, Menlo, monospace'
 
@@ -51,6 +52,7 @@ const FRESH_REQUEST_MS = 3000
 
 /** Real shells in real PTYs. Tabs stay alive while the surface is hidden and end when it closes. */
 export function TerminalSurface() {
+  useT()
   const [tabs, setTabs] = useState<Tab[]>([])
   const [active, setActive] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -167,17 +169,17 @@ export function TerminalSurface() {
             <button type="button" onClick={() => setActive(tab.id)} className="font-mono">
               {tab.title}
             </button>
-            <button type="button" aria-label="Close terminal" onClick={() => close(tab.id)} className="flex size-5 items-center justify-center rounded-xs text-fg-4 opacity-0 group-hover:opacity-100 hover:text-fg">
+            <button type="button" aria-label={t('terminal.close')} onClick={() => close(tab.id)} className="flex size-5 items-center justify-center rounded-xs text-fg-4 opacity-0 group-hover:opacity-100 hover:text-fg">
               <IconX size={12} />
             </button>
           </div>
         ))}
-        <Button variant="ghost" size="icon-sm" aria-label="New terminal" onClick={() => void create()}>
+        <Button variant="ghost" size="icon-sm" aria-label={t('terminal.new')} onClick={() => void create()}>
           <IconPlus size={15} />
         </Button>
         {agents.length > 0 && (
           <div className="relative">
-            <Button variant="ghost" size="icon-sm" aria-label="New tab with a coding agent" aria-expanded={menuOpen} onClick={() => setMenuOpen(open => !open)}>
+            <Button variant="ghost" size="icon-sm" aria-label={t('terminal.newAgent')} aria-expanded={menuOpen} onClick={() => setMenuOpen(open => !open)}>
               <IconChevronDown size={14} />
             </Button>
             {menuOpen && (
@@ -205,7 +207,7 @@ export function TerminalSurface() {
       </div>
       <div className="relative min-h-0 flex-1 px-3 pb-3">
         {error && (
-          <EmptyState title="Terminal unavailable" description={error} action={<Button onClick={() => { setError(null); void create() }}>Try again</Button>} />
+          <EmptyState title={t('terminal.unavailable')} description={error} action={<Button onClick={() => { setError(null); void create() }}>{t('terminal.tryAgain')}</Button>} />
         )}
         {tabs.map(tab => (
           <TerminalView key={tab.id} id={tab.id} active={tab.id === active} />
