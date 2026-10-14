@@ -2263,6 +2263,33 @@ export const en = {
   'native.failed.reloadPreview': 'Could not reload the preview',
   'native.failed.openTrash': 'Could not open the Trash',
   'native.failed.pluginsFolder': 'Could not open the plugins folder',
+  // Network (Settings > Network)
+  'network.title': 'Network',
+  'network.subtitle': 'The Hermes runtime this shell talks to, and what Hermes itself is connected to.',
+  'network.runtimeGroup': 'Hermes runtime',
+  'network.backend': 'Backend',
+  'network.notRunning': 'not running',
+  'network.restart': 'Restart',
+  'network.restartAria': 'Restart Hermes',
+  'network.gatewaySocket': 'Gateway socket',
+  'network.gatewaySocket.hint': 'JSON-RPC over WebSocket.',
+  'network.runtimeCommand': 'Runtime command',
+  'network.using': 'Using {label} (HERALD_OS_BACKEND_URL)',
+  'network.sharedGateway':
+    'Another app (Hermes Desktop, say) runs a Hermes gateway on this Hermes home (pid {pid}). That is fine: Hermes runs each scheduled job once and keeps one messaging gateway. To share its backend too, start Jarod-OS with HERALD_OS_BACKEND_URL and HERALD_OS_BACKEND_TOKEN.',
+  'network.mcpGroup': 'MCP servers',
+  'network.mcpGroup.hint': 'Model Context Protocol servers.',
+  'network.loading': 'Loading\u2026',
+  'network.noMcp': 'No MCP servers configured. Add them in Connections.',
+  'network.mcpServer': 'MCP server',
+  'network.enableAria': 'Enable {name}',
+  'network.mcpEnabled': 'MCP server enabled',
+  'network.mcpDisabled': 'MCP server disabled',
+  'network.mcpTakesEffect': '{name}. Takes effect on the next session.',
+  'network.mcpUpdateFailed': 'Could not update MCP server',
+  'network.platforms': 'Messaging platforms',
+  'network.noPlatforms': 'No messaging platforms connected to the Hermes gateway.',
+  'network.platformConnected': 'Connected to the Hermes gateway.',
   } as const
 
   export type MessageKey = keyof typeof en

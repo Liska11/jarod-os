@@ -3,6 +3,7 @@ import { IconBrandSlack, IconPlugConnected, IconServer, IconTerminal2, IconWifi 
 import { useState } from 'react'
 import { GlassButton, Pill, type PillTone, Toggle } from '../../../components/ui/glass.tsx'
 import { type HermesStatusPayload, rest } from '../../../lib/rest.ts'
+import { useT } from '../../../lib/i18n.ts'
 import { useBackendData } from '../../../lib/use-async.ts'
 import { $backend } from '../../../store/backend.ts'
 import { $connection } from '../../../store/gateway.ts'
@@ -22,40 +23,46 @@ interface McpServerRow {
 const phaseTone = (phase: string): PillTone => (phase === 'ready' ? 'ok' : phase === 'failed' ? 'danger' : phase === 'stopped' || phase === 'idle' ? 'muted' : 'warn')
 
 export function NetworkSection() {
+  const { t } = useT()
   const backend = useStore($backend)
   const connection = useStore($connection)
 
   return (
     <>
-      <SectionTitle title="Network" subtitle="The Hermes runtime this shell talks to, and what Hermes itself is connected to." />
+      <SectionTitle title={t('network.title')} subtitle={t('network.subtitle')} />
 
-      <SettingsGroup title="Hermes runtime">
-        <SettingsRow icon={<IconServer />} label="Backend" description={<span className="selectable font-mono text-[11.5px]">{backend.baseUrl ?? 'not running'}</span>} keywords="hermes runtime server status">
+      <SettingsGroup title={t('network.runtimeGroup')}>
+        <SettingsRow icon={<IconServer />} label={t('network.backend')} description={<span className="selectable font-mono text-[11.5px]">{backend.baseUrl ?? t('network.notRunning')}</span>} keywords="hermes runtime server status">
           <Pill tone={phaseTone(backend.phase)} dot>
             {backend.phase}
           </Pill>
-          <GlassButton size="sm" variant="ghost" onClick={() => void attempt('native.failed.restartEngine', () => window.heraldOS.backend.restart())} aria-label="Restart Hermes">
-            Restart
+          <GlassButton size="sm" variant="ghost" onClick={() => void attempt('native.failed.restartEngine', () => window.heraldOS.backend.restart())} aria-label={t('network.restartAria')}>
+            {t('network.restart')}
           </GlassButton>
         </SettingsRow>
-        <SettingsRow icon={<IconPlugConnected />} label="Gateway socket" description="JSON-RPC over WebSocket." keywords="websocket connection">
+        <SettingsRow icon={<IconPlugConnected />} label={t('network.gatewaySocket')} description={t('network.gatewaySocket.hint')} keywords="websocket connection">
           <Pill tone={connection === 'open' ? 'ok' : connection === 'error' ? 'danger' : 'warn'} dot>
             {connection}
           </Pill>
         </SettingsRow>
         <SettingsRow
           icon={<IconTerminal2 />}
-          label="Runtime command"
-          description={<span className="selectable font-mono text-[11.5px]">{backend.runtime?.kind === 'attached' ? `Using ${backend.runtime.label} (HERALD_OS_BACKEND_URL)` : backend.runtime ? backend.runtime.command.join(' ') : '—'}</span>}
+          label={t('network.runtimeCommand')}
+          description={
+            <span className="selectable font-mono text-[11.5px]">
+              {backend.runtime?.kind === 'attached'
+                ? t('network.using', { label: backend.runtime.label })
+                : backend.runtime
+                  ? backend.runtime.command.join(' ')
+                  : '\u2014'}
+            </span>
+          }
           keywords="hermes command path managed attached shared"
         >
           {backend.runtime && <Pill>{backend.runtime.kind}</Pill>}
         </SettingsRow>
         {backend.sharedGateway && (
-          <InlineNote tone="info">
-            Another app (Hermes Desktop, say) runs a Hermes gateway on this Hermes home (pid {backend.sharedGateway}). That is fine: Hermes runs each scheduled job once and keeps one messaging gateway. To share its backend
-            too, start Jarod-OS with HERALD_OS_BACKEND_URL and HERALD_OS_BACKEND_TOKEN.
-          </InlineNote>
+          <InlineNote tone="info">{t('network.sharedGateway', { pid: backend.sharedGateway })}</InlineNote>
         )}
       </SettingsGroup>
 
@@ -66,6 +73,7 @@ export function NetworkSection() {
 }
 
 function McpServersGroup() {
+  const { t } = useT()
   const servers = useBackendData(() => rest.get<{ servers: McpServerRow[] }>('/api/mcp/servers'))
   const [override, setOverride] = useState<{ base: unknown; name: string; enabled: boolean } | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
@@ -78,10 +86,10 @@ function McpServersGroup() {
     try {
       await rest.put(`/api/mcp/servers/${encodeURIComponent(row.name)}/enabled`, { enabled })
       markSaved()
-      notify({ title: enabled ? 'MCP server enabled' : 'MCP server disabled', body: `${row.name}. Takes effect on the next session.`, level: 'success' })
+      notify({ title: enabled ? t('network.mcpEnabled') : t('network.mcpDisabled'), body: t('network.mcpTakesEffect', { name: row.name }), level: 'success' })
     } catch (error) {
       setOverride(null)
-      notify({ title: 'Could not update MCP server', body: errorText(error), level: 'error' })
+      notify({ title: t('network.mcpUpdateFailed'), body: errorText(error), level: 'error' })
     } finally {
       setBusy(null)
       servers.reload()
@@ -89,18 +97,23 @@ function McpServersGroup() {
   }
 
   return (
-    <SettingsGroup title="MCP servers">
+    <SettingsGroup title={t('network.mcpGroup')}>
       {rows.length === 0 && (
-        <SettingsRow icon={<IconWifi />} label="MCP servers" description={servers.loading ? 'Loading…' : servers.error ? servers.error : 'No MCP servers configured. Add them in Connections.'} keywords="mcp model context protocol" />
+        <SettingsRow
+          icon={<IconWifi />}
+          label={t('network.mcpGroup')}
+          description={servers.loading ? t('network.loading') : servers.error ? servers.error : t('network.noMcp')}
+          keywords="mcp model context protocol"
+        />
       )}
       {rows.map(row => {
         const enabled = override && override.base === servers.data && override.name === row.name ? override.enabled : row.enabled !== false
         const target = row.url ?? (row.command ? [row.command, ...((row.args as string[] | undefined) ?? [])].join(' ') : '')
 
         return (
-          <SettingsRow key={row.name} icon={<IconWifi />} label={row.name} description={<span className="selectable font-mono text-[11.5px]">{target || row.transport || 'MCP server'}</span>} keywords="mcp server">
+          <SettingsRow key={row.name} icon={<IconWifi />} label={row.name} description={<span className="selectable font-mono text-[11.5px]">{target || row.transport || t('network.mcpServer')}</span>} keywords="mcp server">
             {row.transport && <Pill>{row.transport}</Pill>}
-            <Toggle checked={enabled} onChange={next => void toggle(row, next)} label={`Enable ${row.name}`} disabled={busy === row.name} />
+            <Toggle checked={enabled} onChange={next => void toggle(row, next)} label={t('network.enableAria', { name: row.name })} disabled={busy === row.name} />
           </SettingsRow>
         )
       })}
@@ -129,18 +142,26 @@ function platformTone(value: PlatformState): PillTone {
 }
 
 function PlatformsGroup() {
+  const { t } = useT()
   const status = useBackendData(() => rest.get<HermesStatusPayload & { gateway_platforms?: Record<string, PlatformState>; platforms?: Record<string, PlatformState> | PlatformState[] }>('/api/status'))
   const raw = status.data?.gateway_platforms ?? status.data?.platforms
   const entries: [string, PlatformState][] = Array.isArray(raw) ? raw.map((item, index) => [typeof item === 'string' ? item : String(item.name ?? item.id ?? index), item]) : Object.entries(raw ?? {})
 
   return (
-    <SettingsGroup title="Messaging platforms">
-      {entries.length === 0 && <SettingsRow icon={<IconBrandSlack />} label="Messaging platforms" description={status.loading ? 'Loading…' : 'No messaging platforms connected to the Hermes gateway.'} keywords="telegram discord slack whatsapp" />}
+    <SettingsGroup title={t('network.platforms')}>
+      {entries.length === 0 && (
+        <SettingsRow
+          icon={<IconBrandSlack />}
+          label={t('network.platforms')}
+          description={status.loading ? t('network.loading') : t('network.noPlatforms')}
+          keywords="telegram discord slack whatsapp"
+        />
+      )}
       {entries.map(([name, value]) => {
         const state = typeof value === 'string' ? value : String(value.state ?? value.status ?? 'unknown')
 
         return (
-          <SettingsRow key={name} icon={<IconBrandSlack />} label={name} description="Connected to the Hermes gateway." keywords="messaging platform">
+          <SettingsRow key={name} icon={<IconBrandSlack />} label={name} description={t('network.platformConnected')} keywords="messaging platform">
             <Pill tone={platformTone(value)} dot>
               {state}
             </Pill>
