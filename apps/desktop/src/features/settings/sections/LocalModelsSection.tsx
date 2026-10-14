@@ -1,6 +1,7 @@
 import { IconBrain, IconPlayerPlay, IconPlayerStop, IconRefresh, IconServer } from '@tabler/icons-react'
 import { useEffect, useState } from 'react'
 import { GlassButton, Pill, Toggle } from '../../../components/ui/glass.tsx'
+import { type MessageKey, useT, dateLocale } from '../../../lib/i18n.ts'
 import { jarod, onJarodEvent } from '../../../lib/jarod.ts'
 import { useBackendData } from '../../../lib/use-async.ts'
 import { notify } from '../../../store/notifications.ts'
@@ -18,12 +19,21 @@ import { errorText, InlineNote, markSaved, SectionTitle, SettingsGroup, Settings
  * Everything binds to the engine's control channels (`local-models-*`, `local-engine-*`, `hf-*`).
  */
 
-const BACKEND_TITLE: Record<LocalBackend, string> = { lmstudio: 'LM Studio', llamacpp: 'llama.cpp (Jarod’s engine)' }
+/** Each backend's name in the catalogue. */
+const BACKEND_KEY: Record<LocalBackend, MessageKey> = {
+  lmstudio: 'localmodels.backend.lmstudio',
+  llamacpp: 'localmodels.backend.llamacpp'
+}
+
+/** Numbers read the way the language writes them: 8,192 in English, 8 192 in French. */
+const num = (value: number): string => value.toLocaleString(dateLocale())
 
 export function LocalModelsSection() {
+  const { t } = useT()
+
   return (
     <>
-      <SectionTitle title="Local models" subtitle="Run models on this PC: what is loaded, the llama.cpp engine, and models to download." />
+      <SectionTitle title={t('localmodels.title')} subtitle={t('localmodels.subtitle')} />
       <ModelsInMemory />
       <EngineBlock />
       <HuggingFaceBlock />
@@ -32,6 +42,7 @@ export function LocalModelsSection() {
 }
 
 function ModelsInMemory() {
+  const { t } = useT()
   const view = useBackendData(() => jarod<LocalModelsView>('local-models-list'))
   const [activity, setActivity] = useState<LocalModelActivity | null>(null)
   const reload = view.reload
@@ -55,44 +66,52 @@ function ModelsInMemory() {
   )
 
   if (isUnsupported(view.error)) {
-    return <InlineNote tone="info">Local models need the Jarod engine.</InlineNote>
+    return <InlineNote tone="info">{t('localmodels.needEngine')}</InlineNote>
   }
 
   const data = view.data
 
   return (
     <>
-      {view.error && <InlineNote tone="danger">Could not read the local models: {view.error}</InlineNote>}
+      {view.error && <InlineNote tone="danger">{t('localmodels.readFailed', { error: view.error })}</InlineNote>}
       {activity && <ActivityNote activity={activity} />}
       {data && (
-        <SettingsGroup title="Loading">
+        <SettingsGroup title={t('localmodels.loadingGroup')}>
           <HotswapRow hotswap={data.hotswap} onChanged={reload} />
         </SettingsGroup>
       )}
       {data &&
-        (Object.keys(BACKEND_TITLE) as LocalBackend[]).filter(backend => backend !== 'llamacpp' || data.backends.llamacpp.available).map(backend => (
+        (Object.keys(BACKEND_KEY) as LocalBackend[]).filter(backend => backend !== 'llamacpp' || data.backends.llamacpp.available).map(backend => (
           <BackendGroup key={backend} backend={backend} view={data.backends[backend]} onChanged={reload} />
         ))}
-      {view.loading && !data && <div className="px-1 text-[12px] text-fg-4">Looking at what is loaded…</div>}
+      {view.loading && !data && <div className="px-1 text-[12px] text-fg-4">{t('localmodels.looking')}</div>}
     </>
   )
 }
 
 function ActivityNote({ activity }: { activity: LocalModelActivity }) {
-  const verb = activity.action === 'load' ? 'Loading' : 'Unloading'
+  const { t } = useT()
+  const load = activity.action === 'load'
 
   if (activity.phase === 'start') {
-    return <InlineNote tone="info">{verb} {activity.model}…</InlineNote>
+    return <InlineNote tone="info">{t(load ? 'localmodels.start.load' : 'localmodels.start.unload', { model: activity.model })}</InlineNote>
   }
 
   if (activity.phase === 'error') {
-    return <InlineNote tone="danger">{verb} {activity.model} failed: {activity.error ?? 'unknown error'}</InlineNote>
+    return (
+      <InlineNote tone="danger">
+        {t(load ? 'localmodels.failed.load' : 'localmodels.failed.unload', { model: activity.model, error: activity.error ?? t('localmodels.unknownError') })}
+      </InlineNote>
+    )
   }
 
-  return <InlineNote tone="info">{activity.model} {activity.action === 'load' ? 'loaded' : 'unloaded'}{activity.durationMs !== undefined ? ` in ${formatDuration(activity.durationMs)}` : ''}.</InlineNote>
+  const duration = activity.durationMs === undefined ? '' : t('localmodels.activity.in', { duration: formatDuration(activity.durationMs) })
+
+  return <InlineNote tone="info">{t(load ? 'localmodels.done.load' : 'localmodels.done.unload', { model: activity.model, duration })}</InlineNote>
 }
 
 function HotswapRow({ hotswap, onChanged }: { hotswap: boolean; onChanged: () => void }) {
+  const { t } = useT()
   const [busy, setBusy] = useState(false)
 
   const set = async (value: boolean) => {
@@ -103,26 +122,28 @@ function HotswapRow({ hotswap, onChanged }: { hotswap: boolean; onChanged: () =>
       markSaved()
       onChanged()
     } catch (error) {
-      notify({ title: 'Could not change hotswap', body: errorText(error), level: 'error' })
+      notify({ title: t('localmodels.hotswapFailed'), body: errorText(error), level: 'error' })
     } finally {
       setBusy(false)
     }
   }
 
   return (
-    <SettingsRow icon={<IconRefresh />} label="One chat model at a time (hotswap)" description="Picking a local model in the chat loads it and unloads the other chat models, so they do not fight for memory. Models used for document search stay loaded." keywords="hotswap memory vram swap">
-      <Toggle checked={hotswap} onChange={value => void set(value)} label="Hotswap" disabled={busy} />
+    <SettingsRow icon={<IconRefresh />} label={t('localmodels.hotswap')} description={t('localmodels.hotswap.hint')} keywords="hotswap memory vram swap">
+      <Toggle checked={hotswap} onChange={value => void set(value)} label={t('localmodels.hotswap.toggle')} disabled={busy} />
     </SettingsRow>
   )
 }
 
 function BackendGroup({ backend, view, onChanged }: { backend: LocalBackend; view: LocalModelsView['backends'][LocalBackend]; onChanged: () => void }) {
+  const { t } = useT()
+
   return (
-    <SettingsGroup title={BACKEND_TITLE[backend]}>
+    <SettingsGroup title={t(BACKEND_KEY[backend])}>
       {!view.available && (
-        <SettingsRow icon={<IconServer />} label={backend === 'lmstudio' ? 'LM Studio is not answering' : 'The llama.cpp engine is not set up'} description={view.reason ?? 'Nothing to load.'} keywords={`${backend} unavailable`} />
+        <SettingsRow icon={<IconServer />} label={backend === 'lmstudio' ? t('localmodels.notAnswering') : t('localmodels.notSetUp')} description={view.reason ?? t('localmodels.nothingToLoad')} keywords={`${backend} unavailable`} />
       )}
-      {view.available && view.models.length === 0 && <SettingsRow icon={<IconServer />} label="No models" description={backend === 'lmstudio' ? 'Download a model in LM Studio first.' : 'Add a model file below.'} keywords={`${backend} models empty`} />}
+      {view.available && view.models.length === 0 && <SettingsRow icon={<IconServer />} label={t('localmodels.noModels')} description={backend === 'lmstudio' ? t('localmodels.downloadFirst') : t('localmodels.addBelow')} keywords={`${backend} models empty`} />}
       {view.models.map(model => (
         <ModelRow key={model.id} backend={backend} model={model} onChanged={onChanged} />
       ))}
@@ -131,6 +152,7 @@ function BackendGroup({ backend, view, onChanged }: { backend: LocalBackend; vie
 }
 
 function ModelRow({ backend, model, onChanged }: { backend: LocalBackend; model: LocalModelEntry; onChanged: () => void }) {
+  const { t } = useT()
   const [busy, setBusy] = useState(false)
   const [editing, setEditing] = useState(false)
   const [ctx, setCtx] = useState('')
@@ -146,17 +168,21 @@ function ModelRow({ backend, model, onChanged }: { backend: LocalBackend; model:
       notify({ title, body: model.name, level: 'success' })
       onChanged()
     } catch (error) {
-      notify({ title: `Could not update ${model.name}`, body: errorText(error), level: 'error' })
+      notify({ title: t('localmodels.updateFailed', { name: model.name }), body: errorText(error), level: 'error' })
     } finally {
       setBusy(false)
     }
   }
 
   const description = [
-    model.kind === 'embedding' ? 'document search' : 'chat',
+    model.kind === 'embedding' ? t('localmodels.kind.embedding') : t('localmodels.kind.chat'),
     formatBytes(model.sizeBytes),
-    model.loaded && model.loadedContext ? `in memory with ${model.loadedContext.toLocaleString('en-US')} tokens` : model.contextLength ? `loads with ${model.contextLength.toLocaleString('en-US')} tokens` : null,
-    model.loadable ? null : 'cannot be loaded as is'
+    model.loaded && model.loadedContext
+      ? t('localmodels.inMemory', { tokens: num(model.loadedContext) })
+      : model.contextLength
+        ? t('localmodels.loadsWith', { tokens: num(model.contextLength) })
+        : null,
+    model.loadable ? null : t('localmodels.notLoadable')
   ]
     .filter(Boolean)
     .join(' · ')
@@ -177,22 +203,22 @@ function ModelRow({ backend, model, onChanged }: { backend: LocalBackend; model:
                 event.preventDefault()
 
                 if (!problem) {
-                  void run('Context length saved', () => jarod('local-models-configure', { contextLength: { model: model.id, tokens: ctx.trim() ? Number(ctx.trim()) : null } })).then(() => setEditing(false))
+                  void run(t('localmodels.contextSaved'), () => jarod('local-models-configure', { contextLength: { model: model.id, tokens: ctx.trim() ? Number(ctx.trim()) : null } })).then(() => setEditing(false))
                 }
               }}
             >
               <label className="glass-input flex h-9 items-center gap-2 rounded-lg px-3">
-                <span className="sr-only">Context length of {model.name}</span>
-                <input autoFocus value={ctx} onChange={event => setCtx(event.target.value)} inputMode="numeric" placeholder={model.maxContext ? `LM Studio default · up to ${model.maxContext.toLocaleString('en-US')}` : 'LM Studio default'} className="min-w-0 flex-1 bg-transparent font-mono text-[12.5px] outline-none placeholder:text-fg-4" />
+                <span className="sr-only">{t('localmodels.contextOf', { name: model.name })}</span>
+                <input autoFocus value={ctx} onChange={event => setCtx(event.target.value)} inputMode="numeric" placeholder={model.maxContext ? t('localmodels.context.placeholderUpTo', { max: num(model.maxContext) }) : t('localmodels.context.placeholder')} className="min-w-0 flex-1 bg-transparent font-mono text-[12.5px] outline-none placeholder:text-fg-4" />
               </label>
               {problem && <InlineNote tone="warn">{problem}</InlineNote>}
-              <div className="text-[11.5px] text-fg-4">A model already in memory keeps its old context: unload it, then load it again.</div>
+              <div className="text-[11.5px] text-fg-4">{t('localmodels.context.hint')}</div>
               <div className="flex justify-end gap-2">
                 <GlassButton type="button" size="sm" variant="ghost" onClick={() => setEditing(false)} disabled={busy}>
-                  Cancel
+                  {t('localmodels.cancel')}
                 </GlassButton>
                 <GlassButton type="submit" size="sm" variant="primary" disabled={busy || Boolean(problem)}>
-                  Save
+                  {t('localmodels.save')}
                 </GlassButton>
               </div>
             </form>
@@ -202,23 +228,23 @@ function ModelRow({ backend, model, onChanged }: { backend: LocalBackend; model:
     >
       {model.loaded && (
         <Pill tone="ok" dot>
-          Loaded
+          {t('localmodels.loaded')}
         </Pill>
       )}
       {backend === 'lmstudio' && (
-        <GlassButton size="sm" variant="ghost" disabled={busy} onClick={() => (setCtx(model.contextLength ? String(model.contextLength) : ''), setEditing(true))} aria-label={`Set the context length of ${model.name}`}>
-          Context
+        <GlassButton size="sm" variant="ghost" disabled={busy} onClick={() => (setCtx(model.contextLength ? String(model.contextLength) : ''), setEditing(true))} aria-label={t('localmodels.contextAria', { name: model.name })}>
+          {t('localmodels.context')}
         </GlassButton>
       )}
       {model.loaded ? (
-        <GlassButton size="sm" variant="secondary" disabled={busy} onClick={() => void run('Unloaded', () => jarod('local-models-unload', backend, model.id))} aria-label={`Unload ${model.name}`}>
+        <GlassButton size="sm" variant="secondary" disabled={busy} onClick={() => void run(t('localmodels.unloadedTitle'), () => jarod('local-models-unload', backend, model.id))} aria-label={t('localmodels.unloadAria', { name: model.name })}>
           <IconPlayerStop />
-          Unload
+          {t('localmodels.unload')}
         </GlassButton>
       ) : (
-        <GlassButton size="sm" variant="primary" disabled={busy || !model.loadable} onClick={() => void run('Loaded', () => jarod('local-models-load', backend, model.id))} aria-label={`Load ${model.name}`}>
+        <GlassButton size="sm" variant="primary" disabled={busy || !model.loadable} onClick={() => void run(t('localmodels.loaded'), () => jarod('local-models-load', backend, model.id))} aria-label={t('localmodels.loadAria', { name: model.name })}>
           <IconPlayerPlay />
-          Load
+          {t('localmodels.load')}
         </GlassButton>
       )}
     </SettingsRow>
