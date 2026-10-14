@@ -2690,4 +2690,18 @@ export const fr: Record<MessageKey, string> = {
   'applications.askPlaceholder': 'Dites à {assistant} ce qu\u2019il vous faut. Il trouvera la bonne application.',
   'applications.askAria': 'Dites à {assistant} ce qu\u2019il vous faut',
   'applications.openFailed': 'Impossible d\u2019ouvrir {label}',
+  // Storage (Settings > Storage)
+  'storage.title': 'Stockage',
+  'storage.subtitle': 'Les disques de cette machine, et l\u2019espace que {assistant} garde pour lui.',
+  'storage.disks': 'Disques',
+  'storage.reading': "Lecture de l\u2019utilisation des disques\u2026",
+  'storage.usedOfFree': '{used} utilis\u00e9s sur {total} \u00b7 {free} libres',
+  'storage.diskKw': 'disque volume montage libre utilis\u00e9',
+  'storage.hermes': 'Hermes',
+  'storage.home': 'Dossier Hermes',
+  'storage.homeSize': '{size} dans {files} fichiers',
+  'storage.measuring': 'mesure\u2026',
+  'storage.homeKw': 'hermes dossier taille sessions m\u00e9moires',
+  'storage.askSpace': 'Demander \u00e0 {assistant} ce qui prend de la place',
+  'storage.askSpacePrompt': "Qu\u2019est-ce qui prend toute la place sur mon disque ? Commence par mon dossier personnel.",
 }

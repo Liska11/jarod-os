@@ -2692,6 +2692,20 @@ export const en = {
   'applications.askPlaceholder': 'Tell {assistant} what you need. It will find the right app.',
   'applications.askAria': 'Tell {assistant} what you need',
   'applications.openFailed': 'Could not open {label}',
+  // Storage (Settings > Storage)
+  'storage.title': 'Storage',
+  'storage.subtitle': 'Disks on this machine, and the space {assistant} keeps for itself.',
+  'storage.disks': 'Disks',
+  'storage.reading': 'Reading disk usage\u2026',
+  'storage.usedOfFree': '{used} used of {total} \u00b7 {free} free',
+  'storage.diskKw': 'disk volume mount free used',
+  'storage.hermes': 'Hermes',
+  'storage.home': 'Hermes home',
+  'storage.homeSize': '{size} in {files} files',
+  'storage.measuring': 'measuring\u2026',
+  'storage.homeKw': 'hermes home folder size sessions memories',
+  'storage.askSpace': 'Ask {assistant} what is using space',
+  'storage.askSpacePrompt': "What's using all my disk space? Start from my home folder.",
   } as const
 
   export type MessageKey = keyof typeof en

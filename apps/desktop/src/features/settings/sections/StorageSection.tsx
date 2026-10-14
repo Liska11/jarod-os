@@ -1,8 +1,9 @@
 import { useStore } from '@nanostores/react'
+import { useT } from '../../../lib/i18n.ts'
 import { IconDeviceFloppy, IconHome } from '@tabler/icons-react'
 import { GlassButton, ProgressBar } from '../../../components/ui/glass.tsx'
 import { formatBytes } from '../../../lib/format.ts'
-import { deviceNoun, diskLabel } from '../../../lib/platform-labels.ts'
+import { diskLabel } from '../../../lib/platform-labels.ts'
 import { useLocalData } from '../../../lib/use-async.ts'
 import { $env } from '../../../store/backend.ts'
 import { sendPrompt } from '../../../store/chat.ts'
@@ -11,6 +12,7 @@ import { showPage } from '../../../store/windows.ts'
 import { SectionTitle, SettingsGroup, SettingsRow } from './shared.tsx'
 
 export function StorageSection() {
+  const { t } = useT()
   const stats = useSystemStats()
   const env = useStore($env)
   const hermesHome = env?.hermesHome ?? null
@@ -18,15 +20,15 @@ export function StorageSection() {
 
   const askHermes = () => {
     showPage('hermes')
-    void sendPrompt("What's using all my disk space? Start from my home folder.")
+    void sendPrompt(t('storage.askSpacePrompt'))
   }
 
   return (
     <>
-      <SectionTitle title="Storage" subtitle={`Disks on this ${deviceNoun()} and the space Hermes keeps for itself.`} />
+      <SectionTitle title={t('storage.title')} subtitle={t('storage.subtitle')} />
 
-      <SettingsGroup title="Disks">
-        {(stats?.disks ?? []).length === 0 && <SettingsRow icon={<IconDeviceFloppy />} label="Disks" description="Reading disk usage…" keywords="volume mount" />}
+      <SettingsGroup title={t('storage.disks')}>
+        {(stats?.disks ?? []).length === 0 && <SettingsRow icon={<IconDeviceFloppy />} label={t('storage.disks')} description={t('storage.reading')} keywords={t('storage.diskKw')} />}
         {(stats?.disks ?? []).map(disk => {
           const percent = disk.total > 0 ? (disk.used / disk.total) * 100 : 0
 
@@ -35,8 +37,8 @@ export function StorageSection() {
               key={disk.mount}
               icon={<IconDeviceFloppy />}
               label={diskLabel(disk.mount)}
-              description={`${formatBytes(disk.used)} used of ${formatBytes(disk.total)} · ${formatBytes(disk.free)} free`}
-              keywords="disk volume mount free used"
+              description={t('storage.usedOfFree', { used: formatBytes(disk.used), total: formatBytes(disk.total), free: formatBytes(disk.free) })}
+              keywords={t('storage.diskKw')}
               below={<ProgressBar value={percent} tone={percent > 90 ? 'progress' : 'accent'} />}
             >
               <span className="text-[12px] tabular-nums text-fg-2">{Math.round(percent)}%</span>
@@ -45,20 +47,20 @@ export function StorageSection() {
         })}
       </SettingsGroup>
 
-      <SettingsGroup title="Hermes">
+      <SettingsGroup title={t('storage.hermes')}>
         <SettingsRow
           icon={<IconHome />}
-          label="Hermes home"
+          label={t('storage.home')}
           description={
             <span className="selectable font-mono text-[11.5px]">
               {hermesHome ?? '—'}
-              {homeSize.data ? ` · ${formatBytes(homeSize.data.bytes)}${homeSize.data.complete ? '' : '+'} in ${homeSize.data.files.toLocaleString()} files` : homeSize.loading ? ' · measuring…' : ''}
+              {homeSize.data ? ` \u00b7 ${t('storage.homeSize', { size: `${formatBytes(homeSize.data.bytes)}${homeSize.data.complete ? '' : '+'}`, files: homeSize.data.files.toLocaleString() })}` : homeSize.loading ? ` \u00b7 ${t('storage.measuring')}` : ''}
             </span>
           }
-          keywords="hermes home folder size sessions memories"
+          keywords={t('storage.homeKw')}
         >
-          <GlassButton size="sm" onClick={askHermes} aria-label="Ask Hermes what is using space">
-            Ask Hermes what is using space
+          <GlassButton size="sm" onClick={askHermes} aria-label={t('storage.askSpace')}>
+            {t('storage.askSpace')}
           </GlassButton>
         </SettingsRow>
       </SettingsGroup>
