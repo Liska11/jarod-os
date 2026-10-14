@@ -1,4 +1,5 @@
 import type { UsageModel } from '@herald-os/client'
+import { t } from './i18n.ts'
 
 /** The parts of `GET /api/analytics/usage` Jarod-OS shows (Hermes's own token accounting per session). */
 export interface AnalyticsResponse {
@@ -79,8 +80,8 @@ export function limitAlertKey(plan: UsageModel | null | undefined, threshold: nu
 /** What the "Plan limits" row says when the plan reports nothing: the engine's own gap, a provider that reports none, or the Nous Portal hint. */
 export function planNote(state: { unavailable: boolean; loggedIn: boolean }): string {
   if (state.unavailable) {
-    return 'Not available in this version.'
+    return t('usage.noteUnavailable')
   }
 
-  return state.loggedIn ? 'Your provider does not report plan limits.' : 'Plan limits appear here when Hermes is signed in to Nous Portal; other providers show their usage on their own site.'
+  return state.loggedIn ? t('usage.noteProvider') : t('usage.noteSignIn')
 }
