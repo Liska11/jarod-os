@@ -1,12 +1,14 @@
 import { IconChevronRight } from '@tabler/icons-react'
+import { t, useT } from '../../lib/i18n.ts'
 import { GlassCard, Pill, ProgressBar } from '../../components/ui/glass.tsx'
 import type { Mission } from '../../store/missions.ts'
 import { deriveAgentName, missionIcon, STATUS_LABEL, STATUS_TONE } from './mission-helpers.ts'
 
 export function MissionCard({ mission, selected, onSelect }: { mission: Mission; selected: boolean; onSelect: () => void }) {
+  useT()
   const Icon = missionIcon(mission.title)
-  const agent = mission.agents[0] ? deriveAgentName(mission.goal) : 'Hermes'
-  const step = mission.currentStep || STATUS_LABEL[mission.status]
+  const agent = mission.agents[0] ? deriveAgentName(mission.goal) : t('missionDetail.agent.generic')
+  const step = mission.currentStep || t(STATUS_LABEL[mission.status])
   const showProgress = mission.status === 'active' || mission.status === 'queued'
 
   return (
@@ -21,7 +23,7 @@ export function MissionCard({ mission, selected, onSelect }: { mission: Mission;
             {agent} · {step}
           </div>
         </div>
-        <Pill tone={STATUS_TONE[mission.status]}>{STATUS_LABEL[mission.status]}</Pill>
+        <Pill tone={STATUS_TONE[mission.status]}>{t(STATUS_LABEL[mission.status])}</Pill>
         <IconChevronRight size={16} className="shrink-0 text-fg-4" />
       </div>
       {showProgress && (

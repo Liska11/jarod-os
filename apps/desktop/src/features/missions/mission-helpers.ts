@@ -1,5 +1,6 @@
 import { IconDatabase, IconFileText, IconListCheck, IconRobot, IconSparkles, IconTarget, IconTool, IconWorld } from '@tabler/icons-react'
 import type { PillTone } from '../../components/ui/glass.tsx'
+import { type MessageKey, t } from '../../lib/i18n.ts'
 import type { ActivityEntry, Mission, MissionStatus, MissionStep } from '../../store/missions.ts'
 
 /*
@@ -27,11 +28,12 @@ export function missionIcon(title: string): TablerIcon {
   return IconTarget
 }
 
-export const STATUS_LABEL: Record<MissionStatus, string> = {
-  active: 'In progress',
-  review: 'Needs review',
-  queued: 'Queued',
-  completed: 'Completed'
+/** Each status's catalogue key. The UI translates it at draw time. */
+export const STATUS_LABEL: Record<MissionStatus, MessageKey> = {
+  active: 'missionDetail.status.active',
+  review: 'missionDetail.status.review',
+  queued: 'missionDetail.status.queued',
+  completed: 'missionDetail.status.completed'
 }
 
 export const STATUS_TONE: Record<MissionStatus, PillTone> = {
@@ -46,26 +48,26 @@ export function deriveAgentName(goal: string): string {
   const text = goal.toLowerCase()
 
   if (/\b(research|analy[sz]e|compare|competitor|investigate|find out|survey)\b/.test(text)) {
-    return 'Research agent'
+    return t('missionDetail.agent.research')
   }
 
   if (/\b(design|mockup|concept|visual|brand|logo|layout)\b/.test(text)) {
-    return 'Design agent'
+    return t('missionDetail.agent.design')
   }
 
   if (/\b(build|code|implement|develop|website|site|app|deploy|fix|refactor)\b/.test(text)) {
-    return 'Build agent'
+    return t('missionDetail.agent.build')
   }
 
   if (/\b(organi[sz]e|library|knowledge|memory|catalog|index|tidy|sort)\b/.test(text)) {
-    return 'Knowledge agent'
+    return t('missionDetail.agent.knowledge')
   }
 
   if (/\b(write|draft|brief|report|summar|document|email)\b/.test(text)) {
-    return 'Writing agent'
+    return t('missionDetail.agent.writing')
   }
 
-  return 'Hermes agent'
+  return t('missionDetail.agent.generic')
 }
 
 export function activityIcon(kind: ActivityEntry['kind']): TablerIcon {
@@ -105,10 +107,10 @@ export function genericSteps(mission: Mission): MissionStep[] {
   const finished = mission.status === 'completed' || mission.status === 'review'
 
   return [
-    { id: 'understand', label: 'Understand', state: 'done' },
-    { id: 'work', label: 'Work', state: working ? 'active' : finished ? 'done' : 'pending' },
-    { id: 'review', label: 'Review', state: mission.status === 'review' ? 'active' : mission.status === 'completed' ? 'done' : 'pending' },
-    { id: 'done', label: 'Done', state: mission.status === 'completed' ? 'done' : 'pending' }
+    { id: 'understand', label: t('missionDetail.step.understand'), state: 'done' },
+    { id: 'work', label: t('missionDetail.step.work'), state: working ? 'active' : finished ? 'done' : 'pending' },
+    { id: 'review', label: t('missionDetail.step.review'), state: mission.status === 'review' ? 'active' : mission.status === 'completed' ? 'done' : 'pending' },
+    { id: 'done', label: t('missionDetail.step.done'), state: mission.status === 'completed' ? 'done' : 'pending' }
   ]
 }
 

@@ -1,4 +1,5 @@
 import { IconCheck, IconList, IconPlayerPause } from '@tabler/icons-react'
+import { t, useT } from '../../lib/i18n.ts'
 import { useState } from 'react'
 import { GlassButton, Pill } from '../../components/ui/glass.tsx'
 import { cn } from '../../lib/cn.ts'
@@ -10,6 +11,7 @@ import { formatStamp, genericSteps, STATUS_LABEL, STATUS_TONE } from './mission-
 import { MissionPreview } from './MissionPreview.tsx'
 
 export function MissionDetail({ mission }: { mission: Mission }) {
+  useT()
   const [busy, setBusy] = useState<'pause' | 'open' | null>(null)
   const steps = mission.steps.length > 0 ? mission.steps : genericSteps(mission)
   const canPause = mission.live && mission.status === 'active' && Boolean(mission.runtimeId)
@@ -20,7 +22,7 @@ export function MissionDetail({ mission }: { mission: Mission }) {
     try {
       await interruptChat(mission.runtimeId)
     } catch (error) {
-      notify({ title: 'Could not pause mission', body: error instanceof Error ? error.message : String(error), level: 'error' })
+      notify({ title: t('missionDetail.pauseFailed'), body: error instanceof Error ? error.message : String(error), level: 'error' })
     } finally {
       setBusy(null)
     }
@@ -34,7 +36,7 @@ export function MissionDetail({ mission }: { mission: Mission }) {
       markReviewed(mission.id)
       showPage('hermes')
     } catch (error) {
-      notify({ title: 'Could not open mission', body: error instanceof Error ? error.message : String(error), level: 'error' })
+      notify({ title: t('missionDetail.openFailed'), body: error instanceof Error ? error.message : String(error), level: 'error' })
     } finally {
       setBusy(null)
     }
@@ -45,13 +47,13 @@ export function MissionDetail({ mission }: { mission: Mission }) {
       <div className="flex items-start justify-between gap-3">
         <h2 className="min-w-0 text-[18px] leading-tight font-semibold text-fg">{mission.title}</h2>
         <Pill tone={STATUS_TONE[mission.status]} className="mt-0.5 shrink-0">
-          {STATUS_LABEL[mission.status]}
+          {t(STATUS_LABEL[mission.status])}
         </Pill>
       </div>
 
       <div>
-        <div className="mb-1 text-[10.5px] tracking-[0.08em] text-fg-3 uppercase">Goal</div>
-        <p className="selectable text-[13px] leading-relaxed text-fg-2">{mission.goal || 'No goal recorded for this session.'}</p>
+        <div className="mb-1 text-[10.5px] tracking-[0.08em] text-fg-3 uppercase">{t('missionDetail.goal')}</div>
+        <p className="selectable text-[13px] leading-relaxed text-fg-2">{mission.goal || t('missionDetail.noGoal')}</p>
       </div>
 
       <StepTimeline steps={steps} mission={mission} />
@@ -59,13 +61,13 @@ export function MissionDetail({ mission }: { mission: Mission }) {
       <MissionPreview artifact={mission.artifacts[0]} />
 
       <div className="mt-auto flex items-center justify-between gap-2 pt-2">
-        <GlassButton size="sm" onClick={() => void pause()} disabled={!canPause || busy === 'pause'} aria-label="Pause mission">
+        <GlassButton size="sm" onClick={() => void pause()} disabled={!canPause || busy === 'pause'} aria-label={t('missionDetail.pause')}>
           <IconPlayerPause />
-          Pause mission
+          {t('missionDetail.pause')}
         </GlassButton>
-        <GlassButton size="sm" onClick={() => void viewActivity()} disabled={busy === 'open'} aria-label="View activity">
+        <GlassButton size="sm" onClick={() => void viewActivity()} disabled={busy === 'open'} aria-label={t('missionDetail.viewActivity')}>
           <IconList />
-          View activity
+          {t('missionDetail.viewActivity')}
         </GlassButton>
       </div>
     </div>
@@ -74,7 +76,7 @@ export function MissionDetail({ mission }: { mission: Mission }) {
 
 function StepTimeline({ steps, mission }: { steps: MissionStep[]; mission: Mission }) {
   return (
-    <ol className="stagger relative flex flex-col gap-4 before:absolute before:top-3 before:bottom-3 before:left-[9px] before:w-px before:bg-line" aria-label="Mission steps">
+    <ol className="stagger relative flex flex-col gap-4 before:absolute before:top-3 before:bottom-3 before:left-[9px] before:w-px before:bg-line" aria-label={t('missionDetail.stepsAria')}>
       {steps.map(step => (
         <li key={step.id} className="flex items-start gap-3">
           <StepMarker state={step.state} />
@@ -97,11 +99,11 @@ function stepDetail(step: MissionStep, mission: Mission): string {
 
   switch (step.state) {
     case 'done':
-      return 'Completed'
+      return t('missionDetail.completed')
     case 'active':
-      return mission.currentStep && mission.currentStep !== step.label ? `In progress · ${mission.currentStep}` : 'In progress'
+      return mission.currentStep && mission.currentStep !== step.label ? t('missionDetail.inProgressOn', { step: mission.currentStep }) : t('missionDetail.inProgress')
     default:
-      return 'Waiting'
+      return t('missionDetail.waiting')
   }
 }
 
