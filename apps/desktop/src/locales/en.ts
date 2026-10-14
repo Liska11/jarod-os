@@ -2706,6 +2706,23 @@ export const en = {
   'storage.homeKw': 'hermes home folder size sessions memories',
   'storage.askSpace': 'Ask {assistant} what is using space',
   'storage.askSpacePrompt': "What's using all my disk space? Start from my home folder.",
+  // File detail panel and preview overlay
+  'fileDetail.addFav': 'Add to Favorites',
+  'fileDetail.removeFav': 'Remove from Favorites',
+  'fileDetail.relatedMission': 'Related mission',
+  'fileDetail.actions': 'Actions',
+  'fileDetail.open': 'Open',
+  'fileDetail.askAbout': 'Ask {assistant} about this',
+  'fileDetail.openFailed': 'Could not open the mission',
+  'fileDetail.previewFailed': 'Could not preview \u201c{name}\u201d',
+  'fileDetail.previewAria': 'Preview of {name}',
+  'fileDetail.closePreview': 'Close preview',
+  'fileDetail.pressEnter': 'Press Enter to open this folder.',
+  'fileDetail.tooLarge': 'Too large to preview here.',
+  'fileDetail.noPreview': 'No inline preview for this file.',
+  'fileDetail.openInApp': 'Open it in its app or ask {assistant} about it.',
+  'fileDetail.previewUnavailable': 'Preview unavailable.',
+  'fileDetail.truncated': '\u2026 (truncated)',
   } as const
 
   export type MessageKey = keyof typeof en

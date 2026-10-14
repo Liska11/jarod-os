@@ -1,4 +1,5 @@
 import { useStore } from '@nanostores/react'
+import { useT } from '../../lib/i18n.ts'
 import { IconClock, IconDatabase, IconDimensions, IconExternalLink, IconFileDescription, IconMessage, IconStar, IconStarFilled, IconTarget, IconX } from '@tabler/icons-react'
 import type React from 'react'
 import { useEffect } from 'react'
@@ -26,6 +27,7 @@ function DetailRow({ icon, children }: { icon: React.ReactNode; children: React.
 
 /** Right-hand panel for the selected item: preview, facts, related mission, actions. */
 export function FileDetail({ item }: { item: FileItem }) {
+  const { t } = useT()
   const home = useStore($home)
   const prefs = useStore($prefs)
   const artifacts = useStore($allArtifacts)
@@ -44,7 +46,7 @@ export function FileDetail({ item }: { item: FileItem }) {
 
     openStoredSession(mission.id)
       .then(() => showPage('hermes'))
-      .catch(error => notify({ title: 'Could not open the mission', body: messageOf(error), level: 'error' }))
+      .catch(error => notify({ title: t('fileDetail.openFailed'), body: messageOf(error), level: 'error' }))
   }
 
   return (
@@ -55,7 +57,7 @@ export function FileDetail({ item }: { item: FileItem }) {
         <div className="selectable min-w-0 flex-1 text-[13.5px] leading-snug font-semibold break-words text-fg">{item.name}</div>
         <button
           type="button"
-          aria-label={favorite ? 'Remove from Favorites' : 'Add to Favorites'}
+          aria-label={favorite ? t('fileDetail.removeFav') : t('fileDetail.addFav')}
           aria-pressed={favorite}
           onClick={() => toggleFavorite(item.path)}
           className={cn('flex size-7 shrink-0 items-center justify-center rounded-lg hover:bg-white/8', favorite ? 'text-warn' : 'text-fg-3 hover:text-fg')}
@@ -75,7 +77,7 @@ export function FileDetail({ item }: { item: FileItem }) {
         <div className="flex flex-col gap-1.5 border-t border-line pt-3">
           <div className="flex items-center gap-2.5 text-[12px] text-fg-3">
             <IconTarget size={15} className="shrink-0" />
-            Related mission
+            {t('fileDetail.relatedMission')}
           </div>
           <LinkAction onClick={openMission} className="ml-[25px] text-left">
             <span className="truncate">{mission.title}</span>
@@ -84,14 +86,14 @@ export function FileDetail({ item }: { item: FileItem }) {
       )}
 
       <div className="flex flex-col gap-2 border-t border-line pt-3">
-        <div className="text-[12.5px] font-medium text-fg">Actions</div>
+        <div className="text-[12.5px] font-medium text-fg">{t('fileDetail.actions')}</div>
         <GlassButton variant="primary" className="w-full" onClick={() => openItem(item)}>
           <IconExternalLink />
-          Open
+          {t('fileDetail.open')}
         </GlassButton>
         <GlassButton className="w-full" onClick={() => askHermesAbout(item.path)}>
           <IconMessage />
-          Ask Hermes about this
+          {t('fileDetail.askAbout')}
         </GlassButton>
       </div>
     </GlassCard>
@@ -100,17 +102,18 @@ export function FileDetail({ item }: { item: FileItem }) {
 
 /** Space-bar quick look, rendered inside the page. Images and text render inline; the rest explains itself. */
 export function PreviewOverlay({ item, onClose }: { item: FileItem; onClose: () => void }) {
+  const { t } = useT()
   const preview = useLocalData<FilePreview | null>(() => (item.kind === 'file' ? window.heraldOS.fs.readFile(item.path) : Promise.resolve(null)), [item.path])
   const large = useThumbnail(item.kind === 'file' && (preview.data?.kind === 'too-large' || preview.data?.kind === 'binary') ? item.path : null, 1024)
 
   useEffect(() => {
     if (preview.error) {
-      notify({ title: `Could not preview "${item.name}"`, body: preview.error, level: 'error' })
+      notify({ title: t('fileDetail.previewFailed', { name: item.name }), body: preview.error, level: 'error' })
     }
   }, [preview.error, item.name])
 
   return (
-    <div className="absolute inset-0 z-40 flex flex-col p-4 animate-fade-in" role="dialog" aria-modal="true" aria-label={`Preview of ${item.name}`} onClick={onClose}>
+    <div className="absolute inset-0 z-40 flex flex-col p-4 animate-fade-in" role="dialog" aria-modal="true" aria-label={t('fileDetail.previewAria', { name: item.name })} onClick={onClose}>
       <div className="glass flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl animate-pop" onClick={event => event.stopPropagation()}>
         <div className="flex h-12 shrink-0 items-center justify-between gap-3 border-b border-line px-4">
           <div className="min-w-0">
@@ -123,9 +126,9 @@ export function PreviewOverlay({ item, onClose }: { item: FileItem; onClose: () 
           <div className="flex items-center gap-1.5">
             <GlassButton size="sm" onClick={() => openItem(item)}>
               <IconExternalLink />
-              Open
+              {t('fileDetail.open')}
             </GlassButton>
-            <button type="button" aria-label="Close preview" onClick={onClose} className="flex size-8 items-center justify-center rounded-lg text-fg-3 hover:bg-white/8 hover:text-fg">
+            <button type="button" aria-label={t('fileDetail.closePreview')} onClick={onClose} className="flex size-8 items-center justify-center rounded-lg text-fg-3 hover:bg-white/8 hover:text-fg">
               <IconX size={16} />
             </button>
           </div>
@@ -135,7 +138,7 @@ export function PreviewOverlay({ item, onClose }: { item: FileItem; onClose: () 
           {item.kind === 'directory' && (
             <div className="flex flex-col items-center gap-3 text-[12.5px] text-fg-3">
               <FolderGlyph size={120} />
-              Press Enter to open this folder.
+              {t('fileDetail.pressEnter')}
             </div>
           )}
           {item.kind === 'file' && preview.loading && !preview.data && <div className="shimmer h-full w-full rounded-xl" />}
@@ -143,7 +146,7 @@ export function PreviewOverlay({ item, onClose }: { item: FileItem; onClose: () 
           {preview.data?.kind === 'text' && (
             <pre className="selectable h-full w-full overflow-auto rounded-xl bg-black/25 p-4 font-mono text-[12px] leading-relaxed whitespace-pre-wrap text-fg-2 hairline">
               {preview.data.content}
-              {preview.data.truncated && '\n… (truncated)'}
+              {preview.data.truncated && `\n${t('fileDetail.truncated')}`}
             </pre>
           )}
           {(preview.data?.kind === 'binary' || preview.data?.kind === 'too-large') &&
@@ -152,9 +155,9 @@ export function PreviewOverlay({ item, onClose }: { item: FileItem; onClose: () 
             ) : large.loading ? (
               <div className="shimmer h-64 w-64 rounded-xl" />
             ) : (
-              <div className="max-w-sm text-center text-[12.5px] text-fg-3">{preview.data.kind === 'too-large' ? 'Too large to preview here.' : 'No inline preview for this file.'} Open it in its app or ask Hermes about it.</div>
+              <div className="max-w-sm text-center text-[12.5px] text-fg-3">{preview.data.kind === 'too-large' ? t('fileDetail.tooLarge') : t('fileDetail.noPreview')} {t('fileDetail.openInApp')}</div>
             ))}
-          {preview.error && <div className="max-w-sm text-center text-[12.5px] text-fg-3">Preview unavailable.</div>}
+          {preview.error && <div className="max-w-sm text-center text-[12.5px] text-fg-3">{t('fileDetail.previewUnavailable')}</div>}
         </div>
       </div>
     </div>
