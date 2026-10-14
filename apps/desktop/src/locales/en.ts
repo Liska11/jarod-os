@@ -2544,6 +2544,23 @@ export const en = {
   'usage.noteUnavailable': 'Not available in this version.',
   'usage.noteProvider': 'Your provider does not report plan limits.',
   'usage.noteSignIn': 'Plan limits appear here when Hermes is signed in to Nous Portal; other providers show their usage on their own site.',
+  // Files page — additional keys for hardcoded strings
+  'filesPage.pressEnterFind': 'Press Enter to ask {assistant} to find these files',
+  'filesPage.openFolderFirst': 'Open a folder first',
+  'filesPage.newItemsInFolder': 'New items are created in the folder you are looking at.',
+  'filesPage.openTerminalFailed': 'Could not open Terminal',
+  'filesPage.tryAgain': 'Try again',
+  'filesPage.dropToReveal': 'Drop to reveal in Files',
+  'filesPage.cancel': 'Cancel',
+  // Files page — the remaining chrome
+  'filesPage.noDropTarget': 'Cannot locate dropped files',
+  'filesPage.noDropTarget.hint': 'Drop files from another {assistant} window, or open their folder from the sidebar.',
+  'filesPage.filters': 'Filters',
+  'filesPage.show': 'Show',
+  'filesPage.hiddenFiles': 'Hidden files',
+  'filesPage.breadcrumb': 'Breadcrumb',
+  'filesPage.view': 'View',
+  'filesPage.more': 'More',
   } as const
 
   export type MessageKey = keyof typeof en

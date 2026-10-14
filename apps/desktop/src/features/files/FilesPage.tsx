@@ -206,7 +206,7 @@ export function FilesPage() {
 
   const openNewPrompt = (kind: 'folder' | 'file') => {
     if (!currentDir()) {
-      notify({ title: 'Open a folder first', body: 'New items are created in the folder you are looking at.', level: 'warn' })
+      notify({ title: t('filesPage.openFolderFirst'), body: t('filesPage.newItemsInFolder'), level: 'warn' })
 
       return
     }
@@ -327,7 +327,7 @@ export function FilesPage() {
       .filter((path): path is string => Boolean(path))
 
     if (paths.length === 0) {
-      notify({ title: 'Cannot locate dropped files', body: 'Drop files from another Hermes window, or open their folder from the sidebar.', level: 'warn' })
+      notify({ title: t('filesPage.noDropTarget'), body: t('filesPage.noDropTarget.hint'), level: 'warn' })
 
       return
     }
@@ -383,7 +383,7 @@ export function FilesPage() {
               placeholder={t('filesPage.search')}
               className="w-[420px]"
               trailing={
-                <button type="button" aria-label="Filters" aria-expanded={filterMenu} onClick={() => setFilterMenu(open => !open)} className={cn('flex size-6 shrink-0 items-center justify-center rounded-md hover:bg-white/8', kindFilter !== 'all' || showHidden ? 'text-accent-strong' : 'text-fg-3 hover:text-fg')}>
+                <button type="button" aria-label={t('filesPage.filters')} aria-expanded={filterMenu} onClick={() => setFilterMenu(open => !open)} className={cn('flex size-6 shrink-0 items-center justify-center rounded-md hover:bg-white/8', kindFilter !== 'all' || showHidden ? 'text-accent-strong' : 'text-fg-3 hover:text-fg')}>
                   <IconAdjustmentsHorizontal size={15} />
                 </button>
               }
@@ -391,15 +391,15 @@ export function FilesPage() {
             {natural && query.trim() && (
               <div className="pointer-events-none absolute top-10 right-0 left-0 flex items-center gap-2 rounded-lg bg-accent-soft px-3 py-1.5 text-[11.5px] text-fg-2 animate-fade-in">
                 <IconMessage size={13} className="shrink-0 text-accent-strong" />
-                Press Enter to ask Hermes to find these files
+                {t('filesPage.pressEnterFind')}
               </div>
             )}
             {filterMenu && (
               <div className="float absolute top-11 right-0 z-30 flex w-72 flex-col gap-3 rounded-xl p-3 animate-pop">
-                <div className="text-[11px] tracking-[0.08em] text-fg-3 uppercase">Show</div>
+                <div className="text-[11px] tracking-[0.08em] text-fg-3 uppercase">{t('filesPage.show')}</div>
                 <Chips items={KIND_FILTERS.map(item => ({ ...item, label: t(`filesPage.filter.${item.id}` as MessageKey) }))} value={kindFilter} onChange={value => $kindFilter.set(value)} />
                 <div className="flex items-center justify-between gap-3 border-t border-line pt-3 text-[12.5px] text-fg-2">
-                  Hidden files
+                  {t('filesPage.hiddenFiles')}
                   <Toggle checked={showHidden} onChange={value => $showHidden.set(value)} label={t('filesPage.showHidden')} />
                 </div>
               </div>
@@ -418,7 +418,7 @@ export function FilesPage() {
           </button>
         </div>
 
-        <nav aria-label="Breadcrumb" className="flex min-w-0 flex-1 items-center gap-0.5 overflow-hidden text-[12.5px]">
+        <nav aria-label={t('filesPage.breadcrumb')} className="flex min-w-0 flex-1 items-center gap-0.5 overflow-hidden text-[12.5px]">
           {crumbs.length === 0 && <span className="shimmer h-3.5 w-40 rounded" />}
           {crumbs.map((crumb, index) => {
             const last = index === crumbs.length - 1
@@ -434,7 +434,7 @@ export function FilesPage() {
           })}
         </nav>
 
-        <div className="flex h-8 items-center rounded-lg border border-line bg-white/6 p-0.5" role="group" aria-label="View">
+        <div className="flex h-8 items-center rounded-lg border border-line bg-white/6 p-0.5" role="group" aria-label={t('filesPage.view')}>
           <button type="button" aria-label={t('filesPage.gridView')} aria-pressed={viewMode === 'grid'} onClick={() => $viewMode.set('grid')} className={cn('flex h-7 w-8 items-center justify-center rounded-md transition-colors duration-120', viewMode === 'grid' ? 'bg-accent text-accent-fg shadow-[0_2px_10px_rgba(47,125,255,.45)]' : 'text-fg-2 hover:bg-white/8 hover:text-fg')}>
             <IconLayoutGrid size={15} />
           </button>
@@ -463,7 +463,7 @@ export function FilesPage() {
         </div>
 
         <div className="relative">
-          <MoreButton aria-label="More" aria-expanded={moreMenu} onClick={() => setMoreMenu(open => !open)} />
+          <MoreButton aria-label={t('filesPage.more')} aria-expanded={moreMenu} onClick={() => setMoreMenu(open => !open)} />
           {moreMenu && (
             <Menu
               onClose={() => setMoreMenu(false)}
@@ -475,7 +475,7 @@ export function FilesPage() {
                   label: t('filesPage.openTerminal'),
                   icon: <IconTerminal2 />,
                   disabled: !cwd,
-                  onSelect: () => cwd && window.heraldOS.fs.openIn('terminal', cwd).catch(error => notify({ title: 'Could not open Terminal', body: messageOf(error), level: 'error' }))
+                  onSelect: () => cwd && window.heraldOS.fs.openIn('terminal', cwd).catch(error => notify({ title: t('filesPage.openTerminalFailed'), body: messageOf(error), level: 'error' }))
                 },
                 { id: 'hidden', label: showHidden ? t('filesPage.hideHidden') : t('filesPage.showHidden'), icon: showHidden ? <IconEyeOff /> : <IconEye />, checked: showHidden, onSelect: () => $showHidden.set(!showHidden), dividerBefore: true },
                 { id: 'refresh', label: t('filesPage.refresh'), icon: <IconRefresh />, onSelect: refresh }
@@ -495,7 +495,7 @@ export function FilesPage() {
               <span className="shrink-0 text-[12.5px] text-fg-2">{prompt === 'folder' ? t('filesPage.newFolder') : t('filesPage.newTextFile')}</span>
               <RenameField name={prompt === 'folder' ? 'Untitled folder' : 'Untitled.txt'} onCommit={commitPrompt} onCancel={() => setPrompt(null)} className="max-w-sm" commitOnBlur={false} />
               <GlassButton size="sm" variant="ghost" onClick={() => setPrompt(null)}>
-                Cancel
+                {t('filesPage.cancel')}
               </GlassButton>
             </div>
           )}
@@ -517,10 +517,10 @@ export function FilesPage() {
               />
             )}
 
-            {listing.error && !listing.loading && <EmptyGlass icon={<IconFolderOpen />} title={t('filesPage.readFailed')} description={listing.error} action={<GlassButton size="sm" onClick={listing.reload}>Try again</GlassButton>} className="mt-2" />}
+            {listing.error && !listing.loading && <EmptyGlass icon={<IconFolderOpen />} title={t('filesPage.readFailed')} description={listing.error} action={<GlassButton size="sm" onClick={listing.reload}>{t('filesPage.tryAgain')}</GlassButton>} className="mt-2" />}
 
             {items.length > 0 && (
-              <div ref={gridRef} role="listbox" aria-label="Files" aria-multiselectable={false} className={cn(viewMode === 'grid' ? 'grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-3 stagger' : 'flex flex-col gap-0.5', listing.loading && 'opacity-80 transition-opacity')}>
+              <div ref={gridRef} role="listbox" aria-label={t('app.files')} aria-multiselectable={false} className={cn(viewMode === 'grid' ? 'grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-3 stagger' : 'flex flex-col gap-0.5', listing.loading && 'opacity-80 transition-opacity')}>
                 {listItems}
               </div>
             )}
@@ -531,7 +531,7 @@ export function FilesPage() {
       </div>
 
       {dropHint && (
-        <div className="pointer-events-none absolute inset-3 z-30 flex items-center justify-center rounded-2xl border-2 border-dashed border-accent-strong bg-accent-soft/40 text-[13px] text-fg animate-fade-in">Drop to reveal in Files</div>
+        <div className="pointer-events-none absolute inset-3 z-30 flex items-center justify-center rounded-2xl border-2 border-dashed border-accent-strong bg-accent-soft/40 text-[13px] text-fg animate-fade-in">{t('filesPage.dropToReveal')}</div>
       )}
 
       {previewOpen && selected && <PreviewOverlay item={selected} onClose={() => setPreviewOpen(false)} />}

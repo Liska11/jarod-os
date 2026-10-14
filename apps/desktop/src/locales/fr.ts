@@ -2542,4 +2542,21 @@ export const fr: Record<MessageKey, string> = {
   'usage.noteUnavailable': 'Non disponible dans cette version.',
   'usage.noteProvider': 'Votre fournisseur n\u2019annonce pas de limite de forfait.',
   'usage.noteSignIn': 'Les limites de forfait apparaissent ici quand Hermes est connect\u00e9 \u00e0 Nous Portal ; les autres fournisseurs montrent leur utilisation sur leur propre site.',
+  // Files page — additional keys for hardcoded strings
+  'filesPage.pressEnterFind': 'Appuyez sur Entrée pour demander à {assistant} de retrouver ces fichiers',
+  'filesPage.openFolderFirst': 'Ouvrez d\u2019abord un dossier',
+  'filesPage.newItemsInFolder': 'Les nouveaux éléments sont cr\u00e9\u00e9s dans le dossier que vous regardez.',
+  'filesPage.openTerminalFailed': 'Impossible d\u2019ouvrir le Terminal',
+  'filesPage.tryAgain': 'R\u00e9essayer',
+  'filesPage.dropToReveal': 'L\u00e2chez pour r\u00e9v\u00e9ler dans Fichiers',
+  'filesPage.cancel': 'Annuler',
+  // Files page — the remaining chrome
+  'filesPage.noDropTarget': 'Fichiers d\u00e9pos\u00e9s introuvables',
+  'filesPage.noDropTarget.hint': 'D\u00e9posez des fichiers depuis une autre fen\u00eatre de {assistant}, ou ouvrez leur dossier depuis la barre lat\u00e9rale.',
+  'filesPage.filters': 'Filtres',
+  'filesPage.show': 'Afficher',
+  'filesPage.hiddenFiles': 'Fichiers cach\u00e9s',
+  'filesPage.breadcrumb': "Fil d\u2019Ariane",
+  'filesPage.view': 'Affichage',
+  'filesPage.more': 'Plus',
 }
