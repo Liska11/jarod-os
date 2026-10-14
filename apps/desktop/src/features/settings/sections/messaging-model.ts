@@ -1,3 +1,5 @@
+import { t, type MessageKey } from '../../../lib/i18n.ts'
+
 /*
  * Messaging channels (Telegram, Discord, Slack, e-mail, WhatsApp): the data side of the section. Mirrors `get-messaging-platforms` and its update/test channels.
  * A secret goes in and never comes back: the engine reports only whether a field is set.
@@ -42,19 +44,20 @@ export interface MessagingUpdate {
 
 export type Tone = 'ok' | 'warn' | 'danger' | 'muted' | 'info'
 
-const STATE_LABEL: Record<string, { label: string; tone: Tone }> = {
-  connected: { label: 'Connected', tone: 'ok' },
-  configured: { label: 'Ready', tone: 'info' },
-  gateway_stopped: { label: 'Stopped', tone: 'warn' },
-  not_configured: { label: 'Needs setup', tone: 'warn' },
-  disabled: { label: 'Off', tone: 'muted' },
-  error: { label: 'Error', tone: 'danger' }
+const STATE_KEY: Record<string, { label: MessageKey; tone: Tone }> = {
+  connected: { label: 'messaging.state.connected', tone: 'ok' },
+  configured: { label: 'messaging.state.configured', tone: 'info' },
+  gateway_stopped: { label: 'messaging.state.gatewayStopped', tone: 'warn' },
+  not_configured: { label: 'messaging.state.notConfigured', tone: 'warn' },
+  disabled: { label: 'messaging.state.disabled', tone: 'muted' },
+  error: { label: 'messaging.state.error', tone: 'danger' }
 }
 
 export function stateOf(platform: Pick<MessagingPlatform, 'state' | 'enabled'>): { label: string; tone: Tone } {
   const state = platform.state ?? (platform.enabled ? 'configured' : 'disabled')
+  const known = STATE_KEY[state]
 
-  return STATE_LABEL[state] ?? { label: state.replace(/_/g, ' '), tone: 'muted' }
+  return known ? { label: t(known.label), tone: known.tone } : { label: state.replace(/_/g, ' '), tone: 'muted' }
 }
 
 /** The fields to show first: required ones, then the others; advanced ones only on request. */
@@ -95,11 +98,11 @@ export function fieldProblem(variable: MessagingEnvVar, value: string): string |
   }
 
   if (variable.is_password && (/[\s"'`]/.test(v) || /[^\x21-\x7e]/.test(v))) {
-    return 'Copy it again, with nothing around it (no space, quote or line break).'
+    return t('messaging.field.around')
   }
 
   if (v.length > 2000) {
-    return 'That is too long.'
+    return t('messaging.field.tooLong')
   }
 
   return null

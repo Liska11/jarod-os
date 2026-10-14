@@ -1,6 +1,7 @@
 import { IconBrandDiscord, IconBrandSlack, IconBrandTelegram, IconBrandWhatsapp, IconExternalLink, IconMail, IconMessageCircle, IconPlayerPlay, IconPlayerStop, IconRefresh } from '@tabler/icons-react'
 import { useState } from 'react'
 import { GlassButton, Pill, Toggle } from '../../../components/ui/glass.tsx'
+import { useT } from '../../../lib/i18n.ts'
 import { jarod } from '../../../lib/jarod.ts'
 import { useBackendData } from '../../../lib/use-async.ts'
 import { notify } from '../../../store/notifications.ts'
@@ -18,6 +19,7 @@ import { attempt } from '../../../lib/native.ts'
 const ICONS: Record<string, React.ReactNode> = { telegram: <IconBrandTelegram />, discord: <IconBrandDiscord />, slack: <IconBrandSlack />, email: <IconMail />, whatsapp: <IconBrandWhatsapp /> }
 
 export function MessagingSection() {
+  const { t } = useT()
   const data = useBackendData(() => jarod<MessagingPlatforms>('get-messaging-platforms'))
   const running = useBackendData(() => jarod<boolean>('gateway-status'))
   const [busy, setBusy] = useState(false)
@@ -25,8 +27,8 @@ export function MessagingSection() {
   if (isUnsupported(data.error)) {
     return (
       <>
-        <SectionTitle title="Messaging" subtitle="Reach the agent from your messaging apps." />
-        <InlineNote tone="info">Messaging channels are set up here with the Jarod engine.</InlineNote>
+        <SectionTitle title={t('messaging.title')} subtitle={t('messaging.subtitle')} />
+        <InlineNote tone="info">{t('messaging.needEngine')}</InlineNote>
       </>
     )
   }
@@ -45,7 +47,7 @@ export function MessagingSection() {
       // The channels connect in the background: look again in a moment.
       setTimeout(reload, 1500)
     } catch (error) {
-      notify({ title: 'Messaging', body: errorText(error), level: 'error' })
+      notify({ title: t('messaging.errorTitle'), body: errorText(error), level: 'error' })
     } finally {
       setBusy(false)
       reload()
@@ -54,30 +56,30 @@ export function MessagingSection() {
 
   return (
     <>
-      <SectionTitle title="Messaging" subtitle="Reach the agent from your messaging apps." />
-      {data.error && <InlineNote tone="danger">Could not read the channels: {data.error}</InlineNote>}
-      <SettingsGroup title="Connection">
-        <SettingsRow icon={<IconMessageCircle />} label={running.data ? 'Channels are running' : 'Channels are stopped'} description="Switched-on channels connect when this is running. They start with Jarod-OS; use these buttons to start, stop or restart them now." keywords="messaging gateways start stop restart channels">
+      <SectionTitle title={t('messaging.title')} subtitle={t('messaging.subtitle')} />
+      {data.error && <InlineNote tone="danger">{t('messaging.readFailed', { error: data.error })}</InlineNote>}
+      <SettingsGroup title={t('messaging.connection')}>
+        <SettingsRow icon={<IconMessageCircle />} label={running.data ? t('messaging.running') : t('messaging.stopped')} description={t('messaging.connection.hint')} keywords="messaging gateways start stop restart channels">
           {running.data ? (
             <>
-              <GlassButton size="sm" variant="secondary" disabled={busy} onClick={() => void control('restart-gateway', 'Channels restarted')}>
+              <GlassButton size="sm" variant="secondary" disabled={busy} onClick={() => void control('restart-gateway', t('messaging.restarted'))}>
                 <IconRefresh />
-                Restart
+                {t('messaging.restart')}
               </GlassButton>
-              <GlassButton size="sm" variant="secondary" disabled={busy} onClick={() => void control('stop-gateway', 'Channels stopped')}>
+              <GlassButton size="sm" variant="secondary" disabled={busy} onClick={() => void control('stop-gateway', t('messaging.stoppedTitle'))}>
                 <IconPlayerStop />
-                Stop
+                {t('messaging.stop')}
               </GlassButton>
             </>
           ) : (
-            <GlassButton size="sm" variant="primary" disabled={busy} onClick={() => void control('start-gateway', 'Channels started')}>
+            <GlassButton size="sm" variant="primary" disabled={busy} onClick={() => void control('start-gateway', t('messaging.started'))}>
               <IconPlayerPlay />
-              Start
+              {t('messaging.start')}
             </GlassButton>
           )}
         </SettingsRow>
       </SettingsGroup>
-      <SettingsGroup title="Channels">
+      <SettingsGroup title={t('messaging.channels')}>
         {data.data?.platforms.map(platform => (
           <PlatformRow key={platform.id} platform={platform} onChanged={reload} />
         ))}
@@ -88,6 +90,7 @@ export function MessagingSection() {
 }
 
 function PlatformRow({ platform, onChanged }: { platform: MessagingPlatform; onChanged: () => void }) {
+  const { t } = useT()
   const [open, setOpen] = useState(false)
   const [draft, setDraft] = useState<Record<string, string>>({})
   const [cleared, setCleared] = useState<string[]>([])
@@ -110,7 +113,7 @@ function PlatformRow({ platform, onChanged }: { platform: MessagingPlatform; onC
       notify({ title, body: platform.name, level: 'success' })
       onChanged()
     } catch (error) {
-      notify({ title: `Could not update ${platform.name}`, body: errorText(error), level: 'error' })
+      notify({ title: t('messaging.updateFailed', { name: platform.name }), body: errorText(error), level: 'error' })
     } finally {
       setBusy(false)
     }
@@ -136,7 +139,7 @@ function PlatformRow({ platform, onChanged }: { platform: MessagingPlatform; onC
               event.preventDefault()
 
               if (update && !anyProblem) {
-                void run('Saved', () => jarod('update-messaging-platform', platform.id, update)).then(close)
+                void run(t('messaging.saved'), () => jarod('update-messaging-platform', platform.id, update)).then(close)
               }
             }}
           >
@@ -145,7 +148,7 @@ function PlatformRow({ platform, onChanged }: { platform: MessagingPlatform; onC
                 <span>
                   {v.prompt || v.key}
                   {v.required ? ' *' : ''}
-                  {v.is_set && !cleared.includes(v.key) ? ' — saved' : ''}
+                  {v.is_set && !cleared.includes(v.key) ? t('messaging.savedMark') : ''}
                 </span>
                 <span className="flex items-center gap-2">
                   <input
@@ -155,16 +158,16 @@ function PlatformRow({ platform, onChanged }: { platform: MessagingPlatform; onC
                     value={draft[v.key] ?? ''}
                     disabled={cleared.includes(v.key)}
                     onChange={event => setDraft(current => ({ ...current, [v.key]: event.target.value }))}
-                    placeholder={v.is_set ? 'Leave empty to keep the saved value' : v.description}
+                    placeholder={v.is_set ? t('messaging.leaveEmpty') : v.description}
                     className="glass-input h-8 min-w-0 flex-1 rounded-lg px-2.5 font-mono text-[12.5px] text-fg outline-none placeholder:text-fg-4"
                   />
                   {v.is_set && (
                     <GlassButton type="button" size="sm" variant="ghost" onClick={() => setCleared(current => (current.includes(v.key) ? current.filter(k => k !== v.key) : [...current, v.key]))}>
-                      {cleared.includes(v.key) ? 'Keep' : 'Clear'}
+                      {cleared.includes(v.key) ? t('messaging.keep') : t('messaging.clear')}
                     </GlassButton>
                   )}
                   {v.url && (
-                    <GlassButton type="button" size="sm" variant="ghost" onClick={() => void attempt('open the link', () => window.heraldOS.shell.openExternal(v.url!))} aria-label={`Where to find ${v.prompt || v.key}`}>
+                    <GlassButton type="button" size="sm" variant="ghost" onClick={() => void attempt('open the link', () => window.heraldOS.shell.openExternal(v.url!))} aria-label={t('messaging.whereToFind', { field: v.prompt || v.key })}>
                       <IconExternalLink />
                     </GlassButton>
                   )}
@@ -174,24 +177,24 @@ function PlatformRow({ platform, onChanged }: { platform: MessagingPlatform; onC
             ))}
             {platform.env_vars.some(v => v.advanced && !v.required) && (
               <button type="button" onClick={() => setAdvanced(a => !a)} className="self-start text-[12px] text-accent-strong">
-                {advanced ? 'Hide advanced fields' : 'Show advanced fields'}
+                {advanced ? t('messaging.hideAdvanced') : t('messaging.showAdvanced')}
               </button>
             )}
             {test && <InlineNote tone={test.ok ? 'info' : 'warn'}>{test.message}</InlineNote>}
             <div className="flex items-center justify-end gap-2">
               {platform.docs_url && (
                 <GlassButton type="button" size="sm" variant="ghost" onClick={() => void attempt('open the link', () => window.heraldOS.shell.openExternal(platform.docs_url))}>
-                  Setup guide
+                  {t('messaging.setupGuide')}
                 </GlassButton>
               )}
               <GlassButton type="button" size="sm" variant="ghost" disabled={busy} onClick={() => void jarod<{ ok: boolean; message: string }>('test-messaging-platform', platform.id).then(setTest, error => setTest({ ok: false, message: errorText(error) }))}>
-                Check status
+                {t('messaging.checkStatus')}
               </GlassButton>
               <GlassButton type="button" size="sm" variant="ghost" onClick={close}>
-                Cancel
+                {t('messaging.cancel')}
               </GlassButton>
               <GlassButton type="submit" size="sm" variant="primary" disabled={busy || !update || anyProblem}>
-                Save
+                {t('messaging.save')}
               </GlassButton>
             </div>
           </form>
@@ -201,14 +204,14 @@ function PlatformRow({ platform, onChanged }: { platform: MessagingPlatform; onC
       <Pill tone={state.tone} dot>
         {state.label}
       </Pill>
-      <GlassButton size="sm" variant="secondary" onClick={() => (open ? close() : setOpen(true))} aria-label={`Set up ${platform.name}`}>
-        {open ? 'Close' : platform.configured ? 'Edit' : 'Set up'}
+      <GlassButton size="sm" variant="secondary" onClick={() => (open ? close() : setOpen(true))} aria-label={t('messaging.setUpAria', { name: platform.name })}>
+        {open ? t('messaging.close') : platform.configured ? t('messaging.edit') : t('messaging.setUp')}
       </GlassButton>
       <Toggle
         checked={platform.enabled}
-        label={`${platform.name} on or off`}
+        label={t('messaging.toggleAria', { name: platform.name })}
         disabled={busy || (!platform.enabled && missing.length > 0)}
-        onChange={value => void run(value ? 'Switched on' : 'Switched off', () => jarod('set-platform-enabled', platform.id, value))}
+        onChange={value => void run(value ? t('messaging.switchedOn') : t('messaging.switchedOff'), () => jarod('set-platform-enabled', platform.id, value))}
       />
     </SettingsRow>
   )
