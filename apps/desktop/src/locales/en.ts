@@ -2343,6 +2343,26 @@ export const en = {
   'providers.addressFull': 'Use a full address, like http://127.0.0.1:1234/v1.',
   'providers.addressProtocol': 'The address must start with http:// or https://.',
   'providers.addressNoLogin': 'Do not put a login in the address; save the key separately.',
+  // System surface (Overview > System)
+  'system.title': 'System',
+  'system.askHermes': 'Ask Hermes',
+  'system.askHermesPrompt': "What's using the most CPU and memory right now, and is anything worth stopping?",
+  'system.cpu': 'CPU',
+  'system.memory': 'Memory',
+  'system.disk': 'Disk',
+  'system.uptime': 'Uptime',
+  'system.volumes': 'Volumes',
+  'system.freeOf': '{free} free of {total}',
+  'system.processes': 'Processes',
+  'system.process': 'Process',
+  'system.pid': 'PID',
+  'system.cpuPercent': 'CPU',
+  'system.memoryUsed': 'Memory',
+  'system.user': 'User',
+  'system.askHermesCell': 'Ask Hermes',
+  'system.askHermesPromptCell': 'Tell me about the process "{name}" (pid {pid}) that is using {cpu}% CPU. Should I stop it? If I confirm, stop it.',
+  'system.hermesRuntime': 'Hermes runtime',
+  'system.refresh': 'Refresh',
   } as const
 
   export type MessageKey = keyof typeof en

@@ -6,6 +6,7 @@ import { Meter, Stat } from '../../components/ui/primitives.tsx'
 import { SurfaceFrame } from '../../components/ui/surface-frame.tsx'
 import { cn } from '../../lib/cn.ts'
 import { formatBytes, formatDuration, formatPercent } from '../../lib/format.ts'
+import { useT } from '../../lib/i18n.ts'
 import { rest } from '../../lib/rest.ts'
 import { useBackendData } from '../../lib/use-async.ts'
 import { sendPrompt } from '../../store/chat.ts'
@@ -13,6 +14,7 @@ import { showSurface } from '../../store/surface.ts'
 import { useSystemInfo, useSystemStats } from '../../store/system.ts'
 
 export function SystemSurface() {
+  const { t } = useT()
   const stats = useSystemStats()
   const info = useSystemInfo()
   const [sort, setSort] = useState<'cpu' | 'memory'>('cpu')
@@ -44,45 +46,45 @@ export function SystemSurface() {
 
   return (
     <SurfaceFrame
-      title="System"
+      title={t('system.title')}
       subtitle={info ? `${info.hostname} · ${info.osName} ${info.osVersion} · ${info.cpuModel}` : undefined}
       actions={
-        <Button variant="ghost" size="sm" onClick={() => askHermes("What's using the most CPU and memory right now, and is anything worth stopping?")}>
-          <IconMessage size={14} /> Ask Hermes
+        <Button variant="ghost" size="sm" onClick={() => askHermes(t('system.askHermesPrompt'))}>
+          <IconMessage size={14} /> {t('system.askHermes')}
         </Button>
       }
     >
       <div className="grid grid-cols-4 gap-8">
         <div className="flex flex-col gap-2">
-          <Stat label="CPU" value={stats ? formatPercent(stats.cpuPercent) : '—'} sub={stats ? `load ${stats.loadAverage.map(v => v.toFixed(1)).join(' / ')}` : undefined} />
+          <Stat label={t('system.cpu')} value={stats ? formatPercent(stats.cpuPercent) : '—'} sub={stats ? `load ${stats.loadAverage.map(v => v.toFixed(1)).join(' / ')}` : undefined} />
           <Meter value={stats?.cpuPercent ?? 0} tone={(stats?.cpuPercent ?? 0) > 85 ? 'danger' : 'accent'} />
         </div>
         <div className="flex flex-col gap-2">
-          <Stat label="Memory" value={stats ? formatBytes(stats.memoryUsed, 1) : '—'} sub={stats ? `of ${formatBytes(stats.memoryTotal, 0)}` : undefined} />
+          <Stat label={t('system.memory')} value={stats ? formatBytes(stats.memoryUsed, 1) : '—'} sub={stats ? `of ${formatBytes(stats.memoryTotal, 0)}` : undefined} />
           <Meter value={memPercent} tone={memPercent > 90 ? 'danger' : memPercent > 75 ? 'warn' : 'accent'} />
         </div>
         <div className="flex flex-col gap-2">
-          <Stat label="Disk" value={stats?.disks[0] ? formatBytes(stats.disks[0].free, 0) : '—'} sub={stats?.disks[0] ? `free of ${formatBytes(stats.disks[0].total, 0)}` : undefined} />
+          <Stat label={t('system.disk')} value={stats?.disks[0] ? formatBytes(stats.disks[0].free, 0) : '—'} sub={stats?.disks[0] ? `free of ${formatBytes(stats.disks[0].total, 0)}` : undefined} />
           {stats?.disks[0] && <Meter value={(stats.disks[0].used / stats.disks[0].total) * 100} tone="accent" />}
         </div>
-        <Stat label="Uptime" value={stats ? formatDuration(stats.uptimeSeconds) : '—'} sub={stats?.battery.present ? `battery ${stats.battery.percent}%${stats.battery.charging ? ', charging' : ''}` : undefined} />
+        <Stat label={t('system.uptime')} value={stats ? formatDuration(stats.uptimeSeconds) : '—'} sub={stats?.battery.present ? `battery ${stats.battery.percent}%${stats.battery.charging ? ', charging' : ''}` : undefined} />
       </div>
 
       {stats && stats.disks.length > 1 && (
         <div className="mt-6 flex flex-col gap-2">
-          <div className="px-1 text-[11px] tracking-[0.08em] text-fg-3 uppercase">Volumes</div>
+          <div className="px-1 text-[11px] tracking-[0.08em] text-fg-3 uppercase">{t('system.volumes')}</div>
           {stats.disks.map(disk => (
             <div key={disk.mount} className="flex items-center gap-4 text-[12.5px]">
               <span className="w-48 truncate font-mono text-fg-2">{disk.mount}</span>
               <Meter value={(disk.used / disk.total) * 100} className="flex-1" />
-              <span className="w-40 text-right tabular-nums text-fg-3">{formatBytes(disk.free, 0)} free of {formatBytes(disk.total, 0)}</span>
+              <span className="w-40 text-right tabular-nums text-fg-3">{t('system.freeOf', { free: formatBytes(disk.free, 0), total: formatBytes(disk.total, 0) })}</span>
             </div>
           ))}
         </div>
       )}
 
       <div className="mt-8 flex items-center justify-between">
-        <div className="px-1 text-[11px] tracking-[0.08em] text-fg-3 uppercase">Processes</div>
+        <div className="px-1 text-[11px] tracking-[0.08em] text-fg-3 uppercase">{t('system.processes')}</div>
         <div className="flex items-center gap-2">
           <div className="flex rounded-sm bg-surface p-0.5 hairline">
             {(['cpu', 'memory'] as const).map(key => (
@@ -91,7 +93,7 @@ export function SystemSurface() {
               </button>
             ))}
           </div>
-          <Button variant="ghost" size="icon-sm" aria-label="Refresh" onClick={() => void window.heraldOS.system.processes(sort, 30).then(setProcesses)}>
+          <Button variant="ghost" size="icon-sm" aria-label={t('system.refresh')} onClick={() => void window.heraldOS.system.processes(sort, 30).then(setProcesses)}>
             <IconRefresh size={15} />
           </Button>
         </div>
@@ -99,12 +101,12 @@ export function SystemSurface() {
       <table className="mt-2 w-full text-[12.5px]">
         <thead className="text-left text-[11px] text-fg-3">
           <tr>
-            <th className="py-1.5 pr-3 font-medium">Process</th>
-            <th className="w-16 py-1.5 pr-3 text-right font-medium">PID</th>
-            <th className="w-20 py-1.5 pr-3 text-right font-medium">CPU</th>
-            <th className="w-24 py-1.5 pr-3 text-right font-medium">Memory</th>
-            <th className="w-28 py-1.5 font-medium">User</th>
-            <th className="w-24 py-1.5" />
+            <th className="py-1.5 pr-3 font-medium">{t('system.process')}</th>
+            <th className="w-16 py-1.5 pr-3 text-right font-medium">{t('system.pid')}</th>
+            <th className="w-20 py-1.5 pr-3 text-right font-medium">{t('system.cpuPercent')}</th>
+            <th className="w-24 py-1.5 pr-3 text-right font-medium">{t('system.memoryUsed')}</th>
+            <th className="w-28 py-1.5 font-medium">{t('system.user')}</th>
+            <th className="w-24 py-1.5">{t('system.askHermesCell')}</th>
           </tr>
         </thead>
         <tbody>
@@ -118,8 +120,8 @@ export function SystemSurface() {
               <td className="py-1.5 pr-3 text-right tabular-nums text-fg-2">{formatBytes(proc.rssBytes, 0)}</td>
               <td className="truncate py-1.5 text-fg-3">{proc.user}</td>
               <td className="py-1.5 text-right">
-                <button type="button" onClick={() => askHermes(`Tell me about the process "${proc.name}" (pid ${proc.pid}) that is using ${proc.cpuPercent.toFixed(0)}% CPU. Should I stop it? If I confirm, stop it.`)} className="text-[11.5px] text-fg-4 opacity-0 group-hover:opacity-100 hover:text-accent">
-                  Ask Hermes
+                <button type="button" onClick={() => askHermes(t('system.askHermesPromptCell', { name: proc.name, pid: proc.pid, cpu: proc.cpuPercent.toFixed(0) }))} className="text-[11.5px] text-fg-4 opacity-0 group-hover:opacity-100 hover:text-accent">
+                  {t('system.askHermesCell')}
                 </button>
               </td>
             </tr>
@@ -129,7 +131,7 @@ export function SystemSurface() {
 
       {hermes.data && (
         <div className="mt-8">
-          <div className="px-1 text-[11px] tracking-[0.08em] text-fg-3 uppercase">Hermes runtime</div>
+          <div className="px-1 text-[11px] tracking-[0.08em] text-fg-3 uppercase">{t('system.hermesRuntime')}</div>
           <div className="mt-2 flex flex-wrap gap-x-8 gap-y-2 text-[12.5px] text-fg-2">
             {Object.entries(hermes.data)
               .filter(([, value]) => ['string', 'number', 'boolean'].includes(typeof value))
