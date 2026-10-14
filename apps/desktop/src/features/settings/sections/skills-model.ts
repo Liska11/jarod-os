@@ -2,6 +2,8 @@
  * Skills: the data side of the section (no React). Mirrors `list-installed-skills`, `registry-fetch`, `registry-detail`, `registry-install`.
  */
 
+import { t } from '../../../lib/i18n.ts'
+
 export interface InstalledSkill {
   id: string
   name: string
@@ -44,7 +46,17 @@ export interface InstalledRegistry {
   workflows: string[]
 }
 
-export const KIND_LABEL: Record<RegistryKind, string> = { skills: 'Skills', mcps: 'MCP servers', agents: 'Agents' }
+/** The registry kinds' names in the catalogue. */
+export const KIND_KEY: Record<RegistryKind, 'skills.kind.skills' | 'skills.kind.mcps' | 'skills.kind.agents'> = {
+  skills: 'skills.kind.skills',
+  mcps: 'skills.kind.mcps',
+  agents: 'skills.kind.agents'
+}
+
+/** The registry kind's name in the current language. */
+export function kindLabel(kind: RegistryKind): string {
+  return t(KIND_KEY[kind])
+}
 
 /** True when the text is found in any of the fields (case-insensitive, all words). */
 export function matchesQuery(query: string, ...fields: (string | undefined)[]): boolean {
@@ -82,7 +94,7 @@ export function disabledAfterToggle(skills: readonly InstalledSkill[], id: strin
 export function summaryOfSkills(skills: readonly InstalledSkill[]): string {
   const off = skills.filter(skill => !skill.enabled).length
 
-  return `${skills.length} installed${off > 0 ? `, ${off} switched off` : ''}`
+  return off > 0 ? t('skills.summary.off', { count: skills.length, off }) : t('skills.summary', { count: skills.length })
 }
 
 /** Is a registry entry already installed? Skills and MCP servers are matched by name; agents become profiles (not listed here). */
@@ -106,10 +118,10 @@ export function filterRegistry(kind: RegistryKind, items: readonly RegistryItem[
 /** The install channel answers `{ success, error? }`; turn it into a sentence. */
 export function installOutcome(result: { success?: boolean; error?: string } | null | undefined): { ok: boolean; text: string } {
   if (result?.success) {
-    return { ok: true, text: 'Installed.' }
+    return { ok: true, text: t('skills.installedOutcome') }
   }
 
-  const error = result?.error ?? 'Install failed.'
+  const error = result?.error ?? t('skills.installFailed')
 
   return { ok: false, text: error }
 }
