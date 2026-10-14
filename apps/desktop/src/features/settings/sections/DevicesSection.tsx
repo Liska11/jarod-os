@@ -66,14 +66,14 @@ function ApiBlock() {
     <SettingsGroup title={t('settings.devices.api')}>
       {s && (
         <>
-          <SettingsRow icon={<IconServer2 />} label={t('settings.devices.api.local')} description={apiSummary(s)} keywords="api server openai compatible chat completions open webui">
+          <SettingsRow icon={<IconServer2 />} label={t('settings.devices.api.local')} description={apiSummary(s)} keywords={t('settings.devices.apiKw')}>
             <Toggle checked={s.enabled && s.running} label={t('settings.devices.api.toggle')} disabled={busy} onChange={value => void run(value ? t('settings.devices.api.on') : t('settings.devices.api.off'), () => jarod('api-server-set', value))} />
           </SettingsRow>
           <SettingsRow
             icon={<IconKey />}
             label={s.keyConfigured ? t('settings.devices.key.saved') : t('settings.devices.key.none')}
             description={t('settings.devices.key.hint')}
-            keywords="api key new generate"
+            keywords={t('settings.devices.keyKw')}
             below={key && <InlineNote tone="info">{t('settings.devices.key.new')} <span className="font-mono select-all">{key}</span></InlineNote>}
           >
             <GlassButton size="sm" variant={s.keyConfigured ? 'secondary' : 'primary'} disabled={busy} onClick={() => void run(t('settings.devices.key.made'), async () => setKey((await jarod<{ key: string }>('api-server-new-key')).key))}>
@@ -81,7 +81,7 @@ function ApiBlock() {
             </GlassButton>
           </SettingsRow>
           {api && (
-            <SettingsRow icon={<IconServer2 />} label={t('settings.devices.reach')} description={t('settings.devices.reach.hint', { address: apiAddress({ host: api.host, port: api.port }) })} keywords="api host network localhost port">
+            <SettingsRow icon={<IconServer2 />} label={t('settings.devices.reach')} description={t('settings.devices.reach.hint', { address: apiAddress({ host: api.host, port: api.port }) })} keywords={t('settings.devices.reachKw')}>
               <select value={api.host} disabled={busy || s.running} onChange={event => void run(t('settings.devices.settingSaved'), () => jarod('set-jarod-settings', { apiServer: { host: event.target.value } }))} aria-label={t('settings.devices.api.host')} style={{ colorScheme: 'dark' }} className="glass-input h-8 rounded-lg px-2 text-[12.5px] text-fg outline-none">
                 <option value="127.0.0.1">{t('settings.devices.reach.local')}</option>
                 <option value="0.0.0.0">{t('settings.devices.reach.lan')}</option>
@@ -174,7 +174,7 @@ function PhoneBlock() {
 
   return (
     <SettingsGroup title={t('settings.devices.phone')}>
-      <SettingsRow icon={<IconDeviceMobile />} label={t('settings.devices.bridge')} description={phoneSummary(mobile)} keywords="phone mobile bridge pair">
+      <SettingsRow icon={<IconDeviceMobile />} label={t('settings.devices.bridge')} description={phoneSummary(mobile)} keywords={t('settings.devices.bridgeKw')}>
         <Toggle checked={mobile.running} label={t('settings.devices.bridge.toggle')} disabled={busy} onChange={value => void run(value ? t('settings.devices.bridge.on') : t('settings.devices.bridge.off'), () => jarod('phone-bridge-set', value))} />
       </SettingsRow>
       {mobile.running && (
@@ -182,7 +182,7 @@ function PhoneBlock() {
           icon={<IconKey />}
           label={t('settings.devices.pair')}
           description={t('settings.devices.pair.hint')}
-          keywords="phone pair code"
+          keywords={t('settings.devices.pairKw')}
           below={pairing && (
             <InlineNote tone={left > 0 ? 'info' : 'warn'}>
               {t('settings.devices.pair.address')} <span className="font-mono select-all">{pairing.url}</span> · {t('settings.devices.pair.code')} <span className="font-mono select-all">{pairing.secret}</span> · {timeLeftText(left)}
@@ -195,13 +195,13 @@ function PhoneBlock() {
         </SettingsRow>
       )}
       {mobile.devices.map(device => (
-        <SettingsRow key={device.deviceId} icon={<IconDeviceMobile />} label={device.name || t('settings.devices.phone')} description={t('settings.devices.paired', { date: new Date(device.pairedAt).toLocaleDateString(), seen: device.lastSeen ? new Date(device.lastSeen).toLocaleString() : t('settings.devices.never') })} keywords={`phone paired ${device.name}`}>
+        <SettingsRow key={device.deviceId} icon={<IconDeviceMobile />} label={device.name || t('settings.devices.phone')} description={t('settings.devices.paired', { date: new Date(device.pairedAt).toLocaleDateString(), seen: device.lastSeen ? new Date(device.lastSeen).toLocaleString() : t('settings.devices.never') })} keywords={t('settings.devices.pairedKw', { name: device.name })}>
           <GlassButton size="sm" variant="ghost" disabled={busy} onClick={() => void run(t('settings.devices.phone.removed'), () => jarod('phone-revoke', device.deviceId))} aria-label={t('settings.devices.revoke.aria', { name: device.name || t('settings.devices.phone') })}>
             {t('settings.devices.revoke')}
           </GlassButton>
         </SettingsRow>
       ))}
-      <SettingsRow icon={<IconBrandAndroid />} label="Android (adb)" description={androidSummary(android)} keywords="android adb device platform tools">
+      <SettingsRow icon={<IconBrandAndroid />} label={t('settings.devices.android')} description={androidSummary(android)} keywords={t('settings.devices.androidKw')}>
         <GlassButton size="sm" variant="secondary" disabled={busy} onClick={() => void run(t('settings.devices.adb.chosen'), async () => {
           const file = await jarod<string | null>('android-pick-adb')
 
@@ -218,7 +218,7 @@ function PhoneBlock() {
         )}
       </SettingsRow>
       {android.devices.map(device => (
-        <SettingsRow key={device.serial} icon={<IconBrandAndroid />} label={device.model || device.serial} description={`${device.serial} · ${device.product}`} keywords={`android ${device.serial}`}>
+        <SettingsRow key={device.serial} icon={<IconBrandAndroid />} label={device.model || device.serial} description={`${device.serial} · ${device.product}`} keywords={t('settings.devices.androidKw')}>
           <Pill tone={device.state === 'device' ? 'ok' : 'warn'} dot>
             {device.state}
           </Pill>
@@ -273,9 +273,9 @@ function SshBlock() {
 
   return (
     <SettingsGroup title={t('settings.devices.ssh')}>
-      {hosts.data?.length === 0 && <SettingsRow icon={<IconTerminal2 />} label={t('settings.devices.ssh.none')} description={t('settings.devices.ssh.none.hint')} keywords="ssh hosts empty" />}
+      {hosts.data?.length === 0 && <SettingsRow icon={<IconTerminal2 />} label={t('settings.devices.ssh.none')} description={t('settings.devices.ssh.none.hint')} keywords={t('settings.devices.sshNoneKw')} />}
       {hosts.data?.map(host => (
-        <SettingsRow key={host.id} icon={<IconTerminal2 />} label={host.name} description={`${sshLine(host)} · ${t('settings.devices.ssh.key', { file: baseName(host.keyPath) })}${tests[host.id] ? ` · ${tests[host.id]}` : ''}`} keywords={`ssh host ${host.name} ${host.host}`}>
+        <SettingsRow key={host.id} icon={<IconTerminal2 />} label={host.name} description={`${sshLine(host)} · ${t('settings.devices.ssh.key', { file: baseName(host.keyPath) })}${tests[host.id] ? ` · ${tests[host.id]}` : ''}`} keywords={t('settings.devices.sshHostKw', { name: host.name, address: host.host })}>
           <GlassButton size="sm" variant="ghost" disabled={busy} onClick={() => void test(host)} aria-label={t('settings.devices.ssh.test.aria', { name: host.name })}>
             {t('settings.devices.ssh.test')}
           </GlassButton>
@@ -288,7 +288,7 @@ function SshBlock() {
         icon={<IconTerminal2 />}
         label={t('settings.devices.ssh.add')}
         description={t('settings.devices.ssh.add.hint')}
-        keywords="ssh host add key"
+        keywords={t('settings.devices.sshAddKw')}
         below={
           draft && (
             <form

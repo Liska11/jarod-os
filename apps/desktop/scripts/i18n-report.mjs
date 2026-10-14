@@ -21,7 +21,11 @@ function walk(dir) {
 const rows = walk(root)
   .map(file => {
     const source = fs.readFileSync(file, 'utf8')
-    const strings = [...source.matchAll(TEXT), ...source.matchAll(ATTR)].map(match => match[1].trim()).filter(text => text.length > 1)
+    const strings = [...source.matchAll(TEXT), ...source.matchAll(ATTR)]
+      .map(match => match[1].trim())
+      // The TEXT pattern reads `=> Promise<unknown>` arrows as a JSX text node, so the word
+      // "Promise" shows up as an untranslated string in most async files. It is never visible.
+      .filter(text => text.length > 1 && text !== 'Promise')
 
     return { file: path.relative(root, file).replaceAll('\\', '/'), count: strings.length, translated: /lib\/i18n\.ts'/.test(source), strings }
   })
