@@ -2798,6 +2798,20 @@ export const en = {
   'emoji.noMatch': 'Nothing matches \u201c{query}\u201d',
   'emoji.pick': 'Pick an emoji',
   'emoji.insert': 'insert',
+  // New-mission composer and the mission preview
+  'missionNew.goal': 'What should {assistant} accomplish?',
+  'missionNew.goalAria': 'Mission goal',
+  'missionNew.hint': '{assistant} plans the steps, works through them and reports back.',
+  'missionNew.starting': 'Starting\u2026',
+  'missionNew.start': 'Start mission',
+  'missionNew.startFailed': 'Could not start mission',
+  'missionPreview.title': 'Preview',
+  'missionPreview.updated': 'Updated {time}',
+  'missionPreview.empty': 'No preview yet',
+  'missionPreview.empty.hint': 'Files {assistant} writes for this mission will appear here.',
+  'missionPreview.open': 'Open preview',
+  'missionPreview.openAria': 'Open {name}',
+  'missionPreview.loading': 'Loading preview',
   } as const
 
   export type MessageKey = keyof typeof en

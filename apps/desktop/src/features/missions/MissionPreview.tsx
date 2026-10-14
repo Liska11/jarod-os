@@ -1,4 +1,5 @@
 import { IconExternalLink, IconFile, IconFolder, IconPhoto } from '@tabler/icons-react'
+import { t, useT } from '../../lib/i18n.ts'
 import { EmptyGlass, GlassButton } from '../../components/ui/glass.tsx'
 import { formatRelative } from '../../lib/format.ts'
 import { useLocalData } from '../../lib/use-async.ts'
@@ -48,23 +49,24 @@ async function loadPreview(artifact: Artifact): Promise<PreviewData> {
 }
 
 export function MissionPreview({ artifact }: { artifact: Artifact | undefined }) {
+  useT()
   const preview = useLocalData(() => (artifact ? loadPreview(artifact) : Promise.resolve<PreviewData>({ type: 'file' })), [artifact?.path, artifact?.ts])
 
   return (
     <section className="flex flex-col gap-2.5">
       <div className="flex items-center justify-between gap-3">
-        <h2 className="text-[14px] font-semibold text-fg">Preview</h2>
-        {artifact && <span className="text-[11.5px] text-fg-4">Updated {formatRelative(artifact.ts)}</span>}
+        <h2 className="text-[14px] font-semibold text-fg">{t('missionPreview.title')}</h2>
+        {artifact && <span className="text-[11.5px] text-fg-4">{t('missionPreview.updated', { time: formatRelative(artifact.ts) })}</span>}
       </div>
       {!artifact ? (
-        <EmptyGlass icon={<IconPhoto />} title="No preview yet" description="Files Hermes writes for this mission will appear here." className="min-h-32" />
+        <EmptyGlass icon={<IconPhoto />} title={t('missionPreview.empty')} description={t('missionPreview.empty.hint')} className="min-h-32" />
       ) : (
         <>
           <PreviewCard artifact={artifact} data={preview.data} loading={preview.loading} error={preview.error} />
           <div className="flex justify-center">
-            <GlassButton size="sm" onClick={() => void attempt('native.failed.openFile', () => window.heraldOS.fs.openPath(artifact.path))} aria-label={`Open ${artifact.name}`}>
+            <GlassButton size="sm" onClick={() => void attempt('native.failed.openFile', () => window.heraldOS.fs.openPath(artifact.path))} aria-label={t('missionPreview.openAria', { name: artifact.name })}>
               <IconExternalLink />
-              Open preview
+              {t('missionPreview.open')}
             </GlassButton>
           </div>
         </>
@@ -75,7 +77,7 @@ export function MissionPreview({ artifact }: { artifact: Artifact | undefined })
 
 function PreviewCard({ artifact, data, loading, error }: { artifact: Artifact; data: PreviewData | null; loading: boolean; error: string | null }) {
   if (loading && !data) {
-    return <div className="shimmer h-40 rounded-xl border border-line bg-black/15" aria-label="Loading preview" />
+    return <div className="shimmer h-40 rounded-xl border border-line bg-black/15" aria-label={t('missionPreview.loading')} />
   }
 
   if (data?.type === 'image') {

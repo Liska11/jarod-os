@@ -2796,4 +2796,18 @@ export const fr: Record<MessageKey, string> = {
   'emoji.noMatch': 'Rien ne correspond \u00e0 \u00ab {query} \u00bb',
   'emoji.pick': 'Choisissez un \u00e9moji',
   'emoji.insert': 'ins\u00e9rer',
+  // New-mission composer and the mission preview
+  'missionNew.goal': 'Que doit accomplir {assistant} ?',
+  'missionNew.goalAria': 'Objectif de la mission',
+  'missionNew.hint': '{assistant} planifie les \u00e9tapes, les ex\u00e9cute et fait un rapport.',
+  'missionNew.starting': 'Lancement\u2026',
+  'missionNew.start': 'Lancer la mission',
+  'missionNew.startFailed': 'Impossible de lancer la mission',
+  'missionPreview.title': 'Aper\u00e7u',
+  'missionPreview.updated': 'Mis \u00e0 jour {time}',
+  'missionPreview.empty': 'Pas encore d\u2019aper\u00e7u',
+  'missionPreview.empty.hint': 'Les fichiers que {assistant} \u00e9crit pour cette mission appara\u00eetront ici.',
+  'missionPreview.open': 'Ouvrir l\u2019aper\u00e7u',
+  'missionPreview.openAria': 'Ouvrir {name}',
+  'missionPreview.loading': "Chargement de l\u2019aper\u00e7u",
 }
