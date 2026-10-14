@@ -96,8 +96,9 @@ Avant de cloner, refaire un bundle si des commits ont été ajoutés après le 1
   - Une fenêtre « Pinokio » présente le moteur (`apps/desktop/src/features/pinokio/PinokioWindow.tsx`).
   - Cinq commandes OS (`apps/desktop/src/commands/pinokio.ts`).
   - Sept outils agent `pinokio_*` (`jarod-core/packages/plugins/tools/src/pinokio/`) ; install, run et stop exigent un accord.
-- **Installeur reconstruit le 14/10/2026 depuis le commit `56d5a52`** (il contient l'assistant de premier lancement : audit, Telegram, clés API). `apps/desktop/release/` est ignoré par git ; l'empreinte est consignée ici :
-  - `JarodOS-Setup-0.1.0-alpha.1-win-x64.exe` (136 948 258 octets), SHA-256 `1a9c5e8bc632e3a114395c68e812011959e66169a399b00631428d6a49094cbc`. La copie sur `D:` est identique.
+- **Installeur reconstruit le 14/10/2026 depuis le commit `114188c`** (il contient l'assistant de premier lancement : audit, Telegram, clés API, plus les traductions du panneau d'état et le groupe « Vérification du système » des Réglages). `apps/desktop/release/` est ignoré par git ; les empreintes sont consignées ici :
+  - `JarodOS-Setup-0.1.0-alpha.1-win-x64.exe` (136 964 818 octets), SHA-256 `e66038ce33f3ef111e6aba2a20482dd37f3abc30cf5bf641223a4e0f4df54bb8`. La copie sur `D:` est identique (vérifiée).
+  - `JarodOS-0.1.0-alpha.1-win-x64.appx` (193 974 260 octets), SHA-256 `64a91c4df9c0cc748f82f104b1379a1bced61aa4f063388426a19f8d47bece37`. La copie sur `D:` est identique (vérifiée). **Non signé** (build Windows Store uniquement) : jamais installé ni testé.
 - **Tests au dernier passage (14/10)** : shell, 121 fichiers et 755 tests OK ; typecheck OK ; Biome sans erreur (530 avertissements hérités). Noyau : 2 589 tests OK au 13/10 (il n'a pas été modifié depuis).
 
 ## 3. Travail en cours
@@ -108,19 +109,19 @@ Rien n'est en cours : l'arbre de travail est propre, et la dernière tâche (tra
 
 ### A. À vérifier (fait, mais pas testé en conditions réelles)
 1. **Telegram avec un vrai bot** : il faut le jeton du propriétaire. Parcours : assistant → Bot Telegram → Vérifier → envoyer un message au bot → Tester → Enregistrer. Vérifier ensuite que la passerelle démarre et que `/pair <code>` fonctionne.
-2. **Commande `setup.open` dans l'app lancée** : barre de commandes → « Open the setup wizard ». L'assistant doit s'ouvrir et se fermer par ✕ sans écrire `setup-done`. Seuls les tests la couvrent.
-3. **Nouvel installeur** : celui de D: (commit `56d5a52`) ne contient pas les traductions faites depuis. Le reconstruire (`npm run dist:win` dans `apps/desktop`), le recopier sur D: et noter la nouvelle empreinte SHA-256 en section 2.
+2. ~~**Commande `setup.open` dans l'app lancée**~~ : **vérifié le 14/10, bug confirmé**. La commande est bien enregistrée (barre de commandes → « Open the setup wizard » l'affiche), mais `cmdk` ne déclenche pas son `onSelect` : ni le clic ni Entrée ne l'exécutent, la palette reste ouverte. Le défaut est dans l'intégration `CommandBar.tsx` / cmdk 1.1.1, pas dans l'enregistrement de la commande ni dans l'IPC. Seuls les tests unitaires la couvrent. **À corriger** : vérifier le `onSelect` des `Command.Item` et la sélection par défaut (« Ask Hermes »).
+3. ~~**Nouvel installeur**~~ : **fait le 14/10 depuis `114188c`** (`npm run dist:win`), recopié sur D: et empreinte notée en section 2 (SHA-256 `e66038ce…`).
 4. **Pinokio en vrai** : installer et lancer une petite app d'IA depuis la fenêtre Pinokio, puis via l'outil `pinokio_run` avec un vrai modèle. `pinokio_run` repose sur l'API interne de pinokiod (fonction `drive` dans `jarod-core/packages/plugins/tools/src/pinokio/tools.ts`) ; seul un faux moteur l'a exercé.
-5. **Paquet `.appx`** et option réseau `JAROD_PINOKIO_LAN=1` : jamais testés.
+5. **Paquet `.appx`** : **construit le 14/10** (193 974 260 octets, SHA-256 `64a91c4d…`, en section 2) mais **non signé** et jamais installé ni lancé. Reste : **option réseau `JAROD_PINOKIO_LAN=1`** — jamais testée.
 
 ### B. À finir (petites tâches)
-6. **Traductions** : 659 chaînes restent en anglais (`npm run i18n:report --workspace apps/desktop` les liste par fichier).
-   - Déjà fait : les sections de Réglages Général, Apparence, Confidentialité, Voix, Appareils et API, Agent et sécurité, Règles d'automatisation, {assistant} et agents, Persona et profils, Secrets, Serveurs MCP, plus la page Kanban.
-   - Suivants, dans l'ordre du rapport : `features/status/StatusPanel.tsx`, `settings/sections/DocumentsSection.tsx`, `LocalEngineBlock.tsx`, `SkillsSection.tsx`, `shell/surfaces/ControlMenu.tsx`, `PluginsSection.tsx`, `automations/*`, `LocalModelsSection.tsx`, `DataSection.tsx`, `MessagingSection.tsx`, `setup/FirstRunSetup.tsx` (écran de l'image Linux)…
+6. **Traductions** : 637 chaînes restent en anglais (`npm run i18n:report --workspace apps/desktop` les liste par fichier).
+   - Déjà fait : les sections de Réglages Général, Apparence, Confidentialité, Voix, Appareils et API, Agent et sécurité, Règles d'automatisation, {assistant} et agents, Persona et profils, Secrets, Serveurs MCP, plus la page Kanban et le panneau d'état (Wi-Fi, Bluetooth, Son, Écrans, Alimentation, horloge).
+   - Suivants, dans l'ordre du rapport : `settings/sections/DocumentsSection.tsx`, `LocalEngineBlock.tsx`, `SkillsSection.tsx`, `shell/surfaces/ControlMenu.tsx`, `PluginsSection.tsx`, `automations/*`, `LocalModelsSection.tsx`, `DataSection.tsx`, `MessagingSection.tsx`, `setup/FirstRunSetup.tsx` (écran de l'image Linux)…
    - Restent aussi en anglais : les libellés des fichiers modèles (`kanban/kanban-model.ts` : `STATUS_LABEL`, `VERB_LABEL`, `NEEDS_TEXT` ; `settings/sections/jarod-settings-model.ts` : `DECISION_LABEL`, `TOOL_SEARCH_LABEL` ; `devices-model.ts`, `mcp-model.ts`, `rules-model.ts`, `vault-model.ts` pour les messages de validation).
    - Méthode : remplacer chaque littéral par `t('clé')`, appeler `useT()` dans chaque composant, ajouter la clé dans `src/locales/en.ts` **et** `fr.ts`, avec les mêmes `{placeholders}`. Le test `src/lib/i18n.test.ts` le vérifie. Les scripts Python utilisés le 14/10 étaient dans un dossier temporaire et sont perdus ; le principe est simple à refaire.
    - Toujours lancer typecheck et tests **avant** de committer.
-7. **Réglages** : ajouter une ligne « Relancer la vérification du système » (`window.heraldOS.systemAudit.run()`) et « Importer des clés API » (réutiliser `src/features/setup/KeysStep.tsx`), par exemple dans la section Général ou Données.
+7. ~~**Réglages**~~ : **fait le 14/10** — groupe « Vérification du système » dans la section Général : « Relancer la vérification du système » (`window.heraldOS.systemAudit.run()`) et « Importer des clés API » (ouvre `KeysStep.tsx` dans une fenêtre modale).
 8. **Assistant sur Linux et macOS** : l'assistant `desktop` n'est activé que sous Windows (`setupState()` dans `apps/desktop/electron/ipc/setup.ts`). L'audit fonctionne partout ; il faut décider si l'assistant s'affiche aussi sur macOS et sur Linux hors image.
 
 ### C. Chantiers (à décider avec le propriétaire)
