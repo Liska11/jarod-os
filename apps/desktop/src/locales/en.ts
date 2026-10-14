@@ -1955,6 +1955,27 @@ export const en = {
   'localmodels.load': 'Load',
   'localmodels.unloadAria': 'Unload {name}',
   'localmodels.loadAria': 'Load {name}',
+  // Data & folders (Settings > Data)
+  'data.title': 'Data & folders',
+  'data.subtitle': 'Where the agent works, and your data.',
+  'data.needEngine': 'These are set up here with the Jarod engine.',
+  'data.engineError': 'Data',
+  'data.workFolder': 'Work folder',
+  'data.defaultFolder': 'Default folder',
+  'data.workFolder.hint': 'Conversations start here and the agent\u2019s file tools stay inside it. A change applies to new conversations.',
+  'data.chooseFolder': 'Choose folder\u2026',
+  'data.useDefault': 'Use the default',
+  'data.workFolderSet': 'Work folder set',
+  'data.backup': 'Backup',
+  'data.backupProfile': 'Back up this profile',
+  'data.backupProfile.hint': 'Copies the encrypted database, files and a manifest with a SHA-256 for each file into a folder you choose. The copy is read back and checked.',
+  'data.backupButton': 'Back up\u2026',
+  'data.backupWritten': 'Backup written to {path}',
+  'data.import': 'Import or restore',
+  'data.import.hint': 'Pick the manifest.json of a portability package (memories, settings, personas are merged) or of a full backup (restored as a new profile). You confirm before anything is written.',
+  'data.importButton': 'Import\u2026',
+  'data.done': 'Done.',
+  'data.failed': 'It failed.',
   } as const
 
   export type MessageKey = keyof typeof en

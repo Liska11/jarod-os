@@ -1,6 +1,7 @@
 import { IconArchive, IconFolder, IconRestore } from '@tabler/icons-react'
 import { useState } from 'react'
 import { GlassButton } from '../../../components/ui/glass.tsx'
+import { useT } from '../../../lib/i18n.ts'
 import { jarod } from '../../../lib/jarod.ts'
 import { useBackendData } from '../../../lib/use-async.ts'
 import { notify } from '../../../store/notifications.ts'
@@ -18,6 +19,7 @@ import { InlineNote, markSaved, SectionTitle, SettingsGroup, SettingsRow } from 
 type Result = { success: boolean; path?: string; error?: string }
 
 export function DataSection() {
+  const { t } = useT()
   const workspace = useBackendData(() => jarod<string | null>('get-default-workspace'))
   const [busy, setBusy] = useState(false)
   const [note, setNote] = useState<{ tone: 'info' | 'warn' | 'danger'; text: string } | null>(null)
@@ -25,13 +27,13 @@ export function DataSection() {
   if (isUnsupported(workspace.error)) {
     return (
       <>
-        <SectionTitle title="Data & folders" subtitle="Where the agent works, and your data." />
-        <InlineNote tone="info">These are set up here with the Jarod engine.</InlineNote>
+        <SectionTitle title={t('data.title')} subtitle={t('data.subtitle')} />
+        <InlineNote tone="info">{t('data.needEngine')}</InlineNote>
       </>
     )
   }
 
-  const fail = (error: unknown) => reportEngineError('Data', error)
+  const fail = (error: unknown) => reportEngineError(t('data.engineError'), error)
 
   const chooseFolder = async () => {
     setBusy(true)
@@ -42,7 +44,7 @@ export function DataSection() {
       if (picked) {
         await jarod('set-default-workspace', picked)
         markSaved()
-        notify({ title: 'Work folder set', body: picked, level: 'success' })
+        notify({ title: t('data.workFolderSet'), body: picked, level: 'success' })
         workspace.reload()
       }
     } catch (error) {
@@ -66,7 +68,7 @@ export function DataSection() {
     }
   }
 
-  const transfer = async (channel: 'run-hermes-backup' | 'run-hermes-import', done: string, cancelledWord: RegExp) => {
+  const transfer = async (channel: 'run-hermes-backup' | 'run-hermes-import', done: (path: string | undefined) => string, cancelledWord: RegExp) => {
     setBusy(true)
     setNote(null)
 
@@ -75,9 +77,9 @@ export function DataSection() {
 
       if (result.success) {
         markSaved()
-        setNote({ tone: 'info', text: result.path ? `${done} ${result.path}` : done })
+        setNote({ tone: 'info', text: done(result.path) })
       } else if (!cancelledWord.test(result.error ?? '')) {
-        setNote({ tone: 'danger', text: result.error ?? 'It failed.' })
+        setNote({ tone: 'danger', text: result.error ?? t('data.failed') })
       }
     } catch (error) {
       fail(error)
@@ -88,28 +90,28 @@ export function DataSection() {
 
   return (
     <>
-      <SectionTitle title="Data & folders" subtitle="Where the agent works, and your data." />
-      <SettingsGroup title="Work folder">
-        <SettingsRow icon={<IconFolder />} label={workspace.data ?? 'Default folder'} description="Conversations start here and the agent’s file tools stay inside it. A change applies to new conversations." keywords="work folder workspace default directory">
+      <SectionTitle title={t('data.title')} subtitle={t('data.subtitle')} />
+      <SettingsGroup title={t('data.workFolder')}>
+        <SettingsRow icon={<IconFolder />} label={workspace.data ?? t('data.defaultFolder')} description={t('data.workFolder.hint')} keywords="work folder workspace default directory">
           <GlassButton size="sm" variant="primary" disabled={busy} onClick={() => void chooseFolder()}>
-            Choose folder…
+            {t('data.chooseFolder')}
           </GlassButton>
           {workspace.data && (
             <GlassButton size="sm" variant="ghost" disabled={busy} onClick={() => void clearFolder()}>
-              Use the default
+              {t('data.useDefault')}
             </GlassButton>
           )}
         </SettingsRow>
       </SettingsGroup>
-      <SettingsGroup title="Backup">
-        <SettingsRow icon={<IconArchive />} label="Back up this profile" description="Copies the encrypted database, files and a manifest with a SHA-256 for each file into a folder you choose. The copy is read back and checked." keywords="backup export profile save copy">
-          <GlassButton size="sm" variant="primary" disabled={busy} onClick={() => void transfer('run-hermes-backup', 'Backup written to', /annulée/i)}>
-            Back up…
+      <SettingsGroup title={t('data.backup')}>
+        <SettingsRow icon={<IconArchive />} label={t('data.backupProfile')} description={t('data.backupProfile.hint')} keywords="backup export profile save copy">
+          <GlassButton size="sm" variant="primary" disabled={busy} onClick={() => void transfer('run-hermes-backup', path => t('data.backupWritten', { path: path ?? '' }).trimEnd(), /annulée/i)}>
+            {t('data.backupButton')}
           </GlassButton>
         </SettingsRow>
-        <SettingsRow icon={<IconRestore />} label="Import or restore" description="Pick the manifest.json of a portability package (memories, settings, personas are merged) or of a full backup (restored as a new profile). You confirm before anything is written." keywords="import restore backup portability merge">
-          <GlassButton size="sm" variant="secondary" disabled={busy} onClick={() => void transfer('run-hermes-import', 'Done.', /annulé/i)}>
-            Import…
+        <SettingsRow icon={<IconRestore />} label={t('data.import')} description={t('data.import.hint')} keywords="import restore backup portability merge">
+          <GlassButton size="sm" variant="secondary" disabled={busy} onClick={() => void transfer('run-hermes-import', () => t('data.done'), /annulé/i)}>
+            {t('data.importButton')}
           </GlassButton>
         </SettingsRow>
         {note && <InlineNote tone={note.tone}>{note.text}</InlineNote>}
