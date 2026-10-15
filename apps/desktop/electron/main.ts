@@ -2,7 +2,7 @@ import { app, BrowserWindow, dialog, globalShortcut, ipcMain, Notification, prot
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { type EnvInfo, type HeraldOSPrefs, IPC, type RestRequest, type ShellCommand, type WindowState } from '../shared/ipc.ts'
+import { type ControlRunResult, type EnvInfo, type HeraldOSPrefs, IPC, type RestRequest, type ShellCommand, type WindowState } from '../shared/ipc.ts'
 import { BackendManager } from './backend/manager.ts'
 import { jarodDataDir, resolveJarodCore, selectBackend } from './backend/jarod-core.ts'
 import { CrashWatcher } from './crash/watch.ts'
@@ -196,6 +196,7 @@ const approveMutation: ApprovalProvider = async ask => {
         `Command: ${ask.command}`,
         `Asked by: ${ask.client}${ask.source ? ` (${ask.source})` : ''}`,
         ask.preview ? `Arguments: ${ask.preview}` : undefined,
+        ask.requestId ? `Request: ${ask.requestId}` : undefined,
         '',
         'Allowing lets this one call through, once.',
       ]
@@ -212,6 +213,47 @@ const panelSecurity = new ControlSecurity({ tokens: surfaceTokens }, auditContro
 const backendSecurity = new ControlSecurity({ tokens: surfaceTokens, surface: 'backend' }, auditControl)
 const panelGate = new HostControlGate({ security: panelSecurity, approve: approveMutation })
 const backendGate = new HostControlGate({ security: backendSecurity, approve: approveMutation })
+// A plugin's OS commands go through the same gate, and so into the same journal (R2.2). Set here
+// because the gate is built after the plugin host; until it is set, plugin commands are refused.
+plugins.setControl(backendGate)
+/**
+ * The shell's own windows run a registry command the way everything else does: through the gate,
+ * against the catalogue, with a line in the journal. Before R3 the palette and the control menu sent
+ * a generic `os` message over the shell bus, where nothing checked the id, nothing checked the
+ * arguments, and nothing was written down.
+ *
+ * The sender is checked to be a window of this app (the preload is what makes that true): a widget
+ * plugin lives in a sandboxed frame without it, and a web view has no preload at all.
+ */
+ipcMain.handle(IPC.controlRun, async (event, id: unknown, rawArgs: unknown): Promise<ControlRunResult> => {
+  if (!BrowserWindow.fromWebContents(event.sender)) {
+    return { ok: false, error: 'This window may not run shell commands.' }
+  }
+
+  const command = typeof id === 'string' ? id : ''
+  const args = rawArgs && typeof rawArgs === 'object' && !Array.isArray(rawArgs) ? (rawArgs as Record<string, unknown>) : {}
+  // The command itself runs in the Hermes window; make sure it is there to be asked.
+  if (panels && !panels.mainWindow()) {
+    panels.open('main')
+  }
+
+  const result = await backendGate.submitLocal({ client: 'ui', command, args, source: 'ui' })
+
+  if (result.kind === 'reply') {
+    return { ok: false, error: result.reply.error ?? 'The shell refused that command.' }
+  }
+
+  const reply = await handleUiRequest({ cmd: 'ui', command, args, source: 'ui' }, osBridge)
+  const ok = reply?.ok !== false
+
+  result.finish({ ok, reason: typeof reply?.error === 'string' ? reply.error : undefined })
+
+  return {
+    ok,
+    summary: typeof reply?.summary === 'string' ? reply.summary : undefined,
+    error: typeof reply?.error === 'string' ? reply.error : undefined,
+  }
+})
 const control = shellHost
   ? new ControlSocket(
       shellHost,
@@ -256,6 +298,8 @@ const osControl = panels
 
         const cmd = String(request.cmd ?? '')
         const args = Array.isArray(request.args) ? (request.args as string[]) : []
+        // The pipeline's own reading of the name: it is the only one that is known to be well formed.
+        const echoId = result.call.requestId
         const relay = (command: ShellCommand) => {
           mainWindow?.webContents.send(IPC.shellCommand, command)
           mainWindow?.show()
@@ -270,7 +314,7 @@ const osControl = panels
           if (ui) {
             result.finish({ ok: ui.ok !== false })
 
-            return { ...ui, code: ui.ok === false ? 'execution-failed' : 'ok' }
+            return { ...ui, code: ui.ok === false ? 'execution-failed' : 'ok', requestId: echoId }
           }
 
           let reply: Record<string, unknown>
@@ -299,7 +343,7 @@ const osControl = panels
 
           result.finish({ ok: reply.ok !== false })
 
-          return { ...reply, code: reply.ok === false ? 'execution-failed' : 'ok' }
+          return { ...reply, code: reply.ok === false ? 'execution-failed' : 'ok', requestId: echoId }
         } catch (error) {
           result.finish({ ok: false, code: 'execution-failed' })
 

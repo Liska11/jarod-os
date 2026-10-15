@@ -17,6 +17,7 @@ import shutil
 import socket
 import subprocess
 import sys
+import uuid
 from pathlib import Path
 
 HOME = Path.home()
@@ -233,11 +234,13 @@ def control_token() -> str:
 def relay(payload: dict) -> bool:
     if not SOCKET.exists():
         return False
+    # One invocation is one attempt: the shell writes this name beside what it decided (R2.2).
+    request = {**payload, "token": control_token(), "requestId": "cli_" + uuid.uuid4().hex[:16]}
     try:
         with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
             s.settimeout(5)
             s.connect(str(SOCKET))
-            s.sendall((json.dumps({**payload, "token": control_token()}) + "\n").encode())
+            s.sendall((json.dumps(request) + "\n").encode())
             s.recv(4096)
         return True
     except OSError:

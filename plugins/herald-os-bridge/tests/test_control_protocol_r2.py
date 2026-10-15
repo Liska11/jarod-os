@@ -17,6 +17,7 @@ import importlib
 import importlib.util
 import json
 import os
+import re
 import shutil
 import socket
 import sys
@@ -348,3 +349,84 @@ def test_the_cli_retires_the_free_form_registry_verb():
     assert '"cmd": "run"' in source
     assert 'RETIRED_COMMANDS = {"os": "use `run ' in source
     assert "relay_run(" in source
+
+
+# ---------------------------------------------------------------------------------------------
+# R2.2: one attempt, one name, from the client that started it to both journals
+
+
+REQUEST_ID = r"^bridge_[0-9a-f]{16}$"
+CLI_REQUEST_ID = r"^cli_[0-9a-f]{16}$"
+
+
+def test_an_agent_attempt_names_itself_once_across_every_request_it_makes(plugin, monkeypatch):
+    """The bridge mints one name for the attempt, and every request it makes carries it.
+
+    Three requests, one name: the catalogue fetch, the approval ask, and the call that spends the
+    approval. The same value reaches the bridge's own journal line, which is what makes the two
+    journals readable together — and the shell never compares it to anything, so it authorises nothing.
+    """
+    fake = R2Shell("tcp", "secret-token")
+    monkeypatch.setenv("HERALD_OS_CONTROL_SOCKET", fake.endpoint)
+    monkeypatch.setenv("HERALD_OS_CONTROL_TOKEN", "secret-token")
+    util = _mod(plugin, "util")
+    util.forget_control_env()
+    tools = _mod(plugin, "tools")
+    tools._UI_CATALOGUE.clear()
+    try:
+        reply = json.loads(tools.handle_os_ui({"action": "run", "command": "memory.forget", "args": {"match": "x"}}))
+
+        assert reply["success"] is True
+        assert [request["cmd"] for request in fake.requests] == ["ui-list", "ui", "ui"]
+        named = {request.get("requestId") for request in fake.requests}
+        assert len(named) == 1, f"one attempt must have one name, saw {named}"
+        attempt = named.pop()
+        assert isinstance(attempt, str) and re.match(REQUEST_ID, attempt), attempt
+
+        entries = [json.loads(line) for line in (util.data_dir() / "audit.jsonl").read_text(encoding="utf-8").splitlines() if line.strip()]
+        assert entries[-1]["requestId"] == attempt, "the bridge's line must carry the same name it sent"
+        # A name is a name: it is not a credential, and it carries no secret of its own.
+        assert "cap_" not in attempt and "token" not in attempt
+    finally:
+        fake.close()
+        tools._UI_CATALOGUE.clear()
+
+
+def test_a_read_through_the_client_is_named_too_and_a_nameless_caller_still_works(plugin, shell):
+    """The id is optional on the wire: absent means the attempt is simply unnamed, not refused."""
+    ui = _mod(plugin, "ui")
+
+    ui.run_command("page.open", {"name": "memory"}, request_id="agent-7")
+    ui.run_command("page.open", {"name": "memory"})
+    ui.list_commands(request_id="agent-7")
+    ui.shell_state()
+
+    sent = [request.get("requestId") for request in shell.requests]
+    assert sent == ["agent-7", None, "agent-7", None]
+
+
+def test_the_cli_names_one_attempt_across_the_approval_it_takes_up(monkeypatch, tmp_path):
+    """One command line is one attempt, even when it takes two requests to get there."""
+    cli = _load_cli(monkeypatch, tmp_path)
+    sent: list[dict] = []
+    replies = [
+        {"ok": False, "code": "approval-granted", "error": "needs approval", "capability": {"id": CAPABILITY}},
+        {"ok": True, "code": "ok", "summary": "Forgot it"},
+    ]
+
+    def fake_send(payload, **_):
+        sent.append(dict(payload))
+        return replies.pop(0)
+
+    monkeypatch.setattr(cli, "send_payload", fake_send)
+    assert cli.relay_run("memory.forget", {"match": "x"}, quiet=True)["ok"] is True
+
+    assert len(sent) == 2
+    names = {payload.get("requestId") for payload in sent}
+    assert len(names) == 1, f"the ask and the call are one attempt, saw {names}"
+    assert re.match(CLI_REQUEST_ID, names.pop())
+
+    # A plain relay is its own attempt, and names itself too.
+    monkeypatch.setattr(cli, "send_payload", lambda payload, **_: sent.append(dict(payload)) or {"ok": True})
+    cli.relay("notify", ["title", "body"], quiet=True)
+    assert re.match(CLI_REQUEST_ID, sent[-1]["requestId"])

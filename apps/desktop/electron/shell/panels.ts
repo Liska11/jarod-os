@@ -78,7 +78,19 @@ export class PanelShell implements ShellHost {
         this.close(target)
       }
     })
-    ipcMain.handle(IPC.shellRelay, (_event, target: ShellSurface, command: ShellCommand) => this.relay(target, command))
+    ipcMain.handle(IPC.shellRelay, (_event, target: ShellSurface, command: ShellCommand) => {
+      // This bus carries the shell's own UI traffic between surfaces. Running a registry command is a
+      // host action: it goes through the host gate (IPC.controlRun), which checks the id against the
+      // catalogue and writes the attempt down. The old `os` message was a way around both, so a
+      // renderer asking for one here is refused rather than forwarded (R3).
+      if (command?.type === 'os' || command?.type === 'os-run') {
+        log('shell', `refused a relayed ${command.type} command`)
+
+        return
+      }
+
+      this.relay(target, command)
+    })
     ipcMain.handle(IPC.shellResize, (event, width: number, height: number) => {
       const surface = this.surfaceOf(event.sender.id)
       const win = surface ? this.windows.get(surface) : undefined

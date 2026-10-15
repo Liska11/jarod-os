@@ -17,7 +17,13 @@ import path from 'node:path'
 import { HERALD_EVENT_NAMES } from '../../shared/events.ts'
 import { sameToken } from './json-lines.ts'
 
-export type ControlClient = 'backend' | 'cli'
+/**
+ * Who is asking. `backend` and `cli` hold a token from this shell; `plugin` is a widget the person
+ * enabled and `ui` is one of the shell's own windows, both calling from inside this process — neither
+ * has a token, and neither needs one, because `HostControlGate.submitLocal` is the only way in. The
+ * gate still asks the person for a plugin's mutation (R2.2); a window's click is the person (R3).
+ */
+export type ControlClient = 'backend' | 'cli' | 'plugin' | 'ui'
 
 /** The same ladder the renderer's registry uses (src/store/os-commands.ts). */
 export type ControlTier = 'read' | 'act' | 'mutate' | 'destructive'
@@ -80,6 +86,12 @@ export interface ControlRequestShape {
   source?: unknown
   /** A one-shot capability the host issued for exactly this call. */
   capability?: unknown
+  /**
+   * The caller's own name for this attempt, so the bridge's journal and the host's can be read
+   * together (R2.2). It is not a credential: it authorises nothing, it is never compared to anything,
+   * and a request without one is still a request.
+   */
+  requestId?: unknown
   /** Kept because the shared panel socket carries them; `theme` reads them. */
   attachments?: unknown
   shell?: unknown
@@ -124,6 +136,8 @@ export interface ControlAuditEntry {
   code?: string
   /** An approval this attempt came from, as a fingerprint — never the capability itself. */
   approval?: string
+  /** The caller's name for the attempt, so both journals can be read together (never a secret). */
+  requestId?: string
   /** Which door: the shared panel socket, or the desktop server the backend dials. */
   surface?: ControlSurface
 }
@@ -373,6 +387,31 @@ export function commandIdOf(request: ControlRequestShape): string {
   return typeof request.command === 'string' ? request.command.trim() : ''
 }
 
+/** What a request id may look like. Long enough to be unique, short enough to read in a journal. */
+const REQUEST_ID = /^[A-Za-z0-9._:-]{1,128}$/
+
+/** The caller's own name for this attempt, or `''` when it sent none (R2.2). */
+export function requestIdOf(request: ControlRequestShape): string {
+  return typeof request.requestId === 'string' ? request.requestId.trim() : ''
+}
+
+/**
+ * `undefined` when the id is absent or well formed, otherwise why it cannot be used.
+ *
+ * An id is not a credential, so a bad one is not a security event — but it is still a client that
+ * disagrees with the protocol, and a promise to correlate two journals is worth refusing a malformed
+ * attempt over rather than writing a line no one can join to anything.
+ */
+export function requestIdProblem(request: ControlRequestShape): string | undefined {
+  const id = requestIdOf(request)
+
+  if (!id) {
+    return undefined
+  }
+
+  return REQUEST_ID.test(id) ? undefined : 'a requestId is a short opaque string, not a secret'
+}
+
 /**
  * The authorization decision for one control request. Pure: same request and context, same answer.
  *
@@ -555,6 +594,9 @@ export class ControlSecurity {
       reason: entry.reason,
       code: entry.code,
       approval: entry.approval,
+      // Only a well-formed name is journalled: a value that cannot be an id does not get written
+      // down, so an attempt that put something secret in the id field cannot leak it here (R2.2).
+      requestId: entry.requestId && REQUEST_ID.test(entry.requestId) ? entry.requestId : undefined,
       surface: entry.surface ?? this.surface,
     })
   }
@@ -573,6 +615,7 @@ export class ControlSecurity {
       allowed: decision.allowed,
       reason: decision.reason,
       code: decision.allowed ? undefined : (decision.code ?? 'unauthorized'),
+      requestId: requestIdOf(request),
     })
 
     return decision
@@ -599,9 +642,19 @@ export interface ControlEndpoint {
  *
  * Windows gets a named pipe rather than a loopback TCP port: a port is dialable by anything on the
  * machine (and was announced to the backend as `tcp://127.0.0.1:<port>`, token and all), while a
- * pipe is created with the creating user's own access control and is not a network surface. The name
- * carries a digest of the profile so two profiles never share one pipe. The token still stands as the
- * credential: the pipe narrows who can knock, it does not replace the lock.
+ * pipe is not a network surface. The name carries a digest of the profile so two profiles never
+ * share one pipe. The token still stands as the credential: the pipe narrows who can knock, it does
+ * not replace the lock.
+ *
+ * What the pipe's access control really is, measured rather than assumed (R2.3,
+ * `scripts/probe-pipe-acl.mjs`): the app passes no security descriptor — Node has no parameter for
+ * one — so libuv creates the pipe with the creating token's *default* DACL. On this machine that is
+ * `FA` for SYSTEM, Administrators and the creating user, and `FR` (read only) for Everyone and
+ * Anonymous. Only an identity with a write bit can send a request, so no other user is granted a
+ * useful connection; the read-only ACEs are a residual, and libuv's `FILE_FLAG_FIRST_PIPE_INSTANCE`
+ * refuses a second claimant that also sets that flag, but not one that creates its own instance
+ * without it. Setting an explicit DACL needs a native call at creation, which is why the pipe policy
+ * documented in that probe belongs to a native host (see the R2.3 report), not to this module.
  */
 export function controlEndpoint(input: ControlEndpointInput): ControlEndpoint {
   if (input.platform === 'win32') {

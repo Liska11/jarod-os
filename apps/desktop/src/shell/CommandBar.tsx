@@ -143,8 +143,17 @@ export function CommandPalette({ onClose, standalone = false, onApplications, cl
     close()
 
     if (standalone) {
-      relayToMain({ type: 'os', args: [id], payload: args })
+      // This overlay is its own window and the command belongs to the Hermes window. Main decides
+      // whether it may run (the host gate checks the id, the arguments and the tier, and writes the
+      // attempt down) and only then asks that window to run it — R3: the shell bus no longer carries
+      // a registry command.
       openSurface('main')
+
+      const result = await window.heraldOS.control.run(id, args)
+
+      if (!result.ok) {
+        notify({ title: 'Could not do that', body: result.error ?? result.summary, level: 'warn' })
+      }
 
       return
     }

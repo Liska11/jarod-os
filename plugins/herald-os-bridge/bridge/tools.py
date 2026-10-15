@@ -11,6 +11,7 @@ import json
 import os
 import re
 import shutil
+import uuid
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from pathlib import Path
@@ -76,8 +77,29 @@ def _int(args: dict[str, Any], key: str, default: int, lo: int, hi: int) -> int:
     return max(lo, min(hi, value))
 
 
-def _finish(*, tool: str, tier: Tier, action: str | None, args: dict[str, Any], decision: str, ok_: bool, summary: str | None = None, error: str | None = None) -> None:
-    audit.record(tool=tool, tier=tier.value, action=action, args=args, decision=decision, ok=ok_, summary=summary, error=error)
+def _finish(
+    *,
+    tool: str,
+    tier: Tier,
+    action: str | None,
+    args: dict[str, Any],
+    decision: str,
+    ok_: bool,
+    summary: str | None = None,
+    error: str | None = None,
+    request_id: str | None = None,
+) -> None:
+    audit.record(
+        tool=tool,
+        tier=tier.value,
+        action=action,
+        args=args,
+        decision=decision,
+        ok=ok_,
+        summary=summary,
+        error=error,
+        request_id=request_id,
+    )
 
 
 def _guarded(
@@ -90,31 +112,35 @@ def _guarded(
     execute: Callable[[], dict[str, Any]],
     *,
     delegate_confirm: bool = False,
+    request_id: str | None = None,
 ) -> str:
     """Authorize, run, audit. Shared by every act/mutate/destructive handler.
 
     ``delegate_confirm`` is passed by handlers whose execution the shell gates itself (`os_ui`): the
     policy still decides whether the action may happen at all, and the shell asks the person once,
     where the mutation is actually carried out (R2.1 — one visible approval, host as authority).
+
+    ``request_id`` is the attempt's own name, written into the journal here and sent on the request
+    so the shell writes the same value into its journal (R2.2).
     """
     decision = authorize(tool, tier, action, summary, paths=paths, delegate_confirm=delegate_confirm)
     if not decision.allowed:
-        _finish(tool=tool, tier=tier, action=action, args=args, decision=decision.outcome, ok_=False, summary=summary, error=decision.message)
+        _finish(tool=tool, tier=tier, action=action, args=args, decision=decision.outcome, ok_=False, summary=summary, error=decision.message, request_id=request_id)
         return fail(decision.message or "not permitted", decision=decision.outcome, summary=summary)
     try:
         payload = execute()
     except HostNotSupported as exc:
-        _finish(tool=tool, tier=tier, action=action, args=args, decision=decision.outcome, ok_=False, summary=summary, error=str(exc))
+        _finish(tool=tool, tier=tier, action=action, args=args, decision=decision.outcome, ok_=False, summary=summary, error=str(exc), request_id=request_id)
         return fail(str(exc))
     except Exception as exc:  # noqa: BLE001 - every host error becomes a tool result, never a crash.
-        _finish(tool=tool, tier=tier, action=action, args=args, decision=decision.outcome, ok_=False, summary=summary, error=str(exc))
+        _finish(tool=tool, tier=tier, action=action, args=args, decision=decision.outcome, ok_=False, summary=summary, error=str(exc), request_id=request_id)
         return fail(str(exc), summary=summary)
-    _finish(tool=tool, tier=tier, action=action, args=args, decision=decision.outcome, ok_=True, summary=summary)
+    _finish(tool=tool, tier=tier, action=action, args=args, decision=decision.outcome, ok_=True, summary=summary, request_id=request_id)
     return ok(summary=summary, **payload)
 
 
-def _read(tool: str, action: str | None, args: dict[str, Any], execute: Callable[[], dict[str, Any]]) -> str:
-    return _guarded(tool, Tier.READ, action or "read", f"{tool} {action or ''}".strip(), args, (), execute)
+def _read(tool: str, action: str | None, args: dict[str, Any], execute: Callable[[], dict[str, Any]], *, request_id: str | None = None) -> str:
+    return _guarded(tool, Tier.READ, action or "read", f"{tool} {action or ''}".strip(), args, (), execute, request_id=request_id)
 
 
 # ---------------------------------------------------------------------------------------------
@@ -1040,10 +1066,10 @@ _UI_TIERS = {"read": Tier.READ, "act": Tier.ACT, "mutate": Tier.MUTATE, "destruc
 _UI_CATALOGUE: dict[str, dict[str, Any]] = {}
 
 
-def _ui_catalogue() -> dict[str, dict[str, Any]]:
+def _ui_catalogue(request_id: str | None = None) -> dict[str, dict[str, Any]]:
     """Command id -> summary, fetched from the shell and cached for the life of the process."""
     if not _UI_CATALOGUE:
-        for entry in ui.list_commands():
+        for entry in ui.list_commands(request_id=request_id):
             if isinstance(entry, dict) and entry.get("id"):
                 _UI_CATALOGUE[str(entry["id"])] = entry
     return _UI_CATALOGUE
@@ -1065,11 +1091,15 @@ def ui_summary(command: str, args: dict[str, Any], catalogue: dict[str, dict[str
 
 def handle_os_ui(args: dict[str, Any], **_: Any) -> str:
     action = str(args.get("action") or "run").strip().lower()
+    # One name for this whole attempt, minted here because this is where the attempt starts: it goes
+    # out on every request to the shell and into the bridge's own audit line, so the two journals can
+    # be read together (R2.2). It authorises nothing and is never compared to anything.
+    request_id = f"bridge_{uuid.uuid4().hex[:16]}"
     try:
         if action == "list":
-            return _read("os_ui", "list", args, lambda: {"commands": ui.summarise_commands(list(_ui_catalogue().values()))})
+            return _read("os_ui", "list", args, lambda: {"commands": ui.summarise_commands(list(_ui_catalogue().values()))}, request_id=request_id)
         if action == "state":
-            return _read("os_ui", "state", args, ui.shell_state)
+            return _read("os_ui", "state", args, lambda: ui.shell_state(request_id=request_id), request_id=request_id)
         if action != "run":
             return fail("action must be one of run, list, state")
         command = str(args.get("command") or "").strip()
@@ -1083,7 +1113,7 @@ def handle_os_ui(args: dict[str, Any], **_: Any) -> str:
             except json.JSONDecodeError:
                 raw_args = {}
         command_args = raw_args if isinstance(raw_args, dict) else {}
-        catalogue = _ui_catalogue()
+        catalogue = _ui_catalogue(request_id=request_id)
         if catalogue and command not in catalogue:
             known = ", ".join(sorted(catalogue)[:40])
             return fail(f"unknown command '{command}'; known commands: {known}")
@@ -1091,7 +1121,7 @@ def handle_os_ui(args: dict[str, Any], **_: Any) -> str:
         summary = ui_summary(command, command_args, catalogue)
 
         def execute() -> dict[str, Any]:
-            reply = ui.run_command(command, command_args)
+            reply = ui.run_command(command, command_args, request_id=request_id)
             if not reply.get("ok"):
                 raise RuntimeError(str(reply.get("error") or reply.get("summary") or "the shell refused the command"))
             # The shell's own one-liner ("Opened Memory") rides along as `result`; `summary` stays the audit line.
@@ -1111,6 +1141,7 @@ def handle_os_ui(args: dict[str, Any], **_: Any) -> str:
             (),
             execute,
             delegate_confirm=True,
+            request_id=request_id,
         )
     except ui.ShellUnavailable as exc:
         return fail(str(exc))

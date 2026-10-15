@@ -1,4 +1,4 @@
-import { type BrowserWindow, dialog, ipcMain, protocol, shell } from 'electron'
+import { type BrowserWindow, ipcMain, protocol, shell } from 'electron'
 import { execFile } from 'node:child_process'
 import fs from 'node:fs'
 import { writeFileAtomic } from '../atomic-write.ts'
@@ -8,6 +8,7 @@ import { IPC, type ShellCommand } from '../../shared/ipc.ts'
 import { allowed, grantCovers, pluginCsp, type PluginGrant, type PluginMethod, type PluginView, validateManifest } from '../../shared/plugins.ts'
 import { log } from '../log.ts'
 import { hostPlatform } from '../platform/index.ts'
+import type { HostControlGate } from '../shell/host-control.ts'
 import type { OsCommandBridge } from '../shell/os-control.ts'
 import { WIDGET_SDK } from './sdk.ts'
 import { shellConfigDir } from '../paths.ts'
@@ -70,7 +71,7 @@ export class PluginHost {
   private watcher: fs.FSWatcher | null = null
   private changeTimer: ReturnType<typeof setTimeout> | null = null
   private changed = new Set<string>()
-  private tiers: Map<string, { tier: string; title: string }> | null = null
+  private control: HostControlGate | null = null
 
   constructor(
     private readonly getWindows: () => BrowserWindow[],
@@ -79,6 +80,14 @@ export class PluginHost {
     /** Safe mode: every plugin is listed, none runs. */
     private readonly safeMode = false
   ) {}
+
+  /**
+   * The gate a plugin's OS commands go through, once main has built it (R2.2). Until then
+   * `runCommand` refuses: a plugin never gets an ungated path just because it asked early.
+   */
+  setControl(gate: HostControlGate): void {
+    this.control = gate
+  }
 
   list(): PluginView[] {
     const state = readJson<State>(stateFile(), { enabled: {} })
@@ -291,39 +300,35 @@ export class PluginHost {
     }
   }
 
-  /** OS commands under their own tier: reading and acting run; changing anything asks first. */
+  /**
+   * A plugin's own door to the OS commands: the same gate every other caller goes through, and the
+   * same journal (R2.2). Before this, the plugin path asked its own yes/no dialog and ran the command
+   * with `osBridge.run` directly, so a plugin's mutation left no line in the control journal, skipped
+   * the argument shapes and skipped the one-shot capability.
+   */
   private async runCommand(plugin: PluginView, command: string, args: Record<string, unknown>): Promise<unknown> {
-    if (!this.tiers) {
-      const listed = await this.osBridge.list()
-      const commands = Array.isArray(listed.result) ? (listed.result as { id: string; tier: string; title: string }[]) : []
-      this.tiers = new Map(commands.map(item => [item.id, { tier: item.tier, title: item.title }]))
+    const gate = this.control
+
+    if (!gate) {
+      throw new Error('The shell is not ready to run OS commands yet')
     }
 
-    const info = this.tiers.get(command)
+    const result = await gate.submitLocal({ command, args, source: `plugin:${plugin.manifest.id}` })
 
-    if (!info) {
-      throw new Error(`Unknown command ${command}`)
+    if (result.kind === 'reply') {
+      throw new Error(result.reply.error ?? 'The shell refused the command')
     }
 
-    if (info.tier === 'mutate' || info.tier === 'destructive') {
-      const win = this.getMain()
-      const options = {
-        type: 'question' as const,
-        buttons: ['Allow', 'Not now'],
-        defaultId: 1,
-        cancelId: 1,
-        message: `${plugin.manifest.name} wants to: ${info.title}`,
-        detail: `${command} ${JSON.stringify(args)}`
-      }
-      // Not the synchronous dialog: the shell keeps running while it waits.
-      const answer = win ? await dialog.showMessageBox(win, options) : await dialog.showMessageBox(options)
+    let reply: { error?: string; result?: unknown }
 
-      if (answer.response !== 0) {
-        throw new Error('Not allowed')
-      }
+    try {
+      reply = await this.osBridge.run(command, args, 'plugin')
+    } catch (error) {
+      result.finish({ ok: false, code: 'execution-failed', reason: error instanceof Error ? error.message : String(error) })
+      throw error
     }
 
-    const reply = await this.osBridge.run(command, args, 'plugin')
+    result.finish({ ok: reply.error === undefined, reason: reply.error })
 
     if (reply.error) {
       throw new Error(reply.error)

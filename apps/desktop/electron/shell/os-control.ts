@@ -24,22 +24,33 @@ import { LineSplitter } from './json-lines.ts'
 const REPLY_TIMEOUT_MS = 8_000
 
 export class OsCommandBridge {
-  private readonly pending = new Map<string, { resolve: (reply: OsControlReply) => void; timer: ReturnType<typeof setTimeout> }>()
+  private readonly pending = new Map<string, { resolve: (reply: OsControlReply) => void; timer: ReturnType<typeof setTimeout>; from: number }>()
   private counter = 0
 
   constructor(private readonly getWindow: () => BrowserWindow | null) {
-    ipcMain.on(IPC.osControlReply, (_event, reply: OsControlReply) => {
-      const entry = this.pending.get(reply.requestId)
+    ipcMain.on(IPC.osControlReply, (event, reply: OsControlReply) => {
+      const entry = this.pending.get(reply?.requestId)
 
-      if (entry) {
-        clearTimeout(entry.timer)
-        this.pending.delete(reply.requestId)
-        entry.resolve(reply)
+      if (!entry) {
+        return
       }
+
+      // Only the window this command was asked of may answer it. A reply is a claim about a command
+      // that was run, and every renderer in this app can send on this channel: one that did not run
+      // the command must not be able to say what it returned.
+      if (event.sender.id !== entry.from) {
+        log('os-control', `ignored a reply to ${reply.requestId} from another window`)
+
+        return
+      }
+
+      clearTimeout(entry.timer)
+      this.pending.delete(reply.requestId)
+      entry.resolve(reply)
     })
   }
 
-  private send(request: { kind: 'run'; command: string; args: Record<string, unknown>; source: 'agent' | 'cli' | 'plugin' } | { kind: 'list' } | { kind: 'state' }): Promise<OsControlReply> {
+  private send(request: { kind: 'run'; command: string; args: Record<string, unknown>; source: 'agent' | 'cli' | 'plugin' | 'ui' } | { kind: 'list' } | { kind: 'state' }): Promise<OsControlReply> {
     const win = this.getWindow()
 
     if (!win || win.isDestroyed()) {
@@ -48,18 +59,19 @@ export class OsCommandBridge {
 
     const requestId = `oc${++this.counter}`
     const full = { ...request, requestId } as OsControlRequest
+    const from = win.webContents.id
 
     return new Promise(resolve => {
       const timer = setTimeout(() => {
         this.pending.delete(requestId)
         resolve({ requestId, error: 'The Hermes window did not answer in time.' })
       }, REPLY_TIMEOUT_MS)
-      this.pending.set(requestId, { resolve, timer })
+      this.pending.set(requestId, { resolve, timer, from })
       win.webContents.send(IPC.osControlRequest, full)
     })
   }
 
-  run(command: string, args: Record<string, unknown>, source: 'agent' | 'cli' | 'plugin'): Promise<OsControlReply> {
+  run(command: string, args: Record<string, unknown>, source: 'agent' | 'cli' | 'plugin' | 'ui'): Promise<OsControlReply> {
     return this.send({ kind: 'run', command, args, source })
   }
 
@@ -106,7 +118,8 @@ export async function handleUiRequest(request: UiControlRequest, bridge: OsComma
       }
 
       const args = request.args && typeof request.args === 'object' && !Array.isArray(request.args) ? (request.args as Record<string, unknown>) : {}
-      reply = await bridge.run(request.command, args, request.source === 'cli' ? 'cli' : 'agent')
+      const source = request.source === 'cli' || request.source === 'ui' ? request.source : 'agent'
+      reply = await bridge.run(request.command, args, source)
 
       break
     }
@@ -136,8 +149,20 @@ export async function handleUiRequest(request: UiControlRequest, bridge: OsComma
  * on macOS and Linux; a Windows named pipe on Windows, created with the owner's own access control
  * and not dialable as a port by anything else on the machine.
  */
+/**
+ * Whether the control endpoint is really accepting, and why not when it is not. A door that failed to
+ * open must never be mistaken for an open one: the platform decides who may connect (on Windows, an
+ * implicit DACL — see `scripts/probe-pipe-acl.mjs`), so a silent failure here would be read by every
+ * caller as "the door is there".
+ */
+export interface ControlServeStatus {
+  serving: boolean
+  failure: string | null
+}
+
 export class OsControlServer {
   private server: net.Server | null = null
+  private state: ControlServeStatus = { serving: false, failure: null }
   private markReady: () => void = () => undefined
   /** Resolves once the server is listening (or has given up), so the backend is not started before the endpoint exists. */
   readonly ready: Promise<void> = new Promise(resolve => {
@@ -156,6 +181,25 @@ export class OsControlServer {
     return this.target.endpoint
   }
 
+  /** The measured state of the door, for whoever has to decide what to tell the person. */
+  get status(): ControlServeStatus {
+    return { ...this.state }
+  }
+
+  /** One way out of `start`, so a failure is recorded, logged as a security line, and never silent. */
+  private giveUp(reason: string): void {
+    this.state = { serving: false, failure: reason }
+    log('os-control', `refusing to serve ${this.target.endpoint}: ${reason}`)
+    try {
+      this.server?.close()
+    } catch {
+      // Never opened, or already gone: nothing else to do with it.
+    }
+
+    this.server = null
+    this.markReady()
+  }
+
   start(): void {
     if (this.target.kind === 'unix') {
       try {
@@ -163,8 +207,7 @@ export class OsControlServer {
         fs.unlinkSync(this.target.path)
       } catch (error) {
         if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
-          log('os-control', `cannot prepare ${this.target.path}: ${(error as Error).message}`)
-          this.markReady()
+          this.giveUp(`cannot prepare ${this.target.path}: ${(error as Error).message}`)
 
           return
         }
@@ -195,13 +238,23 @@ export class OsControlServer {
       connection.on('error', () => undefined)
     })
     this.server.on('error', error => {
-      log('os-control', `socket error: ${error.message}`)
-      this.markReady()
+      // A bind failure means somebody else holds the name, or the platform refused this process the
+      // pipe: either way the door is not open, and saying so is the only honest outcome.
+      this.giveUp(error.message)
     })
 
     this.server.listen(this.target.path, () => {
+      this.state = { serving: true, failure: null }
+
       if (this.target.kind === 'unix') {
-        fs.chmodSync(this.target.path, 0o600)
+        try {
+          fs.chmodSync(this.target.path, 0o600)
+        } catch (error) {
+          // A socket that is not owner-only is a different door than the one this code promises.
+          this.giveUp(`cannot restrict ${this.target.path} to its owner: ${(error as Error).message}`)
+
+          return
+        }
       }
 
       log('os-control', `listening on ${this.target.endpoint}`)
@@ -212,6 +265,7 @@ export class OsControlServer {
   stop(): void {
     this.server?.close()
     this.server = null
+    this.state = { serving: false, failure: this.state.failure }
 
     if (this.target.kind !== 'unix') {
       return

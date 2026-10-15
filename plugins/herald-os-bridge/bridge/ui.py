@@ -14,6 +14,10 @@ Requests:
 A command that changes the machine is not run by the socket: the shell asks the person first and
 answers ``approval-granted`` with a one-shot capability bound to this command and these arguments.
 ``run_command`` sends it back once, and the shell spends it on that single call (R2).
+
+Every request may also carry ``requestId``, the caller's own name for the attempt. It is not a
+credential: the shell writes it into ``control-audit.jsonl`` beside the bridge's line in
+``audit.jsonl``, so one attempt can be read across both (R2.2).
 """
 
 from __future__ import annotations
@@ -157,32 +161,49 @@ def request(payload: dict[str, Any], *, timeout: float = DEFAULT_TIMEOUT) -> dic
     return reply
 
 
-def run_command(command: str, args: dict[str, Any] | None = None, *, source: str = "agent") -> dict[str, Any]:
+def identified(payload: dict[str, Any], request_id: str | None) -> dict[str, Any]:
+    """The payload plus the caller's name for this attempt, when it has one (R2.2).
+
+    Both sides write the same id into their own journal, so one attempt can be followed across the
+    bridge's ``audit.jsonl`` and the shell's ``control-audit.jsonl``. It authorises nothing: the
+    request is decided by the token, the catalogue and — for a mutation — the shell's own approval.
+    """
+    return {**payload, "requestId": request_id} if request_id else payload
+
+
+def run_command(
+    command: str,
+    args: dict[str, Any] | None = None,
+    *,
+    source: str = "agent",
+    request_id: str | None = None,
+) -> dict[str, Any]:
     """Run one catalogued command, taking up the shell's approval when it asks for one.
 
     R2: the shell authorises the mutation, not the socket. A refusal comes back as ``{ok: false,
     code: "unauthorized"|"denied-approval"|...}`` and nothing on the machine has changed.
     """
-    payload: dict[str, Any] = {"cmd": "ui", "command": command, "args": args or {}, "source": source}
+    payload = identified({"cmd": "ui", "command": command, "args": args or {}, "source": source}, request_id)
     reply = request(payload)
     capability = reply.get("capability")
     if reply.get("code") == "approval-granted" and isinstance(capability, dict) and capability.get("id"):
         # Sent once, for these exact arguments, and never written down: the shell spends it, and a
-        # second attempt with the same value is refused as a replay.
+        # second attempt with the same value is refused as a replay. The request id is the same one:
+        # an approval and the call it authorises are one attempt, not two.
         reply = request({**payload, "capability": capability["id"]})
     return reply
 
 
-def list_commands() -> list[dict[str, Any]]:
-    reply = request({"cmd": "ui-list"})
+def list_commands(*, request_id: str | None = None) -> list[dict[str, Any]]:
+    reply = request(identified({"cmd": "ui-list"}, request_id))
     if not reply.get("ok"):
         raise RuntimeError(str(reply.get("error") or "could not list commands"))
     result = reply.get("result")
     return result if isinstance(result, list) else []
 
 
-def shell_state() -> dict[str, Any]:
-    reply = request({"cmd": "ui-state"})
+def shell_state(*, request_id: str | None = None) -> dict[str, Any]:
+    reply = request(identified({"cmd": "ui-state"}, request_id))
     if not reply.get("ok"):
         raise RuntimeError(str(reply.get("error") or "could not read the shell state"))
     result = reply.get("result")

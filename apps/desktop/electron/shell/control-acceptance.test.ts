@@ -107,7 +107,7 @@ async function openDoor(): Promise<Door> {
 
       ran.push(String(request.command ?? request.cmd))
 
-      const reply = { ok: true, summary: `${String(request.command ?? request.cmd)} done` }
+      const reply = { ok: true, summary: `${String(request.command ?? request.cmd)} done`, requestId: result.call.requestId }
 
       result.finish({ ok: true })
 
@@ -131,11 +131,11 @@ async function openDoor(): Promise<Door> {
   }
 }
 
-function lines(journal: string): { code?: string; client: string; command?: string; allowed: boolean; reason: string }[] {
+function lines(journal: string): { code?: string; client: string; command?: string; allowed: boolean; reason: string; requestId?: string }[] {
   return readFileSync(journal, 'utf8')
     .trim()
     .split('\n')
-    .map(line => JSON.parse(line) as { code?: string; client: string; command?: string; allowed: boolean; reason: string })
+    .map(line => JSON.parse(line) as { code?: string; client: string; command?: string; allowed: boolean; reason: string; requestId?: string })
 }
 describe('the host control pipeline, end to end', () => {
   it('runs a read command on the token alone', async () => {
@@ -273,6 +273,68 @@ describe('the host control pipeline, end to end', () => {
       expect(raw).not.toContain(TOKENS.backend)
       expect(raw).not.toContain(TOKENS.cli)
       expect(raw).not.toContain(capability)
+    } finally {
+      door.close()
+    }
+  })
+
+  it('names an attempt once, across both exchanges of one approval', async () => {
+    const door = await openDoor()
+
+    try {
+      door.answer(true)
+
+      const id = 'cli_0123456789abcdef'
+      const granted = await door.send({ cmd: 'ui', command: 'memory.add', args: { text: 'likes tea' }, token: TOKENS.backend, requestId: id })
+      const capability = (granted.capability as { id: string }).id
+
+      expect(granted).toMatchObject({ ok: false, code: 'approval-granted', requestId: id })
+
+      const done = await door.send({ cmd: 'ui', command: 'memory.add', args: { text: 'likes tea' }, token: TOKENS.backend, requestId: id, capability })
+
+      expect(done).toMatchObject({ ok: true, code: 'ok', requestId: id })
+      // The person was asked about the same attempt the journal lines describe.
+      expect(door.asks.map(ask => ask.requestId)).toEqual([id])
+      expect(lines(door.journal).map(entry => [entry.requestId, entry.code])).toEqual([
+        [id, 'approval-granted'],
+        [id, 'ok']
+      ])
+      expect(door.ran).toEqual(['memory.add'])
+    } finally {
+      door.close()
+    }
+  })
+
+  it('refuses an id that is not a name, and keeps it out of the journal', async () => {
+    const door = await openDoor()
+
+    try {
+      const secret = 'token:abc123 with spaces'
+      const reply = await door.send({ cmd: 'ui', command: 'page.open', args: {}, token: TOKENS.backend, requestId: secret })
+
+      expect(reply).toMatchObject({ ok: false, code: 'invalid', error: 'a requestId is a short opaque string, not a secret' })
+      expect(reply).not.toHaveProperty('requestId')
+      expect(door.ran).toEqual([])
+
+      const [entry] = lines(door.journal)
+
+      expect(entry).toMatchObject({ allowed: false, code: 'invalid' })
+      expect(entry.requestId).toBeUndefined()
+      expect(readFileSync(door.journal, 'utf8')).not.toContain(secret)
+    } finally {
+      door.close()
+    }
+  })
+
+  it('accepts an attempt that sends no name at all', async () => {
+    const door = await openDoor()
+
+    try {
+      const reply = await door.send({ cmd: 'ui', command: 'page.open', args: { name: 'memory' }, token: TOKENS.backend })
+
+      expect(reply).toMatchObject({ ok: true, code: 'ok' })
+      expect(reply).not.toHaveProperty('requestId')
+      expect(lines(door.journal)[0]?.requestId).toBeUndefined()
     } finally {
       door.close()
     }

@@ -15,6 +15,7 @@ import {
   type ContextReturn,
   type ContextSnapshot,
   type ControlAction,
+  type ControlRunResult,
   type CrashReport,
   type HeraldOsResult,
   type IncomingNotification,
@@ -363,6 +364,13 @@ const api = {
     /** Main asks this window to run a registry command / list commands / report state. */
     onRequest: (listener: (request: OsControlRequest) => void): Unsubscribe => subscribe(IPC.osControlRequest, listener),
     reply: (reply: OsControlReply): void => ipcRenderer.send(IPC.osControlReply, reply)
+  },
+  control: {
+    /**
+     * Run one registry command from this window (the shell's own palette or menu): main checks it
+     * against the catalogue, decides, records the attempt, and runs it in the Hermes window.
+     */
+    run: (command: string, args: Record<string, unknown> = {}): Promise<ControlRunResult> => ipcRenderer.invoke(IPC.controlRun, command, args)
   },
   voice: {
     /** Current OS-level microphone authorization (always 'granted' outside macOS). */

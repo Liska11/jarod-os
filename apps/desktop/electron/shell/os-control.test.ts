@@ -1,11 +1,15 @@
-import { mkdtempSync, readFileSync, rmSync, statSync } from 'node:fs'
+import { mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import net from 'node:net'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
+import { ipcMain } from 'electron'
+import type { BrowserWindow } from 'electron'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ControlSecurity, controlAuditSink, controlEndpoint, type ControlEndpoint, type ControlTokens } from './control-authz.ts'
+import type { OsControlReply } from '../../shared/ipc.ts'
+import { IPC } from '../../shared/ipc.ts'
 import { log } from '../log.ts'
-import { OsControlServer } from './os-control.ts'
+import { OsCommandBridge, OsControlServer } from './os-control.ts'
 
 // `OsCommandBridge` registers an ipcMain listener when it is built and Electron's runtime is not
 // here; the server under test never builds one.
@@ -14,6 +18,44 @@ vi.mock('../log.ts', () => ({ log: vi.fn() }))
 
 const TOKENS: ControlTokens = { backend: 'backend-token-000000000001', cli: 'cli-token-00000000000001' }
 const created: string[] = []
+
+/** The listener `OsCommandBridge` registered for replies (its constructor is the only place that does). */
+function replyHandler(): (event: { sender: { id: number } }, reply: OsControlReply) => void {
+  const calls = vi.mocked(ipcMain.on).mock.calls.filter(([channel]) => channel === IPC.osControlReply)
+
+  return calls[calls.length - 1]?.[1] as unknown as (event: { sender: { id: number } }, reply: OsControlReply) => void
+}
+
+describe('OsCommandBridge', () => {
+  it('answers only the window it asked: a reply from another one is ignored (R3)', async () => {
+    const sent: { requestId?: string }[] = []
+    const target = {
+      webContents: {
+        id: 7,
+        send: (_channel: string, payload: { requestId?: string }) => sent.push(payload),
+      },
+      isDestroyed: () => false,
+    }
+    const bridge = new OsCommandBridge(() => target as unknown as BrowserWindow)
+    const answer = replyHandler()
+    const pending = bridge.run('page.open', { name: 'memory' }, 'agent')
+    const requestId = sent[0]?.requestId as string
+    let settled: unknown = 'pending'
+
+    void pending.then(value => {
+      settled = value
+    })
+
+    answer({ sender: { id: 99 } }, { requestId, result: { ok: true, summary: 'not mine' } })
+    await new Promise(resolve => setTimeout(resolve, 0))
+
+    expect(settled).toBe('pending')
+    expect(vi.mocked(log).mock.calls.some(([scope, message]) => scope === 'os-control' && message.includes('another window'))).toBe(true)
+
+    answer({ sender: { id: 7 } }, { requestId, result: { ok: true, summary: 'mine' } })
+    await expect(pending).resolves.toMatchObject({ result: { summary: 'mine' } })
+  })
+})
 
 function tempDir(): string {
   const dir = mkdtempSync(path.join(tmpdir(), 'hos-control-'))
@@ -103,6 +145,7 @@ describe('OsControlServer', () => {
 
     try {
       expect(server.endpoint).toBe(target.endpoint)
+      expect(server.status).toEqual({ serving: true, failure: null })
 
       const ran = JSON.parse(await ask(target, JSON.stringify({ cmd: 'ui', command: 'memory.forget', args: {}, source: 'agent', token: TOKENS.backend })))
 
@@ -141,6 +184,46 @@ describe('OsControlServer', () => {
       expect(vi.mocked(log).mock.calls.some(([scope, message]) => scope === 'os-control' && message.includes('not JSON'))).toBe(true)
     } finally {
       server.stop()
+    }
+  })
+
+  it('does not fall back silently when it cannot open the door', async () => {
+    const blocker = path.join(tempDir(), 'blocker')
+    const target: ControlEndpoint = { kind: 'unix', endpoint: path.join(blocker, 'control.sock'), path: path.join(blocker, 'control.sock') }
+
+    writeFileSync(blocker, 'not a directory')
+    const server = new OsControlServer(target, async () => ({ ok: true }))
+
+    server.start()
+    await server.ready
+
+    expect(server.status.serving).toBe(false)
+    expect(server.status.failure).toMatch(/cannot prepare/)
+    // The reason is in the shell's log as a refusal, not as an aside: the door is not open.
+    expect(vi.mocked(log).mock.calls.some(([scope, message]) => scope === 'os-control' && message.includes('refusing to serve'))).toBe(true)
+    server.stop()
+  })
+
+  it.skipIf(process.platform !== 'win32')('refuses a pipe name that another process already holds', async () => {
+    const target = targetFor('win32')
+    // The squatter is a second server on the same name; libuv refuses it (FILE_FLAG_FIRST_PIPE_INSTANCE),
+    // so the door must report that it is not the one listening rather than carry on.
+    const squatter = net.createServer(socket => socket.end())
+
+    await new Promise<void>(resolve => squatter.listen(target.path, resolve))
+
+    const server = new OsControlServer(target, async () => ({ ok: true }))
+
+    server.start()
+    await server.ready
+
+    try {
+      expect(server.status.serving).toBe(false)
+      expect(server.status.failure).toBeTruthy()
+      expect(vi.mocked(log).mock.calls.some(([scope, message]) => scope === 'os-control' && message.includes('refusing to serve'))).toBe(true)
+    } finally {
+      server.stop()
+      squatter.close()
     }
   })
 

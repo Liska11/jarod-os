@@ -30,8 +30,23 @@ def _compact_args(args: dict[str, Any]) -> dict[str, Any]:
     return out
 
 
-def record(*, tool: str, tier: str, action: str | None, args: dict[str, Any], decision: str, ok: bool, summary: str | None = None, error: str | None = None) -> None:
-    """Never raises: a failed audit write is logged to stderr, not surfaced to the agent."""
+def record(
+    *,
+    tool: str,
+    tier: str,
+    action: str | None,
+    args: dict[str, Any],
+    decision: str,
+    ok: bool,
+    summary: str | None = None,
+    error: str | None = None,
+    request_id: str | None = None,
+) -> None:
+    """Never raises: a failed audit write is logged to stderr, not surfaced to the agent.
+
+    ``request_id`` is the bridge's name for the whole attempt, and the shell writes the same value
+    into its own journal (R2.2). It is not a secret and never a decision input.
+    """
     entry = {
         "ts": datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds"),
         "tool": tool,
@@ -41,6 +56,7 @@ def record(*, tool: str, tier: str, action: str | None, args: dict[str, Any], de
         "ok": ok,
         "summary": truncate(summary, 300) if summary else None,
         "error": truncate(error, 300) if error else None,
+        "requestId": truncate(request_id, 128) if request_id else None,
         "args": _compact_args(args),
     }
     try:

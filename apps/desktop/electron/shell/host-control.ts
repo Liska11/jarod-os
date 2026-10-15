@@ -19,14 +19,21 @@
  * written down — only that a call happened, what it was worth, and how it ended.
  */
 
+import { randomBytes } from 'node:crypto'
 import type {
   ControlClient,
   ControlRequestShape,
   ControlSecurity,
   ControlTier,
 } from './control-authz.ts'
-import { commandIdOf, shellArgumentProblem } from './control-authz.ts'
+import { commandIdOf, requestIdOf, requestIdProblem, shellArgumentProblem } from './control-authz.ts'
 import { CapabilityStore, capabilityFingerprint, type CapabilityRecord } from './control-capability.ts'
+
+/**
+ * The callers with no token, because they run inside this process: a widget plugin the person
+ * enabled, or one of the shell's own windows. Neither can be reached from a socket.
+ */
+export type LocalClient = 'plugin' | 'ui'
 
 /** How a request ended, in the vocabulary the caller, the journal and the tests share. */
 export type HostCode =
@@ -51,6 +58,11 @@ export interface HostReply {
   error?: string
   summary?: string
   data?: unknown
+  /**
+   * The caller's name for this attempt, echoed back untouched. A client that sent one reads its own
+   * journal against this; the host never invents one over a caller's own (R2.2).
+   */
+  requestId?: string
   /** `approval-granted`: the one-shot credential to send back with the same call. */
   capability?: { id: string; expiresAt: number; binding: string }
 }
@@ -67,6 +79,8 @@ export interface HostCall {
   command: string
   /** The registry command id, for registry calls. */
   id?: string
+  /** The caller's name for the attempt, carried through every journal line it causes. */
+  requestId?: string
   /** Validated parameters: an object for registry calls, a string array for shell commands. */
   args: unknown
 }
@@ -77,6 +91,8 @@ export interface ApprovalAsk {
   tier: ControlTier
   command: string
   source?: string
+  /** The attempt's request id, for the person who wants to match the line in the journal. */
+  requestId?: string
   /** One line for the person reading it: what is about to happen. */
   summary: string
   /** A short preview of the arguments, for the same person; never journalled. */
@@ -197,6 +213,9 @@ export class HostControlGate {
     const cmd = typeof request?.cmd === 'string' ? request.cmd.trim() : ''
     const source = typeof request?.source === 'string' && request.source ? request.source : undefined
     const command = typeof request?.command === 'string' ? request.command.trim() : ''
+    // A name we will not write down is not a name: a malformed id is never echoed or journalled, so
+    // an attempt that put a secret where the id belongs cannot get that secret into the journal.
+    const requestId = requestIdProblem(request) ? '' : requestIdOf(request)
 
     const refuse = (code: HostCode, reason: string): HostGateResult => {
       security.record({
@@ -208,9 +227,10 @@ export class HostControlGate {
         allowed: false,
         code,
         reason,
+        requestId,
       })
 
-      return { kind: 'reply', reply: { ok: false, code, error: reason } }
+      return { kind: 'reply', reply: { ok: false, code, error: reason, requestId: requestId || undefined } }
     }
 
     if (!decision.allowed) {
@@ -233,6 +253,7 @@ export class HostControlGate {
       source,
       command: id ? `registry:${id}` : `shell:${cmd}`,
       id,
+      requestId: requestId || undefined,
       args: registryCall ? (request.args ?? {}) : (Array.isArray(request.args) ? request.args : []),
     }
 
@@ -268,6 +289,12 @@ export class HostControlGate {
 
     if (request.capability !== undefined && typeof request.capability !== 'string') {
       return 'a capability is a string'
+    }
+
+    const requestIdIssue = requestIdProblem(request)
+
+    if (requestIdIssue) {
+      return requestIdIssue
     }
 
     if (takesObjectArgs(cmd)) {
@@ -346,11 +373,95 @@ export class HostControlGate {
   }
 
   /**
+   * A caller already inside this process: a widget plugin the person enabled (R2.2), or one of the
+   * shell's own windows acting on the person's click (R3).
+   *
+   * There is no token to check — the identity is this process's own, and a plugin cannot be a socket
+   * client anyway — but nothing else is skipped: the same catalogue decides the tier, the same
+   * argument shapes are enforced, and the attempt lands in the same journal. What *is* skipped is the
+   * capability round-trip: there is no second hop to hand a credential to, so an approval is spent by
+   * this very call. Before R2.2 the plugin path asked its own yes/no question in `plugins/host.ts` and
+   * ran the command with no journal line at all; before R3 the shell's windows ran registry commands
+   * over the generic bus, with no gate anywhere.
+   *
+   * The `client` says who is asking, and the policy follows from it: a plugin is code the person
+   * installed but did not write, so anything that changes the machine is confirmed with the person
+   * first; a window of this app is the person, so its click *is* the confirmation — validated and
+   * journalled, but not asked twice.
+   */
+  async submitLocal(input: {
+    client?: LocalClient
+    command: string
+    args?: Record<string, unknown>
+    source?: string
+  }): Promise<HostGateResult> {
+    const { security } = this.options
+    const client = input.client ?? 'plugin'
+    const command = String(input.command ?? '').trim()
+    const requestId = `local_${randomBytes(6).toString('hex')}`
+    const refuse = (code: HostCode, reason: string): HostGateResult => {
+      security.record({
+        client,
+        cmd: 'run',
+        command,
+        source: input.source,
+        allowed: false,
+        code,
+        reason,
+        requestId,
+      })
+
+      return { kind: 'reply', reply: { ok: false, code, error: reason, requestId } }
+    }
+
+    if (!command) {
+      return refuse('invalid', 'run needs a command id')
+    }
+
+    const tier = security.tierOf(command)
+
+    if (tier === undefined) {
+      return refuse('unsupported', `unknown command ${command}`)
+    }
+
+    const args = isPlainObject(input.args) ? input.args : {}
+    const problem = this.validateRegistryArgs(command, args, tier)
+
+    if (problem) {
+      return refuse('invalid', problem)
+    }
+
+    const call: HostCall = {
+      client,
+      tier,
+      cmd: 'run',
+      source: input.source,
+      command: `registry:${command}`,
+      id: command,
+      requestId,
+      args,
+    }
+
+    if (tier !== 'mutate' && tier !== 'destructive') {
+      return this.ticket(call)
+    }
+
+    // The person's own window has already decided; third-party code has not.
+    if (client !== 'plugin') {
+      return this.ticket(call)
+    }
+
+    const approval = await this.askApproval(call, previewOf(args))
+
+    return approval.ok ? this.ticket(call) : approval.result
+  }
+
+  /**
    * The `mutate`/`destructive` path. A capability that checks out is spent *before* the call runs, so
    * a crash, a hang or a second attempt cannot turn one approval into two actions.
    */
   private async withApproval(request: ControlRequestShape, call: HostCall): Promise<HostGateResult> {
-    const { security, approve } = this.options
+    const { security } = this.options
     const presented = typeof request.capability === 'string' ? request.capability.trim() : ''
 
     if (presented) {
@@ -368,12 +479,13 @@ export class HostControlGate {
           allowed: false,
           code,
           approval: check.record ? capabilityFingerprint(check.record) : undefined,
+          requestId: call.requestId,
           reason: check.reason,
         })
 
         return {
           kind: 'reply',
-          reply: { ok: false, code, error: `${check.reason}; ask again without a capability to be approved` },
+          reply: { ok: false, code, error: `${check.reason}; ask again without a capability to be approved`, requestId: call.requestId },
         }
       }
 
@@ -382,55 +494,13 @@ export class HostControlGate {
       return this.ticket(call, check.record)
     }
 
-    if (!approve) {
-      security.record({
-        client: call.client,
-        cmd: call.cmd,
-        command: call.id ?? call.command,
-        tier: call.tier,
-        source: call.source,
-        allowed: false,
-        code: 'denied-policy',
-        reason: 'this shell has no way to ask for approval, so a mutation cannot be authorised',
-      })
+    const approval = await this.askApproval(call, previewOf(bindingArgumentsOf(request)))
 
-      return { kind: 'reply', reply: { ok: false, code: 'denied-policy', error: 'no approval channel is available' } }
+    if (!approval.ok) {
+      return approval.result
     }
 
-    const ask: ApprovalAsk = {
-      id: `ask_${call.command}_${Date.now().toString(36)}`,
-      client: call.client,
-      tier: call.tier,
-      command: call.command,
-      source: call.source,
-      summary: describeCall(call),
-      preview: previewOf(bindingArgumentsOf(request)),
-    }
-
-    let approved = false
-
-    try {
-      approved = await withTimeout(Promise.resolve(approve(ask)), this.approvalTimeoutMs)
-    } catch {
-      approved = false
-    }
-
-    if (!approved) {
-      security.record({
-        client: call.client,
-        cmd: call.cmd,
-        command: call.id ?? call.command,
-        tier: call.tier,
-        source: call.source,
-        allowed: false,
-        code: 'denied-approval',
-        reason: `the ${call.tier} command ${call.command} was not approved`,
-      })
-
-      return { kind: 'reply', reply: { ok: false, code: 'denied-approval', error: 'the request was not approved' } }
-    }
-
-    const record = this.capabilities.grant({ command: call.command, args: bindingArgumentsOf(request), approvalId: ask.id })
+    const record = this.capabilities.grant({ command: call.command, args: bindingArgumentsOf(request), approvalId: approval.askId })
 
     security.record({
       client: call.client,
@@ -441,6 +511,7 @@ export class HostControlGate {
       allowed: true,
       code: 'approval-granted',
       approval: capabilityFingerprint(record),
+      requestId: call.requestId,
       reason: `approved ${call.command}; send it again with the capability to spend it once`,
     })
 
@@ -450,7 +521,82 @@ export class HostControlGate {
         ok: false,
         code: 'approval-granted',
         error: 'approved: send the same call again with the capability',
+        requestId: call.requestId,
         capability: { id: record.id, expiresAt: record.expiresAt, binding: record.binding },
+      },
+    }
+  }
+
+  /**
+   * Ask the person, and nothing else: no credential is minted here, so the socket path can turn a yes
+   * into a capability and the in-process path can turn it into the call itself. A missing provider, a
+   * thrown one and a silent one all deny.
+   */
+  private async askApproval(call: HostCall, preview?: string): Promise<{ ok: true; askId: string } | { ok: false; result: HostGateResult }> {
+    const { security, approve } = this.options
+
+    if (!approve) {
+      security.record({
+        client: call.client,
+        cmd: call.cmd,
+        command: call.id ?? call.command,
+        tier: call.tier,
+        source: call.source,
+        allowed: false,
+        code: 'denied-policy',
+        requestId: call.requestId,
+        reason: 'this shell has no way to ask for approval, so a mutation cannot be authorised',
+      })
+
+      return {
+        ok: false,
+        result: {
+          kind: 'reply',
+          reply: { ok: false, code: 'denied-policy', error: 'no approval channel is available', requestId: call.requestId },
+        },
+      }
+    }
+
+    const ask: ApprovalAsk = {
+      id: `ask_${call.command}_${Date.now().toString(36)}`,
+      client: call.client,
+      tier: call.tier,
+      command: call.command,
+      source: call.source,
+      requestId: call.requestId,
+      summary: describeCall(call),
+      preview,
+    }
+
+    let approved = false
+
+    try {
+      approved = await withTimeout(Promise.resolve(approve(ask)), this.approvalTimeoutMs)
+    } catch {
+      approved = false
+    }
+
+    if (approved) {
+      return { ok: true, askId: ask.id }
+    }
+
+    security.record({
+      client: call.client,
+      cmd: call.cmd,
+      command: call.id ?? call.command,
+      tier: call.tier,
+      source: call.source,
+      allowed: false,
+      code: 'denied-approval',
+      requestId: call.requestId,
+      reason: `the ${call.tier} command ${call.command} was not approved`,
+    })
+
+    return {
+      ok: false,
+      result: {
+        kind: 'reply',
+        reply: { ok: false, code: 'denied-approval', error: 'the request was not approved', requestId: call.requestId },
       },
     }
   }
@@ -473,6 +619,7 @@ export class HostControlGate {
           allowed: ok,
           code: outcome?.code ?? (ok ? 'ok' : 'execution-failed'),
           approval: capability ? capabilityFingerprint(capability) : undefined,
+          requestId: call.requestId,
           reason: outcome?.reason ?? outcome?.summary ?? describeCall(call),
         })
       },

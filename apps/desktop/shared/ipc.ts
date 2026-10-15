@@ -503,7 +503,7 @@ export type EditAction =
 
 /** Main -> renderer: run a registry command, list the catalogue, or describe the shell state. */
 export type OsControlRequest =
-  | { requestId: string; kind: 'run'; command: string; args: Record<string, unknown>; source: 'agent' | 'cli' | 'plugin' }
+  | { requestId: string; kind: 'run'; command: string; args: Record<string, unknown>; source: 'agent' | 'cli' | 'plugin' | 'ui' }
   | { requestId: string; kind: 'list' }
   | { requestId: string; kind: 'state' }
 
@@ -511,6 +511,17 @@ export interface OsControlReply {
   requestId: string
   /** A `CommandResult`, a command list, or a state snapshot; `error` when the renderer failed outright. */
   result?: unknown
+  error?: string
+}
+
+/**
+ * Renderer -> main: this window asks the shell to run one registry command (its own palette, its own
+ * menu). Main decides through the host gate and records the attempt, then runs it in the Hermes
+ * window; the shell bus never carries a registry command.
+ */
+export interface ControlRunResult {
+  ok: boolean
+  summary?: string
   error?: string
 }
 
@@ -969,6 +980,8 @@ export const IPC = {
   // the agent's os_ui tool) and the window replies.
   osControlRequest: 'herald-os:os-control:request',
   osControlReply: 'herald-os:os-control:reply',
+  /** Renderer -> main: this window asks for one registry command (the gate decides, then the bridge runs it). */
+  controlRun: 'herald-os:control:run',
 
   // Voice: microphone permission, tokenized audio WebSocket URLs, the global hotkey.
   voiceRequestMicrophone: 'herald-os:voice:request-microphone',

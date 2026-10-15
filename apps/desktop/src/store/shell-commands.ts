@@ -7,7 +7,6 @@ import { openStoredSession, runSlash, sendPrompt } from './chat.ts'
 import { offerCrashHelp } from './crashes.ts'
 import { openEmojiPicker } from './emoji.ts'
 import { $notificationsOpen, notify } from './notifications.ts'
-import { runCommand } from './os-commands.ts'
 import { isMainSurface, onShellCommand, openSurface } from './shell.ts'
 import { openStatusPanel } from './status-panel.ts'
 import { $screensaverUp } from './switches.ts'
@@ -173,11 +172,14 @@ export function handleShellCommand(command: ShellCommand): void {
       return
     }
     case 'os': {
-      // `herald-os os <command.id> [json args]`: run a registry command from the CLI.
+      // Retired in R3: a registry command is a host action, so it goes through the host gate
+      // (`window.heraldOS.control.run`), which checks the id against the catalogue, decides, records
+      // the attempt and runs it in this window. Main refuses to relay one here, so this branch is what
+      // a surface that dispatches the historical `os` message locally still reaches — and it is gated.
       const id = command.args?.[0]
 
       if (id) {
-        void runCommand(id, (command.payload as Record<string, unknown> | undefined) ?? {}, { source: 'cli' })
+        void window.heraldOS.control.run(id, (command.payload as Record<string, unknown> | undefined) ?? {})
       }
 
       return

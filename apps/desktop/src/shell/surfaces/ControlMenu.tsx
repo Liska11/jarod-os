@@ -65,6 +65,7 @@ import { $catalog, loadCatalog } from '../../store/catalog.ts'
 import { openSurface, relayToMain } from '../../store/shell.ts'
 import { openApp, showPage } from '../../store/windows.ts'
 import { attempt } from '../../lib/native.ts'
+import { notify } from '../../store/notifications.ts'
 import { t, type MessageKey } from '../../lib/i18n.ts'
 
 /*
@@ -408,7 +409,14 @@ function extensionItem(entry: MenuExtension, close: () => void): MenuItem {
         leaf: {
           kind: 'local',
           run: () => {
-            relayToMain({ type: 'os', args: [action.command], payload: action.args })
+            // A registry command is a host action: main checks the id against the catalogue, decides,
+            // records the attempt and only then asks the Hermes window to run it (R3 — the shell bus
+            // no longer carries one).
+            void window.heraldOS.control.run(action.command, action.args).then(result => {
+              if (!result.ok) {
+                notify({ title: 'Could not do that', body: result.error ?? result.summary, level: 'warn' })
+              }
+            })
             close()
           }
         }

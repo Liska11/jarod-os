@@ -35,6 +35,8 @@ interface ControlRequest {
   source?: string
   /** A one-shot capability the host issued for exactly this call. */
   capability?: string
+  /** The caller's own name for this attempt, for reading the two journals together (R2.2). */
+  requestId?: string
   attachments?: string[]
   /** `theme`: the shell part of a theme definition. */
   shell?: Record<string, unknown>
@@ -164,12 +166,15 @@ export class ControlSocket {
       return { ...result.reply }
     }
 
+    // The pipeline's reading of the name, which is the only one known to be well formed.
+    const requestId = result?.call.requestId
+
     try {
       const reply = await this.dispatch(request)
 
       result?.finish({ ok: reply.ok !== false, code: typeof reply.code === 'string' ? reply.code : undefined })
 
-      return reply
+      return { ...reply, requestId }
     } catch (error) {
       result?.finish({ ok: false, code: 'execution-failed' })
 

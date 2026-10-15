@@ -2,7 +2,7 @@ import { mkdtempSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { adjudicate, ControlSecurity, controlAuditSink, controlEndpoint, type ControlAuditEntry, type ControlTokens } from './control-authz.ts'
+import { adjudicate, ControlSecurity, controlAuditSink, controlEndpoint, requestIdOf, requestIdProblem, type ControlAuditEntry, type ControlTokens } from './control-authz.ts'
 
 const TOKENS: ControlTokens = { backend: 'backend-token', cli: 'cli-token' }
 const CONTEXT = { tokens: TOKENS }
@@ -249,5 +249,43 @@ describe('control endpoint', () => {
 
     expect(a.endpoint).not.toBe(b.endpoint)
     expect(controlEndpoint({ platform: 'win32', runtimeDir: 'C:\\runtime', dataDir: 'C:\\data-a' }).endpoint).toBe(a.endpoint)
+  })
+})
+
+describe('the name a client gives its attempt (R2.2)', () => {
+  it('takes a short opaque name, and none at all', () => {
+    for (const id of ['cli_0123456789abcdef', 'bridge_ab12cd34ef567890', 'a', 'plugin:thing.v1']) {
+      expect(requestIdProblem({ cmd: 'ui', requestId: id })).toBeUndefined()
+      expect(requestIdOf({ cmd: 'ui', requestId: id })).toBe(id)
+    }
+
+    expect(requestIdProblem({ cmd: 'ui' })).toBeUndefined()
+    expect(requestIdOf({ cmd: 'ui' })).toBe('')
+    // A value that is not a string is not a name: it is not refused for it either, just not used.
+    expect(requestIdProblem({ cmd: 'ui', requestId: 42 })).toBeUndefined()
+    expect(requestIdOf({ cmd: 'ui', requestId: 42 })).toBe('')
+  })
+
+  it('refuses a name that could be carrying something else', () => {
+    for (const id of ['has spaces', 'Bearer abc.def', 'tok+en/with=chars', 'a'.repeat(129), 'line\nbreak']) {
+      expect(requestIdProblem({ cmd: 'ui', requestId: id })).toMatch(/opaque string/)
+    }
+  })
+
+  it('journals a well-formed name, and never one that is not', () => {
+    const journal = path.join(mkdtempSync(path.join(tmpdir(), 'hos-id-')), 'control-audit.jsonl')
+    const security = new ControlSecurity({ tokens: TOKENS }, controlAuditSink(journal))
+
+    security.check({ cmd: 'notify', token: TOKENS.cli, requestId: 'cli_0123456789abcdef' })
+    security.check({ cmd: 'notify', token: TOKENS.cli, requestId: 'Bearer abc.def' })
+
+    const written = readFileSync(journal, 'utf8').trim().split('\n').map(line => JSON.parse(line) as ControlAuditEntry)
+
+    expect(written.map(entry => [entry.requestId, entry.allowed, entry.client])).toEqual([
+      ['cli_0123456789abcdef', true, 'cli'],
+      // The malformed attempt is still one line — but a value that cannot be a name is not written down.
+      [undefined, true, 'cli']
+    ])
+    expect(readFileSync(journal, 'utf8')).not.toContain('Bearer')
   })
 })
