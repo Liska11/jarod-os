@@ -244,6 +244,10 @@ export class Scheduler extends Emitter<{ changed: Schedule[] }> {
   stop(): void {
     if (this.timer) clearInterval(this.timer);
     this.timer = null;
+    // R3.5 — à l'arrêt, plus aucun tick ne viendra : on libère les places au lieu de laisser des
+    // exécutions « en cours » dans un planificateur qui ne tourne plus. Un runner qui se règlerait
+    // plus tard ne se croira plus propriétaire (`mine`, dans `runNow`).
+    this.running.clear();
   }
 
   /** La file durable. Sans elle, une exécution planifiée meurt avec le processus qui l'a lancée. */
@@ -272,6 +276,30 @@ export class Scheduler extends Emitter<{ changed: Schedule[] }> {
   private purgeStalledRunning(at: number): void {
     for (const [id, startedAt] of this.running) {
       if (at - startedAt >= this.stalledAfterMs) this.running.delete(id);
+    }
+  }
+
+  /**
+   * R3.5 — la borne d'UNE exécution. Au-delà du délai de la file, le tir est déclaré terminé : statut
+   * « délai dépassé », place libérée, issue écrite. Sans elle, un runner qui ne rend jamais la main
+   * gardait la place jusqu'au tick suivant ; avec elle, le retour tardif est un perdant de course muet
+   * (même patron que `WebhookRunner.withTimeout`), donc il ne réécrit plus `session_id` ni `last_status`
+   * par-dessus un tir repris entre-temps.
+   */
+  private async withExecutionBound<T>(promise: Promise<T>, id: string): Promise<T> {
+    const ms = this.stalledAfterMs;
+    promise.catch(() => {});
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      return await Promise.race([
+        promise,
+        new Promise<never>((_, reject) => {
+          timer = setTimeout(() => reject(new Error(`délai dépassé (${Math.round(ms / 1000)} s) — ${id}`)), ms);
+          timer.unref?.();
+        }),
+      ]);
+    } finally {
+      if (timer) clearTimeout(timer);
     }
   }
 
@@ -315,17 +343,28 @@ export class Scheduler extends Emitter<{ changed: Schedule[] }> {
       id,
     );
     let status: string;
+    let mine = true;
     try {
-      const r = await this.runner(s);
-      this.db.run("UPDATE schedules SET session_id = ? WHERE id = ?", r.sessionId, id);
+      // R3.5 — l'exécution est BORNÉE par le même délai que celui de la file : un runner qui ne rend
+      // jamais la main ne garde plus la place jusqu'au tick suivant, et son retour tardif ne réécrit
+      // plus rien (voir `withExecutionBound`).
+      const r = await this.withExecutionBound(this.runner(s), id);
+      // Le perdant de la course peut se régler APRÈS la borne : sa place a été reprise, donc ce n'est
+      // plus la sienne, et il n'écrit pas par-dessus le tir qui a repris l'horaire.
+      if (this.running.get(id) === at) this.db.run("UPDATE schedules SET session_id = ? WHERE id = ?", r.sessionId, id);
       status = r.ok ? "ok" : `erreur : ${r.summary.slice(0, 200)}`;
     } catch (e) {
       status = `erreur : ${(e as Error).message.slice(0, 200)}`;
     } finally {
+      // Regardé AVANT de libérer : c'est ce qui distingue « notre tir se termine » de « un tick a
+      // déclaré le nôtre bloqué et en a repris un autre ».
+      mine = this.running.get(id) === at;
       // Seulement si c'est encore NOTRE départ : une exécution déclarée bloquée puis reprise par un
       // tick suivant ne doit pas libérer la place de la nouvelle en se réglant après coup.
-      if (this.running.get(id) === at) this.running.delete(id);
+      if (mine) this.running.delete(id);
     }
+    // Un tir plus récent occupe la place (et a déjà écrit son état) : le nôtre se tait.
+    if (!mine) return;
     // On referme l'exécution avec son issue, succès comme échec : un échec reste un fait accompli.
     // La file ne relance pas — l'horaire a son propre prochain tir, et retenter ici le doublerait.
     if (this.jobs && claimed) this.jobs.complete(claimed.id, status);

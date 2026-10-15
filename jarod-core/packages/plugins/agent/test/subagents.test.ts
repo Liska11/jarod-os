@@ -96,6 +96,32 @@ describe("sous-agents tenus et comptés", () => {
     expect(service.list().at(0)?.task).toBe("tâche 4");
   });
 
+  it("cancelAll() arrête toutes les exécutions lancées sans signal d'appelant (Q18, R3.5)", async () => {
+    const service = new SubagentsService({ maxConcurrent: 3 });
+    const signals: AbortSignal[] = [];
+    const run = (task: string) =>
+      service.run(
+        task,
+        "s1",
+        (_task, signal) =>
+          new Promise((_resolve, reject) => {
+            signals.push(signal);
+            signal.addEventListener("abort", () => reject(new Error("aborted")), { once: true });
+          }),
+      );
+    const a = run("a");
+    const b = run("b");
+    await Promise.resolve();
+    expect(service.running(), "deux exécutions en vol").toBe(2);
+
+    // L'arrêt du noyau ne peut pas dépendre d'un signal d'appelant qu'aucun n'a fourni.
+    service.cancelAll();
+    await expect(a).rejects.toThrow();
+    await expect(b).rejects.toThrow();
+    expect(signals.every((s) => s.aborted)).toBe(true);
+    expect(service.running()).toBe(0);
+  });
+
   it("dit son plafond : un écran doit pouvoir expliquer un refus (« 3 sur 3 »)", async () => {
     expect(new SubagentsService().limit()).toBe(3);
     const serre = new SubagentsService({ maxConcurrent: 1 });

@@ -72,8 +72,27 @@ export function parseReview(text: string): { memories: unknown[]; profile: unkno
 export class LearningService {
   private lastReviewed = new Map<string, number>();
   private reviewing = new Set<string>();
+  /**
+   * R3.5 — les revues EN VOL, par conversation. La revue est un appel d'arrière-plan : sans appelant
+   * pour porter un signal, le contrôleur fabriqué à la volée était jeté aussitôt et plus rien en aval
+   * (l'appel LLM) n'était interruptible. Ici le contrôleur vit le temps de la revue, donc il s'annule.
+   */
+  private readonly active = new Map<string, AbortController>();
 
   constructor(private readonly d: LearningDeps) {}
+
+  /** Arrête la revue en cours d'une conversation. Rend false si elle était déjà finie — et le dit. */
+  cancel(sessionId: string): boolean {
+    const controller = this.active.get(sessionId);
+    if (!controller) return false;
+    controller.abort();
+    return true;
+  }
+
+  /** Arrêt du noyau (comme `subagents.cancelAll`) : une revue en vol ne survit pas au processus. */
+  cancelAll(): void {
+    for (const controller of this.active.values()) controller.abort();
+  }
 
   private config(): LearningConfig {
     return this.d.settings.get("learning");
@@ -97,8 +116,20 @@ export class LearningService {
     return this.review(sessionId);
   }
 
-  async review(sessionId: string, signal = new AbortController().signal): Promise<ReviewResult> {
+  async review(sessionId: string, signal?: AbortSignal): Promise<ReviewResult> {
     this.reviewing.add(sessionId);
+    // R3.5 — sans signal d'appelant, le contrôleur de la revue est enregistré ici : `cancel(sessionId)`
+    // et `cancelAll()` coupent réellement l'appel en aval, au lieu d'annuler un objet que personne ne
+    // détient.
+    let owned: AbortController | undefined;
+    let use: AbortSignal;
+    if (signal) {
+      use = signal;
+    } else {
+      owned = new AbortController();
+      use = owned.signal;
+      this.active.set(sessionId, owned);
+    }
     try {
       const cfg = this.config();
       const recent = this.d.messages.list(sessionId).slice(-Math.max(6, cfg.reviewEvery * 3));
@@ -112,7 +143,7 @@ export class LearningService {
         `Souvenirs déjà enregistrés :\n${known || "(aucun)"}`,
         `Extrait de conversation :\n${transcript(recent, 12_000)}`,
       ].join("\n\n");
-      const parsed = parseReview(await this.d.complete(prompt, signal, { system: REVIEW_SYSTEM }));
+      const parsed = parseReview(await this.d.complete(prompt, use, { system: REVIEW_SYSTEM }));
       const result: ReviewResult = { memories: [], profile: [], skill: null };
       if (!parsed) return result;
 
@@ -154,6 +185,7 @@ export class LearningService {
       return result;
     } finally {
       this.reviewing.delete(sessionId);
+      if (owned) this.active.delete(sessionId);
     }
   }
 }

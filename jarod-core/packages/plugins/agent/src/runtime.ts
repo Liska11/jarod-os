@@ -424,6 +424,8 @@ export class AgentRuntime {
     for (const c of this.running.values()) c.abort();
     // Q18 : les sous-agents lancés en arrière-plan ne survivent pas à l'arrêt.
     this.subagents.cancelAll();
+    // R3.5 : une revue d'apprentissage en vol tient un appel LLM — elle s'arrête avec le reste.
+    this.learning?.cancelAll();
   }
 
   // core.ts:1629-1654 — corps déplacé dans `budget.ts` (`usageOf`), partagé avec le plafond G4.

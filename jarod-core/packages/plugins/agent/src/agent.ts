@@ -206,19 +206,21 @@ export function projectInstructions(workspace: string | null): { file: string; t
 /** Resolves with the user's decision, or false if the run is stopped or nobody answers in time. */
 export function awaitApproval(
   decision: Promise<boolean>,
-  signal: AbortSignal,
+  signal?: AbortSignal,
   timeoutMs = APPROVAL_TIMEOUT_MS,
 ): Promise<boolean> {
-  if (signal.aborted) return Promise.resolve(false);
+  // R3.5 — `signal` est facultatif : un appelant sans signal (commande distante) n'a plus à fabriquer
+  // un contrôleur que personne ne détient ; l'échéance reste la borne.
+  if (signal?.aborted) return Promise.resolve(false);
   return new Promise((resolve) => {
     const done = (ok: boolean) => {
       clearTimeout(timer);
-      signal.removeEventListener("abort", onAbort);
+      signal?.removeEventListener("abort", onAbort);
       resolve(ok);
     };
     const onAbort = () => done(false);
     const timer = setTimeout(() => done(false), timeoutMs);
-    signal.addEventListener("abort", onAbort, { once: true });
+    signal?.addEventListener("abort", onAbort, { once: true });
     decision.then(done, () => done(false));
   });
 }

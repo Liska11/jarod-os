@@ -26,7 +26,9 @@ export async function executeGuardedCommand(
   ctx: CommandContext,
   hooks: { approve(sessionId: string, call: ToolCall, description: string): Promise<boolean> },
   extra: { audit?: (entry: AuditEntry) => void; gate?: ToolGate } = {},
-  signal: AbortSignal = new AbortController().signal,
+  // R3.5 — pas de contrôleur fabriqué ici : sans signal d'appelant, l'échéance d'`awaitApproval` est
+  // la borne (la commande distante n'a jamais eu de signal, elle n'en fait plus semblant).
+  signal?: AbortSignal,
 ): Promise<CommandResult | null> {
   const parsed = parseCommand(input);
   if (!parsed) return null;

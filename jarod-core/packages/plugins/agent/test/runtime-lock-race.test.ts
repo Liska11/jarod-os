@@ -71,6 +71,29 @@ describe("§3.6-1 — le verrou de profil ne se prend pas à deux", () => {
     expect(fs.existsSync(join(dir, RUNTIME_LOCK_FILE))).toBe(false);
   });
 
+  it("un même pid relu avec un autre startedAt n'est pas le nôtre : on reprend proprement", () => {
+    // Deux noyaux successifs du MÊME processus (pid identique, cas d'un pid recyclé) : `startedAt`
+    // est le seul discriminant. La reprise doit donc écrit un nouvel instant, pas hériter du périmé.
+    const dir = tempDir();
+    const path = join(dir, RUNTIME_LOCK_FILE);
+    fs.writeFileSync(path, JSON.stringify({ pid: process.pid, mode: "headless", startedAt: 1 }));
+    const release = acquireRuntimeLock(dir, "desktop");
+    const mine = readRuntimeLock(dir);
+    expect(mine, "la reprise est la nôtre").toMatchObject({ pid: process.pid, mode: "desktop" });
+    expect(mine!.startedAt, "l'instant est celui de la reprise, pas celui du verrou périmé").toBeGreaterThan(1);
+    release();
+    expect(readRuntimeLock(dir)).toBeNull();
+  });
+
+  it("un détenteur vivant : le perdant ne l'écrase pas et ne le supprime pas", () => {
+    const dir = tempDir();
+    const path = join(dir, RUNTIME_LOCK_FILE);
+    const holder = { pid: process.ppid, mode: "serve", startedAt: 7 };
+    fs.writeFileSync(path, JSON.stringify(holder));
+    expect(() => acquireRuntimeLock(dir, "desktop")).toThrow(RuntimeLockError);
+    expect(readRuntimeLock(dir), "le verrou du détenteur est intact").toEqual(holder);
+  });
+
   it("une libération ne supprime pas un verrou repris entre-temps sous le même pid", () => {
     // Un pid recyclé porte le même numéro : `startedAt` est ce qui distingue notre écriture de celle
     // qui a repris le profil. Sans lui, l'ancien détenteur effaçait le verrou du nouveau.

@@ -117,6 +117,57 @@ describe("learning review", () => {
     expect(reqs.filter((r) => r.system.startsWith("Tu relis"))).toHaveLength(1);
   });
 
+  it("une revue lancée sans signal d'appelant reste réellement annulable (R3.5)", async () => {
+    const core = await makeCore();
+    await core.init();
+    core.settings.set("learning", { enabled: true, reviewEvery: 2 });
+    let seen: AbortSignal | undefined;
+    const client: ProviderClient = {
+      listModels: async () => ["m"],
+      chat: (req) =>
+        new Promise<ChatResult>((_resolve, reject) => {
+          seen = req.signal;
+          req.signal?.addEventListener("abort", () => reject(new Error("annulé")), { once: true });
+        }),
+    };
+    core.providers.client = () => client;
+    const s = core.sessions.create();
+
+    // La revue est un appel d'arrière-plan : personne ne lui passe de signal.
+    const review = core.learning.review(s.id);
+    await until(() => seen !== undefined);
+    expect(seen?.aborted, "tant que la revue tourne, rien n'est annulé").toBe(false);
+
+    // Le contrôleur appartient maintenant au service : l'arrêt coupe bien l'appel en aval.
+    expect(core.learning.cancel(s.id), "la revue en vol s'arrête").toBe(true);
+    await expect(review).rejects.toThrow(/annulé/);
+    expect(seen?.aborted).toBe(true);
+    expect(core.learning.cancel(s.id), "déjà finie : rien à annuler").toBe(false);
+  });
+
+  it("cancelAll() coupe une revue en vol (arrêt du noyau)", async () => {
+    const core = await makeCore();
+    await core.init();
+    core.settings.set("learning", { enabled: true, reviewEvery: 2 });
+    let seen: AbortSignal | undefined;
+    const client: ProviderClient = {
+      listModels: async () => ["m"],
+      chat: (req) =>
+        new Promise<ChatResult>((_resolve, reject) => {
+          seen = req.signal;
+          req.signal?.addEventListener("abort", () => reject(new Error("annulé")), { once: true });
+        }),
+    };
+    core.providers.client = () => client;
+    const s = core.sessions.create();
+    const review = core.learning.review(s.id);
+    await until(() => seen !== undefined);
+
+    core.learning.cancelAll();
+    await expect(review).rejects.toThrow(/annulé/);
+    expect(seen?.aborted).toBe(true);
+  });
+
   it("does nothing when turned off", async () => {
     const core = await makeCore();
     await core.init();
