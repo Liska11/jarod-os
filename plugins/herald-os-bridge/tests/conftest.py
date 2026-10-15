@@ -30,7 +30,20 @@ def isolated_home(tmp_path, monkeypatch):
     home = tmp_path / ".hermes"
     home.mkdir()
     monkeypatch.setenv("HERMES_HOME", str(home))
+    _forget_control_env()
     return home
+
+
+def _forget_control_env() -> None:
+    """Give every test a clean control-plane reader.
+
+    ``bridge.util.control_env`` reads the shell's endpoint and token once and then removes them from
+    ``os.environ``, which is correct for one process talking to one shell but would otherwise let the
+    first test's values leak into every later one."""
+    util = sys.modules.get("herald_os_bridge_under_test.bridge.util")
+    forget = getattr(util, "forget_control_env", None) if util is not None else None
+    if forget is not None:
+        forget()
 
 
 @pytest.fixture

@@ -1,4 +1,5 @@
 import { app, BrowserWindow, globalShortcut, ipcMain, Notification, protocol, screen, shell } from 'electron'
+import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { type EnvInfo, type HeraldOSPrefs, IPC, type RestRequest, type ShellCommand, type WindowState } from '../shared/ipc.ts'
@@ -47,8 +48,8 @@ import { shellMode } from './shell/mode.ts'
 import { createCompositor, detectCompositor } from './wm/compositor.ts'
 import { NotificationDaemon } from './shell/notification-daemon.ts'
 import { maximizeAction } from './window-controls.ts'
-import { handleUiRequest, OsCommandBridge, OsControlServer, osControlToken } from './shell/os-control.ts'
-import { sameToken } from './shell/json-lines.ts'
+import { handleUiRequest, OsCommandBridge, OsControlServer } from './shell/os-control.ts'
+import { asControlTier, ControlSecurity, controlAuditSink, controlEndpoint, controlTokens, type ControlAuditEntry } from './shell/control-authz.ts'
 import { PanelShell } from './shell/panels.ts'
 import { registerBrandingIpc } from './shell/branding.ts'
 import { EmojiPanel } from './shell/emoji-panel.ts'
@@ -154,6 +155,16 @@ const appHost = !panels && process.platform === 'linux' ? new DesktopHost(() => 
 // macOS: Cmd+Ctrl+E opens the emoji picker over any app (Jarod-OS Linux binds it in niri).
 const emojiPanel = !panels && process.platform === 'darwin' ? new EmojiPanel(() => mainWindow) : null
 const shellHost: ShellHost | null = panels ?? appHost
+// Who may drive the shell, and what the shell writes down about it. Two tokens, one per surface: the
+// backend's (it runs registry commands through the bridge) and the CLI's (a user-only file the
+// `herald-os` command reads). Every attempt, allowed or not, lands in one journal.
+const { backend: backendToken, cli: cliToken } = controlTokens()
+const journalControl = controlAuditSink(path.join(heraldOsDataDir(), 'control-audit.jsonl'))
+const auditControl = (entry: ControlAuditEntry) => {
+  log('control', `${entry.allowed ? 'allowed' : 'refused'} ${entry.cmd}${entry.command ? ` ${entry.command}` : ''} from ${entry.client}: ${entry.reason}`)
+  journalControl(entry)
+}
+const panelSecurity = new ControlSecurity({ tokens: { backend: backendToken, cli: cliToken } }, auditControl)
 const control = shellHost
   ? new ControlSocket(
       shellHost,
@@ -164,17 +175,35 @@ const control = shellHost
         events.emit('theme-set', { theme: spec.name })
       },
       () => void switches.broadcast(),
-      plugins
+      plugins,
+      panelSecurity
     )
   : null
-// Desktop mode has no compositor CLI socket; the OS control server gives it the same `ui*` surface.
+// The panel socket is the CLI's door, so it needs a token the CLI can hold: one file, user-readable
+// only, beside the socket. The backend's token never goes to disk.
+if (control) {
+  try {
+    const tokenFile = path.join(path.dirname(control.socketPath), 'control.token')
+
+    fs.mkdirSync(path.dirname(tokenFile), { recursive: true, mode: 0o700 })
+    fs.writeFileSync(tokenFile, cliToken, { mode: 0o600 })
+  } catch (error) {
+    log('control', `cannot write the CLI control token: ${(error as Error).message}`)
+  }
+}
+// Desktop mode has no compositor CLI socket; the OS control server gives the backend the same `ui*`
+// surface. Windows gets a named pipe here rather than a loopback port (shell/control-authz.ts).
 const osControlPath = panels ? path.join(process.env.XDG_RUNTIME_DIR || `/run/user/${process.getuid?.() ?? 1000}`, 'herald-os', 'control.sock') : path.join(heraldOsDataDir(), 'control.sock')
+const controlSecurity = new ControlSecurity({ tokens: { backend: backendToken, cli: cliToken }, surface: 'backend' }, auditControl)
 const osControl = panels
   ? null
-  : new OsControlServer(osControlPath, async request => {
-      // No CLI talks to this socket (the Linux one serves `herald-os`), so every client is the backend.
-      if (!sameToken(request.token, osControlToken())) {
-        return { ok: false, error: 'invalid control token' }
+  : new OsControlServer(controlEndpoint({ platform: process.platform, runtimeDir: heraldOsDataDir(), dataDir: heraldOsDataDir() }), async request => {
+      // No CLI talks to this door (the Linux panel socket serves `herald-os`), so every client is the
+      // backend — and the backend is the only holder of the token this surface requires.
+      const decision = controlSecurity.check(request)
+
+      if (!decision.allowed) {
+        return { ok: false, error: decision.reason }
       }
 
       const ui = await handleUiRequest(request as unknown as Parameters<typeof handleUiRequest>[0], osBridge)
@@ -211,8 +240,36 @@ const osControl = panels
         default:
           return { ok: false, error: `unknown command ${cmd}` }
       }
-    })
-backend.setControl(() => osControl?.endpoint || osControlPath, osControlToken())
+    }, reason => controlSecurity.malformed(reason))
+backend.setControl(() => osControl?.endpoint || osControlPath, backendToken)
+// `os`/`os-run` are checked against the shell's own catalogue, which the renderer registers as it
+// loads: ask it once the window can answer, so an unknown command is refused rather than guessed at.
+const learnCatalogue = async (attempt = 0): Promise<void> => {
+  const reply = await osBridge.list()
+
+  if (reply.error || !Array.isArray(reply.result)) {
+    if (attempt < 20) {
+      setTimeout(() => void learnCatalogue(attempt + 1), 1_000)
+    }
+
+    return
+  }
+
+  const tiers = new Map<string, 'read' | 'act' | 'mutate' | 'destructive'>()
+
+  for (const entry of reply.result as { id?: unknown; tier?: unknown }[]) {
+    const tier = asControlTier(entry?.tier)
+
+    if (typeof entry?.id === 'string' && tier) {
+      tiers.set(entry.id, tier)
+    }
+  }
+
+  for (const security of [panelSecurity, controlSecurity]) {
+    security.setCatalogue(id => tiers.get(id))
+  }
+}
+void learnCatalogue()
 // Serves org.freedesktop.Notifications so other apps' notifications reach the shell.
 const notifications = panels ? new NotificationDaemon(panels) : null
 /** Deliver a ShellCommand to the Hermes window; panels mode queues it until that window has loaded. */

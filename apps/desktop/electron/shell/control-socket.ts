@@ -17,10 +17,13 @@ import { menuFile, readMenuExtensions } from './menu-extensions.ts'
 import { brandingView, setBranding } from './branding.ts'
 import type { BrandingPatch, BrandingView } from '../../shared/branding.ts'
 import { handleUiRequest, isUiRequest, type OsCommandBridge, type UiControlRequest } from './os-control.ts'
+import type { ControlSecurity } from './control-authz.ts'
 import { LineSplitter } from './json-lines.ts'
 
 interface ControlRequest {
   cmd: string
+  /** Who is asking: the CLI's token or the backend's (see shell/control-authz.ts). */
+  token?: string
   args?: string[]
   attachments?: string[]
   /** `theme`: the shell part of a theme definition. */
@@ -51,7 +54,12 @@ export class ControlSocket {
     /** The CLI changed a switch (night light, staying awake): the menu bar follows. */
     private readonly onSwitches?: () => void,
     /** `herald-os plugin …`: the same plugin host Settings uses. */
-    private readonly plugins?: PluginHost
+    private readonly plugins?: PluginHost,
+    /**
+     * Who may ask for what, on this door. The panel socket is shared: the `herald-os` CLI holds the
+     * CLI token and the backend holds the registry token, and neither may use the other's commands.
+     */
+    private readonly security?: ControlSecurity
   ) {}
 
   get socketPath(): string {
@@ -118,6 +126,11 @@ export class ControlSocket {
     try {
       request = JSON.parse(line) as ControlRequest
     } catch {
+      // Nothing to attribute it to — the line is not a request — but the attempt is still journalled,
+      // without the line itself, which may well carry a token.
+      log('control', 'rejected a request line that was not JSON')
+      this.security?.malformed('invalid JSON')
+
       return { ok: false, error: 'invalid JSON' }
     }
 
@@ -128,9 +141,21 @@ export class ControlSocket {
     }
   }
 
-  private async handle(request: ControlRequest): Promise<Record<string, unknown>> {
+  /**
+   * One request from the socket. Public so a test can drive the door itself rather than a copy of it;
+   * the socket's `data` handler is the only caller in production.
+   */
+  async handle(request: ControlRequest): Promise<Record<string, unknown>> {
     const args = request.args ?? []
     const { cmd } = request
+
+    if (this.security) {
+      const decision = this.security.check(request)
+
+      if (!decision.allowed) {
+        return { ok: false, error: decision.reason }
+      }
+    }
 
     if (this.osBridge && isUiRequest(cmd)) {
       const reply = await handleUiRequest(request as unknown as UiControlRequest, this.osBridge)
@@ -141,7 +166,7 @@ export class ControlSocket {
     }
 
     if (cmd === 'os') {
-      // `herald-os os <command.id> [json]`: the CLI path to the registry (no token; same user).
+      // `herald-os os <command.id> [json]`: the CLI path to the registry, with the CLI's own token.
       const [id, json] = args
 
       if (!id) {

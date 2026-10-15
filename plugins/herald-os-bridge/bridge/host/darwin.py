@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any, Literal, Sequence
 
 from ..crash import MAC_REPORT_DIRS, is_crash_header, resolve_mac_report, summarise_ips
-from ..util import run
+from ..util import child_env, run
 from .base import AppInfo, FileSearch, FoundFile, HostAdapter, PortListener, ProcessRow
 from .posix import parse_du, parse_ps  # noqa: F401 - shared with Linux; re-exported for callers/tests.
 
@@ -546,4 +546,6 @@ class DarwinHost(HostAdapter):
 
     def notify(self, title: str, body: str) -> None:
         script = f'display notification "{_applescript_string(body)}" with title "{_applescript_string(title)}"'
-        subprocess.Popen(["osascript", "-e", script], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.Popen(
+            ["osascript", "-e", script], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=child_env()
+        )

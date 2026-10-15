@@ -23,7 +23,7 @@ from datetime import datetime
 from pathlib import Path, PureWindowsPath
 from typing import Any, Iterator, Literal, Sequence
 
-from ..util import hermes_home, run
+from ..util import child_env, hermes_home, run
 from . import winps
 from .base import AppInfo, FileSearch, FoundFile, HostAdapter, HostNotSupported, PortListener, ProcessRow
 from .search import matches_search, search_extensions, search_time_bounds
@@ -578,7 +578,10 @@ class WindowsHost(HostAdapter):
 
     @staticmethod
     def _launch(argv: Sequence[str]) -> None:
-        subprocess.Popen(list(argv), stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, creationflags=_DETACHED, close_fds=True)
+        subprocess.Popen(
+            list(argv), stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            creationflags=_DETACHED, close_fds=True, env=child_env(),
+        )
 
     def _app_executable(self, app: str) -> str:
         """The program file for an app named by the caller, for opening something *with* it."""
@@ -622,7 +625,10 @@ class WindowsHost(HostAdapter):
 
     def reveal(self, path: Path) -> None:
         # explorer wants /select,"<path>" as one command line; a Windows path cannot contain a quote.
-        subprocess.Popen(f'explorer.exe /select,"{path}"', stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, creationflags=_DETACHED)
+        subprocess.Popen(
+            f'explorer.exe /select,"{path}"', stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL, creationflags=_DETACHED, env=child_env(),
+        )
 
     def quit_app(self, name: str, force: bool) -> None:
         app = self.resolve_app(name)

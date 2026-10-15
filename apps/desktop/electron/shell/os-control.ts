@@ -1,11 +1,11 @@
 import { type BrowserWindow, ipcMain } from 'electron'
-import crypto from 'node:crypto'
 import fs from 'node:fs'
 import net from 'node:net'
 import path from 'node:path'
 import { IPC, type OsControlReply, type OsControlRequest } from '../../shared/ipc.ts'
 import { log } from '../log.ts'
-import { LineSplitter, sameToken } from './json-lines.ts'
+import type { ControlEndpoint } from './control-authz.ts'
+import { LineSplitter } from './json-lines.ts'
 
 /*
  * OS control: how anything outside the renderer (the agent's `os_ui` tool through the bridge
@@ -13,12 +13,12 @@ import { LineSplitter, sameToken } from './json-lines.ts'
  *
  * - `OsCommandBridge` is the main <-> renderer half: it posts an `OsControlRequest` to the Hermes
  *   window and resolves when the window replies (or times out).
- * - `OsControlServer` is a JSON-lines Unix socket shared by both shell modes. In panels mode the
+ * - `OsControlServer` is a JSON-lines server shared by both shell modes. In panels mode the
  *   existing `ControlSocket` hands `ui*` requests to `handleUiRequest`; in desktop mode the server
  *   runs on its own under the Jarod-OS data dir.
  *
- * Requests carry a per-launch token that main also gives the backend (HERALD_OS_CONTROL_TOKEN), so a
- * stray local process cannot drive the UI even though the socket is user-only (0600).
+ * Neither decides who may ask: both gate their requests through `ControlSecurity` (control-authz.ts)
+ * before they get here, so `handleUiRequest` only has to do the work.
  */
 
 const REPLY_TIMEOUT_MS = 8_000
@@ -80,31 +80,21 @@ export interface UiControlRequest {
   source?: string
 }
 
-let controlToken = ''
-
-/** The per-launch token main hands to the backend and requires on `ui*` requests. */
-export function osControlToken(): string {
-  if (!controlToken) {
-    controlToken = crypto.randomBytes(24).toString('base64url')
-  }
-
-  return controlToken
-}
-
 const UI_COMMANDS = new Set(['ui', 'ui-list', 'ui-state'])
 
 export function isUiRequest(cmd: string): boolean {
   return UI_COMMANDS.has(cmd)
 }
 
-/** Serve one `ui*` request through the bridge; `null` when `cmd` is not a UI request. */
+/**
+ * Serve one `ui*` request through the bridge; `null` when `cmd` is not a UI request.
+ *
+ * The caller has already decided that the request may run (`ControlSecurity`), so this does not read
+ * a token: there is one gate, and it is not here.
+ */
 export async function handleUiRequest(request: UiControlRequest, bridge: OsCommandBridge): Promise<Record<string, unknown> | null> {
   if (!isUiRequest(request.cmd)) {
     return null
-  }
-
-  if (!sameToken(request.token, osControlToken())) {
-    return { ok: false, error: 'invalid control token' }
   }
 
   let reply: OsControlReply
@@ -143,13 +133,11 @@ export async function handleUiRequest(request: UiControlRequest, bridge: OsComma
 
 /**
  * A JSON-lines server: one request object per line in, one reply object per line out. A Unix socket
- * on macOS and Linux; on Windows (where Node serves only named pipes and Python's AF_UNIX support is
- * patchy) a loopback TCP port chosen by the system, announced as `tcp://127.0.0.1:<port>`. Every
- * request carries the per-launch token either way.
+ * on macOS and Linux; a Windows named pipe on Windows, created with the owner's own access control
+ * and not dialable as a port by anything else on the machine.
  */
 export class OsControlServer {
   private server: net.Server | null = null
-  private port = 0
   private markReady: () => void = () => undefined
   /** Resolves once the server is listening (or has given up), so the backend is not started before the endpoint exists. */
   readonly ready: Promise<void> = new Promise(resolve => {
@@ -157,24 +145,25 @@ export class OsControlServer {
   })
 
   constructor(
-    private readonly socketPath: string,
+    private readonly target: ControlEndpoint,
     private readonly handle: (request: Record<string, unknown>) => Promise<Record<string, unknown>>,
-    private readonly loopback: boolean = process.platform === 'win32'
+    /** Writes a line that never became a request into the shell's journal (see `ControlSecurity`). */
+    private readonly onMalformed?: (reason: string) => void
   ) {}
 
-  /** What the backend dials: the socket path, or `tcp://127.0.0.1:<port>` once listening. */
+  /** What the backend dials: the socket path, or `pipe://<name>` on Windows. */
   get endpoint(): string {
-    return this.loopback ? (this.port ? `tcp://127.0.0.1:${this.port}` : '') : this.socketPath
+    return this.target.endpoint
   }
 
   start(): void {
-    if (!this.loopback) {
+    if (this.target.kind === 'unix') {
       try {
-        fs.mkdirSync(path.dirname(this.socketPath), { recursive: true, mode: 0o700 })
-        fs.unlinkSync(this.socketPath)
+        fs.mkdirSync(path.dirname(this.target.path), { recursive: true, mode: 0o700 })
+        fs.unlinkSync(this.target.path)
       } catch (error) {
         if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
-          log('os-control', `cannot prepare ${this.socketPath}: ${(error as Error).message}`)
+          log('os-control', `cannot prepare ${this.target.path}: ${(error as Error).message}`)
           this.markReady()
 
           return
@@ -210,20 +199,12 @@ export class OsControlServer {
       this.markReady()
     })
 
-    if (this.loopback) {
-      this.server.listen(0, '127.0.0.1', () => {
-        // stop() may have run before the listen completed.
-        this.port = (this.server?.address() as net.AddressInfo | null)?.port ?? 0
-        log('os-control', `listening on ${this.endpoint}`)
-        this.markReady()
-      })
+    this.server.listen(this.target.path, () => {
+      if (this.target.kind === 'unix') {
+        fs.chmodSync(this.target.path, 0o600)
+      }
 
-      return
-    }
-
-    this.server.listen(this.socketPath, () => {
-      fs.chmodSync(this.socketPath, 0o600)
-      log('os-control', `listening on ${this.socketPath}`)
+      log('os-control', `listening on ${this.target.endpoint}`)
       this.markReady()
     })
   }
@@ -232,12 +213,12 @@ export class OsControlServer {
     this.server?.close()
     this.server = null
 
-    if (this.loopback) {
+    if (this.target.kind !== 'unix') {
       return
     }
 
     try {
-      fs.unlinkSync(this.socketPath)
+      fs.unlinkSync(this.target.path)
     } catch {
       // Already gone.
     }
@@ -249,6 +230,12 @@ export class OsControlServer {
     try {
       request = JSON.parse(line) as Record<string, unknown>
     } catch {
+      // Not a request anyone can attribute, so the policy never sees it: no token, no command, no
+      // caller. The attempt is still journalled — without the line, which may carry a token — and
+      // the shell log keeps it visible too.
+      log('os-control', 'rejected a request line that was not JSON')
+      this.onMalformed?.('invalid JSON')
+
       return { ok: false, error: 'invalid JSON' }
     }
 

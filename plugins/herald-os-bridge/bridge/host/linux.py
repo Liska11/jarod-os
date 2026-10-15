@@ -27,7 +27,7 @@ except ImportError:  # Windows: this adapter is never selected there, but its pa
     pwd = None  # type: ignore[assignment]
 
 from ..crash import parse_coredumpctl_list
-from ..util import ExecResult, run
+from ..util import ExecResult, child_env, run
 from .base import AppInfo, FileSearch, FoundFile, HostAdapter, HostNotSupported, PortListener, ProcessRow
 from .desktop_entries import DesktopEntry, scan_desktop_entries
 from .posix import parse_du, parse_ps
@@ -373,7 +373,10 @@ def _read_text(path: str) -> str:
 
 def _detach(argv: Sequence[str]) -> None:
     """Start a desktop program without waiting for it (and without tying it to our session)."""
-    subprocess.Popen(list(argv), stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+    subprocess.Popen(
+        list(argv), stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        start_new_session=True, env=child_env(),
+    )
 
 
 def _launcher(argv: Sequence[str], timeout: float = 5.0) -> int:
@@ -385,7 +388,10 @@ def _launcher(argv: Sequence[str], timeout: float = 5.0) -> int:
     Returns the exit code, 127 when the launcher binary is missing.
     """
     try:
-        proc = subprocess.Popen(list(argv), stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+        proc = subprocess.Popen(
+            list(argv), stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            start_new_session=True, env=child_env(),
+        )
     except FileNotFoundError:
         return 127
     try:

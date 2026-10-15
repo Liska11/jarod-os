@@ -45,6 +45,8 @@ from pathlib import Path
 HOME = Path.home()
 RUNTIME = Path(os.environ.get("XDG_RUNTIME_DIR") or f"/run/user/{os.getuid()}")
 SOCKET = RUNTIME / "herald-os" / "control.sock"
+# The shell's own token, written 0600 beside the socket: this command is the only thing it is for.
+TOKEN_FILE = RUNTIME / "herald-os" / "control.token"
 STATE_DIR = HOME / ".local" / "state" / "herald-os"
 CONFIG_DIR = HOME / ".config" / "herald-os"
 APPS_DIR = HOME / ".local" / "share" / "applications"
@@ -129,13 +131,25 @@ def sh(argv: list[str], *, timeout: float = 60, check: bool = False, input_: str
     return subprocess.CompletedProcess(argv, 1)  # unreachable, keeps type checkers calm
 
 
+def control_token() -> str:
+    """The token the shell wrote beside its socket, readable by this user only.
+
+    An unreadable file is not fatal: the request goes without a token and the shell says why it was
+    refused, which tells the user more than a CLI that will not even try.
+    """
+    try:
+        return TOKEN_FILE.read_text(encoding="utf-8").strip()
+    except OSError:
+        return ""
+
+
 def relay(cmd: str, args: list[str], extra: dict | None = None, *, quiet: bool = False, timeout: float = 15) -> dict:
     """Send one JSON line to the shell and return its JSON reply."""
     if not SOCKET.exists():
         if quiet:
             return {"ok": False, "error": "shell not running"}
         die(f"the Jarod-OS shell is not running (no {SOCKET})", 3)
-    payload = {"cmd": cmd, "args": args, **(extra or {})}
+    payload = {"cmd": cmd, "args": args, "token": control_token(), **(extra or {})}
     try:
         with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
             s.settimeout(timeout)

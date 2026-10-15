@@ -31,6 +31,8 @@ THEME_DIRS = [
 ]
 RUNTIME = Path(os.environ.get("XDG_RUNTIME_DIR") or f"/run/user/{os.getuid()}")
 SOCKET = RUNTIME / "herald-os" / "control.sock"
+# The shell's own token, written 0600 beside the socket: this command is the only thing it is for.
+TOKEN_FILE = RUNTIME / "herald-os" / "control.token"
 DEFAULT = "herald-ocean"
 
 
@@ -220,6 +222,14 @@ def render_hermes_skin(theme: dict) -> str:
     return "\n".join(lines) + "\n"
 
 
+def control_token() -> str:
+    """The token the shell wrote beside its socket; empty when it cannot be read."""
+    try:
+        return TOKEN_FILE.read_text(encoding="utf-8").strip()
+    except OSError:
+        return ""
+
+
 def relay(payload: dict) -> bool:
     if not SOCKET.exists():
         return False
@@ -227,7 +237,7 @@ def relay(payload: dict) -> bool:
         with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
             s.settimeout(5)
             s.connect(str(SOCKET))
-            s.sendall((json.dumps(payload) + "\n").encode())
+            s.sendall((json.dumps({**payload, "token": control_token()}) + "\n").encode())
             s.recv(4096)
         return True
     except OSError:

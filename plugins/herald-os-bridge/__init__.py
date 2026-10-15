@@ -18,6 +18,11 @@ from pathlib import Path
 
 from .bridge import tools as _tools
 from .bridge.host import host_available
+from .bridge.util import take_control_env
+
+# The shell hands this process the control endpoint and its tokens; read them out of the environment
+# now, so nothing this plugin starts can inherit them (see bridge/util.py::take_control_env).
+take_control_env()
 
 _SKILLS_DIR = Path(__file__).parent / "skills"
 # Skill name -> one-line description for the skills index.

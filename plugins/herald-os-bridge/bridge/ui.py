@@ -1,10 +1,10 @@
 """Client for the Jarod-OS control socket: the agent's way to run commands in the shell's UI.
 
-The Electron shell (macOS and Windows desktop, Linux panels modes) serves a JSON-lines socket and
-hands the backend its endpoint and a per-launch token through ``HERALD_OS_CONTROL_SOCKET`` and
-``HERALD_OS_CONTROL_TOKEN``. The endpoint is a Unix socket path, or ``tcp://127.0.0.1:<port>`` on
-Windows (loopback only: the token travels in the clear). Every request carries the token; replies
-are single JSON objects.
+The Electron shell hands the backend its endpoint and a per-launch token through
+``HERALD_OS_CONTROL_SOCKET`` and ``HERALD_OS_CONTROL_TOKEN``. The endpoint is a Unix socket path on
+macOS and Linux, and ``pipe://<name>`` on Windows: the shell's own named pipe, opened by the owner
+rather than a port anything on the machine can dial. Every request carries the token; replies are
+single JSON objects.
 
 Requests:
     {"cmd": "ui", "command": "<id>", "args": {...}, "source": "agent"}  -> CommandResult
@@ -18,13 +18,16 @@ import json
 import os
 import re
 import socket
+import threading
 from typing import Any
 
-from .util import hermes_home, os_env
+from .util import control_env, hermes_home
 
 DEFAULT_TIMEOUT = 12.0
 # The only TCP endpoint accepted: the shell never listens beyond this machine.
 _TCP_ENDPOINT = re.compile(r"^tcp://127\.0\.0\.1:(\d{1,5})$")
+# A Windows named pipe: one name, no host, no port.
+_PIPE_ENDPOINT = re.compile(r"^pipe://([A-Za-z0-9._-]{1,200})$")
 
 
 def parse_tcp_endpoint(endpoint: str) -> tuple[str, int] | None:
@@ -33,6 +36,14 @@ def parse_tcp_endpoint(endpoint: str) -> tuple[str, int] | None:
     if not match or not 0 < int(match[1]) < 65536:
         return None
     return "127.0.0.1", int(match[1])
+
+
+def pipe_path_for(endpoint: str) -> str | None:
+    """The ``\\\\.\\pipe\\<name>`` path for a ``pipe://<name>`` endpoint, None for anything else."""
+    match = _PIPE_ENDPOINT.match(endpoint.strip())
+    if not match:
+        return None
+    return f"\\\\.\\pipe\\{match[1]}"
 
 
 class ShellUnavailable(RuntimeError):
@@ -50,40 +61,87 @@ def shared_endpoint() -> tuple[str, str]:
 
 
 def control_endpoint() -> tuple[str, str]:
-    """``(socket_path, token)`` from the environment the shell gave the backend, or the shared file."""
-    path = os_env("CONTROL_SOCKET").strip()
-    token = os_env("CONTROL_TOKEN").strip()
+    """``(socket_path, token)`` from the environment the shell gave the backend, or the shared file.
+
+    Both are read with ``control_env``, which removes them from ``os.environ`` as it reads: the
+    endpoint and the token are needed for the lifetime of this process, not of its children."""
+    path = control_env("CONTROL_SOCKET").strip()
+    token = control_env("CONTROL_TOKEN").strip()
     if not path or not token:
         path, token = shared_endpoint()
     if not path or not token:
         raise ShellUnavailable("Jarod-OS is not running this session (no control socket); UI commands need the shell.")
-    if parse_tcp_endpoint(path) is None and not os.path.exists(path):
+    if parse_tcp_endpoint(path) is None and pipe_path_for(path) is None and not os.path.exists(path):
         raise ShellUnavailable(f"The Jarod-OS shell is not listening ({path}); is it running?")
     return path, token
+
+
+def _pipe_exchange(path: str, body: str) -> bytes:
+    """One JSON line over a Windows named pipe, one line back.
+
+    A pipe is a byte stream like any other, so the read loops until the newline arrives instead of
+    trusting one read to be one message.
+    """
+    with open(path, "r+b", buffering=0) as handle:
+        handle.write(body.encode("utf-8"))
+        chunks = b""
+        while not chunks.endswith(b"\n"):
+            part = handle.read(65536)
+            if not part:
+                break
+            chunks += part
+    return chunks
+
+
+def _pipe_request(path: str, body: str, timeout: float) -> bytes:
+    """Run the exchange where it can be walked away from: a pipe blocks without a timeout of its own,
+    and a shell that never answers must not hang the agent. The worker is a daemon, so a stuck read
+    never holds up this process either."""
+    outcome: list[Any] = []
+
+    def exchange() -> None:
+        try:
+            outcome.append(_pipe_exchange(path, body))
+        except OSError as exc:
+            outcome.append(exc)
+
+    worker = threading.Thread(target=exchange, name="herald-os-control-pipe", daemon=True)
+    worker.start()
+    worker.join(timeout)
+    if worker.is_alive():
+        raise RuntimeError(f"Jarod-OS did not answer within {timeout:.0f}s")
+    answer = outcome[0] if outcome else OSError("the pipe closed without an answer")
+    if isinstance(answer, OSError):
+        raise RuntimeError(f"Jarod-OS did not answer: {answer}")
+    return answer
 
 
 def request(payload: dict[str, Any], *, timeout: float = DEFAULT_TIMEOUT) -> dict[str, Any]:
     """Send one request and return the parsed reply; raises ``ShellUnavailable`` or ``RuntimeError``."""
     path, token = control_endpoint()
     body = json.dumps({**payload, "token": token}) + "\n"
-    tcp = parse_tcp_endpoint(path)
-    if tcp is None and not hasattr(socket, "AF_UNIX"):
+    pipe = pipe_path_for(path)
+    tcp = None if pipe else parse_tcp_endpoint(path)
+    if pipe is None and tcp is None and not hasattr(socket, "AF_UNIX"):
         raise ShellUnavailable(f"This Python cannot reach the Jarod-OS control socket {path}.")
-    sock = socket.socket(socket.AF_INET if tcp else socket.AF_UNIX, socket.SOCK_STREAM)
-    sock.settimeout(timeout)
-    try:
-        sock.connect(tcp if tcp else path)
-        sock.sendall(body.encode("utf-8"))
-        chunks = b""
-        while not chunks.endswith(b"\n"):
-            part = sock.recv(65536)
-            if not part:
-                break
-            chunks += part
-    except (OSError, socket.timeout) as exc:
-        raise RuntimeError(f"Jarod-OS did not answer: {exc}") from exc
-    finally:
-        sock.close()
+    if pipe is not None:
+        chunks = _pipe_request(pipe, body, timeout)
+    else:
+        sock = socket.socket(socket.AF_INET if tcp else socket.AF_UNIX, socket.SOCK_STREAM)
+        sock.settimeout(timeout)
+        try:
+            sock.connect(tcp if tcp else path)
+            sock.sendall(body.encode("utf-8"))
+            chunks = b""
+            while not chunks.endswith(b"\n"):
+                part = sock.recv(65536)
+                if not part:
+                    break
+                chunks += part
+        except (OSError, socket.timeout) as exc:
+            raise RuntimeError(f"Jarod-OS did not answer: {exc}") from exc
+        finally:
+            sock.close()
     if not chunks.strip():
         raise RuntimeError("Jarod-OS returned an empty reply")
     try:

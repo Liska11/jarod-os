@@ -11,6 +11,7 @@ import shutil
 import socket
 import tempfile
 import threading
+import time
 
 import pytest
 
@@ -236,3 +237,50 @@ def test_shared_endpoint_follows_hermes_home(plugin, isolated_home, monkeypatch)
     (isolated_home / "herald-os").mkdir()
     (isolated_home / "herald-os" / "control.json").write_text(json.dumps({"socket": "tcp://127.0.0.1:4242", "token": "t"}), encoding="utf-8")
     assert ui.control_endpoint() == ("tcp://127.0.0.1:4242", "t")
+
+
+def test_pipe_endpoint_is_a_name_not_a_path(plugin):
+    """Windows reaches the shell over a named pipe: a flat name under ``\\\\.\\pipe\\``, never a file
+    path and never a TCP endpoint."""
+    ui = _mod(plugin, "ui")
+    assert ui.pipe_path_for("pipe://herald-os-9f2c") == r"\\.\pipe\herald-os-9f2c"
+    for bad in ("tcp://127.0.0.1:5150", "/run/user/1000/herald-os/control.sock", "pipe://", "pipe://a/b", "pipe://a\\b", "pipe://c:\\x", ""):
+        assert ui.pipe_path_for(bad) is None
+
+
+def test_a_pipe_endpoint_needs_no_socket_file(plugin, monkeypatch):
+    ui = _mod(plugin, "ui")
+    monkeypatch.setenv("HERALD_OS_CONTROL_SOCKET", "pipe://herald-os-absent")
+    monkeypatch.setenv("HERALD_OS_CONTROL_TOKEN", "secret-token")
+    assert ui.control_endpoint() == ("pipe://herald-os-absent", "secret-token")
+
+
+def test_request_dials_the_pipe_and_carries_the_token(plugin, monkeypatch):
+    ui = _mod(plugin, "ui")
+    monkeypatch.setenv("HERALD_OS_CONTROL_SOCKET", "pipe://herald-os-test")
+    monkeypatch.setenv("HERALD_OS_CONTROL_TOKEN", "secret-token")
+    seen = []
+
+    def exchange(path, body):
+        seen.append((path, body))
+        return json.dumps({"ok": True, "result": []}).encode() + b"\n"
+
+    monkeypatch.setattr(ui, "_pipe_exchange", exchange)
+    assert ui.run_command("page.open", {"name": "memory"}) == {"ok": True, "result": []}
+    path, body = seen[0]
+    assert path == r"\\.\pipe\herald-os-test"
+    assert body.endswith("\n")
+    assert json.loads(body) == {"cmd": "ui", "command": "page.open", "args": {"name": "memory"}, "source": "agent", "token": "secret-token"}
+
+
+def test_a_pipe_that_never_answers_gives_up(plugin, monkeypatch):
+    """A pipe read blocks without a timeout of its own, so the agent must not be able to wait on it
+    forever."""
+    ui = _mod(plugin, "ui")
+    monkeypatch.setenv("HERALD_OS_CONTROL_SOCKET", "pipe://herald-os-silent")
+    monkeypatch.setenv("HERALD_OS_CONTROL_TOKEN", "secret-token")
+    monkeypatch.setattr(ui, "_pipe_exchange", lambda path, body: time.sleep(30))
+    started = time.monotonic()
+    with pytest.raises(RuntimeError, match="did not answer"):
+        ui.request({"cmd": "ui", "command": "page.open"}, timeout=0.2)
+    assert time.monotonic() - started < 10

@@ -41,7 +41,7 @@ export class BackendManager {
   /** `location` says where a packaged build keeps the Jarod core (see `resolveJarodCore`). */
   constructor(private readonly location: Pick<CoreLocation, 'packaged' | 'resourcesPath' | 'appPath'> = { packaged: false }) {}
 
-  /** `endpoint` is a Unix socket path or `tcp://127.0.0.1:<port>`; a function when it is only known once the server listens. */
+  /** `endpoint` is a Unix socket path or a `pipe://<name>` Windows named pipe (see `shell/control-authz.ts`); a function when it is only known once the server listens. */
   setControl(endpoint: string | (() => string), token: string): void {
     this.control = { endpoint: typeof endpoint === 'function' ? endpoint : () => endpoint, token }
   }
