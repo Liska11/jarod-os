@@ -109,8 +109,8 @@ def decisions(plugin, monkeypatch):
     perm = _mod(plugin, "permissions")
     seen = []
 
-    def authorize(tool, tier, action, summary, *, paths=()):
-        seen.append((tool, tier, action, summary))
+    def authorize(tool, tier, action, summary, *, paths=(), delegate_confirm=False):
+        seen.append((tool, tier, action, summary, delegate_confirm))
         return perm.Decision(True, "allowed")
 
     monkeypatch.setattr(tools, "authorize", authorize)

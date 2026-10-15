@@ -80,9 +80,24 @@ def _finish(*, tool: str, tier: Tier, action: str | None, args: dict[str, Any], 
     audit.record(tool=tool, tier=tier.value, action=action, args=args, decision=decision, ok=ok_, summary=summary, error=error)
 
 
-def _guarded(tool: str, tier: Tier, action: str, summary: str, args: dict[str, Any], paths: Iterable[Path], execute: Callable[[], dict[str, Any]]) -> str:
-    """Authorize, run, audit. Shared by every act/mutate/destructive handler."""
-    decision = authorize(tool, tier, action, summary, paths=paths)
+def _guarded(
+    tool: str,
+    tier: Tier,
+    action: str,
+    summary: str,
+    args: dict[str, Any],
+    paths: Iterable[Path],
+    execute: Callable[[], dict[str, Any]],
+    *,
+    delegate_confirm: bool = False,
+) -> str:
+    """Authorize, run, audit. Shared by every act/mutate/destructive handler.
+
+    ``delegate_confirm`` is passed by handlers whose execution the shell gates itself (`os_ui`): the
+    policy still decides whether the action may happen at all, and the shell asks the person once,
+    where the mutation is actually carried out (R2.1 — one visible approval, host as authority).
+    """
+    decision = authorize(tool, tier, action, summary, paths=paths, delegate_confirm=delegate_confirm)
     if not decision.allowed:
         _finish(tool=tool, tier=tier, action=action, args=args, decision=decision.outcome, ok_=False, summary=summary, error=decision.message)
         return fail(decision.message or "not permitted", decision=decision.outcome, summary=summary)
@@ -1085,7 +1100,18 @@ def handle_os_ui(args: dict[str, Any], **_: Any) -> str:
             payload["command"] = command
             return payload
 
-        return _guarded("os_ui", tier, command, summary, {"command": command, "args": command_args}, (), execute)
+        # One approval, and it is the shell's: a mutation reaches the host's typed door, which asks the
+        # person and issues the print-once capability that authorises this exact call (R2.1).
+        return _guarded(
+            "os_ui",
+            tier,
+            command,
+            summary,
+            {"command": command, "args": command_args},
+            (),
+            execute,
+            delegate_confirm=True,
+        )
     except ui.ShellUnavailable as exc:
         return fail(str(exc))
 

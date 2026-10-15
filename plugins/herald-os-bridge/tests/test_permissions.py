@@ -99,3 +99,36 @@ def test_policy_file_is_reloaded_when_it_changes(plugin, isolated_home):
     path.write_text("tiers:\n  act: allow\n")
     os.utime(path, (time.time() + 5, time.time() + 5))
     assert perm.load_policy().mode(perm.Tier.ACT) == "allow"
+
+
+def test_delegated_confirmation_leaves_the_question_to_the_executor(plugin, monkeypatch):
+    """R2.1: for a tool the shell itself gates, the bridge must not ask a second time."""
+    perm = _perm(plugin)
+    monkeypatch.setattr(perm, "_confirm", lambda *a, **k: (_ for _ in ()).throw(AssertionError("the shell asks")))
+    decision = perm.authorize("os_ui", perm.Tier.MUTATE, "memory.forget", "Forget a memory", delegate_confirm=True)
+    assert decision.allowed
+    assert decision.outcome == "delegated"
+
+
+def test_delegation_never_weakens_the_policy_or_the_protected_paths(plugin, monkeypatch):
+    """Only the confirmation moves: a deny, or a protected path, still stops the call outright."""
+    perm = _perm(plugin)
+    monkeypatch.setattr(perm, "_confirm", lambda *a, **k: (_ for _ in ()).throw(AssertionError("nobody may be asked")))
+    monkeypatch.setattr(perm, "load_policy", lambda: perm.parse_policy({"tiers": {"mutate": "deny"}}))
+    denied = perm.authorize("os_ui", perm.Tier.MUTATE, "memory.add", "Remember", delegate_confirm=True)
+    assert not denied.allowed and denied.outcome == "policy_denied"
+
+    monkeypatch.setattr(perm, "load_policy", lambda: perm.parse_policy({}))
+    protected = perm.authorize(
+        "os_ui", perm.Tier.MUTATE, "memory.add", "Remember", paths=[Path.home() / ".ssh" / "config"], delegate_confirm=True
+    )
+    assert not protected.allowed and protected.outcome == "protected"
+
+
+def test_delegation_is_opt_in_per_caller(plugin, monkeypatch):
+    """Every other tool keeps the card: the default is still to ask Hermes."""
+    perm = _perm(plugin)
+    asked: list[str] = []
+    monkeypatch.setattr(perm, "_confirm", lambda tool, reason, rule_key: asked.append(tool) or perm.Decision(True, "approved"))
+    assert perm.authorize("system_files", perm.Tier.MUTATE, "mkdir", "create folder").outcome == "approved"
+    assert asked == ["system_files"]

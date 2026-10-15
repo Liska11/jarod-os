@@ -217,12 +217,52 @@ def test_the_capability_is_never_written_down(plugin, shell, isolated_home, tmp_
     assert not written, f"the capability was written to disk: {written}"
 
 
-def test_a_host_refusal_surfaces_as_a_tool_error_with_no_side_effect(plugin, monkeypatch):
-    """The tool layer's approval is not the last word: the shell's own refusal still stops the call.
+def _ui_requests(fake) -> list[dict]:
+    return [request for request in fake.requests if request.get("cmd") == "ui"]
 
-    `os_ui` asks Hermes first (that gate is unchanged), and the host asks the person again for anything
-    that changes the machine. When the host says no, the tool reports the failure and the command has
-    not run.
+
+def test_an_agent_mutation_shows_one_approval_and_the_host_is_the_one_asking(plugin, monkeypatch):
+    """R2.1: one visible question for one agent mutation, and it is the shell's.
+
+    The bridge asks nobody: the tool's execution is the host's typed door, which asks the person and
+    issues the capability that authorises this exact call. `_confirm` is where Hermes' own card lives,
+    and reaching it here would be the second prompt R2.1 removes.
+    """
+    fake = R2Shell("tcp", "secret-token")
+    monkeypatch.setenv("HERALD_OS_CONTROL_SOCKET", fake.endpoint)
+    monkeypatch.setenv("HERALD_OS_CONTROL_TOKEN", "secret-token")
+    util = _mod(plugin, "util")
+    util.forget_control_env()
+    tools = _mod(plugin, "tools")
+    permissions = _mod(plugin, "permissions")
+    monkeypatch.setattr(permissions, "_confirm", lambda *_, **__: (_ for _ in ()).throw(AssertionError("the shell asks, once")))
+    tools._UI_CATALOGUE.clear()
+    try:
+        reply = json.loads(tools.handle_os_ui({"action": "run", "command": "memory.forget", "args": {"match": "x"}}))
+
+        assert reply["success"] is True
+        assert fake.executed == ["memory.forget"], "one approval means one execution"
+        attempts = _ui_requests(fake)
+        assert len(attempts) == 2, "one ask, then one run carrying the capability"
+        assert "capability" not in attempts[0]
+        assert attempts[1]["capability"] == CAPABILITY
+        assert attempts[1]["args"] == attempts[0]["args"]
+
+        journal = (util.data_dir() / "audit.jsonl").read_text(encoding="utf-8")
+        entries = [json.loads(line) for line in journal.splitlines() if line.strip()]
+        assert [entry["decision"] for entry in entries] == ["delegated"], "one attempt, one line"
+        assert entries[0]["ok"] is True
+        assert CAPABILITY not in journal, "the capability never reaches the audit trail"
+    finally:
+        fake.close()
+        tools._UI_CATALOGUE.clear()
+
+
+def test_a_host_refusal_surfaces_as_a_tool_error_with_no_side_effect(plugin, monkeypatch):
+    """The host is the authority: when the person says no, that answer is final.
+
+    R2.1: the bridge shows no card of its own for this tool, so a refusal here is the single answer to
+    the single question that was asked — and the mutation has not run, and is not retried.
     """
     fake = R2Shell("tcp", "secret-token", deny=True)
     monkeypatch.setenv("HERALD_OS_CONTROL_SOCKET", fake.endpoint)
@@ -230,7 +270,7 @@ def test_a_host_refusal_surfaces_as_a_tool_error_with_no_side_effect(plugin, mon
     _mod(plugin, "util").forget_control_env()
     tools = _mod(plugin, "tools")
     permissions = _mod(plugin, "permissions")
-    monkeypatch.setattr(tools, "authorize", lambda *_, **__: permissions.Decision(True, "allowed"))
+    monkeypatch.setattr(permissions, "_confirm", lambda *_, **__: (_ for _ in ()).throw(AssertionError("the shell asks, once")))
     tools._UI_CATALOGUE.clear()
     try:
         reply = json.loads(tools.handle_os_ui({"action": "run", "command": "memory.forget", "args": {"match": "x"}}))
@@ -238,7 +278,7 @@ def test_a_host_refusal_surfaces_as_a_tool_error_with_no_side_effect(plugin, mon
         assert reply["success"] is False
         assert "not approved" in reply["error"]
         assert fake.executed == [], "a refused mutation must leave no side effect"
-        assert len([request for request in fake.requests if request.get("cmd") == "ui"]) == 1
+        assert len(_ui_requests(fake)) == 1, "a refusal is not retried"
     finally:
         fake.close()
         tools._UI_CATALOGUE.clear()

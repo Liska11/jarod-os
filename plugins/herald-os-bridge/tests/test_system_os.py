@@ -32,8 +32,9 @@ class _Capture:
         self.timeout = timeout
         return self.result
 
-    def authorize(self, tool, tier, action, summary, *, paths=()):
+    def authorize(self, tool, tier, action, summary, *, paths=(), delegate_confirm=False):
         assert tool == "system_os"
+        assert delegate_confirm is False, "system_os executes here: the bridge asks for it, not the shell"
         self.tier, self.action, self.summary = tier, action, summary
         return self.perm.Decision(True, "allowed")
 

@@ -119,7 +119,7 @@ class Policy:
 @dataclass(frozen=True)
 class Decision:
     allowed: bool
-    outcome: str      # allowed | approved | denied | blocked | protected | policy_denied
+    outcome: str      # allowed | approved | delegated | denied | blocked | protected | policy_denied
     message: str | None = None
 
 
@@ -222,8 +222,22 @@ def _confirm(tool: str, reason: str, rule_key: str) -> Decision:
     return Decision(False, "denied", result.get("message") or "The user did not approve this action.")
 
 
-def authorize(tool: str, tier: Tier, action: str, summary: str, *, paths: Iterable[Path] = ()) -> Decision:
-    """Decide whether ``tool``/``action`` may run. Protected paths are refused before anyone is asked."""
+def authorize(
+    tool: str,
+    tier: Tier,
+    action: str,
+    summary: str,
+    *,
+    paths: Iterable[Path] = (),
+    delegate_confirm: bool = False,
+) -> Decision:
+    """Decide whether ``tool``/``action`` may run. Protected paths are refused before anyone is asked.
+
+    ``delegate_confirm`` is for the one caller whose execution is itself gated by the shell's host
+    process (``os_ui``): the network of decisions is unchanged — a protected path is still refused, a
+    ``deny`` policy still denies — but the *confirmation* is left to the executor, which asks the
+    person once. Without it the bridge would ask a second time for the same call (R2.1).
+    """
     policy = load_policy()
     for path in paths:
         root = protected_root(path, policy)
@@ -234,6 +248,10 @@ def authorize(tool: str, tier: Tier, action: str, summary: str, *, paths: Iterab
         return Decision(False, "policy_denied", f"The Jarod-OS permission policy denies {tier.value} actions ({tool}).")
     if mode == "allow":
         return Decision(True, "allowed")
+    if delegate_confirm:
+        # The shell holds the approval this call will need, and it is the authority for it: one
+        # question, asked where the command is actually carried out.
+        return Decision(True, "delegated", f"The shell asks the person for this {tier.value} action itself.")
     if tier is Tier.DESTRUCTIVE:
         # A fresh key per call: "always allow" can never stick to a destructive action.
         rule_key = f"herald_os:{tool}:{action}:{uuid.uuid4().hex[:8]}"
