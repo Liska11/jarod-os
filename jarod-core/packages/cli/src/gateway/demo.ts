@@ -3,13 +3,14 @@
 // brancher au shell de Herald OS :
 //   HERALD_OS_BACKEND_URL=http://127.0.0.1:<port>  HERALD_OS_BACKEND_TOKEN=<jeton>
 // Le faux modèle répond en écho ; si le message contient « écris », il demande d'écrire un fichier (donc l'accord de l'utilisateur).
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { ProfileManager } from "@jarod/plugin-persona";
 import { openCore } from "../context.js";
 import { createGateway } from "./server.js";
+import { writeSecretFile } from "./secret-file.js";
 
 const root = mkdtempSync(join(tmpdir(), "jarod-gateway-demo-"));
 const workspace = join(root, "travail");
@@ -69,7 +70,9 @@ core.userProfile.add("Identité", "Prénom : Marc");
 const gateway = createGateway({ core, version: "0.1.5-gateway-spike", log: (line) => console.error(`[passerelle] ${line}`) });
 const port = await gateway.listen(0);
 const info = { url: `http://127.0.0.1:${port}`, token: gateway.token, workspace, profile: root };
-writeFileSync(join(root, "gateway.json"), JSON.stringify(info));
+// Le fichier porte le jeton en clair, même en démonstration : même écriture protégée que la passerelle (0o600, `icacls`).
+const hardened = writeSecretFile(join(root, "gateway.json"), JSON.stringify(info));
+if (hardened.error) console.error(`[passerelle] jeton en clair non restreint : ${hardened.error}`);
 console.log(`HERMES_BACKEND_READY port=${port}`);
 console.log(JSON.stringify(info));
 

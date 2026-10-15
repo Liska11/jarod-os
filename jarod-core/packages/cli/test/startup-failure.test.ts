@@ -2,7 +2,7 @@
 // messages (pas de pile Node brute). Cas réels : profil déjà servi, port fixe occupé.
 import { RuntimeLockError } from "@jarod/plugin-agent";
 import { describe, expect, it } from "vitest";
-import { startupFailure } from "../src/gateway/startup.js";
+import { MAX_STARTUP_MESSAGE, startupFailure } from "../src/gateway/startup.js";
 
 describe("startupFailure", () => {
   it("reprend tel quel le message du verrou de profil (il dit déjà quoi faire)", () => {
@@ -28,5 +28,18 @@ describe("startupFailure", () => {
     expect(startupFailure(new Error("base illisible"))).toEqual({ code: 3, message: "Démarrage impossible : base illisible" });
     expect(startupFailure("disque plein")).toEqual({ code: 3, message: "Démarrage impossible : disque plein" });
     expect(startupFailure(undefined).code).toBe(3);
+  });
+
+  it("masque un secret recraché par un échec inattendu, et garde la ligne courte", () => {
+    const failure = startupFailure(new Error(`clé refusée: sk-${"a".repeat(32)} ${"x".repeat(400)}`));
+    expect(failure.message).not.toContain("sk-aaaa");
+    expect(failure.message).toContain("sk-[masqué]");
+    expect(failure.message.length).toBeLessThanOrEqual(MAX_STARTUP_MESSAGE);
+  });
+
+  it("masque un jeton passé en query dans une URL citée par l'erreur", () => {
+    const failure = startupFailure(new Error("GET http://127.0.0.1:9/api/memory?token=abcdef0123456789ABCDEF -> 500"));
+    expect(failure.message).not.toContain("abcdef0123456789ABCDEF");
+    expect(failure.message).toContain("token=[masqué]");
   });
 });

@@ -3,9 +3,12 @@
  * clipboard, links. The engine has no window of its own, so every dialog the cordis control handlers raise (installing a skill, loading a model file,
  * restoring a backup…) is shown here, by the main process. Rules:
  *   - a dialog that asks for consent defaults to Cancel and answers `true` ONLY for the explicit action button;
- *   - paths come back from the OS dialog, never from the engine; nothing here reads or writes a file;
+ *   - dialog paths come back from the OS dialog; a path the engine names itself (openPath, showItemInFolder) goes through
+ *     ./path-guard.ts first, so a program, a script, a shortcut or a protected location is refused rather than handed to the shell;
+ *   - nothing here reads or writes a file;
  *   - links are http(s)/mailto only.
  */
+import { assertOpenablePath, assertReadablePath } from './path-guard.ts'
 
 export interface NativeDialogs {
   open(options: { title?: string; properties: ('openFile' | 'openDirectory' | 'createDirectory')[]; filters?: { name: string; extensions: string[] }[]; defaultPath?: string }): Promise<string | null>
@@ -100,11 +103,15 @@ export async function runNativeGesture(kind: string, params: Record<string, unkn
       return true
     }
     case 'openPath':
-      return effects.openPath(str(params.path, 1000))
-    case 'showItemInFolder':
-      effects.showItemInFolder(str(params.path, 1000))
+      return effects.openPath(assertOpenablePath(str(params.path, 1000)))
+    case 'showItemInFolder': {
+      const target = str(params.path, 1000)
+
+      assertReadablePath(target)
+      effects.showItemInFolder(target)
 
       return true
+    }
     case 'themeSource': {
       const source = str(params.source, 10)
 

@@ -77,22 +77,27 @@ export function protectedRoots(home: string, platform: NodeJS.Platform = process
     const hermes = env.HERMES_HOME?.trim() || lib.join(local, 'hermes')
     const jarodData = env.JAROD_OS_DATA?.trim() || lib.join(local, 'Jarod-OS')
 
+    const programData = env.ProgramData ?? 'C:\\ProgramData'
+
     return [
       lib.join(home, '.ssh'),
       lib.join(home, '.gnupg'),
-      // Credential Manager and DPAPI keep their blobs and master keys in these folders.
+      // Credential Manager, DPAPI and the certificate stores keep their blobs and master keys in these folders.
       lib.join(roaming, 'Microsoft', 'Credentials'),
       lib.join(roaming, 'Microsoft', 'Protect'),
+      lib.join(roaming, 'Microsoft', 'SystemCertificates'),
       lib.join(local, 'Microsoft', 'Credentials'),
       lib.join(local, 'Microsoft', 'Vault'),
       lib.join(roaming, 'gnupg'),
+      // Machine-wide cryptographic material (DPAPI machine keys, catalog stores).
+      lib.join(programData, 'Microsoft', 'Crypto'),
       lib.join(hermes, 'herald-os'),
       lib.join(hermes, 'vault'),
       jarodData,
       env.SystemRoot ?? 'C:\\Windows',
       env.ProgramFiles ?? 'C:\\Program Files',
       env['ProgramFiles(x86)'] ?? 'C:\\Program Files (x86)',
-      env.ProgramData ?? 'C:\\ProgramData'
+      programData
     ]
   }
 

@@ -287,6 +287,61 @@ describe("passerelle compatible Hermes", () => {
     expect(answer).toBe(false);
   });
 
+  it("libère d'un coup toutes les demandes en attente quand la fenêtre se ferme", async () => {
+    let approval: boolean | undefined;
+    const f = fakeCore(async (id, _text, hooks) => {
+      approval = await hooks.approve(id, { id: "c1", name: "run_shell", args: {} }, "x");
+      hooks.emit({ type: "done", sessionId: id });
+    });
+    const { gw, port } = await start(f.core);
+    const c = await connect(gw, port);
+    await c.call("session.create", {});
+    await c.call("prompt.submit", { session_id: "s1", text: "go" });
+    await c.waitFor(() => c.requests.length === 1);
+    // Deux gestes natifs en plus de l'accord d'outil : trois demandes pendantes sur la même connexion.
+    const box = gw.link.ask("pickFile", { title: "a" });
+    const other = gw.link.ask("pickFile", { title: "b" });
+    await c.waitFor(() => c.requests.length === 3);
+    expect(c.requests.map((r) => r.method)).toEqual(["approval", "jarod.shell", "jarod.shell"]);
+    c.close();
+    // La fermeture libère TOUT (`onClose`) : ni l'outil ni les gestes natifs ne restent en attente.
+    expect(await box).toBeNull();
+    expect(await other).toBeNull();
+    await c.waitFor(() => approval !== undefined);
+    expect(approval).toBe(false);
+  });
+
+  it("une fenêtre déjà fermée ne laisse aucune demande pendante", async () => {
+    const f = fakeCore(async () => {});
+    const { gw, port } = await start(f.core);
+    const c = await connect(gw, port);
+    c.close();
+    await new Promise((r) => setTimeout(r, 50));
+    expect(await gw.link.ask("pickFile", { title: "x" })).toBeNull();
+  });
+
+  it("n'accepte pas le jeton en query sur REST (une URL se retrouve dans les journaux)", async () => {
+    const f = fakeCore(async () => {});
+    const { gw, port } = await start(f.core);
+    // L'en-tête seul ouvre les routes gardées ; la query ne compte pas.
+    expect((await fetch(`http://127.0.0.1:${port}/api/memory?token=${gw.token}`)).status).toBe(401);
+    expect((await fetch(`http://127.0.0.1:${port}/api/status`)).status).toBe(200);
+  });
+
+  it("le sous-protocole l'emporte sur la query, et le 101 ne renvoie jamais le jeton", async () => {
+    const f = fakeCore(async () => {});
+    const { gw, port } = await start(f.core);
+    // Un client qui offre le nom ET le jeton, mais arrive avec une query périmée : le nom gagne.
+    const ws = new WebSocket(`ws://127.0.0.1:${port}/api/ws?token=mauvais-jeton`, [WS_PROTOCOL, `${WS_TOKEN_PREFIX}${gw.token}`]);
+    const opened = await new Promise<boolean>((resolve) => {
+      ws.addEventListener("open", () => resolve(true));
+      ws.addEventListener("error", () => resolve(false));
+    });
+    expect(opened).toBe(true);
+    expect(ws.protocol).toBe(WS_PROTOCOL); // jamais `jarod.token.<t>` dans la réponse
+    ws.close();
+  });
+
   it("refuse un second tour dans la même session et sait interrompre", async () => {
     let release: () => void = () => {};
     const f = fakeCore(async (id, _t, hooks) => {

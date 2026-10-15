@@ -4,6 +4,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import type { AudioWsKind, AudioWsTarget, BackendRuntime, BackendState, RestRequest } from '../../shared/ipc.ts'
+import { redactLine } from '../../shared/redact.ts'
 import { osEnv } from '../env.ts'
 import { log } from '../log.ts'
 import { hermesHome, heraldOsDataDir } from '../paths.ts'
@@ -23,6 +24,25 @@ const BACKOFF_MS = [1_000, 3_000, 7_000, 15_000]
 const LOG_TAIL_LINES = 200
 /** The Jarod core stops by itself when its input closes; this long to do it before it is killed. */
 const GRACEFUL_STOP_MS = 8_000
+/** Code de sortie du noyau quand il refuse de démarrer : `startupFailure` (profil déjà servi, port occupé). */
+const STARTUP_REFUSED_EXIT_CODE = 3
+
+/** La dernière raison dite par le noyau (sa ligne `[err]`) : c'est le refus à montrer, pas la ligne de sortie. */
+export function lastBackendError(tail: string[]): string | undefined {
+  for (let i = tail.length - 1; i >= 0; i--) {
+    const line = tail[i]
+
+    if (line?.startsWith('[err] ')) {
+      const reason = redactLine(line.slice('[err] '.length).trim())
+
+      if (reason) {
+        return reason
+      }
+    }
+  }
+
+  return undefined
+}
 
 export type BackendListener = (state: BackendState) => void
 
@@ -146,7 +166,7 @@ export class BackendManager {
         detail = text || detail
       }
 
-      throw new Error(`${request.method} ${request.path} -> ${response.status}: ${detail}`)
+      throw new Error(`${request.method} ${request.path} -> ${response.status}: ${redactLine(detail)}`)
     }
 
     return (text ? JSON.parse(text) : null) as T
@@ -154,14 +174,14 @@ export class BackendManager {
 
   private async launch(attempt: number): Promise<void> {
     const generation = ++this.startGeneration
-    this.update({ phase: attempt === 0 ? 'resolving' : 'restarting', attempt, error: undefined })
+    this.update({ phase: attempt === 0 ? 'resolving' : 'restarting', attempt, error: undefined, errorKind: undefined })
 
     let attach: AttachTarget | null
 
     try {
       attach = attachTarget()
     } catch (error) {
-      this.update({ phase: 'failed', error: error instanceof Error ? error.message : String(error) })
+      this.update({ phase: 'failed', error: redactLine(error instanceof Error ? error.message : String(error)) })
 
       return
     }
@@ -225,9 +245,15 @@ export class BackendManager {
         return
       }
 
-      const message = error instanceof Error ? error.message : String(error)
+      const message = redactLine(error instanceof Error ? error.message : String(error))
       log('backend', `start failed: ${message}`)
       await this.killChild()
+
+      // Le noyau a déjà dit pourquoi il refuse (code 3) : relancer ne ferait que répéter le même refus.
+      if (this.state.errorKind === 'refused') {
+        return
+      }
+
       this.scheduleRestart(attempt, message)
     }
   }
@@ -258,7 +284,7 @@ export class BackendManager {
       log('backend', `attached to ${target.baseUrl}`)
     } catch (error) {
       if (generation === this.startGeneration) {
-        this.scheduleRestart(attempt, `could not reach ${target.baseUrl}: ${error instanceof Error ? error.message : String(error)}`)
+        this.scheduleRestart(attempt, redactLine(`could not reach ${target.baseUrl}: ${error instanceof Error ? error.message : String(error)}`))
       }
     }
   }
@@ -386,6 +412,17 @@ export class BackendManager {
           this.child = null
         }
 
+        // Le noyau refuse par un code 3 et explique pourquoi sur stderr (profil déjà servi, port pris) : relancer
+        // répéterait le même refus. On garde sa raison, et on ne boucle pas.
+        if (code === STARTUP_REFUSED_EXIT_CODE && this.state.phase !== 'ready') {
+          this.clearRestartTimer()
+          const reason = lastBackendError(this.tail) ?? 'the backend refused to start'
+          this.update({ phase: 'failed', error: reason, errorKind: 'refused', wsUrl: undefined, wsToken: undefined, baseUrl: undefined, port: undefined })
+          settle(() => reject(new Error(reason)))
+
+          return
+        }
+
         settle(() => reject(new Error(`the backend exited early (code ${code ?? 'null'}, signal ${signal ?? 'none'})`)))
 
         if (settled && generation === this.startGeneration && !this.stopping && this.state.phase === 'ready') {
@@ -464,13 +501,15 @@ export class BackendManager {
   }
 
   private record(line: string): void {
-    this.tail.push(line)
+    // Le journal est affiché dans Réglages et transmis au disque : il traverse le masque ici, une fois, pour tous.
+    const safe = redactLine(line, 4_000)
+    this.tail.push(safe)
 
     if (this.tail.length > LOG_TAIL_LINES * 2) {
       this.tail.splice(0, this.tail.length - LOG_TAIL_LINES)
     }
 
-    log('serve', line)
+    log('serve', safe)
   }
 
   private update(patch: Partial<BackendState>): void {

@@ -5,6 +5,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { type DirEntry, type FilePreview, IPC, type TreeEntry } from '../../shared/ipc.ts'
 import { isRecycleBin } from '../../shared/trash.ts'
+import { log } from '../log.ts'
 import { run } from '../platform/exec.ts'
 import { type EditorTarget, hostPlatform } from '../platform/index.ts'
 import { openRecycleBin } from './recycle-bin.ts'
@@ -128,19 +129,33 @@ async function readFile(target: string): Promise<FilePreview> {
   }
 }
 
+/**
+ * Every refusal of the window's file surface is logged as one bounded line before the stable error goes back:
+ * a guard that refuses silently would leave the person with a toast and no trace of what was attempted.
+ */
+function guarded<T>(decision: () => T): T {
+  try {
+    return decision()
+  } catch (error) {
+    log('fs', `refused: ${error instanceof Error ? error.message : String(error)}`.slice(0, 200))
+
+    throw error
+  }
+}
+
 /** Paths the shell may write to directly (user-initiated edits). Everything else goes through the audited bridge. */
 function assertWritable(target: string): string {
-  return assertWritablePath(normalizeUserPath(target))
+  return guarded(() => assertWritablePath(normalizeUserPath(target)))
 }
 
 /** Paths the window may read or show: allowed outside home, never a protected location and never through a name trick. */
 function assertReadable(target: string): string {
-  return assertReadablePath(normalizeUserPath(target))
+  return guarded(() => assertReadablePath(normalizeUserPath(target)))
 }
 
 /** Paths the default action may open: documents and folders, never a program, a script or a shortcut. */
 function assertOpenable(target: string): string {
-  return assertOpenablePath(normalizeUserPath(target))
+  return guarded(() => assertOpenablePath(normalizeUserPath(target)))
 }
 
 async function dirSize(target: string, budgetMs = 4000): Promise<{ bytes: number; files: number; complete: boolean }> {

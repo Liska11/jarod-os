@@ -13,7 +13,7 @@ import { createRemoteBrowser } from "./browser.js";
 import { createBridgeShell } from "./bridge-shell.js";
 import { removeSecretFile, writeSecretFile } from "./secret-file.js";
 import { createGateway } from "./server.js";
-import { startupFailure } from "./startup.js";
+import { boundedMessage, startupFailure } from "./startup.js";
 
 const env = process.env;
 /** Refuse de démarrer en le disant clairement : la fenêtre n'affiche que ces lignes (voir `startup.ts`). */
@@ -34,7 +34,7 @@ const wsRaw = (wsIndex >= 0 ? process.argv[wsIndex + 1] : undefined) ?? env.JARO
 let workspace: string | undefined;
 if (wsRaw) {
   if (!isAbsolute(wsRaw) || !existsSync(wsRaw) || !statSync(wsRaw).isDirectory()) {
-    console.error(`Dossier de travail invalide (absolu et existant attendu) : ${wsRaw}`);
+    console.error(boundedMessage(`Dossier de travail invalide (absolu et existant attendu) : ${wsRaw}`));
     process.exit(2);
   }
   workspace = realpathSync(wsRaw);
@@ -64,12 +64,22 @@ const voice = voiceService
       },
     }
   : undefined;
+// Les délais d'attente d'un accord : le défaut du noyau (10 min pour un outil, 1 h pour un geste natif) est
+// raisonnable mais doit pouvoir être resserré par qui fait tourner la passerelle (service, machine partagée).
+const timeoutMs = (raw: string | undefined): number | undefined => {
+  const n = Number(raw);
+  return Number.isFinite(n) && n >= 1_000 ? Math.min(n, 24 * 60 * 60_000) : undefined;
+};
+const approvalTimeoutMs = timeoutMs(env.JAROD_APPROVAL_TIMEOUT_MS);
+const shellTimeoutMs = timeoutMs(env.JAROD_SHELL_TIMEOUT_MS);
 const gateway = createGateway({
   core,
   ...(workspace ? { workspace } : {}),
   version: gatewayVersion,
   ...(voice ? { voice } : {}),
   ...(env.JAROD_GATEWAY_TOKEN ? { token: env.JAROD_GATEWAY_TOKEN } : {}),
+  ...(approvalTimeoutMs === undefined ? {} : { approvalTimeoutMs }),
+  ...(shellTimeoutMs === undefined ? {} : { shellTimeoutMs }),
   log: (line) => console.error(`[passerelle] ${line}`),
 });
 // Les canaux de pilotage (fournisseurs, modèles locaux, skills…) : les handlers de jarod-cordis sur ce noyau, les gestes natifs demandés à la fenêtre.
@@ -92,7 +102,7 @@ gateway.attachBridge(createBridgePort(createHandlers({ kernel: () => kernel, she
 const pushEvent = (channel: string, ...args: unknown[]) => gateway.link.send(channel, args);
 const unbindEvents = [bindLocalModelsEvents(kernel.localEngine?.models, pushEvent), bindUpdateEvents(core.app as never, pushEvent), bindVoiceEvents(core.app as never, pushEvent)];
 // Le serveur d'API compatible OpenAI que l'utilisateur avait allumé revient avec le noyau.
-await startRememberedApiServers().catch((e: unknown) => console.error(`[passerelle] serveur d'API non rallumé : ${e instanceof Error ? e.message : String(e)}`));
+await startRememberedApiServers().catch((e: unknown) => console.error(boundedMessage(`[passerelle] serveur d'API non rallumé : ${e instanceof Error ? e.message : String(e)}`)));
 const port = await gateway.listen(env.JAROD_GATEWAY_PORT ? Number(env.JAROD_GATEWAY_PORT) : 0).catch(fail);
 const file = join(dataDir, "gateway.json");
 // Le fichier porte le jeton en clair : écrit par `writeSecretFile` (0o600, plus `icacls` sous Windows), effacé à l'arrêt.
@@ -107,8 +117,9 @@ let stopping = false;
 const stop = async () => {
   if (stopping) return;
   stopping = true;
-  console.error("[passerelle] non servi :", JSON.stringify(gateway.unhandled()));
-  console.error("[passerelle] événements de Jarod sans équivalent :", JSON.stringify(gateway.ignoredEvents()));
+  // Le contenu vient des outils : il traverse le masque du noyau et reste d'une ligne (un « non servi » n'est pas un dump).
+  console.error(boundedMessage(`[passerelle] non servi : ${JSON.stringify(gateway.unhandled())}`));
+  console.error(boundedMessage(`[passerelle] événements de Jarod sans équivalent : ${JSON.stringify(gateway.ignoredEvents())}`));
   for (const off of unbindEvents) off();
   detachBrowser?.();
   closeAllApiServers();

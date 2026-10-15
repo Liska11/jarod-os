@@ -8,12 +8,12 @@ import type { GatewayStatus } from "@jarod/contracts";
 import { type AutoStartEngine, engineAutoStartBlock, startLocalEngine } from "@jarod/plugin-llm";
 import {
   clearSupervisorState,
-  RuntimeLockError,
   readSupervisorStatus,
   stopRequested,
   writeSupervisorState,
 } from "@jarod/plugin-agent";
 import { type CliContext, type CliCore as JarodCore, defaultDataRoot, openCore } from "./context.js";
+import { startupFailure } from "./gateway/startup.js";
 
 /** Ce que `serve` demande au moteur local (`EngineService` le satisfait). */
 export type ServeEngine = AutoStartEngine;
@@ -98,7 +98,7 @@ export async function serve(opts: ServeOptions): Promise<number> {
       init: true,
     });
   } catch (e) {
-    log(e instanceof RuntimeLockError ? e.message : `Démarrage impossible : ${(e as Error).message}`);
+    log(startupFailure(e).message);
     return 1;
   }
   const { core, profile, dataDir } = opened;
@@ -106,7 +106,7 @@ export async function serve(opts: ServeOptions): Promise<number> {
     await core.init();
   } catch (e) {
     await core.dispose().catch(() => {});
-    log(e instanceof RuntimeLockError ? e.message : `Démarrage impossible : ${(e as Error).message}`);
+    log(startupFailure(e).message);
     return 1;
   }
   writeSupervisorState(root, {

@@ -53,6 +53,17 @@ describe('protectedRoots', () => {
     expect(roots).toContain('C:\\Users\\Sam\\AppData\\Local\\Microsoft\\Vault')
   })
 
+  it('protects the certificate store and the machine crypto store the kernel lists too', () => {
+    const roots = protectedRoots(winHome, 'win32', winEnv)
+
+    expect(roots).toContain('C:\\Users\\Sam\\AppData\\Roaming\\Microsoft\\SystemCertificates')
+    expect(roots).toContain('C:\\ProgramData\\Microsoft\\Crypto')
+
+    for (const file of ['C:\\Users\\Sam\\AppData\\Roaming\\Microsoft\\SystemCertificates\\My\\x', 'C:\\ProgramData\\Microsoft\\Crypto\\RSA\\key']) {
+      expect(() => assertReadablePath(file, winHome, 'win32', winEnv), file).toThrow('protected location')
+    }
+  })
+
   it('lists the shell state and the kernel profile, honouring HERMES_HOME and JAROD_OS_DATA', () => {
     const roots = protectedRoots(winHome, 'win32', winEnv)
 
@@ -157,5 +168,29 @@ describe('assertOpenablePath', () => {
   it('allows a document, and a folder', () => {
     expect(assertOpenablePath('C:\\Users\\Sam\\Documents\\rapport.pdf', winHome, 'win32', winEnv)).toBe('C:\\Users\\Sam\\Documents\\rapport.pdf')
     expect(assertOpenablePath('C:\\Users\\Sam\\Downloads', winHome, 'win32', winEnv)).toBe('C:\\Users\\Sam\\Downloads')
+  })
+})
+
+describe('real path resolution', () => {
+  it('refuses a protected folder reached through its 8.3 short name', () => {
+    if (process.platform !== 'win32') {
+      return
+    }
+
+    // realpathSync.native expands PROGRA~1 to Program Files, which is one of the protected roots.
+    expect(() => assertReadablePath('C:\\PROGRA~1\\Windows\\System32\\config\\SAM', winHome, 'win32', winEnv)).toThrow('protected location')
+  })
+
+  it('resolves the nearest existing ancestor for a path that does not exist yet', () => {
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), 'herald-os-guard-'))
+    const fresh = path.join(home, 'code', 'new', 'deep', 'a.txt')
+
+    try {
+      expect(assertWritablePath(fresh, home)).toBe(fresh)
+      expect(() => assertWritablePath(path.join(home, '.ssh', 'new', 'authorized_keys'), home)).toThrow('protected location')
+      expect(() => assertReadablePath(path.join(home, '.ssh', 'new', 'authorized_keys'), home)).toThrow('protected location')
+    } finally {
+      fs.rmSync(home, { recursive: true, force: true })
+    }
   })
 })

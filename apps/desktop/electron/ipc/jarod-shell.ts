@@ -2,6 +2,7 @@ import { app, BrowserWindow, clipboard, dialog, ipcMain, nativeTheme, session, s
 import { IPC } from '../../shared/ipc.ts'
 import { AgentBrowser, type ElectronBits } from '../agent-browser/agent-browser.ts'
 import { runBrowserOp } from '../agent-browser/host.ts'
+import { log } from '../log.ts'
 import { type NativeDialogs, type NativeEffects, runNativeGesture, str } from './jarod-shell-gestures.ts'
 
 /* Registers the `jarod.shell` gestures (see jarod-shell-gestures.ts for the rules). */
@@ -59,7 +60,16 @@ export function registerJarodShellIpc(getWindow: () => BrowserWindow | null, res
     restartBackend: () => void setTimeout(restartBackend, 400)
   }
 
-  ipcMain.handle(IPC.jarodShell, (_event, kind: unknown, params: unknown) =>
-    runNativeGesture(str(kind, 40), params && typeof params === 'object' ? (params as Record<string, unknown>) : {}, dialogs, effects)
-  )
+  ipcMain.handle(IPC.jarodShell, (_event, kind: unknown, params: unknown) => {
+    const gesture = str(kind, 40)
+
+    return runNativeGesture(gesture, params && typeof params === 'object' ? (params as Record<string, unknown>) : {}, dialogs, effects).catch((error: unknown) => {
+      // The engine reads the refusal itself; the log keeps one bounded line for the gestures that name a file.
+      if (gesture === 'openPath' || gesture === 'showItemInFolder') {
+        log('jarod.shell', `refused ${gesture}: ${error instanceof Error ? error.message : String(error)}`.slice(0, 200))
+      }
+
+      throw error
+    })
+  })
 }

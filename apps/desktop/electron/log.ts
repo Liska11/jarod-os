@@ -1,5 +1,6 @@
 import fs from 'node:fs'
 import path from 'node:path'
+import { redactLine } from '../shared/redact.ts'
 import { hermesHome } from './paths.ts'
 
 const MAX_TAIL = 400
@@ -28,7 +29,9 @@ function ensureStream(): fs.WriteStream | null {
 }
 
 export function log(scope: string, message: string): void {
-  const line = `${new Date().toISOString()} [${scope}] ${message}`
+  // Un journal traverse le masque avant d'être gardé en mémoire, affiché et écrit sur disque : une erreur de
+  // provider ou une réponse HTTP peut citer l'en-tête refusé. Borné aussi (4 000 : une ligne reste une ligne).
+  const line = `${new Date().toISOString()} [${scope}] ${redactLine(message, 4_000)}`
   tail.push(line)
 
   if (tail.length > MAX_TAIL) {

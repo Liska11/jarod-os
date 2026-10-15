@@ -79,5 +79,11 @@ export function registerAppsIpc(): void {
 
     return hostPlatform().launchApp(target)
   })
-  ipcMain.handle(IPC.appsIcon, (_event, appPath: string) => iconFor(normalizeAppPath(appPath)))
+  ipcMain.handle(IPC.appsIcon, async (_event, appPath: string) => {
+    // Rendering an icon shells out to the platform's extractor (sips, qlmanage, the shell), so the rule that applies to
+    // starting an application applies here too: only an application the Apps grid itself lists gets one.
+    const catalog = await hostPlatform().listInstalledApps()
+
+    return iconFor(assertLaunchable(normalizeAppPath(appPath), catalog))
+  })
 }

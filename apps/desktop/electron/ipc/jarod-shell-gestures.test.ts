@@ -1,3 +1,5 @@
+import os from 'node:os'
+import path from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import { installSummaryText, type NativeDialogs, type NativeEffects, runNativeGesture } from './jarod-shell-gestures.ts'
 
@@ -114,5 +116,24 @@ describe('effects', () => {
     r.effects.openPath.mockResolvedValueOnce('no application')
     expect(await r.run('openPath', { path: 'C:\\x.bin' })).toBe('no application')
     expect(await r.run('openPath', { path: 'C:\\y.txt' })).toBe('')
+  })
+
+  it('checks a path the engine names itself before opening or revealing it', async () => {
+    const r = rig()
+    const documents = path.join(os.homedir(), 'Documents')
+    const report = path.join(documents, 'rapport.pdf')
+    const key = path.join(os.homedir(), '.ssh', 'id_rsa')
+
+    await expect(r.run('openPath', { path: path.join(documents, 'setup.exe') })).rejects.toThrow(/program or a script/)
+    await expect(r.run('openPath', { path: key })).rejects.toThrow(/protected location/)
+    await expect(r.run('showItemInFolder', { path: key })).rejects.toThrow(/protected location/)
+    expect(r.effects.openPath).not.toHaveBeenCalled()
+    expect(r.effects.showItemInFolder).not.toHaveBeenCalled()
+
+    r.effects.openPath.mockResolvedValueOnce('')
+    expect(await r.run('openPath', { path: report })).toBe('')
+    expect(r.effects.openPath).toHaveBeenCalledWith(report)
+    await r.run('showItemInFolder', { path: report })
+    expect(r.effects.showItemInFolder).toHaveBeenCalledWith(report)
   })
 })

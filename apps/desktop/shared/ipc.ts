@@ -27,6 +27,8 @@ export interface BackendState {
   baseUrl?: string
   port?: number
   error?: string
+  /** `refused` : le noyau a refusé de démarrer et l'a dit (profil déjà servi, port occupé) — on ne relance pas en boucle. */
+  errorKind?: 'refused'
   logTail: string[]
   /** Another app's messaging gateway on this Hermes home (Hermes Desktop, say): its pid. */
   sharedGateway?: number
