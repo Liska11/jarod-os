@@ -1,4 +1,4 @@
-import { execFile, spawn } from 'node:child_process'
+import { execFile } from 'node:child_process'
 import net from 'node:net'
 import path from 'node:path'
 import type { WmAction, WmState, WmWindow, WmWorkspace } from '../../shared/ipc.ts'
@@ -20,6 +20,9 @@ export class HyprlandClient implements Compositor {
   private refreshTimer: NodeJS.Timeout | null = null
   /** Whether this Hyprland takes Lua dispatchers; unknown until one works. */
   private lua: boolean | null = null
+
+  /** The screenshot runner, injected by whoever owns the control gate (main, or a test). */
+  constructor(private readonly capture?: (what: 'screen' | 'window' | 'region') => void) {}
 
   get available(): boolean {
     return this.socket !== null
@@ -68,14 +71,12 @@ export class HyprlandClient implements Compositor {
 
   async action(action: WmAction): Promise<void> {
     if (action.type === 'screenshot') {
-      // Hyprland has no screenshot UI of its own; Herald's capture does it with grim and slurp.
-      spawn('herald-os', ['capture', 'screenshot', action.what === 'select' ? 'region' : action.what], { detached: true, stdio: 'ignore' }).unref()
+      // Hyprland has no screenshot UI of its own; Herald's capture does it with grim and slurp. That
+      // capture is injected rather than spawned here, so it takes the control gate every other CLI
+      // call takes instead of being a private spawn on the window-action path (R3.2).
+      this.capture?.(action.what === 'select' ? 'region' : action.what)
 
       return
-    }
-
-    if (action.type === 'raw') {
-      return this.raw(action.args)
     }
 
     // A Lua config (Hyprland 0.55+, Omarchy 4) takes only Lua dispatchers; hyprland.conf only the
@@ -408,8 +409,6 @@ export function dispatchLua(action: WmAction): string[] {
       return ['hl.dsp.exec_cmd("herald-os applications")']
     case 'screenshot':
       return []
-    case 'raw':
-      return [action.args.join(' ')]
   }
 }
 
@@ -435,7 +434,5 @@ export function dispatchArgs(action: WmAction): string[][] {
       return [['exec', 'herald-os applications']]
     case 'screenshot':
       return []
-    case 'raw':
-      return [action.args]
   }
 }

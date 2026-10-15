@@ -1,17 +1,23 @@
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { type BrowserWindow, ipcMain, powerMonitor, powerSaveBlocker } from 'electron'
+import { BrowserWindow, ipcMain, powerMonitor, powerSaveBlocker } from 'electron'
 import { type HeraldOSPrefs, type IdleTimings, IPC, type SwitchName, type SwitchState } from '../shared/ipc.ts'
 import { log } from './log.ts'
 import { run } from './platform/exec.ts'
 import { readPrefs, writePrefs } from './prefs.ts'
+import { IDLE_RESTART_ACTION } from './shell/host-actions.ts'
+import type { HostControlGate } from './shell/host-control.ts'
+import { runCliThroughGate } from './shell/services.ts'
 
 const STAY_AWAKE_MARKER = path.join(os.homedir(), '.local', 'state', 'herald-os', 'stay-awake')
 const IDLE_CONF = path.join(os.homedir(), '.config', 'herald-os', 'idle.conf')
 export const IDLE_DEFAULTS: IdleTimings = { lockAfter: 10, screenOffAfter: 15, suspendAfter: 0 }
 const SCREENSAVER_DEFAULT_MINUTES = 5
 const IDLE_POLL_MS = 10_000
+
+/** Every switch a window may set. Anything else is refused before the system side is touched. */
+const SWITCH_NAMES: readonly SwitchName[] = ['nightLight', 'stayAwake', 'doNotDisturb', 'screensaver']
 
 /** idle.conf for linux/bin/herald-os-idle: seconds, 0 for never. */
 export function renderIdleConf(prefs: Pick<HeraldOSPrefs, 'idle' | 'screensaver'>): string {
@@ -32,6 +38,7 @@ export function renderIdleConf(prefs: Pick<HeraldOSPrefs, 'idle' | 'screensaver'
 export class SwitchService {
   private blocker: number | null = null
   private screensaverUp = false
+  private control: HostControlGate | null = null
 
   constructor(
     private readonly options: {
@@ -45,9 +52,28 @@ export class SwitchService {
     }
   ) {}
 
+  /** The system side of a switch runs through the same gate as every other host action (R3.2). */
+  setControl(gate: HostControlGate): void {
+    this.control = gate
+  }
+
   start(): void {
     ipcMain.handle(IPC.switchesGet, () => this.state())
-    ipcMain.handle(IPC.switchesSet, (_event, name: SwitchName, enabled: boolean) => this.set(name, Boolean(enabled)))
+    ipcMain.handle(IPC.switchesSet, (event, name: SwitchName, enabled: boolean) => {
+      if (!BrowserWindow.fromWebContents(event.sender)) {
+        log('switches', 'refused a switch change from a window that is not a herald-os surface')
+
+        throw new Error('This window may not change the shell switches.')
+      }
+
+      if (!SWITCH_NAMES.includes(name)) {
+        log('switches', `refused an unknown switch ${String(name)}`)
+
+        throw new Error(`unknown switch ${String(name)}`)
+      }
+
+      return this.set(name, Boolean(enabled))
+    })
 
     if (this.options.session) {
       this.writeIdleConf(readPrefs())
@@ -114,8 +140,31 @@ export class SwitchService {
 
     // Staying awake means the idle unit is stopped on purpose; it picks the file up when it restarts.
     if (!fs.existsSync(STAY_AWAKE_MARKER)) {
-      await run('herald-os-idle', ['restart'], 10_000)
+      await this.restartIdleUnit()
     }
+  }
+
+  /** `herald-os-idle restart` reapplies the timings; it is a host action, so it takes the gate. */
+  private async restartIdleUnit(): Promise<void> {
+    const gate = this.control
+
+    if (!gate) {
+      log('switches', 'refused an idle restart before the control gate was ready')
+
+      return
+    }
+
+    const gated = await gate.submitLocal({ client: 'ui', command: IDLE_RESTART_ACTION, args: {}, source: 'idle' })
+
+    if (gated.kind === 'reply') {
+      log('switches', `idle restart refused: ${gated.reply.error ?? 'denied'}`)
+
+      return
+    }
+
+    const result = await run('herald-os-idle', ['restart'], 10_000)
+
+    gated.finish({ ok: result.code === 0, reason: result.code === 0 ? undefined : `herald-os-idle exited ${result.code}` })
   }
 
   /** Something outside the shell (the CLI, a hotkey) changed a switch: tell every window. */
@@ -140,11 +189,19 @@ export class SwitchService {
     }
   }
 
-  private async cli(args: string[]): Promise<void> {
-    const result = await run('herald-os', args, 20_000)
+  private async cli(argv: string[]): Promise<void> {
+    const gate = this.control
+
+    if (!gate) {
+      throw new Error('The shell is not ready to change the switches yet.')
+    }
+
+    // The system side of a switch lives in the `herald-os` CLI, so it goes through the same gate as
+    // every other window-initiated host action: a catalogued verb, tiered, and journalled (R3.2).
+    const result = await runCliThroughGate(gate, argv, 'switches')
 
     if (result.code !== 0) {
-      throw new Error(result.stderr.trim() || result.stdout.trim() || `herald-os ${args.join(' ')} failed`)
+      throw new Error(result.stderr.trim() || result.stdout.trim() || `herald-os ${argv.join(' ')} failed`)
     }
   }
 

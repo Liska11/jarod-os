@@ -1,4 +1,5 @@
 import { app, BrowserWindow, dialog, globalShortcut, ipcMain, Notification, protocol, screen, shell } from 'electron'
+import { randomBytes } from 'node:crypto'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
@@ -9,7 +10,6 @@ import { CrashWatcher } from './crash/watch.ts'
 import { fireEventAutomations } from './events/automations.ts'
 import { events } from './events/bus.ts'
 import { runHooks } from './events/hooks.ts'
-import { run } from './platform/exec.ts'
 import { startEventSources } from './events/sources.ts'
 import { registerAppsIpc } from './ipc/apps.ts'
 import { registerBridgeIpc } from './ipc/bridge.ts'
@@ -50,12 +50,13 @@ import { NotificationDaemon } from './shell/notification-daemon.ts'
 import { maximizeAction } from './window-controls.ts'
 import { handleUiRequest, OsCommandBridge, OsControlServer } from './shell/os-control.ts'
 import { asControlTier, ControlSecurity, controlAuditSink, controlEndpoint, controlTokens, type ControlAuditEntry } from './shell/control-authz.ts'
+import { hostCatalogueEntries, hostCatalogueTiers } from './shell/host-actions.ts'
 import { HostControlGate, type ApprovalProvider, type CatalogueEntry } from './shell/host-control.ts'
 import { PanelShell } from './shell/panels.ts'
 import { registerBrandingIpc } from './shell/branding.ts'
 import { EmojiPanel } from './shell/emoji-panel.ts'
 import { registerMenuExtensionsIpc } from './shell/menu-extensions.ts'
-import { registerServiceIpc } from './shell/services.ts'
+import { registerServiceIpc, runCliThroughGate } from './shell/services.ts'
 import { WallpaperService } from './shell/wallpaper.ts'
 import { appIconPath, createMainWindow, loadShell, MAIN_WINDOW_MIN } from './window.ts'
 import { CrashPolicy, isSafeMode, recoveryAction, recoveryPage, relaunchArgs } from './recovery.ts'
@@ -152,7 +153,18 @@ const switches = new SwitchService({
 })
 // Linux without the panels session: Herald as an app inside Hyprland or Omarchy, or the cage kiosk.
 // The `herald-os` CLI (and so the compositor's hotkeys) reaches the one window through the same socket.
-const appHost = !panels && process.platform === 'linux' ? new DesktopHost(() => mainWindow, createCompositor(detectCompositor())) : null
+const appHost =
+  !panels && process.platform === 'linux'
+    ? new DesktopHost(
+        () => mainWindow,
+        // Hyprland has no screenshot UI of its own: Herald's capture takes it. It runs through the same
+        // gate as every other CLI call, so it is tiered and journalled rather than a private spawn off
+        // the window-action path (R3.2).
+        createCompositor(detectCompositor(), what => {
+          void runCliThroughGate(backendGate, ['capture', 'screenshot', what], 'wm-action').catch(error => log('wm', String(error)))
+        }),
+      )
+    : null
 // macOS: Cmd+Ctrl+E opens the emoji picker over any app (Jarod-OS Linux binds it in niri).
 const emojiPanel = !panels && process.platform === 'darwin' ? new EmojiPanel(() => mainWindow) : null
 const shellHost: ShellHost | null = panels ?? appHost
@@ -213,9 +225,29 @@ const panelSecurity = new ControlSecurity({ tokens: surfaceTokens }, auditContro
 const backendSecurity = new ControlSecurity({ tokens: surfaceTokens, surface: 'backend' }, auditControl)
 const panelGate = new HostControlGate({ security: panelSecurity, approve: approveMutation })
 const backendGate = new HostControlGate({ security: backendSecurity, approve: approveMutation })
+/**
+ * R3.1: the host's own actions are known here, in the main process, so they are decidable from the
+ * first moment rather than after the renderer has registered the registry catalogue. A first run sets
+ * the account password in the setup wizard, which can happen before the backend has answered
+ * `osBridge.list()`; without this seed that action would be refused as unknown. `learnCatalogue`
+ * merges the registry's entries into the same lookup once they arrive.
+ */
+const hostTiers = hostCatalogueTiers()
+const hostEntries = hostCatalogueEntries()
+
+for (const security of [panelSecurity, backendSecurity]) {
+  security.setCatalogue(id => hostTiers.get(id))
+}
+
+for (const gate of [panelGate, backendGate]) {
+  gate.setCatalogue(hostEntries)
+}
 // A plugin's OS commands go through the same gate, and so into the same journal (R2.2). Set here
 // because the gate is built after the plugin host; until it is set, plugin commands are refused.
 plugins.setControl(backendGate)
+// The quick switches reach the system through the `herald-os` CLI and the idle unit; both take the
+// gate now, so a window asking for one names a catalogued action and leaves a line (R3.2).
+switches.setControl(backendGate)
 /**
  * The shell's own windows run a registry command the way everything else does: through the gate,
  * against the catalogue, with a line in the journal. Before R3 the palette and the control menu sent
@@ -286,7 +318,9 @@ const osControlPath = panels ? path.join(process.env.XDG_RUNTIME_DIR || `/run/us
 const osControl = panels
   ? null
   : new OsControlServer(
-      controlEndpoint({ platform: process.platform, runtimeDir: heraldOsDataDir(), dataDir: heraldOsDataDir() }),
+      // The nonce is drawn here, once: the pipe name is then unguessable, and only this process knows
+      // it until the DACL has been verified and the backend is told where to dial (R3.2).
+      controlEndpoint({ platform: process.platform, runtimeDir: heraldOsDataDir(), dataDir: heraldOsDataDir(), nonce: randomBytes(8).toString('hex') }),
       async request => {
         // One pipeline, then the work: who is asking, whether the argument shape matches the command,
         // and — for anything that changes the machine — an approval this process witnessed itself.
@@ -367,7 +401,10 @@ const learnCatalogue = async (attempt = 0): Promise<void> => {
     return
   }
 
-  const entries = reply.result as CatalogueEntry[]
+  // The renderer declares what its registry commands are worth; the main process adds the host
+  // actions that are not registry commands at all (plugin administration, the CLI a window may spawn),
+  // so one catalogue decides every privileged action, whoever asks for it (R3.1).
+  const entries = [...(reply.result as CatalogueEntry[]), ...hostCatalogueEntries()]
   const tiers = new Map<string, 'read' | 'act' | 'mutate' | 'destructive'>()
 
   for (const entry of entries) {
@@ -379,7 +416,7 @@ const learnCatalogue = async (attempt = 0): Promise<void> => {
   }
 
   for (const security of [panelSecurity, backendSecurity]) {
-    security.setCatalogue(id => tiers.get(id))
+    security.setCatalogue(id => tiers.get(id) ?? hostTiers.get(id))
   }
 
   for (const gate of [panelGate, backendGate]) {
@@ -470,7 +507,7 @@ function registerCoreIpc(): void {
   })
 
   ipcMain.handle(IPC.prefsGet, () => readPrefs())
-  ipcMain.handle(IPC.prefsSet, (_event, patch: Partial<HeraldOSPrefs>) => {
+  ipcMain.handle(IPC.prefsSet, (event, patch: Partial<HeraldOSPrefs>) => {
     const next = writePrefs(patch)
 
     if ('wallpaper' in patch) {
@@ -493,14 +530,22 @@ function registerCoreIpc(): void {
       void switches.broadcast()
     }
 
-    // The keymap lives in niri's config, which the CLI renders (niri reloads it by itself).
+    // The keymap lives in niri's config, which the CLI renders (niri reloads it by itself). Setting it
+    // is a host mutation like any other, so it takes the same gate and the same journal — this used to
+    // be an ungated spawn on the preference path (R3.2).
     if ('keymap' in patch && process.platform === 'linux') {
-      void run('herald-os', ['keymap', next.keymap === 'omarchy' ? 'omarchy' : 'herald'], 10_000).then(result => result.code !== 0 && log('keymap', result.stderr.trim()))
+      if (BrowserWindow.fromWebContents(event.sender)) {
+        void runCliThroughGate(backendGate, ['keymap', next.keymap === 'omarchy' ? 'omarchy' : 'herald'], 'prefs-set').then(
+          result => result.code !== 0 && log('keymap', result.stderr.trim()),
+        )
+      } else {
+        log('keymap', 'refused a keymap change from a window that is not a herald-os surface')
+      }
     }
 
     // Every surface window sees the same preferences.
     for (const win of BrowserWindow.getAllWindows()) {
-      if (win.webContents !== _event.sender) {
+      if (win.webContents !== event.sender) {
         win.webContents.send(IPC.prefsChanged, next)
       }
     }
@@ -527,7 +572,7 @@ function registerCoreIpc(): void {
   registerJarodShellIpc(() => mainWindow, () => void backend.restart())
   registerAppsIpc()
   registerBridgeIpc()
-  registerServiceIpc()
+  registerServiceIpc(backendGate)
   registerMenuExtensionsIpc()
   registerBrandingIpc()
   registerSystemIpc(() => BrowserWindow.getAllWindows())
@@ -544,8 +589,8 @@ function registerCoreIpc(): void {
   registerControlsIpc()
   registerNotificationHistoryIpc()
   registerDictationIpc(() => (panels ? panels.mainWindow() : mainWindow))
-  registerCatalogIpc()
-  registerSetupIpc()
+  registerCatalogIpc(backendGate)
+  registerSetupIpc(backendGate)
   plugins.registerIpc()
   plugins.registerProtocol()
   plugins.watch()

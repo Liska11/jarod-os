@@ -6,6 +6,7 @@ import { IPC, type OsControlReply, type OsControlRequest } from '../../shared/ip
 import { log } from '../log.ts'
 import type { ControlEndpoint } from './control-authz.ts'
 import { LineSplitter } from './json-lines.ts'
+import { hardenControlPipe, isLogonSid, resolvePipePrincipals } from './pipe-security.ts'
 
 /*
  * OS control: how anything outside the renderer (the agent's `os_ui` tool through the bridge
@@ -151,9 +152,9 @@ export async function handleUiRequest(request: UiControlRequest, bridge: OsComma
  */
 /**
  * Whether the control endpoint is really accepting, and why not when it is not. A door that failed to
- * open must never be mistaken for an open one: the platform decides who may connect (on Windows, an
- * implicit DACL — see `scripts/probe-pipe-acl.mjs`), so a silent failure here would be read by every
- * caller as "the door is there".
+ * open must never be mistaken for an open one: on Windows this class states the pipe's DACL itself
+ * (`pipe-security.ts`) and refuses to serve until it has read that policy back, so a silent failure
+ * here would be read by every caller as "the door is there".
  */
 export interface ControlServeStatus {
   serving: boolean
@@ -244,22 +245,57 @@ export class OsControlServer {
     })
 
     this.server.listen(this.target.path, () => {
+      if (this.target.kind === 'pipe') {
+        // The platform gives a pipe created by `net` an implicit DACL: Everyone and Anonymous can
+        // read it. Until that DACL has been replaced with one naming exactly the principals of this
+        // session, the door is not open — a caller asking `status` must never hear "serving" from a
+        // pipe that still lets every local process connect.
+        void this.hardenPipe()
+
+        return
+      }
+
       this.state = { serving: true, failure: null }
 
-      if (this.target.kind === 'unix') {
-        try {
-          fs.chmodSync(this.target.path, 0o600)
-        } catch (error) {
-          // A socket that is not owner-only is a different door than the one this code promises.
-          this.giveUp(`cannot restrict ${this.target.path} to its owner: ${(error as Error).message}`)
+      try {
+        fs.chmodSync(this.target.path, 0o600)
+      } catch (error) {
+        // A socket that is not owner-only is a different door than the one this code promises.
+        this.giveUp(`cannot restrict ${this.target.path} to its owner: ${(error as Error).message}`)
 
-          return
-        }
+        return
       }
 
       log('os-control', `listening on ${this.target.endpoint}`)
       this.markReady()
     })
+  }
+
+  /**
+   * Windows: replace the implicit DACL with an explicit, protected one and read it back off the live
+   * object. Every failure — no PowerShell, a refused `SetSecurityInfo`, a DACL that names more
+   * principals than were asked for — closes the door rather than serving it half-restricted.
+   */
+  private async hardenPipe(): Promise<void> {
+    try {
+      const principals = await resolvePipePrincipals()
+
+      // A token without a logon SID can only grant its account, not its session: the pipe then
+      // narrows nothing between two processes of the same user, and the per-run token stays the only
+      // credential that separates them. Say so rather than let the journal imply a session scoping
+      // the DACL does not have (R3.2).
+      if (principals.every(sid => !isLogonSid(sid))) {
+        log('os-control', 'this token carries no logon SID: the pipe grants the account, not one session')
+      }
+
+      const applied = await hardenControlPipe(this.target.path, principals)
+
+      this.state = { serving: true, failure: null }
+      log('os-control', `listening on ${this.target.endpoint} with ${applied}`)
+      this.markReady()
+    } catch (error) {
+      this.giveUp(error instanceof Error ? error.message : String(error))
+    }
   }
 
   stop(): void {

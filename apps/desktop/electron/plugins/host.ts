@@ -1,4 +1,4 @@
-import { type BrowserWindow, ipcMain, protocol, shell } from 'electron'
+import { BrowserWindow, type IpcMainInvokeEvent, ipcMain, protocol, shell } from 'electron'
 import { execFile } from 'node:child_process'
 import fs from 'node:fs'
 import { writeFileAtomic } from '../atomic-write.ts'
@@ -8,6 +8,7 @@ import { IPC, type ShellCommand } from '../../shared/ipc.ts'
 import { allowed, grantCovers, pluginCsp, type PluginGrant, type PluginMethod, type PluginView, validateManifest } from '../../shared/plugins.ts'
 import { log } from '../log.ts'
 import { hostPlatform } from '../platform/index.ts'
+import { PLUGIN_ACTIONS } from '../shell/host-actions.ts'
 import type { HostControlGate } from '../shell/host-control.ts'
 import type { OsCommandBridge } from '../shell/os-control.ts'
 import { WIDGET_SDK } from './sdk.ts'
@@ -429,12 +430,57 @@ export class PluginHost {
     }
   }
 
+  /**
+   * Plugin administration changes the machine — it clones from the network, moves folders to the
+   * Trash and hands a widget a grant — so from R3.1 it asks the same gate a plugin's own OS commands
+   * go through: the action has a catalogue id and a tier, its arguments are checked, the attempt lands
+   * in the control journal, and an action the catalogue does not declare is refused here rather than
+   * run. Only a window of this app can ask (the preload is what makes that true); a widget's sandboxed
+   * frame and a web view have no such channel.
+   */
+  private async throughGate<T>(
+    event: IpcMainInvokeEvent,
+    command: string,
+    args: Record<string, unknown>,
+    run: () => Promise<T> | T
+  ): Promise<T> {
+    if (!BrowserWindow.fromWebContents(event.sender)) {
+      throw new Error('This window may not change plugins.')
+    }
+
+    const gate = this.control
+
+    if (!gate) {
+      throw new Error('The shell is not ready to change plugins yet')
+    }
+
+    const result = await gate.submitLocal({ client: 'ui', command, args, source: 'plugins-admin' })
+
+    if (result.kind === 'reply') {
+      throw new Error(result.reply.error ?? 'The shell refused that change')
+    }
+
+    try {
+      const value = await run()
+
+      result.finish({ ok: true })
+
+      return value
+    } catch (error) {
+      result.finish({ ok: false, code: 'execution-failed', reason: error instanceof Error ? error.message : String(error) })
+
+      throw error
+    }
+  }
+
   registerIpc(): void {
     ipcMain.handle(IPC.pluginsList, () => this.list())
-    ipcMain.handle(IPC.pluginsSetEnabled, (_event, id: string, enabled: boolean) => this.setEnabled(String(id), Boolean(enabled)))
-    ipcMain.handle(IPC.pluginsAdd, (_event, url: string) => this.add(String(url)))
-    ipcMain.handle(IPC.pluginsUpdate, (_event, id: string) => this.update(String(id)))
-    ipcMain.handle(IPC.pluginsRemove, (_event, id: string) => this.remove(String(id)))
+    ipcMain.handle(IPC.pluginsSetEnabled, (event, id: string, enabled: boolean) =>
+      this.throughGate(event, PLUGIN_ACTIONS.setEnabled, { id: String(id), enabled: Boolean(enabled) }, () => this.setEnabled(String(id), Boolean(enabled)))
+    )
+    ipcMain.handle(IPC.pluginsAdd, (event, url: string) => this.throughGate(event, PLUGIN_ACTIONS.add, { url: String(url) }, () => this.add(String(url))))
+    ipcMain.handle(IPC.pluginsUpdate, (event, id: string) => this.throughGate(event, PLUGIN_ACTIONS.update, { id: String(id) }, () => this.update(String(id))))
+    ipcMain.handle(IPC.pluginsRemove, (event, id: string) => this.throughGate(event, PLUGIN_ACTIONS.remove, { id: String(id) }, () => this.remove(String(id))))
     ipcMain.handle(IPC.pluginCall, (_event, id: string, method: PluginMethod, params: Record<string, unknown>) => this.call(String(id), method, params ?? {}))
   }
 }

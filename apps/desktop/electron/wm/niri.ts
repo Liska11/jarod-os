@@ -374,7 +374,5 @@ export function toArgs(action: WmAction): string[] {
       return ['toggle-overview']
     case 'screenshot':
       return [action.what === 'screen' ? 'screenshot-screen' : action.what === 'window' ? 'screenshot-window' : 'screenshot']
-    case 'raw':
-      return action.args
   }
 }

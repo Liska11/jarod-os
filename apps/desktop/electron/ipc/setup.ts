@@ -1,10 +1,11 @@
-import { ipcMain } from 'electron'
+import { BrowserWindow, ipcMain } from 'electron'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { IPC, type SetupResult, type SetupState } from '../../shared/ipc.ts'
 import { log } from '../log.ts'
 import { loadPty } from './terminal.ts'
+import { type HostControlGate } from '../shell/host-control.ts'
 import { checkBot, roundTrip } from '../setup/telegram.ts'
 import { shellConfigDir } from '../paths.ts'
 
@@ -111,7 +112,7 @@ export function changePassword(password: string, current = ''): Promise<SetupRes
   })
 }
 
-export function registerSetupIpc(): void {
+export function registerSetupIpc(gate: HostControlGate): void {
   // Logged for diagnosis: the outcome and the bot's name, never the token.
   ipcMain.handle(IPC.setupTelegramCheck, async (_event, token: unknown) => {
     const bot = await checkBot(String(token ?? ''))
@@ -131,14 +132,42 @@ export function registerSetupIpc(): void {
 
     return { ok: true } satisfies SetupResult
   })
-  ipcMain.handle(IPC.setupPassword, (_event, password: string) => {
+  // R3.1: setting the account password changes the machine, so the action is named, tiered
+  // (`cli.password` is `destructive`) and written down like any other host action. The password
+  // itself is deliberately not an argument of that action: the gate records what was asked for, never
+  // the secret, and the value stays between this handler and `passwd`.
+  ipcMain.handle(IPC.setupPassword, async (event, password: string): Promise<SetupResult> => {
+    // The password is a host mutation like any other, so it takes both halves of the IPC policy: the
+    // sender is a window of this app, and the action is the catalogued one (R3.2).
+    if (!BrowserWindow.fromWebContents(event.sender)) {
+      log('setup', 'refused a password change from a window that is not a herald-os surface')
+
+      return { ok: false, error: 'This window may not change the account password.' }
+    }
+
     const value = String(password ?? '')
 
     if (value.length < 8 || /[\r\n]/.test(value)) {
-      return { ok: false, error: 'Use at least 8 characters.' } satisfies SetupResult
+      return { ok: false, error: 'Use at least 8 characters.' }
     }
 
-    return changePassword(value)
+    const gated = await gate.submitLocal({ client: 'ui', command: 'cli.password', args: {}, source: 'setup' })
+
+    if (gated.kind === 'reply') {
+      return { ok: false, error: gated.reply.error ?? 'The shell refused that change.' }
+    }
+
+    try {
+      const result = await changePassword(value)
+
+      gated.finish({ ok: result.ok, reason: result.ok ? undefined : result.error })
+
+      return result
+    } catch (error) {
+      gated.finish({ ok: false, code: 'execution-failed', reason: error instanceof Error ? error.message : String(error) })
+
+      throw error
+    }
   })
   // `later`: set up for someone else; setup shows again for them at the next start.
   ipcMain.handle(IPC.setupFinish, (_event, options: { later?: boolean } = {}) => {

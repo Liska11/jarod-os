@@ -1,11 +1,11 @@
 import { BrowserWindow, ipcMain, screen, shell } from 'electron'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { IPC, type ShellCommand, type ShellSurface, type WmAction, type WmWindow } from '../../shared/ipc.ts'
+import { IPC, type ShellCommand, type ShellSurface, type WmWindow } from '../../shared/ipc.ts'
 import { GUEST_PREFERENCES, lockDownPartition, WEB_PARTITION } from '../ipc/web.ts'
 import { log } from '../log.ts'
 import { devServerUrl, isShellPage, rendererIndex } from '../paths.ts'
-import type { Compositor } from '../wm/compositor.ts'
+import { type Compositor, knownWmAction } from '../wm/compositor.ts'
 import { NiriClient } from '../wm/niri.ts'
 import type { ShellHost } from './host.ts'
 import { FLOATING_APPS, shellMode, surfaceTitle } from './mode.ts'
@@ -69,7 +69,23 @@ export class PanelShell implements ShellHost {
     })
 
     ipcMain.handle(IPC.wmGetState, () => this.wm.state())
-    ipcMain.handle(IPC.wmAction, (_event, action: WmAction) => this.wm.action(action))
+    ipcMain.handle(IPC.wmAction, (event, action: unknown) => {
+      if (!BrowserWindow.fromWebContents(event.sender)) {
+        log('wm', 'refused a compositor action from a window that is not a herald-os surface')
+
+        return
+      }
+
+      // Same rule as the single-window host: the shape is checked here, and only the actions the union
+      // names ever reach the compositor transport (R3.2).
+      if (!knownWmAction(action)) {
+        log('wm', 'refused a compositor action this shell does not send')
+
+        return
+      }
+
+      return this.wm.action(action)
+    })
     ipcMain.handle(IPC.shellOpen, (_event, surface: ShellSurface, command?: ShellCommand) => this.open(surface, command))
     ipcMain.handle(IPC.shellClose, (event, surface?: ShellSurface) => {
       const target = surface ?? this.surfaceOf(event.sender.id)

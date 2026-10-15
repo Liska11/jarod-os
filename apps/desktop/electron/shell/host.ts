@@ -1,6 +1,7 @@
-import { type BrowserWindow, ipcMain } from 'electron'
-import { IPC, type ShellCommand, type ShellSurface, type WmAction } from '../../shared/ipc.ts'
-import type { Compositor } from '../wm/compositor.ts'
+import { BrowserWindow, ipcMain } from 'electron'
+import { IPC, type ShellCommand, type ShellSurface } from '../../shared/ipc.ts'
+import { log } from '../log.ts'
+import { type Compositor, knownWmAction } from '../wm/compositor.ts'
 
 /** What the `herald-os` CLI socket drives: the panels session (niri) or the one Herald window. */
 export interface ShellHost {
@@ -30,7 +31,23 @@ export class DesktopHost implements ShellHost {
     this.wm.start()
     this.wm.onState(state => this.getWindow()?.webContents.send(IPC.wmState, state))
     ipcMain.handle(IPC.wmGetState, () => this.wm?.state())
-    ipcMain.handle(IPC.wmAction, (_event, action: WmAction) => this.wm?.action(action))
+    ipcMain.handle(IPC.wmAction, (event, action: unknown) => {
+      if (!BrowserWindow.fromWebContents(event.sender)) {
+        log('wm', 'refused a compositor action from a window that is not a herald-os surface')
+
+        return
+      }
+
+      // The main process checks the shape: the union is what a window may ask for, and anything else —
+      // a compositor argv, say — is refused here rather than handed to the transport (R3.2).
+      if (!knownWmAction(action)) {
+        log('wm', 'refused a compositor action this shell does not send')
+
+        return
+      }
+
+      return this.wm?.action(action)
+    })
   }
 
   stop(): void {

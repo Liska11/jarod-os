@@ -1,4 +1,4 @@
-import { app, ipcMain, shell } from 'electron'
+import { app, BrowserWindow, ipcMain, shell } from 'electron'
 import { execFile } from 'node:child_process'
 import fs from 'node:fs'
 import os from 'node:os'
@@ -8,6 +8,7 @@ import { loginShellPath } from '../backend/shell-env.ts'
 import { type CatalogEntry, type CatalogGroup, entryView, findEntry, macGroups, parseCliListing, pickMacMethod, readCatalog } from '../catalog/catalog.ts'
 import { log } from '../log.ts'
 import { run } from '../platform/exec.ts'
+import { type HostControlGate } from '../shell/host-control.ts'
 
 const INSTALL_TIMEOUT_MS = 60 * 60_000
 const LOCAL_BIN = path.join(os.homedir(), '.local', 'bin')
@@ -184,37 +185,89 @@ async function localModels(kind: 'ollama' | 'lmstudio'): Promise<string[]> {
 
 // ---- IPC --------------------------------------------------------------------------------------
 
-export function registerCatalogIpc(): void {
-  ipcMain.handle(IPC.catalogList, async (): Promise<CatalogGroupView[]> => {
-    if (process.platform !== 'linux') {
-      return macList()
+/**
+ * R3.1: installing or removing a catalog package changes the machine, and R3's rule is that such an
+ * action names a catalogued action and lands in the control journal. The caller here is a window of
+ * this app — the person's own click — so the gate is asked exactly as `services.ts` asks it before it
+ * starts the CLI.
+ */
+async function throughGate<T>(
+  gate: HostControlGate,
+  command: string,
+  args: Record<string, unknown>,
+  source: string,
+  work: () => Promise<T>
+): Promise<T> {
+  const result = await gate.submitLocal({ client: 'ui', command, args, source })
+
+  if (result.kind === 'reply') {
+    throw new Error(result.reply.error ?? 'The shell refused that action')
+  }
+
+  try {
+    const value = await work()
+
+    result.finish({ ok: true })
+
+    return value
+  } catch (error) {
+    result.finish({ ok: false, code: 'execution-failed', reason: error instanceof Error ? error.message : String(error) })
+
+    throw error
+  }
+}
+
+export function registerCatalogIpc(gate: HostControlGate): void {
+  ipcMain.handle(IPC.catalogList, async (event): Promise<CatalogGroupView[]> => {
+    // A window of this app is the only thing the preload reaches: a widget frame is sandboxed without
+    // it and a web view has none, so the sender check is what makes "the person asked" true (R3.2).
+    if (!BrowserWindow.fromWebContents(event.sender)) {
+      throw new Error('This window may not read the software catalogue.')
     }
 
-    const result = await run('herald-os', ['catalog', 'list', '--json'], 120_000)
+    return throughGate(gate, 'cli.catalog.list', {}, 'catalog-list', async () => {
+      if (process.platform !== 'linux') {
+        return macList()
+      }
 
-    if (result.code !== 0) {
-      throw new Error(tail(result.stderr) || `herald-os catalog exited ${result.code}`)
-    }
+      const result = await run('herald-os', ['catalog', 'list', '--json'], 120_000)
 
-    return parseCliListing(result.stdout)
+      if (result.code !== 0) {
+        throw new Error(tail(result.stderr) || `herald-os catalog exited ${result.code}`)
+      }
+
+      return parseCliListing(result.stdout)
+    })
   })
 
   for (const [channel, action] of [
     [IPC.catalogInstall, 'install'],
     [IPC.catalogRemove, 'remove']
   ] as const) {
-    ipcMain.handle(channel, async (_event, id: string): Promise<CatalogResult> => {
+    ipcMain.handle(channel, async (event, id: string): Promise<CatalogResult> => {
+      if (!BrowserWindow.fromWebContents(event.sender)) {
+        log('catalog', 'refused a catalogue change from a window that is not a herald-os surface')
+
+        return { ok: false, output: 'This window may not change the software catalogue.' }
+      }
+
       if (!/^[a-z0-9][a-z0-9-]{0,63}$/.test(String(id))) {
         return { ok: false, output: 'Not a catalog id' }
       }
 
-      if (process.platform !== 'linux') {
-        return macRun(id, action)
+      try {
+        return await throughGate(gate, `cli.catalog.${action}`, { id: String(id) }, `catalog-${action}`, async () => {
+          if (process.platform !== 'linux') {
+            return macRun(id, action)
+          }
+
+          const result = await run('herald-os', ['catalog', action, id], INSTALL_TIMEOUT_MS)
+
+          return { ok: result.code === 0, output: tail(result.code === 0 ? result.stdout || result.stderr : result.stderr || result.stdout) }
+        })
+      } catch (error) {
+        return { ok: false, output: error instanceof Error ? error.message : String(error) }
       }
-
-      const result = await run('herald-os', ['catalog', action, id], INSTALL_TIMEOUT_MS)
-
-      return { ok: result.code === 0, output: tail(result.code === 0 ? result.stdout || result.stderr : result.stderr || result.stdout) }
     })
   }
 

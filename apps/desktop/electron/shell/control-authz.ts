@@ -626,6 +626,12 @@ export interface ControlEndpointInput {
   platform: NodeJS.Platform
   runtimeDir: string
   dataDir: string
+  /**
+   * Sixteen lowercase hex characters, drawn once per run (`main.ts`), that make the pipe name
+   * unpredictable. Omit it and the name is the profile digest instead — the shape every unix socket
+   * and the existing tests expect.
+   */
+  nonce?: string
 }
 
 export interface ControlEndpoint {
@@ -642,24 +648,29 @@ export interface ControlEndpoint {
  *
  * Windows gets a named pipe rather than a loopback TCP port: a port is dialable by anything on the
  * machine (and was announced to the backend as `tcp://127.0.0.1:<port>`, token and all), while a
- * pipe is not a network surface. The name carries a digest of the profile so two profiles never
- * share one pipe. The token still stands as the credential: the pipe narrows who can knock, it does
- * not replace the lock.
+ * pipe is not a network surface. The token still stands as the credential: the pipe narrows who can
+ * knock, it does not replace the lock.
  *
  * What the pipe's access control really is, measured rather than assumed (R2.3,
  * `scripts/probe-pipe-acl.mjs`): the app passes no security descriptor — Node has no parameter for
- * one — so libuv creates the pipe with the creating token's *default* DACL. On this machine that is
- * `FA` for SYSTEM, Administrators and the creating user, and `FR` (read only) for Everyone and
- * Anonymous. Only an identity with a write bit can send a request, so no other user is granted a
- * useful connection; the read-only ACEs are a residual, and libuv's `FILE_FLAG_FIRST_PIPE_INSTANCE`
- * refuses a second claimant that also sets that flag, but not one that creates its own instance
- * without it. Setting an explicit DACL needs a native call at creation, which is why the pipe policy
- * documented in that probe belongs to a native host (see the R2.3 report), not to this module.
+ * one — so libuv creates the pipe with the creating token's *default* DACL. On an interactive token
+ * that is `FA` for SYSTEM, Administrators and the creating user, and `FR` (read only) for Everyone
+ * and Anonymous. Only a principal with a write bit can send a request, so no other user is granted a
+ * useful connection, but the read-only ACEs are wider than this door needs. `pipe-security.ts`
+ * states the real policy immediately after the object exists and refuses to serve until it has read
+ * that policy back; the object's initial DACL is not a policy and is measured as such
+ * (`pipe-security.test.ts` compares it, ACE for ACE, to the token's own default DACL).
+ *
+ * `nonce` closes what that measurement exposes: a name derived from the profile directories is one
+ * any local process can compute and claim *before* the shell does. `FILE_FLAG_FIRST_PIPE_INSTANCE`
+ * only refuses a claimant that also asks to be first, and an implicit DACL is in place for the
+ * moment between `listen` and the read-back. With a per-run nonce the shell is the only party that
+ * knows the name until it publishes it — and `main.ts` publishes it to the backend only after the
+ * DACL has been verified.
  */
 export function controlEndpoint(input: ControlEndpointInput): ControlEndpoint {
   if (input.platform === 'win32') {
-    const digest = crypto.createHash('sha256').update(`${input.dataDir}\u0000${input.runtimeDir}`).digest('hex').slice(0, 16)
-    const name = `herald-os-${digest}`
+    const name = `herald-os-${pipeNameSuffix(input)}`
 
     return { kind: 'pipe', endpoint: `pipe://${name}`, path: `\\\\.\\pipe\\${name}` }
   }
@@ -669,4 +680,23 @@ export function controlEndpoint(input: ControlEndpointInput): ControlEndpoint {
   const socketPath = path.posix.join(input.runtimeDir, 'herald-os', 'control.sock')
 
   return { kind: 'unix', endpoint: socketPath, path: socketPath }
+}
+
+/**
+ * The per-run half of a pipe name: the caller's nonce when there is one, the profile digest
+ * otherwise. The nonce is validated rather than trusted — a caller that passed a name, a path
+ * separator or an empty string would otherwise choose part of the pipe path itself.
+ */
+function pipeNameSuffix(input: ControlEndpointInput): string {
+  if (input.nonce === undefined) {
+    return crypto.createHash('sha256').update(`${input.dataDir}\u0000${input.runtimeDir}`).digest('hex').slice(0, 16)
+  }
+
+  const nonce = String(input.nonce).trim()
+
+  if (!/^[0-9a-f]{16}$/.test(nonce)) {
+    throw new Error('a pipe nonce must be exactly 16 lowercase hexadecimal characters')
+  }
+
+  return nonce
 }

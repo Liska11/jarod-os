@@ -37,14 +37,64 @@ export function detectCompositor(env: NodeJS.ProcessEnv = process.env): Composit
   return null
 }
 
-export function createCompositor(name: CompositorName | null): Compositor | null {
+export function createCompositor(name: CompositorName | null, capture?: (what: 'screen' | 'window' | 'region') => void): Compositor | null {
   if (name === 'niri') {
     return new NiriClient()
   }
 
   if (name === 'hyprland') {
-    return new HyprlandClient()
+    return new HyprlandClient(capture)
   }
 
   return null
+}
+
+/** Every action the `WmAction` union names. Anything else is not a request this shell makes. */
+const WM_ACTION_TYPES = new Set([
+  'focus-window',
+  'close-window',
+  'focus-workspace',
+  'move-window-to-workspace',
+  'toggle-floating',
+  'fullscreen',
+  'maximize-column',
+  'toggle-overview',
+  'screenshot',
+])
+
+/**
+ * Whether a value that arrived over IPC is one of the actions above, with the arguments each one
+ * takes. Main validates the shape itself rather than trusting the renderer's types: a window is not
+ * the place a host action is decided, and an action the union does not name must never reach the
+ * compositor transport (R3.2).
+ */
+export function knownWmAction(value: unknown): value is WmAction {
+  if (!value || typeof value !== 'object') {
+    return false
+  }
+
+  const action = value as Record<string, unknown>
+
+  if (typeof action.type !== 'string' || !WM_ACTION_TYPES.has(action.type)) {
+    return false
+  }
+
+  const ref = action.ref
+  const workspaceRef = typeof ref === 'string' || Number.isInteger(ref)
+
+  switch (action.type) {
+    case 'focus-window':
+    case 'close-window':
+    case 'toggle-floating':
+    case 'fullscreen':
+      return Number.isInteger(action.id)
+    case 'focus-workspace':
+      return workspaceRef
+    case 'move-window-to-workspace':
+      return Number.isInteger(action.id) && workspaceRef
+    case 'screenshot':
+      return action.what === 'screen' || action.what === 'window' || action.what === 'select'
+    default:
+      return true
+  }
 }

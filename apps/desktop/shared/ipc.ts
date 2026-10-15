@@ -683,7 +683,13 @@ export interface WmState {
   focusedWindowId: number | null
 }
 
-/** Compositor actions the renderer may request. Arguments mirror `niri msg action`. */
+/**
+ * Compositor actions the renderer may request. Arguments mirror `niri msg action`.
+ *
+ * There is deliberately no compositor-argv variant: `niri msg action …` and `hyprctl dispatch …` can
+ * both start a program, so a free-argument action would be a host command outside the control gate.
+ * The union is the whole of what a window may ask for (R3.2).
+ */
 export type WmAction =
   | { type: 'focus-window'; id: number }
   | { type: 'close-window'; id: number }
@@ -694,7 +700,6 @@ export type WmAction =
   | { type: 'maximize-column' }
   | { type: 'toggle-overview' }
   | { type: 'screenshot'; what: 'screen' | 'window' | 'select' }
-  | { type: 'raw'; args: string[] }
 
 /** A command delivered to a surface: from the `herald-os` CLI (hotkeys), or relayed between surfaces. */
 export interface ShellCommand {

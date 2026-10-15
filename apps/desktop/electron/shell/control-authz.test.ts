@@ -250,6 +250,26 @@ describe('control endpoint', () => {
     expect(a.endpoint).not.toBe(b.endpoint)
     expect(controlEndpoint({ platform: 'win32', runtimeDir: 'C:\\runtime', dataDir: 'C:\\data-a' }).endpoint).toBe(a.endpoint)
   })
+
+  it('takes a per-run nonce, so the pipe name is not one any local process can claim first', () => {
+    const fixed = controlEndpoint({ platform: 'win32', runtimeDir: 'C:\\runtime', dataDir: 'C:\\data' })
+    const named = controlEndpoint({ platform: 'win32', runtimeDir: 'C:\\runtime', dataDir: 'C:\\data', nonce: '0123456789abcdef' })
+
+    expect(named.endpoint).toBe('pipe://herald-os-0123456789abcdef')
+    expect(named.endpoint).not.toBe(fixed.endpoint)
+    // The nonce is the caller's, but it is validated: a value that could steer the pipe path is refused.
+    expect(() => controlEndpoint({ platform: 'win32', runtimeDir: 'C:\\runtime', dataDir: 'C:\\data', nonce: '..\\..\\x' })).toThrow(
+      /nonce/,
+    )
+    expect(() => controlEndpoint({ platform: 'win32', runtimeDir: 'C:\\runtime', dataDir: 'C:\\data', nonce: 'ABCDEF0123456789' })).toThrow(
+      /nonce/,
+    )
+    expect(() => controlEndpoint({ platform: 'win32', runtimeDir: 'C:\\runtime', dataDir: 'C:\\data', nonce: 'abc' })).toThrow(/nonce/)
+    // A unix socket is already named by its directory: a nonce changes nothing there.
+    expect(controlEndpoint({ platform: 'linux', runtimeDir: '/run/user/1000', dataDir: '/home/u', nonce: '0123456789abcdef' }).path).toBe(
+      '/run/user/1000/herald-os/control.sock',
+    )
+  })
 })
 
 describe('the name a client gives its attempt (R2.2)', () => {

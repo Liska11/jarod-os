@@ -74,7 +74,6 @@ describe('dispatchArgs', () => {
     expect(dispatchArgs({ type: 'focus-workspace', ref: 3 })).toEqual([['workspace', '3']])
     expect(dispatchArgs({ type: 'move-window-to-workspace', id: 0x20, ref: 'ideas' })).toEqual([['movetoworkspacesilent', 'name:ideas,address:0x20']])
     expect(dispatchArgs({ type: 'fullscreen', id: 0x20 })).toEqual([['focuswindow', 'address:0x20'], ['fullscreen', '0']])
-    expect(dispatchArgs({ type: 'raw', args: ['exec', 'kitty'] })).toEqual([['exec', 'kitty']])
   })
 
   it('has a Lua form of each for a Lua config', () => {
