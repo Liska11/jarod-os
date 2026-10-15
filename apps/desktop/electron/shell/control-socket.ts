@@ -17,14 +17,24 @@ import { menuFile, readMenuExtensions } from './menu-extensions.ts'
 import { brandingView, setBranding } from './branding.ts'
 import type { BrandingPatch, BrandingView } from '../../shared/branding.ts'
 import { handleUiRequest, isUiRequest, type OsCommandBridge, type UiControlRequest } from './os-control.ts'
-import type { ControlSecurity } from './control-authz.ts'
+import type { HostControlGate } from './host-control.ts'
 import { LineSplitter } from './json-lines.ts'
 
+/**
+ * One decoded line. The same fields the host-side pipeline (`ControlRequestShape`) reads; the socket
+ * adds the narrower typing its own dispatch relies on, and nothing here is trusted before the gate.
+ */
 interface ControlRequest {
   cmd: string
   /** Who is asking: the CLI's token or the backend's (see shell/control-authz.ts). */
   token?: string
-  args?: string[]
+  /** The registry command id a typed call names (`ui`, `run`). */
+  command?: string
+  args?: string[] | Record<string, unknown>
+  /** The caller's own label for the journal; never a credential. */
+  source?: string
+  /** A one-shot capability the host issued for exactly this call. */
+  capability?: string
   attachments?: string[]
   /** `theme`: the shell part of a theme definition. */
   shell?: Record<string, unknown>
@@ -56,10 +66,11 @@ export class ControlSocket {
     /** `herald-os plugin …`: the same plugin host Settings uses. */
     private readonly plugins?: PluginHost,
     /**
-     * Who may ask for what, on this door. The panel socket is shared: the `herald-os` CLI holds the
-     * CLI token and the backend holds the registry token, and neither may use the other's commands.
+     * Who may ask for what, and what needs a person's consent — the whole host-side pipeline, not
+     * just the token check. The panel socket is shared: the `herald-os` CLI holds the CLI token and
+     * the backend holds the registry token, and neither may use the other's commands.
      */
-    private readonly security?: ControlSecurity
+    private readonly control?: HostControlGate
   ) {}
 
   get socketPath(): string {
@@ -129,7 +140,7 @@ export class ControlSocket {
       // Nothing to attribute it to — the line is not a request — but the attempt is still journalled,
       // without the line itself, which may well carry a token.
       log('control', 'rejected a request line that was not JSON')
-      this.security?.malformed('invalid JSON')
+      this.control?.security.malformed('invalid JSON')
 
       return { ok: false, error: 'invalid JSON' }
     }
@@ -142,58 +153,70 @@ export class ControlSocket {
   }
 
   /**
-   * One request from the socket. Public so a test can drive the door itself rather than a copy of it;
-   * the socket's `data` handler is the only caller in production.
+   * One request from the socket: identity, argument shape, an approval when the command changes the
+   * machine, then the work. Public so a test can drive the door itself rather than a copy of it; the
+   * socket's `data` handler is the only caller in production.
    */
   async handle(request: ControlRequest): Promise<Record<string, unknown>> {
-    const args = request.args ?? []
-    const { cmd } = request
+    const result = await this.control?.submit(request)
 
-    if (this.security) {
-      const decision = this.security.check(request)
-
-      if (!decision.allowed) {
-        return { ok: false, error: decision.reason }
-      }
+    if (result?.kind === 'reply') {
+      return { ...result.reply }
     }
+
+    try {
+      const reply = await this.dispatch(request)
+
+      result?.finish({ ok: reply.ok !== false, code: typeof reply.code === 'string' ? reply.code : undefined })
+
+      return reply
+    } catch (error) {
+      result?.finish({ ok: false, code: 'execution-failed' })
+
+      throw error
+    }
+  }
+
+  /** The commands this door serves, once the caller is allowed to ask for them. */
+  private async dispatch(request: ControlRequest): Promise<Record<string, unknown>> {
+    const args = Array.isArray(request.args) ? request.args : []
+    const { cmd } = request
 
     if (this.osBridge && isUiRequest(cmd)) {
       const reply = await handleUiRequest(request as unknown as UiControlRequest, this.osBridge)
 
       if (reply) {
-        return reply
+        return { ...reply, code: reply.ok === false ? 'execution-failed' : 'ok' }
       }
     }
 
-    if (cmd === 'os') {
-      // `herald-os os <command.id> [json]`: the CLI path to the registry, with the CLI's own token.
-      const [id, json] = args
+    // The typed spellings of the ui surface — what a client that is not the bridge itself uses.
+    // `run` names a registry command and carries its parameters; `list` and `state` take nothing.
+    if (cmd === 'run') {
+      const id = typeof request.command === 'string' ? request.command : ''
 
       if (!id) {
-        return { ok: false, error: 'os needs a command id' }
+        return { ok: false, error: 'run needs a command id', code: 'invalid' }
       }
 
-      this.shell.relay('main', { type: 'os', args: [id], payload: json ? (JSON.parse(json) as Record<string, unknown>) : undefined })
+      if (!this.osBridge) {
+        return { ok: false, error: 'the command registry is not available', code: 'execution-failed' }
+      }
 
-      return { ok: true }
+      const payload = request.args && typeof request.args === 'object' && !Array.isArray(request.args) ? request.args : {}
+      const reply = await handleUiRequest({ cmd: 'ui', command: id, args: payload, source: 'cli' }, this.osBridge)
+
+      return reply ? { ...reply, code: reply.ok === false ? 'execution-failed' : 'ok' } : { ok: false, error: 'the command registry is not available', code: 'execution-failed' }
     }
 
-    if (cmd === 'os-run') {
-      // Like `os`, but waits for the result (`herald-os bar list` prints it).
-      const [id, json] = args
-
-      if (!id || !this.osBridge) {
-        return { ok: false, error: id ? 'the command registry is not available' : 'os-run needs a command id' }
+    if (cmd === 'list' || cmd === 'state') {
+      if (!this.osBridge) {
+        return { ok: false, error: 'the command registry is not available', code: 'execution-failed' }
       }
 
-      const reply = await this.osBridge.run(id, json ? (JSON.parse(json) as Record<string, unknown>) : {}, 'cli')
-      const result = reply.result as { ok?: boolean; summary?: string; error?: string; data?: unknown } | undefined
+      const reply = await handleUiRequest({ cmd: cmd === 'list' ? 'ui-list' : 'ui-state' }, this.osBridge)
 
-      if (reply.error || !result) {
-        return { ok: false, error: reply.error ?? 'no result' }
-      }
-
-      return { ok: result.ok !== false, summary: result.summary, data: result.data, ...(result.ok === false ? { error: result.error ?? result.summary } : {}) }
+      return reply ? { ...reply, code: reply.ok === false ? 'execution-failed' : 'ok' } : { ok: false, error: 'the command registry is not available', code: 'execution-failed' }
     }
 
     if (OVERLAY_MODES.has(cmd)) {

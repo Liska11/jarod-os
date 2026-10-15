@@ -10,6 +10,10 @@ Requests:
     {"cmd": "ui", "command": "<id>", "args": {...}, "source": "agent"}  -> CommandResult
     {"cmd": "ui-list"}                                                  -> {"ok": true, "result": [CommandSummary]}
     {"cmd": "ui-state"}                                                 -> {"ok": true, "result": {page, windows, ...}}
+
+A command that changes the machine is not run by the socket: the shell asks the person first and
+answers ``approval-granted`` with a one-shot capability bound to this command and these arguments.
+``run_command`` sends it back once, and the shell spends it on that single call (R2).
 """
 
 from __future__ import annotations
@@ -154,7 +158,19 @@ def request(payload: dict[str, Any], *, timeout: float = DEFAULT_TIMEOUT) -> dic
 
 
 def run_command(command: str, args: dict[str, Any] | None = None, *, source: str = "agent") -> dict[str, Any]:
-    return request({"cmd": "ui", "command": command, "args": args or {}, "source": source})
+    """Run one catalogued command, taking up the shell's approval when it asks for one.
+
+    R2: the shell authorises the mutation, not the socket. A refusal comes back as ``{ok: false,
+    code: "unauthorized"|"denied-approval"|...}`` and nothing on the machine has changed.
+    """
+    payload: dict[str, Any] = {"cmd": "ui", "command": command, "args": args or {}, "source": source}
+    reply = request(payload)
+    capability = reply.get("capability")
+    if reply.get("code") == "approval-granted" and isinstance(capability, dict) and capability.get("id"):
+        # Sent once, for these exact arguments, and never written down: the shell spends it, and a
+        # second attempt with the same value is refused as a replay.
+        reply = request({**payload, "capability": capability["id"]})
+    return reply
 
 
 def list_commands() -> list[dict[str, Any]]:

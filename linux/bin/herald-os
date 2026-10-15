@@ -23,7 +23,8 @@ call the tools directly.
   System        lock | suspend | power | wm <niri action...> | state | debug | commands [--json]
                 panel wifi|bluetooth|audio|display|power|clock: the menu bar's quick panels
                 toggle nightlight|dnd|idle|screensaver [on|off] | screensaver | idle show|set ...
-                os <command.id> [json args]: run any Jarod-OS command (the same ones Hermes uses)
+                os <command.id> [json args]: retired, see `run`
+                run <command.id> [json args]: run a Jarod-OS command (the same ones Hermes uses)
 """
 
 from __future__ import annotations
@@ -85,7 +86,7 @@ COMMANDS: dict[str, str] = {
     "crash": "crash list | crash diagnose [pid|name] (Hermes explains it) | crash mute <name> [off]",
     "event": "event <name> [key=value ...]: report an event so hooks and event automations run (login, after-update, …)",
     "hook": "hook list | hook install <event> <script> | hook dir: scripts that run when something happens",
-    "os": "Run a Jarod-OS command: os <command.id> [json args], e.g. os page.open '{\"name\": \"missions\"}'",
+    "run": "Run a Jarod-OS command: run <command.id> [json args], e.g. run page.open '{\"name\": \"missions\"}'",
     "voice": "Talk to Hermes: voice [toggle|start|stop|mute] (default toggle)",
     "dictate": "Start or finish dictation: what you say is typed into the focused app",
     "emoji": "Emoji picker; the pick is typed into the focused app",
@@ -113,6 +114,11 @@ COMMANDS: dict[str, str] = {
 }
 
 OVERLAY = {"ask", "command", "applications", "menu", "power", "clipboard", "emoji"}
+
+# R2: the free-form registry door is gone from the wire. `os` named any command with any arguments
+# and skipped the shell's approval for mutations; `run` names one catalogued command and the shell
+# decides. The verb is retired loudly rather than kept as a silent alias.
+RETIRED_COMMANDS = {"os": "use `run <command.id> [json args]`", "os-run": "use `run <command.id> [json args]`"}
 
 
 # ---------------------------------------------------------------------------------------------
@@ -143,13 +149,12 @@ def control_token() -> str:
         return ""
 
 
-def relay(cmd: str, args: list[str], extra: dict | None = None, *, quiet: bool = False, timeout: float = 15) -> dict:
-    """Send one JSON line to the shell and return its JSON reply."""
+def send_payload(payload: dict, *, quiet: bool = False, timeout: float = 15) -> dict:
+    """One JSON line to the shell, one JSON reply back."""
     if not SOCKET.exists():
         if quiet:
             return {"ok": False, "error": "shell not running"}
         die(f"the Jarod-OS shell is not running (no {SOCKET})", 3)
-    payload = {"cmd": cmd, "args": args, "token": control_token(), **(extra or {})}
     try:
         with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
             s.settimeout(timeout)
@@ -169,6 +174,30 @@ def relay(cmd: str, args: list[str], extra: dict | None = None, *, quiet: bool =
         return json.loads(buf.decode() or "{}")
     except json.JSONDecodeError:
         return {"ok": False, "error": f"bad reply: {buf[:200]!r}"}
+
+
+def relay(cmd: str, args: list[str], extra: dict | None = None, *, quiet: bool = False, timeout: float = 15) -> dict:
+    """Send one shell command to the running shell and return its JSON reply."""
+    return send_payload({"cmd": cmd, "args": args, "token": control_token(), **(extra or {})}, quiet=quiet, timeout=timeout)
+
+
+def relay_run(command: str, args: dict | None = None, *, quiet: bool = False, timeout: float = 60) -> dict:
+    """Run one catalogued command through the typed `run` door.
+
+    R2: `os`/`os-run` carried a free-form command id and free-form arguments, which is exactly the
+    generic mutation endpoint that had to go. `run` names one command in the shell's catalogue; when
+    that command changes the machine the shell answers `approval-granted` with a one-shot capability
+    instead of running it, and this is the only place that accepts one. It is spent by the shell on
+    that single call: replaying it, or pointing it at different arguments, is refused.
+    """
+    payload: dict = {"cmd": "run", "command": command, "args": args or {}, "token": control_token()}
+    reply = send_payload(payload, quiet=quiet, timeout=timeout)
+    capability = reply.get("capability")
+    if isinstance(capability, dict) and capability.get("id"):
+        if not quiet:
+            print(f"herald-os: {command} changes the machine and needs your approval in the shell…", file=sys.stderr)
+        reply = send_payload({**payload, "capability": capability["id"]}, quiet=quiet, timeout=timeout)
+    return reply
 
 
 def notify(title: str, body: str = "") -> None:
@@ -868,7 +897,7 @@ def idle_cmd(args: list[str]) -> int:
         if key not in IDLE_KEYS or not value.isdigit():
             die(f"bad setting {pair!r}: use lock=, screen_off= or suspend= with minutes", 2)
         minutes[key] = int(value)
-    reply = relay("os", ["idle.set", json.dumps({IDLE_KEYS[key]: value for key, value in minutes.items()})], quiet=True)
+    reply = relay_run("idle.set", {IDLE_KEYS[key]: value for key, value in minutes.items()}, quiet=True, timeout=30)
     if reply.get("ok"):
         return 0
     # No shell: edit the timings swayidle reads directly.
@@ -984,16 +1013,20 @@ def hook_cmd(args: list[str]) -> int:
 # ---------------------------------------------------------------------------------------------
 # Crashes: core dumps from systemd-coredump; the shell turns a diagnosis into a Hermes chat.
 def run_os(command: str, args: dict | None = None) -> int:
-    """Run a registry command in the Hermes window (fire and forget; the shell reports the result)."""
-    reply = relay("os", [command, json.dumps(args or {})])
+    """Run a catalogued command in the Jarod-OS window, waiting for its result.
+
+    R2: this used to fire the request at the retired `os` door and return without waiting. It now
+    goes through `run` and reports what the shell says — including a refusal.
+    """
+    reply = relay_run(command, args)
     if not reply.get("ok"):
-        die(reply.get("error") or f"the shell rejected {command}", 1)
+        die(reply.get("error") or reply.get("summary") or f"the shell rejected {command}", 1)
     return 0
 
 
 def run_os_wait(command: str, args: dict | None = None) -> dict:
-    """Run a registry command and return its result ({ok, summary, data}); exits on failure."""
-    reply = relay("os-run", [command, json.dumps(args or {})], timeout=30)
+    """Run a catalogued command and return its result ({ok, summary, data}); exits on failure."""
+    reply = relay_run(command, args)
     if not reply.get("ok"):
         die(reply.get("error") or reply.get("summary") or f"the shell rejected {command}", 1)
     return reply
@@ -1836,6 +1869,8 @@ def main(argv: list[str]) -> int:
                 print(f"  {name.ljust(width)}  {text}")
         return 0
     if cmd not in COMMANDS:
+        if cmd in RETIRED_COMMANDS:
+            die(f"{cmd} is retired: {RETIRED_COMMANDS[cmd]}", 2)
         die(f"unknown command {cmd!r} (see `herald-os commands`)", 2)
 
     if cmd == "channel":
@@ -1962,14 +1997,22 @@ def main(argv: list[str]) -> int:
         return event_cmd(args)
     if cmd == "hook":
         return hook_cmd(args)
-    if cmd == "os":
-        if not args:
-            die("os <command.id> [json args]", 2)
+    if cmd == "run":
+        rest = [value for value in args if value != "--json"]
+        if not rest:
+            die("run <command.id> [json args] (herald-os commands)", 2)
         try:
-            payload = json.loads(args[1]) if len(args) > 1 else {}
+            payload = json.loads(rest[1]) if len(rest) > 1 else {}
         except json.JSONDecodeError:
-            die("os: the arguments must be a JSON object", 2)
-        return run_os(args[0], payload if isinstance(payload, dict) else {})
+            die("run: the arguments must be a JSON object", 2)
+        reply = relay_run(rest[0], payload if isinstance(payload, dict) else {})
+        if "--json" in args:
+            print(json.dumps(reply, indent=2))
+        elif reply.get("summary"):
+            print(reply["summary"])
+        if not reply.get("ok"):
+            die(reply.get("error") or f"the shell rejected {rest[0]}", 1)
+        return 0
     if cmd == "lock":
         return lock()
     if cmd == "password":

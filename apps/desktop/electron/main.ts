@@ -1,4 +1,4 @@
-import { app, BrowserWindow, globalShortcut, ipcMain, Notification, protocol, screen, shell } from 'electron'
+import { app, BrowserWindow, dialog, globalShortcut, ipcMain, Notification, protocol, screen, shell } from 'electron'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
@@ -50,6 +50,7 @@ import { NotificationDaemon } from './shell/notification-daemon.ts'
 import { maximizeAction } from './window-controls.ts'
 import { handleUiRequest, OsCommandBridge, OsControlServer } from './shell/os-control.ts'
 import { asControlTier, ControlSecurity, controlAuditSink, controlEndpoint, controlTokens, type ControlAuditEntry } from './shell/control-authz.ts'
+import { HostControlGate, type ApprovalProvider, type CatalogueEntry } from './shell/host-control.ts'
 import { PanelShell } from './shell/panels.ts'
 import { registerBrandingIpc } from './shell/branding.ts'
 import { EmojiPanel } from './shell/emoji-panel.ts'
@@ -157,14 +158,60 @@ const emojiPanel = !panels && process.platform === 'darwin' ? new EmojiPanel(() 
 const shellHost: ShellHost | null = panels ?? appHost
 // Who may drive the shell, and what the shell writes down about it. Two tokens, one per surface: the
 // backend's (it runs registry commands through the bridge) and the CLI's (a user-only file the
-// `herald-os` command reads). Every attempt, allowed or not, lands in one journal.
+// `herald-os` command reads). Neither token is enough on its own for anything that changes the
+// machine: `mutate` and `destructive` calls need an approval this process itself witnessed, carried
+// by a one-shot capability (shell/host-control.ts).
 const { backend: backendToken, cli: cliToken } = controlTokens()
+const surfaceTokens = { backend: backendToken, cli: cliToken }
 const journalControl = controlAuditSink(path.join(heraldOsDataDir(), 'control-audit.jsonl'))
 const auditControl = (entry: ControlAuditEntry) => {
   log('control', `${entry.allowed ? 'allowed' : 'refused'} ${entry.cmd}${entry.command ? ` ${entry.command}` : ''} from ${entry.client}: ${entry.reason}`)
   journalControl(entry)
 }
-const panelSecurity = new ControlSecurity({ tokens: { backend: backendToken, cli: cliToken } }, auditControl)
+/**
+ * The host's own way of asking a person: a modal dialog on the Hermes window. One at a time — a second
+ * request while one is open is denied rather than queued behind it, so nothing can stack dialogs — and
+ * the answer becomes a capability bound to this exact call, not to the caller.
+ */
+let approvalOpen = false
+const approveMutation: ApprovalProvider = async ask => {
+  const win = panels ? panels.mainWindow() : mainWindow
+
+  if (!win || win.isDestroyed() || approvalOpen) {
+    return false
+  }
+
+  approvalOpen = true
+
+  try {
+    const { response } = await dialog.showMessageBox(win, {
+      type: 'warning',
+      buttons: ['Deny', 'Allow once'],
+      defaultId: 0,
+      cancelId: 0,
+      noLink: true,
+      title: 'Jarod-OS: confirm a control request',
+      message: `Allow this ${ask.tier} request?`,
+      detail: [
+        `Command: ${ask.command}`,
+        `Asked by: ${ask.client}${ask.source ? ` (${ask.source})` : ''}`,
+        ask.preview ? `Arguments: ${ask.preview}` : undefined,
+        '',
+        'Allowing lets this one call through, once.',
+      ]
+        .filter((line): line is string => line !== undefined)
+        .join('\n'),
+    })
+
+    return response === 1
+  } finally {
+    approvalOpen = false
+  }
+}
+const panelSecurity = new ControlSecurity({ tokens: surfaceTokens }, auditControl)
+const backendSecurity = new ControlSecurity({ tokens: surfaceTokens, surface: 'backend' }, auditControl)
+const panelGate = new HostControlGate({ security: panelSecurity, approve: approveMutation })
+const backendGate = new HostControlGate({ security: backendSecurity, approve: approveMutation })
 const control = shellHost
   ? new ControlSocket(
       shellHost,
@@ -176,7 +223,7 @@ const control = shellHost
       },
       () => void switches.broadcast(),
       plugins,
-      panelSecurity
+      panelGate
     )
   : null
 // The panel socket is the CLI's door, so it needs a token the CLI can hold: one file, user-readable
@@ -194,56 +241,77 @@ if (control) {
 // Desktop mode has no compositor CLI socket; the OS control server gives the backend the same `ui*`
 // surface. Windows gets a named pipe here rather than a loopback port (shell/control-authz.ts).
 const osControlPath = panels ? path.join(process.env.XDG_RUNTIME_DIR || `/run/user/${process.getuid?.() ?? 1000}`, 'herald-os', 'control.sock') : path.join(heraldOsDataDir(), 'control.sock')
-const controlSecurity = new ControlSecurity({ tokens: { backend: backendToken, cli: cliToken }, surface: 'backend' }, auditControl)
 const osControl = panels
   ? null
-  : new OsControlServer(controlEndpoint({ platform: process.platform, runtimeDir: heraldOsDataDir(), dataDir: heraldOsDataDir() }), async request => {
-      // No CLI talks to this door (the Linux panel socket serves `herald-os`), so every client is the
-      // backend — and the backend is the only holder of the token this surface requires.
-      const decision = controlSecurity.check(request)
+  : new OsControlServer(
+      controlEndpoint({ platform: process.platform, runtimeDir: heraldOsDataDir(), dataDir: heraldOsDataDir() }),
+      async request => {
+        // One pipeline, then the work: who is asking, whether the argument shape matches the command,
+        // and — for anything that changes the machine — an approval this process witnessed itself.
+        const result = await backendGate.submit(request)
 
-      if (!decision.allowed) {
-        return { ok: false, error: decision.reason }
-      }
+        if (result.kind === 'reply') {
+          return { ...result.reply }
+        }
 
-      const ui = await handleUiRequest(request as unknown as Parameters<typeof handleUiRequest>[0], osBridge)
+        const cmd = String(request.cmd ?? '')
+        const args = Array.isArray(request.args) ? (request.args as string[]) : []
+        const relay = (command: ShellCommand) => {
+          mainWindow?.webContents.send(IPC.shellCommand, command)
+          mainWindow?.show()
+        }
 
-      if (ui) {
-        return ui
-      }
+        try {
+          // `run`/`list`/`state` are the typed spellings of `ui`/`ui-list`/`ui-state`: one bridge call,
+          // one reply shape, and the older spelling keeps working for the bridge that ships with the app.
+          const asUi = cmd === 'run' ? 'ui' : cmd === 'list' ? 'ui-list' : cmd === 'state' ? 'ui-state' : cmd
+          const ui = await handleUiRequest({ ...request, cmd: asUi } as unknown as Parameters<typeof handleUiRequest>[0], osBridge)
 
-      // A few CLI conveniences the Linux socket also offers, relayed as ShellCommands.
-      const cmd = String(request.cmd ?? '')
-      const args = Array.isArray(request.args) ? (request.args as string[]) : []
-      const relay = (command: ShellCommand) => {
-        mainWindow?.webContents.send(IPC.shellCommand, command)
-        mainWindow?.show()
-      }
+          if (ui) {
+            result.finish({ ok: ui.ok !== false })
 
-      switch (cmd) {
-        case 'page':
-          relay({ type: 'show-page', args })
+            return { ...ui, code: ui.ok === false ? 'execution-failed' : 'ok' }
+          }
 
-          return { ok: true }
-        case 'notify':
-          relay({ type: 'notify', args })
+          let reply: Record<string, unknown>
 
-          return { ok: true }
-        case 'voice':
-          relay({ type: 'voice', args: [args[0] ?? 'toggle'] })
+          switch (cmd) {
+            case 'page':
+              relay({ type: 'show-page', args })
+              reply = { ok: true }
 
-          return { ok: true }
-        case 'os':
-          relay({ type: 'os', args: [args[0]], payload: args[1] ? (JSON.parse(args[1]) as Record<string, unknown>) : undefined })
+              break
+            case 'notify':
+              relay({ type: 'notify', args })
+              reply = { ok: true }
 
-          return { ok: true }
-        default:
-          return { ok: false, error: `unknown command ${cmd}` }
-      }
-    }, reason => controlSecurity.malformed(reason))
+              break
+            case 'voice':
+              relay({ type: 'voice', args: [args[0] ?? 'toggle'] })
+              reply = { ok: true }
+
+              break
+            default:
+              // Unreachable through the gate, whose allow-list is this surface's own table; kept so a
+              // future command that skips the policy still gets an answer rather than silence.
+              reply = { ok: false, error: `unknown command ${cmd}`, code: 'unsupported' }
+          }
+
+          result.finish({ ok: reply.ok !== false })
+
+          return { ...reply, code: reply.ok === false ? 'execution-failed' : 'ok' }
+        } catch (error) {
+          result.finish({ ok: false, code: 'execution-failed' })
+
+          throw error
+        }
+      },
+      reason => backendSecurity.malformed(reason)
+    )
 backend.setControl(() => osControl?.endpoint || osControlPath, backendToken)
-// `os`/`os-run` are checked against the shell's own catalogue, which the renderer registers as it
-// loads: ask it once the window can answer, so an unknown command is refused rather than guessed at.
+// What a registry command is worth comes from the shell's own catalogue, which the renderer registers
+// as it loads: ask it once the window can answer, so a command nobody declared is refused rather than
+// guessed at. The argument shapes the policy checks come from the same reply.
 const learnCatalogue = async (attempt = 0): Promise<void> => {
   const reply = await osBridge.list()
 
@@ -255,9 +323,10 @@ const learnCatalogue = async (attempt = 0): Promise<void> => {
     return
   }
 
+  const entries = reply.result as CatalogueEntry[]
   const tiers = new Map<string, 'read' | 'act' | 'mutate' | 'destructive'>()
 
-  for (const entry of reply.result as { id?: unknown; tier?: unknown }[]) {
+  for (const entry of entries) {
     const tier = asControlTier(entry?.tier)
 
     if (typeof entry?.id === 'string' && tier) {
@@ -265,8 +334,12 @@ const learnCatalogue = async (attempt = 0): Promise<void> => {
     }
   }
 
-  for (const security of [panelSecurity, controlSecurity]) {
+  for (const security of [panelSecurity, backendSecurity]) {
     security.setCatalogue(id => tiers.get(id))
+  }
+
+  for (const gate of [panelGate, backendGate]) {
+    gate.setCatalogue(entries)
   }
 }
 void learnCatalogue()

@@ -35,16 +35,24 @@ describe('control authorization: who may use which command', () => {
     }
     // R1: a child process that read the backend's token could otherwise run the registry's own
     // commands and skip the approval gate in the tool layer.
-    for (const cmd of ['os', 'os-run', 'notify', 'plugin', 'launch', 'page', 'wallpaper']) {
+    for (const cmd of ['notify', 'plugin', 'launch', 'page', 'wallpaper']) {
       const decision = adjudicate({ cmd, command: 'page.open', args: ['page.open', '{}'], token: TOKENS.backend }, CONTEXT)
       expect(decision.allowed).toBe(false)
       expect(decision.client).toBe('backend')
       expect(decision.reason).toMatch(/CLI token/)
     }
+    // R2: the generic registry door is retired for every caller, the backend's own token included.
+    for (const cmd of ['os', 'os-run']) {
+      const decision = adjudicate({ cmd, args: ['page.open', '{}'], token: TOKENS.backend }, CONTEXT)
+      expect(decision.allowed).toBe(false)
+      expect(decision.client).toBe('backend')
+      expect(decision.code).toBe('unsupported')
+      expect(decision.reason).toMatch(/replaced by run\/list\/state/)
+    }
   })
 
   it('lets the CLI token use its own surface and nothing of the registry', () => {
-    for (const cmd of ['os', 'os-run', 'notify', 'page', 'open', 'launch', 'wallpaper', 'theme', 'plugin', 'event', 'switches']) {
+    for (const cmd of ['notify', 'page', 'open', 'launch', 'wallpaper', 'theme', 'plugin', 'event', 'switches']) {
       expect(adjudicate({ cmd, command: 'page.open', args: ['page.open', '{}'], token: TOKENS.cli }, CONTEXT)).toMatchObject({ allowed: true, client: 'cli' })
     }
     for (const cmd of ['ui', 'ui-list', 'ui-state']) {
@@ -57,30 +65,41 @@ describe('control authorization: who may use which command', () => {
   })
 })
 
-describe('control authorization: os and os-run', () => {
+describe('control authorization: the typed registry surface', () => {
   const context = { tokens: TOKENS, catalogueReady: true, tierOf: (id: string) => CATALOGUE[id] }
 
-  it('reads the command id for `os` from its first argument', () => {
-    expect(adjudicate({ cmd: 'os', args: ['page.open', '{}'], token: TOKENS.cli }, context)).toMatchObject({ allowed: true, tier: 'read' })
-    expect(adjudicate({ cmd: 'os', args: [], token: TOKENS.cli }, context).allowed).toBe(false)
+  it('reads the command id for `run` from the request, and its tier from the catalogue', () => {
+    expect(adjudicate({ cmd: 'run', command: 'page.open', args: {}, token: TOKENS.cli }, context)).toMatchObject({ allowed: true, tier: 'read' })
+    expect(adjudicate({ cmd: 'run', command: 'memory.forget', args: {}, token: TOKENS.cli }, context)).toMatchObject({ allowed: true, tier: 'destructive' })
+    expect(adjudicate({ cmd: 'run', args: {}, token: TOKENS.cli }, context)).toMatchObject({ allowed: false, code: 'invalid' })
   })
 
-  it('reads the command id for `os-run` from its first argument too', () => {
-    expect(adjudicate({ cmd: 'os-run', args: ['memory.forget', '{}'], token: TOKENS.cli }, context)).toMatchObject({ allowed: true, tier: 'destructive' })
-    expect(adjudicate({ cmd: 'os-run', args: [], token: TOKENS.cli }, context).allowed).toBe(false)
+  it('reads nothing back into the registry for `list` and `state`', () => {
+    for (const cmd of ['list', 'state']) {
+      expect(adjudicate({ cmd, token: TOKENS.cli }, context)).toMatchObject({ allowed: true, tier: 'read' })
+    }
   })
 
   it('refuses an id the shell does not know once the catalogue is there', () => {
-    const decision = adjudicate({ cmd: 'os-run', args: ['made.up'], token: TOKENS.cli }, context)
+    const decision = adjudicate({ cmd: 'run', command: 'made.up', args: {}, token: TOKENS.cli }, context)
 
     expect(decision.allowed).toBe(false)
+    expect(decision.code).toBe('unsupported')
     expect(decision.reason).toMatch(/unknown command/)
   })
 
-  it('allows a command id while the renderer has not registered the catalogue yet', () => {
+  it('allows the id while the renderer has not registered the catalogue yet, but not the run itself', () => {
     const starting = { tokens: TOKENS, catalogueReady: false, tierOf: () => undefined }
 
-    expect(adjudicate({ cmd: 'os-run', args: ['page.open'], token: TOKENS.cli }, starting)).toMatchObject({ allowed: true, tier: undefined })
+    expect(adjudicate({ cmd: 'run', command: 'page.open', args: {}, token: TOKENS.cli }, starting)).toMatchObject({ allowed: true, tier: undefined })
+  })
+
+  it('keeps the registry on the CLI token: the backend has `ui` for that', () => {
+    const decision = adjudicate({ cmd: 'run', command: 'page.open', args: {}, token: TOKENS.backend }, context)
+
+    expect(decision.allowed).toBe(false)
+    expect(decision.code).toBe('unauthorized')
+    expect(decision.reason).toMatch(/CLI token/)
   })
 })
 
@@ -146,14 +165,19 @@ describe('control authorization: the desktop server guards the backend surface',
     }
 
     // R1: `os`/`os-run` run a registry command, so they are the CLI's door whatever the surface is.
-    // On Windows and macOS no CLI exists, which makes them unreachable rather than borrowed.
+    // R2 retires them outright: the door is `run`, and it is the CLI's wherever it is reached from.
     for (const cmd of ['os', 'os-run']) {
       const decision = adjudicate({ cmd, args: ['page.open', '{}'], token: TOKENS.backend }, backendSurface)
 
       expect(decision.allowed).toBe(false)
       expect(decision.client).toBe('backend')
-      expect(decision.reason).toMatch(/CLI token/)
+      expect(decision.code).toBe('unsupported')
+      expect(decision.reason).toMatch(/replaced by run\/list\/state/)
     }
+
+    // The typed spellings main serves are the backend's; they keep the same tier rules as the panel.
+    expect(adjudicate({ cmd: 'run', command: 'page.open', args: {}, token: TOKENS.backend }, backendSurface)).toMatchObject({ allowed: true, tier: 'read' })
+    expect(adjudicate({ cmd: 'run', command: 'page.open', args: {}, token: TOKENS.cli }, backendSurface)).toMatchObject({ allowed: false, code: 'unauthorized' })
 
     // A command main does not serve is refused here, so the journal records a refusal instead of an
     // allow that the dispatcher then answers with `unknown command`.

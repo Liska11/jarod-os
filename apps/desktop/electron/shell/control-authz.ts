@@ -14,12 +14,21 @@
 import crypto from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
+import { HERALD_EVENT_NAMES } from '../../shared/events.ts'
 import { sameToken } from './json-lines.ts'
 
 export type ControlClient = 'backend' | 'cli'
 
 /** The same ladder the renderer's registry uses (src/store/os-commands.ts). */
 export type ControlTier = 'read' | 'act' | 'mutate' | 'destructive'
+
+/**
+ * Why a request was turned away, in the vocabulary the journal and the caller's error share. The
+ * distinction matters to whoever reads the log: `unauthenticated` is a caller without a credential,
+ * `unauthorized` had one but asked for the other door's command, `unsupported` asked for a command
+ * that no longer exists, and `invalid` reached the right command with the wrong arguments.
+ */
+export type ControlRefusalCode = 'unauthenticated' | 'unauthorized' | 'unsupported' | 'invalid'
 
 export interface ControlTokens {
   /** Given to the agent backend; drives the command registry in the Hermes window. */
@@ -32,13 +41,27 @@ export interface ControlTokens {
 export const REGISTRY_COMMANDS = new Set(['ui', 'ui-list', 'ui-state'])
 
 /**
+ * The commands that run a *named* registry command and say what it is worth: `run` waits for the
+ * result and reports it, `list`/`state` read the catalogue and the window state. They replaced
+ * `os`/`os-run`, which took the command id as a loose first argument and carried no argument shape.
+ */
+export const TYPED_REGISTRY_COMMANDS = new Set(['run', 'list', 'state'])
+
+/**
+ * Gone, and gone loudly: `herald-os os <id> [json]` and `herald-os os-run <id> [json]`. A caller that
+ * still asks for them is told they no longer exist rather than quietly falling through a default
+ * branch — the point of R2's typed interface is that the shell refuses to guess what was meant.
+ */
+export const RETIRED_COMMANDS = new Set(['os', 'os-run'])
+
+/**
  * Everything the desktop server (`main.ts`) serves on its own door: the registry, plus the few shell
  * conveniences it relays. `os`/`os-run` are deliberately absent — they run registry commands, so they
  * are the CLI's door and the backend's token must not open them — and the list is an allow-list, so a
  * command `main` does not serve is refused here instead of reaching the dispatcher's default branch
  * (which would reply `unknown command` after the journal had already recorded an allow).
  */
-export const BACKEND_COMMANDS = new Set(['ui', 'ui-list', 'ui-state', 'page', 'notify', 'voice'])
+export const BACKEND_COMMANDS = new Set(['ui', 'ui-list', 'ui-state', 'run', 'list', 'state', 'page', 'notify', 'voice'])
 
 /**
  * Which door is being guarded. The desktop server (`OsControlServer`) is the *backend's* surface —
@@ -51,9 +74,17 @@ export type ControlSurface = 'panel' | 'backend'
 export interface ControlRequestShape {
   cmd?: unknown
   token?: unknown
+  /** The registry command id a typed call names (`ui`, `run`). */
   command?: unknown
   args?: unknown
   source?: unknown
+  /** A one-shot capability the host issued for exactly this call. */
+  capability?: unknown
+  /** Kept because the shared panel socket carries them; `theme` reads them. */
+  attachments?: unknown
+  shell?: unknown
+  wallpaper?: unknown
+  colors?: unknown
 }
 
 export interface ControlDecision {
@@ -63,6 +94,8 @@ export interface ControlDecision {
   reason: string
   /** Resolved from the shell's catalogue when the command is known. */
   tier?: ControlTier
+  /** Refusals only: the machine-readable class of the refusal. */
+  code?: ControlRefusalCode
 }
 
 export interface ControlContext {
@@ -87,6 +120,214 @@ export interface ControlAuditEntry {
   source?: string
   allowed: boolean
   reason: string
+  /** The outcome's machine-readable class (`ok`, `approval-denied`, `capability-replayed`, …). */
+  code?: string
+  /** An approval this attempt came from, as a fingerprint — never the capability itself. */
+  approval?: string
+  /** Which door: the shared panel socket, or the desktop server the backend dials. */
+  surface?: ControlSurface
+}
+
+/**
+ * What one shell command is worth, and what a well-formed request for it looks like.
+ *
+ * The tier is the whole point: `read` and `act` are what a caller may do with a credential alone,
+ * `mutate` and `destructive` additionally need the host to have witnessed an approval (see
+ * shell/host-control.ts). The validator is deliberately shallow — the dispatcher below still has to
+ * defend itself — but it runs *before* the dispatcher, so a malformed request is refused and
+ * journalled as such instead of reaching a handler that assumes it was checked.
+ */
+export interface ShellCommandSpec {
+  tier: ControlTier | ((request: ControlRequestShape) => ControlTier)
+  validate?: (request: ControlRequestShape) => string | undefined
+}
+
+function stringArgs(request: ControlRequestShape): string[] {
+  return Array.isArray(request.args) ? request.args.filter((arg): arg is string => typeof arg === 'string') : []
+}
+
+function pluginAction(request: ControlRequestShape): string {
+  return stringArgs(request)[0] ?? 'list'
+}
+
+function brandingAction(request: ControlRequestShape): string {
+  return stringArgs(request)[0] ?? 'show'
+}
+
+function voiceAction(request: ControlRequestShape): string | undefined {
+  const [action] = stringArgs(request)
+
+  return action ?? 'toggle'
+}
+
+function requiresTarget(request: ControlRequestShape, command: string): string | undefined {
+  const [, target] = stringArgs(request)
+
+  return target ? undefined : `${command} needs a target`
+}
+
+/**
+ * The shell's own surface: everything `herald-os` may ask for, classified. A command that is not in
+ * this table is refused by the policy rather than forwarded, so the table is also the allow-list.
+ */
+export const SHELL_COMMANDS: ReadonlyMap<string, ShellCommandSpec> = new Map<string, ShellCommandSpec>([
+  // Reading: no side effect beyond answering.
+  ['state', { tier: 'read' }],
+  ['menu-check', { tier: 'read' }],
+  ['list', { tier: 'read' }],
+  ['ui-list', { tier: 'read' }],
+  ['ui-state', { tier: 'read' }],
+
+  // Acting: opens things, tells the window what to do, changes nothing that outlives the session.
+  ['page', { tier: 'act', validate: request => (stringArgs(request)[0] ? undefined : 'page needs an id') }],
+  ['open', { tier: 'act', validate: request => (stringArgs(request)[0] ? undefined : 'open needs an app id') }],
+  ['launch', { tier: 'act', validate: request => (stringArgs(request).length ? undefined : 'launch needs an application name') }],
+  ['notify', { tier: 'act', validate: request => (stringArgs(request).length ? undefined : 'notify needs a message') }],
+  ['dictate', { tier: 'act' }],
+  [
+    'voice',
+    {
+      tier: 'act',
+      validate: request => (['toggle', 'start', 'stop', 'mute'].includes(voiceAction(request) ?? '') ? undefined : 'voice needs toggle | start | stop | mute'),
+    },
+  ],
+  ['update-available', { tier: 'act' }],
+  ['switches', { tier: 'act' }],
+  ['screensaver', { tier: 'act' }],
+  [
+    'panel',
+    {
+      tier: 'act',
+      validate: request =>
+        ['wifi', 'bluetooth', 'audio', 'display', 'power', 'clock'].includes(stringArgs(request)[0] ?? '')
+          ? undefined
+          : 'panel needs wifi, bluetooth, audio, display, power or clock',
+    },
+  ],
+  [
+    'event',
+    {
+      tier: 'act',
+      validate: request => {
+        const [name] = stringArgs(request)
+
+        return name && (HERALD_EVENT_NAMES as readonly string[]).includes(name) ? undefined : `unknown event ${name ?? ''}`
+      },
+    },
+  ],
+  // The command overlay, in each of its modes: `herald-os ask …` and friends, CLI-only.
+  ...['ask', 'command', 'applications', 'menu', 'power', 'clipboard', 'emoji'].map(
+    (mode): [string, ShellCommandSpec] => [mode, { tier: 'act' }]
+  ),
+
+  // Mutating: writes preferences, files or plugin state.
+  [
+    'webapp',
+    {
+      tier: 'mutate',
+      validate: request => {
+        const [url, name] = stringArgs(request)
+
+        if (!url || !/^https?:\/\//i.test(url)) {
+          return 'webapp needs an http(s) url and a name'
+        }
+
+        return name ? undefined : 'webapp needs an http(s) url and a name'
+      },
+    },
+  ],
+  ['wallpaper', { tier: 'mutate' }],
+  ['theme', { tier: 'mutate', validate: request => (stringArgs(request)[0] ? undefined : 'theme needs a name') }],
+  ['theme-omarchy', { tier: 'mutate' }],
+  [
+    'branding',
+    {
+      tier: request => (['set', 'reset'].includes(brandingAction(request)) ? 'mutate' : 'read'),
+      validate: request => {
+        const [action, value] = stringArgs(request)
+
+        if (!['show', 'set', 'reset'].includes(action ?? 'show')) {
+          return 'branding show | set <json> | reset [all|logo|lock|name]'
+        }
+
+        if (action === 'set') {
+          try {
+            const patch = JSON.parse(value || '{}') as unknown
+
+            return patch && typeof patch === 'object' && !Array.isArray(patch) ? undefined : 'branding set needs a JSON object'
+          } catch {
+            return 'branding set needs a JSON object'
+          }
+        }
+
+        if (action === 'reset' && value && !['all', 'logo', 'lock', 'name'].includes(value)) {
+          return 'branding reset [all|logo|lock|name]'
+        }
+
+        return undefined
+      },
+    },
+  ],
+  [
+    'plugin',
+    {
+      tier: request => {
+        const action = pluginAction(request)
+
+        if (action === 'remove') {
+          return 'destructive'
+        }
+
+        return action === 'list' ? 'read' : 'mutate'
+      },
+      validate: request => {
+        const action = pluginAction(request)
+
+        if (!['list', 'add', 'enable', 'disable', 'update', 'remove'].includes(action)) {
+          return 'plugin list | add <url> | enable <id> | disable <id> | update <id> | remove <id>'
+        }
+
+        if (action === 'add') {
+          const [, url] = stringArgs(request)
+
+          if (!url || !/^(https?:\/\/|git@|ssh:\/\/)/i.test(url)) {
+            return 'plugin add needs a repository url'
+          }
+        }
+
+        if (action !== 'list' && action !== 'add') {
+          return requiresTarget(request, `plugin ${action}`)
+        }
+
+        return undefined
+      },
+    },
+  ],
+])
+
+function specOf(cmd: string): ShellCommandSpec | undefined {
+  return SHELL_COMMANDS.get(cmd)
+}
+
+/** The tier a shell command is worth for this request, from the table's rule or its constant. */
+export function shellTier(cmd: string, request: ControlRequestShape): ControlTier | undefined {
+  const spec = specOf(cmd)
+
+  if (!spec) {
+    return undefined
+  }
+
+  return typeof spec.tier === 'function' ? spec.tier(request) : spec.tier
+}
+
+/** What is wrong with this request for this command, or `undefined` when it is well formed. */
+export function shellArgumentProblem(cmd: string, request: ControlRequestShape): string | undefined {
+  return specOf(cmd)?.validate?.(request)
+}
+
+/** Every command the shell's own surface accepts; the policy's allow-list, for tests and callers. */
+export function shellCommandNames(): string[] {
+  return [...SHELL_COMMANDS.keys()]
 }
 
 const TIERS: readonly ControlTier[] = ['read', 'act', 'mutate', 'destructive']
@@ -128,89 +369,122 @@ export function asControlTier(value: unknown): ControlTier | undefined {
   return TIERS.includes(value as ControlTier) ? (value as ControlTier) : undefined
 }
 
-function commandIdOf(cmd: string, request: ControlRequestShape): string {
-  // The CLI passes the command id as its first argument — `herald-os os <id> [json]` and
-  // `herald-os os-run <id> [json]` alike; the bridge names it directly on `ui`.
-  if (cmd === 'os' || cmd === 'os-run') {
-    const args = Array.isArray(request.args) ? request.args : []
-
-    return typeof args[0] === 'string' ? args[0] : ''
-  }
-
-  return typeof request.command === 'string' ? request.command : ''
+export function commandIdOf(request: ControlRequestShape): string {
+  return typeof request.command === 'string' ? request.command.trim() : ''
 }
 
 /**
  * The authorization decision for one control request. Pure: same request and context, same answer.
+ *
+ * R2 tightened what "allowed" means: a command the shell does not know is refused *here*, by the
+ * policy, instead of being handed to a dispatcher whose default branch would answer `unknown command`
+ * after the journal had already recorded an allow. The tiers are the pairs the rest of the pipeline
+ * reads: `read`/`act` are satisfied by a credential, `mutate`/`destructive` are not.
  */
 export function adjudicate(request: ControlRequestShape, context: ControlContext): ControlDecision {
   const cmd = typeof request?.cmd === 'string' ? request.cmd.trim() : ''
 
   if (!cmd) {
-    return { allowed: false, client: null, reason: 'a control request needs a cmd' }
+    return { allowed: false, client: null, code: 'invalid', reason: 'a control request needs a cmd' }
   }
 
   const asBackend = sameToken(request.token, context.tokens.backend)
   const asCli = asBackend ? false : sameToken(request.token, context.tokens.cli)
 
   if (!asBackend && !asCli) {
-    return { allowed: false, client: null, reason: 'invalid control token' }
+    return { allowed: false, client: null, code: 'unauthenticated', reason: 'invalid control token' }
   }
 
   const client: ControlClient = asBackend ? 'backend' : 'cli'
 
+  // The loose `os`/`os-run` interface is gone on every door, and says so: a caller that still sends it
+  // is asking for something the shell no longer implements, not for something it is not allowed.
+  if (RETIRED_COMMANDS.has(cmd)) {
+    return { allowed: false, client, code: 'unsupported', reason: `${cmd} was replaced by run/list/state` }
+  }
+
   if ((context.surface ?? 'panel') === 'backend') {
     if (!asBackend) {
-      return { allowed: false, client: asCli ? 'cli' : null, reason: 'the backend shell surface needs the backend token' }
-    }
-
-    // `os`/`os-run` are the CLI's door even here: they run a registry command, and the backend's own
-    // path to the registry is `ui`. On Windows and macOS no CLI exists, so refusing them costs
-    // nothing — it only means the backend cannot borrow the CLI's privilege.
-    if (cmd === 'os' || cmd === 'os-run') {
-      return { allowed: false, client, reason: `the ${cmd} command needs the CLI token` }
+      return { allowed: false, client, code: 'unauthorized', reason: 'the backend shell surface needs the backend token' }
     }
 
     if (!BACKEND_COMMANDS.has(cmd)) {
-      return { allowed: false, client, reason: `unknown command ${cmd} on the backend shell surface` }
+      // Everything `main` does not serve, retired commands included: this surface is an allow-list, so
+      // a command it does not know is refused by the policy rather than by the dispatcher afterwards.
+      return { allowed: false, client, code: 'unsupported', reason: `unknown command ${cmd} on the backend shell surface` }
     }
 
-    const id = commandIdOf(cmd, request)
+    if (cmd === 'run') {
+      const id = commandIdOf(request)
 
-    return { allowed: true, client, reason: `${cmd} on the backend shell surface`, tier: id ? context.tierOf?.(id) : undefined }
+      if (!id) {
+        return { allowed: false, client, code: 'invalid', reason: 'run needs a command id' }
+      }
+
+      const tier = context.tierOf?.(id)
+
+      if (tier === undefined && context.catalogueReady) {
+        return { allowed: false, client, code: 'unsupported', reason: `unknown command ${id}` }
+      }
+
+      return { allowed: true, client, reason: `run runs ${id}`, tier }
+    }
+
+    if (cmd === 'list' || cmd === 'state') {
+      return { allowed: true, client, reason: `${cmd} reads the command registry`, tier: 'read' }
+    }
+
+    const id = commandIdOf(request)
+
+    return {
+      allowed: true,
+      client,
+      reason: `${cmd} on the backend shell surface`,
+      tier: REGISTRY_COMMANDS.has(cmd) ? (id ? context.tierOf?.(id) : undefined) : shellTier(cmd, request),
+    }
   }
 
   if (REGISTRY_COMMANDS.has(cmd)) {
     if (!asBackend) {
-      return { allowed: false, client, reason: `the ${cmd} command needs the backend token` }
+      return { allowed: false, client, code: 'unauthorized', reason: `the ${cmd} command needs the backend token` }
     }
 
-    const id = commandIdOf(cmd, request)
+    const id = commandIdOf(request)
 
     return { allowed: true, client, reason: `${cmd} runs in the command registry`, tier: id ? context.tierOf?.(id) : undefined }
   }
 
+  // Everything below is the CLI's own surface. The backend token does not open it: the agent's path to
+  // the registry is `ui`, and a shell command is the person at the keyboard.
   if (!asCli) {
-    return { allowed: false, client, reason: `the ${cmd} command needs the CLI token` }
+    return { allowed: false, client, code: 'unauthorized', reason: `the ${cmd} command needs the CLI token` }
   }
 
-  if (cmd === 'os' || cmd === 'os-run') {
-    const id = commandIdOf(cmd, request)
+  if (cmd === 'list' || cmd === 'state') {
+    return { allowed: true, client, reason: `${cmd} reads the command registry`, tier: 'read' }
+  }
+
+  if (cmd === 'run') {
+    const id = commandIdOf(request)
 
     if (!id) {
-      return { allowed: false, client, reason: `${cmd} needs a command id` }
+      return { allowed: false, client, code: 'invalid', reason: 'run needs a command id' }
     }
 
     const tier = context.tierOf?.(id)
 
     if (tier === undefined && context.catalogueReady) {
-      return { allowed: false, client, reason: `unknown command ${id}` }
+      return { allowed: false, client, code: 'unsupported', reason: `unknown command ${id}` }
     }
 
-    return { allowed: true, client, reason: `${cmd} runs ${id}`, tier }
+    return { allowed: true, client, reason: `run runs ${id}`, tier }
   }
 
-  return { allowed: true, client, reason: `${cmd} is a CLI command` }
+  if (!specOf(cmd)) {
+    return { allowed: false, client, code: 'unsupported', reason: `unknown command ${cmd}` }
+  }
+
+  return { allowed: true, client, reason: `${cmd} is a shell command`, tier: shellTier(cmd, request) }
 }
 
 /**
@@ -234,7 +508,22 @@ export class ControlSecurity {
     return this.context.tokens
   }
 
-  /** The renderer finished registering its catalogue: `os`/`os-run` can be checked against it. */
+  /** Which door this instance guards, for the journal. */
+  get surface(): ControlSurface {
+    return this.context.surface ?? 'panel'
+  }
+
+  /** What the catalogue says this command id is worth, once the renderer has registered it. */
+  tierOf(command: string): ControlTier | undefined {
+    return this.context.tierOf?.(command)
+  }
+
+  /** Whether the catalogue is worth consulting: an empty one right after launch is not evidence. */
+  get catalogueReady(): boolean {
+    return this.context.catalogueReady === true
+  }
+
+  /** The renderer finished registering its catalogue: `run` can be checked against it. */
   setCatalogue(tierOf: (command: string) => ControlTier | undefined): void {
     this.context = { ...this.context, tierOf, catalogueReady: true }
   }
@@ -245,23 +534,45 @@ export class ControlSecurity {
    * still written down — with no trace of the line itself, which may well have carried a token.
    */
   malformed(reason: string): void {
-    this.audit({ at: this.now().toISOString(), client: 'unauthenticated', cmd: '', allowed: false, reason })
+    this.record({ client: 'unauthenticated', cmd: '', allowed: false, code: 'invalid', reason })
+  }
+
+  /** Decide without writing anything: the pipeline records once, with the outcome it reached. */
+  adjudicateOnly(request: ControlRequestShape): ControlDecision {
+    return adjudicate(request, this.context)
+  }
+
+  /** One line in the journal. `code` and `approval` are the pipeline's, not the adjudicator's. */
+  record(entry: Omit<ControlAuditEntry, 'at'> & { at?: string }): void {
+    this.audit({
+      at: entry.at ?? this.now().toISOString(),
+      client: entry.client,
+      cmd: entry.cmd,
+      command: entry.command || undefined,
+      tier: entry.tier,
+      source: entry.source,
+      allowed: entry.allowed,
+      reason: entry.reason,
+      code: entry.code,
+      approval: entry.approval,
+      surface: entry.surface ?? this.surface,
+    })
   }
 
   check(request: ControlRequestShape): ControlDecision {
-    const decision = adjudicate(request, this.context)
+    const decision = this.adjudicateOnly(request)
     const cmd = typeof request?.cmd === 'string' ? request.cmd : ''
     const command = typeof request?.command === 'string' ? request.command : undefined
 
-    this.audit({
-      at: this.now().toISOString(),
+    this.record({
       client: decision.client ?? 'unauthenticated',
       cmd,
-      command: command || undefined,
+      command,
       tier: decision.tier,
       source: typeof request?.source === 'string' && request.source ? request.source : undefined,
       allowed: decision.allowed,
       reason: decision.reason,
+      code: decision.allowed ? undefined : (decision.code ?? 'unauthorized'),
     })
 
     return decision
