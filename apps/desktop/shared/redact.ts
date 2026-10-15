@@ -7,7 +7,7 @@
 const SECRET_TEXT: [RegExp, string][] = [
   [/sk-[A-Za-z0-9_-]{16,}/g, 'sk-[masqué]'],
   [/xox[baprs]-[A-Za-z0-9-]{10,}/g, 'xox[masqué]'],
-  [/\b\d{8,10}:[A-Za-z0-9_-]{30,}\b/g, '[jeton masqué]'],
+  [/\b\d{8,10}:[A-Za-z0-9_-]{30,}\b|\bbot\d{8,10}:[A-Za-z0-9_-]{30,}\b/g, '[jeton masqué]'],
   [/\bgh[pousr]_[A-Za-z0-9]{20,}/g, '[jeton masqué]'],
   [/\bAIza[0-9A-Za-z_-]{30,}/g, '[clé masquée]'],
   [/(bearer\s+)[A-Za-z0-9._\-+/=]{12,}/gi, '$1[masqué]'],
@@ -15,9 +15,9 @@ const SECRET_TEXT: [RegExp, string][] = [
 ]
 
 /**
- * Règle À CLÉ EXPLICITE, copiée de `jarod-core/packages/cli/src/mcp-server.ts` (décision du 2026-10-02) : le
- * seuil générique de 12 caractères ci-dessus laisse passer un jeton court (`?token=abc123`), alors qu'un nom
- * de réglage qui dit password/passwd/pwd/secret/token/api_key désigne une valeur à masquer à TOUTE longueur.
+ * Règle À CLÉ EXPLICITE, la même que `redactKeyedText` du noyau (`packages/kernel/src/redact.ts`, décision du
+ * 2026-10-02) : le seuil générique de 12 caractères ci-dessus laisse passer un jeton court (`?token=abc123`), alors
+ * qu'un nom de réglage qui dit password/passwd/pwd/secret/token/api_key désigne une valeur à masquer à TOUTE longueur.
  * Le seuil du noyau ne change pas ; sur-masquage assumé (`max_tokens: 4096`), et la règle est idempotente.
  */
 const KEYED_SECRET =

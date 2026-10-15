@@ -6,6 +6,7 @@ import { closeSync, existsSync, mkdirSync, openSync, readFileSync, writeFileSync
 import { dirname, join } from "node:path";
 import { createInterface } from "node:readline/promises";
 import { setTimeout as sleep } from "node:timers/promises";
+import { redactKeyedText } from "@jarod/kernel/redact";
 import type { MemoryType, Settings } from "@jarod/contracts";
 import type { AgentHooks } from "@jarod/plugin-agent";
 import type { StoredEvent } from "@jarod/plugin-storage";
@@ -398,7 +399,7 @@ if (!process.env.VITEST) {
       else process.exit(code);
     },
     (e: Error) => {
-      console.error(red(e.message));
+      console.error(red(redactKeyedText(e.message)));
       process.exit(1);
     },
   );

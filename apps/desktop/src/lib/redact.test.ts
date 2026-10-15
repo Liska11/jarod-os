@@ -10,6 +10,7 @@ describe('redactText', () => {
     expect(redactText('"api_key": "abcdefghijklmnop"')).toContain('[masqué]')
     expect(redactText('https://x/y?token=abcdefghijklmnop')).toBe('https://x/y?token=[masqué]')
     expect(redactText(`1234567890:${'A'.repeat(40)}`)).toContain('[jeton masqué]')
+    expect(redactText(`https://api.telegram.org/bot${'1'.repeat(9)}:${'A'.repeat(35)}/sendMessage`)).toContain('[jeton masqué]')
     expect(redactText('ghp_ABCDEFGHIJKLMNOPQRSTUVWX')).toContain('[jeton masqué]')
     expect(redactText('xoxb-1234567890ABCDEFGH')).toContain('xox[masqué]')
   })

@@ -453,6 +453,27 @@ describe("passerelle compatible Hermes", () => {
     expect(detail).toContain("[masqué]");
     expect(detail).not.toContain(secret);
   });
+
+  it("masque aussi un secret COURT dans une ligne de journal (échec de tâche, commande MCP)", async () => {
+    const lines: string[] = [];
+    const job = { id: "j1", name: "J", prompt: "p", spec: { kind: "interval" as const, minutes: 5 }, enabled: true, lastRun: null, nextRun: null, lastStatus: null };
+    const sched = {
+      list: () => [job],
+      get: () => job,
+      save: () => job,
+      delete: () => {},
+      runNow: () => Promise.reject(new Error("l'outil a refusé le jeton (token=abc123)")),
+    };
+    const { core } = fakeCore(async () => {});
+    const gw = createGateway({ core: { ...core, scheduler: sched }, version: "test", triggerWaitMs: 100, log: (s: string) => void lines.push(s) });
+    open.push(gw);
+    const port = await gw.listen(0);
+    const res = await fetch(`http://127.0.0.1:${port}/api/cron/jobs/j1/trigger`, { method: "POST", headers: { "X-Hermes-Session-Token": gw.token } });
+
+    expect(res.status).toBe(200);
+    expect(lines.join("\n")).toContain("token=[masqué]");
+    expect(lines.join("\n")).not.toContain("abc123");
+  });
 });
 
 describe("llm.oneshot et messages stockés (panneau Catch-up)", () => {

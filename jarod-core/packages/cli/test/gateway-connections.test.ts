@@ -43,6 +43,15 @@ describe("serveurs MCP (pur)", () => {
     expect(probeResult([{ name: "echo", description: "Répète" }, { name: "boom" }])).toEqual({ ok: true, tools: [{ name: "echo", description: "Répète" }, { name: "boom" }] });
     expect(probeResult(new Error("connexion refusée"))).toEqual({ ok: false, error: "connexion refusée", tools: [] });
   });
+
+  it("probeResult : le message d'échec est masqué avant de partir dans la réponse", () => {
+    const failed = probeResult(new Error("échec du serveur : Authorization: Bearer abcdefghijklmnop et token=abc123"));
+
+    expect(failed.ok).toBe(false);
+    expect(String(failed.error)).toContain("[masqué]");
+    expect(String(failed.error)).not.toContain("abcdefghijklmnop");
+    expect(String(failed.error)).not.toContain("abc123");
+  });
 });
 
 describe("plateformes de messagerie (pur)", () => {

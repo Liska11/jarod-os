@@ -5,6 +5,7 @@
 //  - les VALEURS des variables d'environnement d'un serveur MCP ne quittent pas le noyau (elles contiennent souvent des clés) : le shell voit les noms et « ••••• » ;
 //  - activer une plateforme de messagerie est REFUSÉ d'ici : c'est ouvrir un canal par lequel des messages venus de l'extérieur pilotent l'agent, avec ses jetons
 //    à fournir ; cela se fait dans l'écran « Passerelles » de Jarod, qui les demande.
+import { redactKeyedText } from "@jarod/kernel/redact";
 import { ConfigError } from "./config.js";
 
 export interface McpConfigLike {
@@ -84,7 +85,7 @@ export function findMcp(configs: readonly McpConfigLike[], name: string): McpCon
 
 /** Le résultat d'un essai de connexion, dans la forme du shell. */
 export function probeResult(tools: readonly { name: string; description?: string }[] | Error): Record<string, unknown> {
-  if (tools instanceof Error) return { ok: false, error: tools.message, tools: [] };
+  if (tools instanceof Error) return { ok: false, error: redactKeyedText(tools.message).slice(0, 200), tools: [] };
   return { ok: true, tools: tools.map((t) => ({ name: t.name, ...(t.description ? { description: t.description } : {}) })) };
 }
 

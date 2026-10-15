@@ -5,7 +5,7 @@
 import { appendFileSync, existsSync, mkdirSync, renameSync, statSync } from "node:fs";
 import { dirname, join } from "node:path";
 import type { Memory, MemoryType, Message, SearchHit, Session } from "@jarod/contracts";
-import { redactText } from "@jarod/kernel/redact";
+import { redactKeyedText } from "@jarod/kernel/redact";
 import type { KeyStore } from "@jarod/plugin-storage";
 import { openCore } from "./context.js";
 import { type Preflight, profilePreflight } from "./preflight.js";
@@ -50,13 +50,11 @@ interface ToolSpec {
 class ArgError extends Error {}
 
 /**
- * Règle À CLÉ EXPLICITE (décision du 2026-10-02, après l'essai sur le profil réel : `redactText` ne masque qu'à partir de 12 caractères) :
- * toute valeur affectée (`=` ou `:`) à un nom contenant password, passwd, pwd, secret, token, apikey ou api_key est masquée à TOUTE longueur.
- * Le seuil générique de 12 caractères de `redactText` ne change pas. Sur-masquage assumé (ex. `max_tokens: 4096`, ou une accolade fermante collée à la valeur). La valeur va jusqu'au premier blanc, guillemet, virgule, point-virgule ou `&` : un crochet ou une accolade DANS la valeur n'en laisse jamais une partie en clair ; une valeur déjà masquée n'est pas remasquée (idempotent).
+ * La règle à clé explicite vit maintenant dans le noyau (`redactKeyedText`, `packages/kernel/src/redact.ts`) : elle
+ * était recopiée ici depuis la décision du 2026-10-02, et deux copies d'un même masque finissent par diverger.
  */
-const KEYED_SECRET = /(\b[\w-]*(?:password|passwd|pwd|secret|token|api[-_]?key)[\w-]*["']?\s*[:=]\s*["']?)(?!\[masqué\])([^\s"',;&]+)/gi;
 /** Exporté pour la revalidation sur copie réelle (condition de clôture de MCP). */
-export const mcpClean = (s: string): string => redactText(s).replace(KEYED_SECRET, "$1[masqué]");
+export const mcpClean = (s: string): string => redactKeyedText(s);
 const clean = mcpClean;
 const cut = (s: string, n: number): string => (s.length > n ? `${s.slice(0, n)}…[tronqué]` : s);
 const iso = (ms: number): string => new Date(ms).toISOString();

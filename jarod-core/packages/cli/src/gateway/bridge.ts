@@ -2,7 +2,7 @@
 //   POST /api/jarod/invoke   { channel, args? }  →  { result }    (ou { detail } avec un statut d'erreur)
 // Les handlers sont ceux de l'application jarod-cordis : leurs règles (validation, refus nommés, garde fichiers) sont celles de l'origine. Seuls changent le
 // transport (HTTP au lieu d'IPC Electron) et le « shell » : les boîtes de dialogue sont des demandes à la fenêtre de Jarod-OS (voir `bridge-shell.ts`).
-import { redactText } from "@jarod/kernel/redact";
+import { redactKeyedText, redactText } from "@jarod/kernel/redact";
 
 export type BridgeHandlers = Readonly<Record<string, (...args: unknown[]) => unknown>>;
 
@@ -28,7 +28,7 @@ export function createBridgePort(handlers: BridgeHandlers, assertChannel: (chann
       try {
         name = assertChannel(channel);
       } catch (e) {
-        throw new BridgeError(400, e instanceof Error ? e.message : "canal refusé");
+        throw new BridgeError(400, redactKeyedText(e instanceof Error ? e.message : "canal refusé").slice(0, 200));
       }
       const fn = Object.hasOwn(handlers, name) ? handlers[name] : undefined;
       if (typeof fn !== "function") throw new BridgeError(404, `canal non porté : ${name}`);

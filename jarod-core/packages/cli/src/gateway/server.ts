@@ -3,7 +3,7 @@
 //   WS   /api/ws?token=…      JSON-RPC 2.0 : sessions, tour de conversation, accords ; événements en notifications `event`
 //   *    /api/…               REST : jeton `X-Hermes-Session-Token` exigé ; tout ce qui n'est pas servi répond 404 ET est consigné
 // Ce qui n'est pas servi est le résultat de l'essai : `unhandled()` le liste, il alimente le plan de portage.
-import { redactText } from "@jarod/kernel/redact";
+import { redactKeyedText, redactText } from "@jarod/kernel/redact";
 import { sameSecret } from "@jarod/kernel/secret";
 import { randomBytes } from "node:crypto";
 import { statSync } from "node:fs";
@@ -125,7 +125,10 @@ const str = (v: unknown): string => (typeof v === "string" ? v : "");
 export function createGateway(opts: GatewayOptions): Gateway {
   const { core, version } = opts;
   const token = opts.token ?? randomBytes(24).toString("base64url");
-  const log = opts.log ?? (() => {});
+  const logLine = opts.log ?? (() => {});
+  // Une seule sortie de journal pour la passerelle, masquée ICI : l'échec d'une commande MCP ou d'une tâche peut citer
+  // un jeton, et aucun appelant n'a à y penser.
+  const log = (line: string): void => logLine(redactKeyedText(line));
   const triggerWaitMs = opts.triggerWaitMs ?? 30_000;
   const approvalTimeoutMs = opts.approvalTimeoutMs ?? 10 * 60_000;
   const shellTimeoutMs = opts.shellTimeoutMs ?? 60 * 60_000;
