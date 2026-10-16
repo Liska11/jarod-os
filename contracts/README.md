@@ -43,6 +43,7 @@ envelopes today). **Not frozen** means there is no schema at all, and `index.jso
 | `c6-plugin-manifest` | frozen |
 | `c7-tool-call`, `c7-guarded-tool-result`, `c7-tool-audit-entry`, `c7-bridge-tool-result` | **provisional** |
 | `c8-image-trust`, `c8-trust-journal-entry` | frozen |
+| `c9-storage-reservation`, `c9-storage-lease` | **provisional** (written by the Rust host, phase 2) |
 
 ## Running the tests
 

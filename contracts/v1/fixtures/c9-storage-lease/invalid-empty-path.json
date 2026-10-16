@@ -1,0 +1,8 @@
+{
+  "id": "lease_0123456789abcdef",
+  "plugin": "jarod.models",
+  "zone": "models",
+  "path": "",
+  "grantedBytes": 4294967296,
+  "expiresAt": "2026-10-16T14:00:00.000Z"
+}

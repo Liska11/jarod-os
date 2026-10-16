@@ -265,6 +265,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "host-storage"
+version = "0.1.0"
+dependencies = [
+ "host-control",
+ "serde",
+ "serde_json",
+ "sha2",
+ "windows-sys 0.61.2",
+]
+
+[[package]]
 name = "hybrid-array"
 version = "0.4.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"

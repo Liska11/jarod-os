@@ -1,0 +1,8 @@
+{
+  "id": "lease_0123456789abcdef",
+  "plugin": "jarod.rag",
+  "zone": "cache",
+  "path": "/var/lib/jarod/cache/jarod.rag/lease_0123456789abcdef",
+  "grantedBytes": 4294967296,
+  "expiresAt": "2026-10-16T14:00:00.000Z"
+}

@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jarod-os.invalid/contracts/v1/c9-storage-reservation.schema.json",
+  "title": "Storage reservation request (what a plugin asks the host for before it writes)",
+  "description": "A plugin never receives a volume, only a lease: it names itself, a reservable zone, how many bytes it intends to write and why, and the host answers with a lease (`c9-storage-lease`) or a refusal. The zones listed here are the only ones a plugin may ask for; profiles, databases and security logs are never reservable. Provisional: written by the Rust host (phase 2), no TypeScript or Python producer yet.",
+  "type": "object",
+  "required": [
+    "plugin",
+    "zone",
+    "requestedBytes",
+    "purpose"
+  ],
+  "properties": {
+    "plugin": {
+      "type": "string",
+      "pattern": "^[a-z]([a-z0-9._-]{0,62}[a-z0-9_-])?$",
+      "description": "The plugin's id: lowercase, no separator, no path."
+    },
+    "zone": {
+      "enum": [
+        "models",
+        "downloads",
+        "updates",
+        "sandboxes",
+        "cache",
+        "temp",
+        "artifacts"
+      ]
+    },
+    "requestedBytes": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 1099511627776
+    },
+    "purpose": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200,
+      "pattern": "^[^\\u0000-\\u001f\\u007f]+$",
+      "description": "One line for the person who reads the storage report: no control characters."
+    }
+  },
+  "additionalProperties": false
+}

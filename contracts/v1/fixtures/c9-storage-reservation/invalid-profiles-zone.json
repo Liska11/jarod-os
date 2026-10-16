@@ -1,0 +1,6 @@
+{
+  "plugin": "jarod.models",
+  "zone": "profiles",
+  "requestedBytes": 4294967296,
+  "purpose": "download Qwen2.5 0.5B Instruct GGUF"
+}

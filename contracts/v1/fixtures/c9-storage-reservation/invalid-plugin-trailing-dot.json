@@ -1,0 +1,6 @@
+{
+  "plugin": "jarod.models.",
+  "zone": "models",
+  "requestedBytes": 4294967296,
+  "purpose": "a trailing dot is stripped by Windows, so it names another plugin"
+}

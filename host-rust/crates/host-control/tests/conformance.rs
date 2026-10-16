@@ -40,7 +40,7 @@ fn every_fixture_of_every_contract_comes_out_as_its_name_says() {
     println!("contracts: {} schemas, {total} fixtures ({valid} valid, {} invalid)", contracts.ids().len(), total - valid);
 
     assert!(mismatches.is_empty(), "{} of {total} fixtures disagree with their name:\n{}", mismatches.len(), mismatches.join("\n"));
-    assert_eq!(contracts.ids().len(), 16, "contracts/v1/index.json lists 16 contracts");
+    assert!(contracts.ids().len() >= 16, "contracts/v1/index.json lists at least the 16 contracts of the 0b freeze");
     assert!(total >= 129, "at least the 129 fixtures of the 0b freeze (131 with the 0b.1 redaction fixtures)");
 }
 

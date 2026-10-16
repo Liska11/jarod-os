@@ -28,6 +28,8 @@ PY-bridge from the same files; TS-kernel repeats the walk for the contracts it o
 | `c7-bridge-tool-result` | provisional | `bridge/util.py:116,120` `ok`/`fail` | `test_tools.py` | PY-bridge: helpers and a real failing handler return the envelope |
 | `c8-image-trust` | frozen | `linux/bin/herald-os:1307-1309,1459-1464,1498,1528`; `linux/image/packages.sh:98-120`; `Containerfile:11-15`; `linux/image/cosign.pub` | `linux/tests/test_trust.py` | PY-linux: CLI constants == golden; `packages.sh` and `Containerfile` carry the same rule and default; repo holds only a public key; verify argv == golden; published channels have no bypass; empty pin installs nothing |
 | `c8-trust-journal-entry` | frozen | `linux/bin/herald-os:1467` `trust_event` | `test_trust.py` | PY-linux: every decision (verified, 4 kinds of refusal, dev-unsigned) writes one valid line without a key |
+| `c9-storage-reservation` | provisional | `host-rust/crates/host-storage/src/volume.rs` `ReservationRequest` | none (new in phase 2) | Rust: every fixture decides `reserve_json`; protected zones answer `ZoneNotReservable`. TS and Python: the fixture walk |
+| `c9-storage-lease` | provisional | `host-rust/crates/host-storage/src/volume.rs` `Lease::to_json` | none (new in phase 2) | Rust: every lease the volume returns validates. TS and Python: the fixture walk |
 
 Not frozen (no schema): see `README.md`, "What is NOT frozen", and `notFrozen` in `v1/index.json`.
 

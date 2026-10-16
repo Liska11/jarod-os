@@ -231,6 +231,34 @@
       "protectedBy": [
         "linux/tests/test_trust.py"
       ]
+    },
+    {
+      "id": "c9-storage-reservation",
+      "title": "Storage reservation request (plugin -> host, before it writes)",
+      "status": "provisional",
+      "schema": "c9-storage-reservation.schema.json",
+      "fixtures": "fixtures/c9-storage-reservation",
+      "source": [
+        "host-rust/crates/host-storage/src/volume.rs (ReservationRequest)"
+      ],
+      "protectedBy": [
+        "host-rust/crates/host-storage/tests/storage.rs",
+        "the fixture walks of the TypeScript and Python suites"
+      ]
+    },
+    {
+      "id": "c9-storage-lease",
+      "title": "Storage lease (host -> plugin, a bounded directory inside one zone)",
+      "status": "provisional",
+      "schema": "c9-storage-lease.schema.json",
+      "fixtures": "fixtures/c9-storage-lease",
+      "source": [
+        "host-rust/crates/host-storage/src/volume.rs (Lease)"
+      ],
+      "protectedBy": [
+        "host-rust/crates/host-storage/tests/storage.rs",
+        "the fixture walks of the TypeScript and Python suites"
+      ]
     }
   ],
   "notFrozen": [

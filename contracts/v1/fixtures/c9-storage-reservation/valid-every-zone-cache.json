@@ -1,0 +1,6 @@
+{
+  "plugin": "jarod.models",
+  "zone": "cache",
+  "requestedBytes": 4294967296,
+  "purpose": "embedding cache for the memory plugin"
+}

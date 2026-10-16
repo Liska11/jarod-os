@@ -99,7 +99,47 @@ Found by writing the second implementation from the contracts. See also `contrac
 11. **A token-shaped but well-formed `requestId`** is echoed to the caller who sent it, in both hosts (the caller
     already has it); the journal never holds it, because the redacted form is not a well-formed id and is dropped.
 
+## Storage (phase 2.1, 2.2): `crates/host-storage`
+
+The NVMe volume is a **controlled zone, not a safe one**. C: holds Windows and the minimal host; D: is the
+work volume (models, downloads, updates, sandboxes), and it is never handed to a plugin.
+
+```rust
+pub trait StorageVolume {
+    fn resolve(&self, zone: Zone) -> PathBuf;                       // host-internal, never given to a plugin
+    fn available_space(&self) -> Result<u64>;
+    fn reserve(&self, request: &ReservationRequest) -> Result<Lease>;
+    fn release(&self, lease_id: &str) -> Result<()>;                // content stays, counted against the zone
+    fn purge_cache(&self, policy: &PurgePolicy) -> Result<PurgeReport>;
+}
+```
+
+A plugin sends `{plugin, zone, requestedBytes, purpose}` (`c9-storage-reservation`, validated against the
+schema before it is read) and receives a lease (`c9-storage-lease`): `<root>/<zone>/<plugin>/<lease id>`.
+Both contracts are **provisional** (the TypeScript and Python suites validate their fixtures; nothing writes
+them but this host yet).
+
+| Concern | How |
+|---|---|
+| Zones | 7 reservable (`models`, `downloads`, `updates`, `sandboxes`, `cache`, `temp`, `artifacts`); `profiles`, `databases`, `security-logs` are never reservable, scanned or purged, whatever a policy says |
+| Quotas | per zone, counted as *on disk + still owed to active leases*; never exceeded under concurrency (one lock) |
+| Space | no reservation takes the volume below `min_free_bytes`, and what active leases are still owed comes off the top |
+| Paths | `path.rs` is the only way a name becomes a path: no `..`, absolute path, drive or stream syntax, device name, trailing dot; **no reparse point anywhere** (a junction planted in a lease is refused; a junction orphan is removed as a link and its target survives) |
+| State | `<root>/.host/state.json`, written atomically; unreadable, wrong version, or an entry that names a path rather than a plugin or lease: the volume **does not open** |
+| Zone ACL (Windows) | `acl::harden_zone_root`: protected DACL, this user only, full control, inherited; read back from the live directory; Everyone, Users, SYSTEM, Administrators are refused by name |
+| Purge order | 1 interrupted temp files and expired unreleased leases, 2 caches (least recently used first), 3 finished sandboxes (not `.retain`), 4 old artifacts, 5 old validated updates, 6 unused models (only with agreement), 7 never the host's own data. A selection is a **prefix** of the ordered plan, so a tier is touched only after every lower tier |
+| Last working version | the most recently validated update, anything marked `.current`, anything locked, anything under a `protect`ed path is never removed |
+| Report first | `PurgePolicy::default()` is a dry run; it lists what each tier would take, what needs the person's agreement and what was skipped, and why |
+| Orphans, dedup, VHDX | `find_orphans` / `reclaim_orphans` (age, dry run), `dedup` (hard links, immutable zones only, file identity checked so a pair already linked saves nothing), `inventory_vhdx` |
+| Health | `DiskHealthProbe` (PowerShell, read-only) with plain thresholds for temperature, wear and errors; an unreadable counter is "unknown", never an alert and never a reason to delete |
+
+What the zone does **not** do, stated plainly: it cannot stop a plugin from writing outside its lease (that
+is the sandbox of phase 3), it holds no secret (the vault of 2.3 lives under C:), and its "network filtered,
+distinct identity, auditable reset" properties belong to the VM/sandbox that will run on it, not to this
+crate. NVMe temperature and wear were not readable without elevation on the development machine: the probe
+returned the disks and their Windows health, with the counters unknown.
+
 ## Not done here (phase 2 and later)
 
-Storage volumes, the secret vault, the approval UI, the supervisor of the Cordis kernel, the updater, the
-sandbox. Unix-socket transport (Linux image). Authenticode/signing of the host binary (a different trust chain).
+The secret vault, the approval broker and supervisor, the updater, the sandbox. Unix-socket transport
+(Linux image). Authenticode/signing of the host binary (a different trust chain).

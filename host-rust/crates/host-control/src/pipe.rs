@@ -57,7 +57,7 @@ fn refused<T>(message: impl Into<String>) -> Result<T, PipeError> {
 }
 
 /// A SID as SDDL spells it: never a name and never a wildcard.
-fn is_sid(value: &str) -> bool {
+pub fn is_sid(value: &str) -> bool {
     let mut parts = value.split('-');
 
     parts.next() == Some("S") && {
@@ -69,7 +69,7 @@ fn is_sid(value: &str) -> bool {
 
 /// The principals an ACE of this module must never name, whatever a caller passes: Everyone,
 /// Anonymous, SYSTEM, Administrators, Users, Authenticated Users, the network and local groups.
-const FORBIDDEN_SIDS: &[&str] = &[
+pub const FORBIDDEN_SIDS: &[&str] = &[
     "S-1-0-0",
     "S-1-1-0",
     "S-1-2-0",
@@ -174,24 +174,38 @@ fn token_info(token: &Token, class: i32) -> Result<Vec<u8>, PipeError> {
     }
 }
 
-/// The principals the pipe's ACEs may name: the logon SID of this session when the token carries one,
-/// and the user's SID otherwise. A logon SID separates "a process in the session the person is using"
-/// from "any process holding this user's credentials".
-pub fn resolve_principals() -> Result<Vec<String>, PipeError> {
+fn open_process_token() -> Result<Token, PipeError> {
     // SAFETY: `OpenProcessToken` is given this process's pseudo-handle and a valid out pointer.
-    let token = unsafe {
+    unsafe {
         let mut handle: HANDLE = std::ptr::null_mut();
 
         if OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &mut handle) == 0 {
             return refused("cannot open this process's token");
         }
 
-        Token(handle)
-    };
+        Ok(Token(handle))
+    }
+}
 
-    let user = token_info(&token, TokenUser)?;
+fn user_sid_of(token: &Token) -> Result<String, PipeError> {
+    let user = token_info(token, TokenUser)?;
+
     // SAFETY: the buffer holds a TOKEN_USER whose SID points inside the same buffer.
-    let user_sid = sid_to_string(unsafe { (*(user.as_ptr() as *const TOKEN_USER)).User.Sid })?;
+    sid_to_string(unsafe { (*(user.as_ptr() as *const TOKEN_USER)).User.Sid })
+}
+
+/// The SID of the account this process runs as: what a file ACL names (a logon SID lives only as long
+/// as the session, a file outlives it).
+pub fn resolve_user_sid() -> Result<String, PipeError> {
+    user_sid_of(&open_process_token()?)
+}
+
+/// The principals the pipe's ACEs may name: the logon SID of this session when the token carries one,
+/// and the user's SID otherwise. A logon SID separates "a process in the session the person is using"
+/// from "any process holding this user's credentials".
+pub fn resolve_principals() -> Result<Vec<String>, PipeError> {
+    let token = open_process_token()?;
+    let user_sid = user_sid_of(&token)?;
 
     if let Ok(groups) = token_info(&token, TokenLogonSid) {
         // SAFETY: the buffer holds a TOKEN_GROUPS; a logon SID token has exactly one group.

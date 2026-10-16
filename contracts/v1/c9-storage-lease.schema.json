@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jarod-os.invalid/contracts/v1/c9-storage-lease.schema.json",
+  "title": "Storage lease (what the host grants for a reservation)",
+  "description": "A temporary, bounded directory inside one zone: `<root>/<zone>/<plugin>/<lease id>`. The plugin writes under `path` and nowhere else; the host reclaims it when the lease is released or has expired. The volume's root is never part of a lease. Provisional.",
+  "type": "object",
+  "required": [
+    "id",
+    "plugin",
+    "zone",
+    "path",
+    "grantedBytes",
+    "expiresAt"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^lease_[0-9a-f]{16}$"
+    },
+    "plugin": {
+      "type": "string",
+      "pattern": "^[a-z]([a-z0-9._-]{0,62}[a-z0-9_-])?$"
+    },
+    "zone": {
+      "enum": [
+        "models",
+        "downloads",
+        "updates",
+        "sandboxes",
+        "cache",
+        "temp",
+        "artifacts"
+      ]
+    },
+    "path": {
+      "type": "string",
+      "minLength": 1,
+      "not": {
+        "type": "string",
+        "pattern": "(^|[\\\\/])\\.\\.([\\\\/]|$)"
+      },
+      "description": "Absolute, inside the zone, never containing a `..` segment."
+    },
+    "grantedBytes": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "expiresAt": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?Z$"
+    }
+  },
+  "additionalProperties": false
+}
