@@ -110,6 +110,9 @@ policy.setdefault("transports", {}).setdefault("docker", {})["ghcr.io/iamlukethe
 ]
 json.dump(policy, open(path, "w"), indent=2)
 PY
+  else
+    # Not a silent skip: without the public half the image does not verify its updates at all.
+    echo "WARNING: linux/image/cosign.pub is absent; updates of this image are NOT signature-verified." >&2
   fi
 fi
 

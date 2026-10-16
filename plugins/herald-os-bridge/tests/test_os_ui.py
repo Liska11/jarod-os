@@ -28,24 +28,19 @@ CATALOGUE = [
 
 
 class FakeShell:
-    """A JSON-lines server answering like the Electron control server: a Unix socket (macOS, Linux)
-    or a loopback TCP port announced as ``tcp://127.0.0.1:<port>`` (Windows)."""
+    """A JSON-lines server answering like the Electron control server on a Unix socket (macOS, Linux).
+    Windows reaches the shell over a named pipe, which these tests do not serve."""
 
     def __init__(self, kind: str, token: str):
         self.kind, self.token = kind, token
         self.requests: list[dict] = []
         self.path = ""
-        if kind == "unix":
-            # AF_UNIX paths are capped at ~104 bytes on macOS; pytest's tmp_path is far longer.
-            self.dir = tempfile.mkdtemp(prefix="hos-", dir="/tmp")
-            self.path = os.path.join(self.dir, "c.sock")
-            self.server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-            self.server.bind(self.path)
-            self.endpoint = self.path
-        else:
-            self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.server.bind(("127.0.0.1", 0))
-            self.endpoint = f"tcp://127.0.0.1:{self.server.getsockname()[1]}"
+        # AF_UNIX paths are capped at ~104 bytes on macOS; pytest's tmp_path is far longer.
+        self.dir = tempfile.mkdtemp(prefix="hos-", dir="/tmp")
+        self.path = os.path.join(self.dir, "c.sock")
+        self.server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        self.server.bind(self.path)
+        self.endpoint = self.path
         self.server.listen(4)
         self.thread = threading.Thread(target=self._serve, daemon=True)
         self.thread.start()
@@ -89,9 +84,9 @@ class FakeShell:
             shutil.rmtree(self.dir, ignore_errors=True)
 
 
-@pytest.fixture(params=["unix", "tcp"])
+@pytest.fixture(params=["unix"])
 def shell(request, monkeypatch, plugin):
-    if request.param == "unix" and not hasattr(socket, "AF_UNIX"):
+    if not hasattr(socket, "AF_UNIX"):
         pytest.skip("this Python has no AF_UNIX (Windows)")
     fake = FakeShell(request.param, "secret-token")
     monkeypatch.setenv("HERALD_OS_CONTROL_SOCKET", fake.endpoint)
@@ -223,11 +218,15 @@ def test_without_shell_the_tool_explains(plugin, monkeypatch):
     assert reply["success"] is False and "control socket" in reply["error"]
 
 
-def test_tcp_endpoint_is_loopback_only(plugin):
+def test_tcp_endpoint_is_refused_everywhere(plugin, isolated_home, monkeypatch):
+    # The shell never announces a TCP endpoint: a tcp:// value, from the environment, is not a socket
+    # this client will dial.
     ui = _mod(plugin, "ui")
-    assert ui.parse_tcp_endpoint("tcp://127.0.0.1:5150") == ("127.0.0.1", 5150)
-    for bad in ("tcp://0.0.0.0:80", "tcp://example.com:80", "tcp://127.0.0.1:0", "tcp://127.0.0.1:99999", "/run/user/1000/herald-os/control.sock", ""):
-        assert ui.parse_tcp_endpoint(bad) is None
+    assert not hasattr(ui, "parse_tcp_endpoint")
+    monkeypatch.setenv("HERALD_OS_CONTROL_SOCKET", "tcp://127.0.0.1:5150")
+    monkeypatch.setenv("HERALD_OS_CONTROL_TOKEN", "t")
+    with pytest.raises(ui.ShellUnavailable):
+        ui.control_endpoint()
 
 
 def test_shared_endpoint_follows_hermes_home(plugin, isolated_home, monkeypatch):
@@ -235,8 +234,10 @@ def test_shared_endpoint_follows_hermes_home(plugin, isolated_home, monkeypatch)
     monkeypatch.delenv("HERALD_OS_CONTROL_SOCKET", raising=False)
     monkeypatch.delenv("HERALD_OS_CONTROL_TOKEN", raising=False)
     (isolated_home / "herald-os").mkdir()
-    (isolated_home / "herald-os" / "control.json").write_text(json.dumps({"socket": "tcp://127.0.0.1:4242", "token": "t"}), encoding="utf-8")
-    assert ui.control_endpoint() == ("tcp://127.0.0.1:4242", "t")
+    socket_file = isolated_home / "herald-os" / "control.sock"
+    socket_file.write_text("", encoding="utf-8")
+    (isolated_home / "herald-os" / "control.json").write_text(json.dumps({"socket": str(socket_file), "token": "t"}), encoding="utf-8")
+    assert ui.control_endpoint() == (str(socket_file), "t")
 
 
 def test_pipe_endpoint_is_a_name_not_a_path(plugin):

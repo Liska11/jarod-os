@@ -43,7 +43,7 @@ def _mod(plugin, name):
 @pytest.fixture
 def shell_env(tmp_path, monkeypatch):
     """One control endpoint plus its token and the gateway's, exactly as the shell exports them."""
-    monkeypatch.setenv("HERALD_OS_CONTROL_SOCKET", "tcp://127.0.0.1:5555")
+    monkeypatch.setenv("HERALD_OS_CONTROL_SOCKET", "pipe://herald-os-5555")
     monkeypatch.setenv("HERALD_OS_CONTROL_TOKEN", "token-that-must-not-travel")
     monkeypatch.setenv("HERMES_DASHBOARD_SESSION_TOKEN", "gateway-secret-that-must-not-travel")
     monkeypatch.setenv(PROBE, "kept")
@@ -96,7 +96,7 @@ def test_control_env_reads_once_and_scrubs_its_own_environment(plugin, shell_env
     util = _mod(plugin, "util")
     util.forget_control_env()
     assert util.control_env("CONTROL_TOKEN") == "token-that-must-not-travel"
-    assert util.control_env("CONTROL_SOCKET") == "tcp://127.0.0.1:5555"
+    assert util.control_env("CONTROL_SOCKET") == "pipe://herald-os-5555"
     assert "HERALD_OS_CONTROL_TOKEN" not in os.environ
     assert "HERALD_OS_CONTROL_SOCKET" not in os.environ
     assert util.control_env("CONTROL_TOKEN") == "token-that-must-not-travel"
@@ -110,7 +110,7 @@ def test_control_endpoint_uses_the_scrubbing_reader(plugin, shell_env):
     ui = _mod(plugin, "ui")
     util.forget_control_env()
     path, token = ui.control_endpoint()
-    assert (path, token) == ("tcp://127.0.0.1:5555", "token-that-must-not-travel")
+    assert (path, token) == ("pipe://herald-os-5555", "token-that-must-not-travel")
     assert "HERALD_OS_CONTROL_TOKEN" not in os.environ
     assert "HERALD_OS_CONTROL_SOCKET" not in os.environ
     # The gateway's token is Hermes's own and stays in this process; it is still filtered from every
@@ -184,7 +184,7 @@ def test_taking_the_control_env_leaves_nothing_to_inherit(plugin, shell_env):
     assert os.environ["HERMES_DASHBOARD_SESSION_TOKEN"] == "gateway-secret-that-must-not-travel"
     assert "HERMES_DASHBOARD_SESSION_TOKEN" not in util.child_env()
     # Taking it early must not cost the bridge its ability to reach the shell.
-    assert ui.control_endpoint() == ("tcp://127.0.0.1:5555", "token-that-must-not-travel")
+    assert ui.control_endpoint() == ("pipe://herald-os-5555", "token-that-must-not-travel")
 
 
 def test_the_plugin_takes_the_control_env_when_it_is_imported(monkeypatch):

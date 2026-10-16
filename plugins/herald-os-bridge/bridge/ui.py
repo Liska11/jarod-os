@@ -32,18 +32,8 @@ from typing import Any
 from .util import control_env, hermes_home
 
 DEFAULT_TIMEOUT = 12.0
-# The only TCP endpoint accepted: the shell never listens beyond this machine.
-_TCP_ENDPOINT = re.compile(r"^tcp://127\.0\.0\.1:(\d{1,5})$")
-# A Windows named pipe: one name, no host, no port.
+# A Windows named pipe: one name, no host, no port. No TCP endpoint exists: the shell never listens.
 _PIPE_ENDPOINT = re.compile(r"^pipe://([A-Za-z0-9._-]{1,200})$")
-
-
-def parse_tcp_endpoint(endpoint: str) -> tuple[str, int] | None:
-    """``(host, port)`` for a ``tcp://127.0.0.1:<port>`` endpoint, None for anything else (a socket path)."""
-    match = _TCP_ENDPOINT.match(endpoint.strip())
-    if not match or not 0 < int(match[1]) < 65536:
-        return None
-    return "127.0.0.1", int(match[1])
 
 
 def pipe_path_for(endpoint: str) -> str | None:
@@ -79,7 +69,7 @@ def control_endpoint() -> tuple[str, str]:
         path, token = shared_endpoint()
     if not path or not token:
         raise ShellUnavailable("Jarod-OS is not running this session (no control socket); UI commands need the shell.")
-    if parse_tcp_endpoint(path) is None and pipe_path_for(path) is None and not os.path.exists(path):
+    if pipe_path_for(path) is None and not os.path.exists(path):
         raise ShellUnavailable(f"The Jarod-OS shell is not listening ({path}); is it running?")
     return path, token
 
@@ -129,16 +119,15 @@ def request(payload: dict[str, Any], *, timeout: float = DEFAULT_TIMEOUT) -> dic
     path, token = control_endpoint()
     body = json.dumps({**payload, "token": token}) + "\n"
     pipe = pipe_path_for(path)
-    tcp = None if pipe else parse_tcp_endpoint(path)
-    if pipe is None and tcp is None and not hasattr(socket, "AF_UNIX"):
+    if pipe is None and not hasattr(socket, "AF_UNIX"):
         raise ShellUnavailable(f"This Python cannot reach the Jarod-OS control socket {path}.")
     if pipe is not None:
         chunks = _pipe_request(pipe, body, timeout)
     else:
-        sock = socket.socket(socket.AF_INET if tcp else socket.AF_UNIX, socket.SOCK_STREAM)
+        sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         sock.settimeout(timeout)
         try:
-            sock.connect(tcp if tcp else path)
+            sock.connect(path)
             sock.sendall(body.encode("utf-8"))
             chunks = b""
             while not chunks.endswith(b"\n"):
