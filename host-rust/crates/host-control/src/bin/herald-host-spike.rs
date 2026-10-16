@@ -6,12 +6,12 @@
 //! printed (one line, stdout) only once the door is open and verified.
 //!
 //! This is a spike, and says so: it executes nothing (every command that passes the gate is answered
-//! by a no-op executor) and it has no approval channel, so `mutate` and `destructive` commands are
-//! refused with `denied-policy`. The tokens go to files in `--token-dir` so the door can be exercised
+//! by a no-op executor) and, unless started with `--approve-on-console`, it has no approval channel, so
+//! `mutate` and `destructive` commands are refused with `denied-policy`. The tokens go to files in `--token-dir` so the door can be exercised
 //! by hand; a real host keeps the backend token in memory and hands it to its child.
 //!
 //! ```text
-//! herald-host-spike --journal <control-audit.jsonl> --token-dir <dir> [--surface panel|backend]
+//! herald-host-spike --journal <control-audit.jsonl> --token-dir <dir> [--surface panel|backend] [--approve-on-console]
 //! ```
 
 #[cfg(not(windows))]
@@ -41,6 +41,8 @@ struct Options {
     journal: std::path::PathBuf,
     token_dir: std::path::PathBuf,
     surface: host_control::types::Surface,
+    /// Ask the person on this console instead of refusing every `mutate` and `destructive` command.
+    approve_on_console: bool,
 }
 
 #[cfg(windows)]
@@ -48,9 +50,16 @@ fn options() -> Options {
     let mut journal = None;
     let mut token_dir = None;
     let mut surface = host_control::types::Surface::Panel;
+    let mut approve_on_console = false;
     let mut args = std::env::args().skip(1);
 
     while let Some(flag) = args.next() {
+        if flag == "--approve-on-console" {
+            approve_on_console = true;
+
+            continue;
+        }
+
         let value = args.next().unwrap_or_else(|| refuse(format!("{flag} needs a value")));
 
         match flag.as_str() {
@@ -67,7 +76,12 @@ fn options() -> Options {
         }
     }
 
-    Options { journal: journal.unwrap_or_else(|| refuse("--journal <file> is required")), token_dir: token_dir.unwrap_or_else(|| refuse("--token-dir <dir> is required")), surface }
+    Options {
+        journal: journal.unwrap_or_else(|| refuse("--journal <file> is required")),
+        token_dir: token_dir.unwrap_or_else(|| refuse("--token-dir <dir> is required")),
+        surface,
+        approve_on_console,
+    }
 }
 
 #[cfg(windows)]
@@ -113,8 +127,11 @@ async fn run() -> i32 {
         clock.clone(),
         vec![Secret::new(SecretKind::Nonce, endpoint.nonce())],
     ));
-    // No approval channel: mutate and destructive commands are refused, never silently approved.
-    let gate = Arc::new(HostControlGate::new(security, CapabilityStore::new(clock), None));
+    // Without `--approve-on-console` there is no approval channel: mutate and destructive commands are
+    // refused, never silently approved. With it, the broker asks the person at this console, one prompt
+    // at a time; EOF on stdin is a no.
+    let approve = options.approve_on_console.then(|| host_control::broker::ApprovalBroker::new(Arc::new(host_control::broker::ConsolePrompter), None).provider());
+    let gate = Arc::new(HostControlGate::new(security, CapabilityStore::new(clock), approve));
     let service = Arc::new(HostService::new(gate, Arc::new(NoopExecutor)));
     let principals = resolve_principals().unwrap_or_else(|error| refuse(format!("pipe policy: {error}")));
     let secured = SecuredPipe::new(endpoint, principals).unwrap_or_else(|error| refuse(format!("pipe policy: {error}")));

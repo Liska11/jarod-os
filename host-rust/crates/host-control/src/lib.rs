@@ -15,6 +15,7 @@
 
 pub mod adjudicate;
 pub mod audit;
+pub mod broker;
 pub mod capability;
 pub mod clock;
 pub mod contracts;

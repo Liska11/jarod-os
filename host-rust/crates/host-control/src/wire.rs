@@ -118,25 +118,81 @@ where
 {
     let mut splitter = LineSplitter::new(MAX_LINE_BYTES);
     let mut chunk = vec![0u8; 16 * 1024];
+    let mut queue: std::collections::VecDeque<String> = std::collections::VecDeque::new();
+    let mut queued_bytes = 0usize;
 
     loop {
-        let read = match tokio::time::timeout(IDLE_TIMEOUT, stream.read(&mut chunk)).await {
-            Ok(Ok(0)) | Ok(Err(_)) | Err(_) => return,
-            Ok(Ok(read)) => read,
-        };
-        let Some(lines) = splitter.push(&chunk[..read]) else {
+        let Some(line) = queue.pop_front() else {
+            let read = match tokio::time::timeout(IDLE_TIMEOUT, stream.read(&mut chunk)).await {
+                Ok(Ok(0)) | Ok(Err(_)) | Err(_) => return,
+                Ok(Ok(read)) => read,
+            };
+
             // The pending line had no end: dropped, not answered.
-            return;
-        };
+            let Some(lines) = splitter.push(&chunk[..read]) else {
+                return;
+            };
 
-        for line in lines {
-            let reply = service.handle_line(&line).await;
-
-            if stream.write_all(format!("{reply}\n").as_bytes()).await.is_err() {
+            if !enqueue(&mut queue, &mut queued_bytes, lines) {
                 return;
             }
+
+            continue;
+        };
+
+        queued_bytes = queued_bytes.saturating_sub(line.len());
+
+        // While a request is being handled — which may mean waiting for a person to answer a prompt — keep
+        // listening to the connection. If the client goes away, the handler is dropped, and whatever it was
+        // waiting on (the prompt, the broker's single slot) is released instead of left open for a caller
+        // that is no longer there. Bytes that arrive meanwhile are the next requests: queued, within bounds.
+        let handling = service.handle_line(&line);
+
+        tokio::pin!(handling);
+
+        let reply = loop {
+            tokio::select! {
+                reply = &mut handling => break reply,
+                read = stream.read(&mut chunk) => {
+                    let Ok(read) = read else { return };
+
+                    if read == 0 {
+                        return;
+                    }
+
+                    let Some(lines) = splitter.push(&chunk[..read]) else {
+                        return;
+                    };
+
+                    if !enqueue(&mut queue, &mut queued_bytes, lines) {
+                        return;
+                    }
+                }
+            }
+        };
+
+        if stream.write_all(format!("{reply}\n").as_bytes()).await.is_err() {
+            return;
         }
     }
+}
+
+/// At most this many requests, and this many bytes of them, wait behind the one being handled.
+const MAX_QUEUED_LINES: usize = 64;
+const MAX_QUEUED_BYTES: usize = 4 * 1024 * 1024;
+
+/// `false` when a client has piled up more than the host will hold: the connection is dropped.
+fn enqueue(queue: &mut std::collections::VecDeque<String>, queued_bytes: &mut usize, lines: Vec<String>) -> bool {
+    for line in lines {
+        *queued_bytes += line.len();
+        queue.push_back(line);
+
+        if queue.len() > MAX_QUEUED_LINES || *queued_bytes > MAX_QUEUED_BYTES {
+            return false;
+        }
+    }
+
+    true
 }
 
 #[cfg(test)]

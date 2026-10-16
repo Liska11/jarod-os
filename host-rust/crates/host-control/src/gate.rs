@@ -434,8 +434,15 @@ impl HostControlGate {
             ));
         };
 
+        // Unique and unguessable, not derived from the clock: two asks in the same millisecond are two asks.
+        let Ok(random) = crate::secrets::random_hex(8) else {
+            return Err(Box::new(
+                self.refuse_call(call, HostCode::DeniedPolicy, "no secure randomness: the host cannot name an approval".into(), None)
+                    .replace_error("no approval channel is available"),
+            ));
+        };
         let ask = ApprovalAsk {
-            id: format!("ask_{}_{}", call.command, self.security.clock().now_ms()),
+            id: format!("ask_{random}"),
             client: call.client,
             tier: call.tier,
             command: call.command.clone(),
@@ -446,8 +453,16 @@ impl HostControlGate {
         };
         let ask_id = ask.id.clone();
         // A provider that panics must deny, not take the connection down: run it as its own task.
-        let pending = tokio::spawn(approve(ask));
-        let approved = matches!(tokio::time::timeout(self.approval_timeout, pending).await, Ok(Ok(true)));
+        // `approve(ask)` itself runs inside the task too: a provider that panics before it even returns a
+        // future must be a "no", not an unwound connection.
+        // Dropping the handle of a spawned task would leave it running; this one aborts on drop, so whatever
+        // ends this request (a timeout, or the caller going away and this future being dropped) also ends
+        // the prompt: the dialog or the broker's single slot is released instead of left open for no one.
+        let mut pending = AbortOnDrop(tokio::spawn(async move { approve(ask).await }));
+        let approved = match tokio::time::timeout(self.approval_timeout, &mut pending.0).await {
+            Ok(Ok(answer)) => answer,
+            Ok(Err(_)) | Err(_) => false,
+        };
 
         if approved {
             return Ok(ask_id);
@@ -476,6 +491,15 @@ impl GateResult {
             }
             other => other,
         }
+    }
+}
+
+/// A spawned task that is aborted when its handle is dropped.
+struct AbortOnDrop(tokio::task::JoinHandle<bool>);
+
+impl Drop for AbortOnDrop {
+    fn drop(&mut self) {
+        self.0.abort();
     }
 }
 
