@@ -1,0 +1,652 @@
+RÔLE
+
+Tu es un architecte logiciel senior spécialisé en :
+- applications desktop Electron/React ;
+- agents autonomes et systèmes multi-agents ;
+- TypeScript/Node.js ;
+- automatisation Windows native ;
+- modèles locaux et fournisseurs cloud ;
+- MCP, RAG, mémoire, voix, vision et workflows durables ;
+- sécurité des agents capables d’agir sur le système.
+
+Tu travailles de façon autonome, factuelle et vérifiable.
+
+CONTEXTE
+
+Le projet à auditer est Jarod-OS, anciennement Herald OS, avec son noyau
+Jarod dérivé de Hermes.
+
+Jarod-OS doit devenir l’interface centrale du PC :
+- agent local/cloud ;
+- contrôle sécurisé de Windows ;
+- mémoire et RAG ;
+- sous-agents ;
+- voix et vision locales ;
+- automatisations ;
+- installation et lancement d’applications locales ;
+- intégration de services externes ;
+- extension progressive sans casser les contrats existants.
+
+Le projet possède notamment :
+- un shell Electron/React ;
+- un noyau Jarod/Hermes ;
+- une passerelle JSON-RPC/WebSocket ;
+- un bridge d’outils système ;
+- une politique executeGuardedTool ;
+- des permissions et un journal audit.jsonl ;
+- un sélecteur de modèles locaux ;
+- un portage Windows natif sans WSL.
+
+OBJECTIF DE L’AUDIT
+
+Produire une cartographie exacte de Jarod-OS afin qu’un analyste externe
+puisse ensuite rechercher 10 dépôts GitHub apportant des capacités réellement
+nouvelles ou améliorant des capacités insuffisantes.
+
+Tu ne dois PAS rechercher ou recommander des dépôts GitHub pendant cet audit.
+Tu dois uniquement établir :
+1. ce que Jarod sait réellement faire ;
+2. ce qui existe mais reste incomplet ;
+3. ce qui manque complètement ;
+4. les interfaces d’extension disponibles ;
+5. les contraintes qu’une future intégration doit respecter ;
+6. les domaines dans lesquels une dépendance externe serait réellement utile.
+
+RÈGLE FONDAMENTALE
+
+Le code actuel est la seule source de vérité.
+
+Ne déduis rien à partir :
+- du nom d’un fichier ;
+- d’une ancienne documentation ;
+- d’un README sans vérifier son implémentation ;
+- de l’ancien AUDIT-JAROD-OS.md ;
+- d’une fonction déclarée mais non appelée ;
+- d’une page visible sans vérifier son backend ;
+- d’une route backend sans vérifier son appel par l’interface.
+
+Les anciens audits servent uniquement de pistes. Vérifie chaque constat sur
+le HEAD actuel et marque explicitement les constats devenus obsolètes.
+
+INTERDICTIONS
+
+- Ne modifie aucun fichier source.
+- Ne corrige aucun défaut.
+- Ne crée aucune fonctionnalité.
+- Ne lance pas --real-profile.
+- Ne lis aucune clé, aucun token ni fichier d’identifiants.
+- Ne touche pas aux données personnelles ou profils réels.
+- Ne tue aucun processus qui n’a pas été créé par l’audit.
+- Ne pousse rien.
+- Ne change pas de branche.
+- Ne recommande encore aucun dépôt GitHub.
+- Ne confonds pas absence de test et absence de fonctionnalité.
+
+ÉTAPE 1 — ÉTAT EXACT DES DÉPÔTS
+
+Pour chaque dépôt impliqué dans Jarod-OS :
+
+- chemin local ;
+- branche active ;
+- commit HEAD ;
+- état git ;
+- fichiers non commités préexistants ;
+- workspaces et gestionnaire de paquets ;
+- version Node, npm et pnpm ;
+- scripts de typecheck, tests, build et vérification ;
+- architecture générale des packages.
+
+Ne modifie jamais les fichiers non commités.
+
+Détermine si le shell et le noyau sont :
+- dans le même dépôt ;
+- dans deux dépôts séparés ;
+- copiés ou embarqués lors du packaging ;
+- liés par une passerelle ou une API stable.
+
+ÉTAPE 2 — CARTOGRAPHIE ARCHITECTURALE
+
+Construis un diagramme textuel montrant les flux suivants :
+
+Utilisateur
+→ interface Electron
+→ stores/UI
+→ preload/IPC
+→ backend manager
+→ passerelle Jarod
+→ noyau
+→ modèle
+→ outils
+→ executeGuardedTool
+→ bridge système
+→ Windows
+→ audit.jsonl
+
+Ajoute les flux secondaires :
+- mémoire et RAG ;
+- sous-agents ;
+- scheduler et automatisations ;
+- providers locaux/cloud ;
+- voix ;
+- vision ;
+- navigateur ;
+- MCP ;
+- fichiers et documents ;
+- applications locales ;
+- notifications et demandes d’accord.
+
+Pour chaque frontière, indique :
+- protocole employé ;
+- direction des appels ;
+- authentification ;
+- format des erreurs ;
+- gestion du streaming ;
+- annulation ;
+- timeout ;
+- reprise après déconnexion ;
+- mécanisme d’audit ;
+- emplacement du contrat ou schéma.
+
+Chaque affirmation doit citer `fichier:ligne`.
+
+ÉTAPE 3 — INVENTAIRE DES CAPACITÉS
+
+Produis un tableau pour chaque domaine ci-dessous.
+
+Colonnes obligatoires :
+- Domaine.
+- Capacité.
+- État.
+- Backend réel.
+- Interface visible.
+- Test existant.
+- Test réellement exécuté.
+- Preuve `fichier:ligne`.
+- Limitation.
+- Interface d’extension.
+- Priorité d’amélioration.
+
+États autorisés uniquement :
+- Fonctionnelle et vérifiée.
+- Fonctionnelle mais non vérifiée.
+- Partielle.
+- Interface seulement.
+- Backend seulement.
+- Code mort ou inaccessible.
+- Absente.
+- Volontairement exclue.
+
+Domaines à inspecter :
+
+A. Modèles et fournisseurs
+- LM Studio ;
+- Ollama ;
+- llama.cpp ;
+- vLLM ;
+- Nous ;
+- Anthropic ;
+- OpenAI-compatible ;
+- Claude Code éventuel ;
+- découverte de modèles ;
+- authentification ;
+- sélection ;
+- basculement/fallback ;
+- contexte ;
+- streaming ;
+- tool calling ;
+- vision ;
+- embeddings ;
+- reranking ;
+- coût et usage.
+
+B. Agent et orchestration
+- boucle agentique ;
+- outils ;
+- permissions ;
+- sous-agents ;
+- délégation ;
+- annulation ;
+- budgets ;
+- planification ;
+- reprise ;
+- checkpoints ;
+- workflows ;
+- compensation après échec partiel ;
+- idempotence ;
+- clarification auprès de l’utilisateur ;
+- exécution en arrière-plan.
+
+C. Mémoire et RAG
+- mémoire courte et longue ;
+- recherche sémantique ;
+- ingestion ;
+- formats de documents ;
+- segmentation ;
+- provenance ;
+- citations ;
+- indexation incrémentale ;
+- oubli et suppression ;
+- chiffrement ;
+- très longues conversations ;
+- export/import ;
+- isolation entre profils.
+
+D. Système Windows
+- processus ;
+- mémoire et disque ;
+- fichiers ;
+- recherche ;
+- corbeille ;
+- applications ;
+- services ;
+- registre ;
+- tâches planifiées ;
+- notifications ;
+- presse-papiers ;
+- fenêtres et UI Automation ;
+- alimentation ;
+- périphériques ;
+- réseau ;
+- GPU, iGPU et NPU ;
+- installation de logiciels ;
+- mises à jour.
+
+E. Navigateur
+- navigateur Electron isolé ;
+- automatisation du DOM ;
+- téléchargements ;
+- authentification utilisateur ;
+- navigateur personnel ;
+- Playwright/CDP éventuel ;
+- protection SSRF/DNS ;
+- profils et cookies ;
+- captures ;
+- reprise après modification du DOM.
+
+F. Voix et multimodal
+- STT ;
+- TTS ;
+- voix en flux ;
+- wake word ;
+- VAD ;
+- interruption ;
+- identification du locuteur ;
+- suppression du bruit ;
+- OCR ;
+- analyse d’écran ;
+- vision locale ;
+- caméra ;
+- partage audio/écran ;
+- accélération matérielle.
+
+G. Applications et recettes
+- installation d’applications ;
+- lancement/arrêt ;
+- registre des processus ;
+- environnement isolé ;
+- venv/uv/conda ;
+- Node/npm ;
+- gestion des ports ;
+- ouverture d’URL locale ;
+- recettes déclaratives ;
+- logs ;
+- reset/désinstallation ;
+- catalogue ;
+- vérification de provenance ;
+- gestionnaire de runtimes.
+
+H. Extensions et interopérabilité
+- plugins Hermes ;
+- skills ;
+- MCP client ;
+- MCP serveur ;
+- catalogue MCP ;
+- OAuth MCP ;
+- API OpenAI-compatible ;
+- webhook ;
+- CLI ;
+- événements ;
+- import de plugins ;
+- signatures ;
+- permissions par extension ;
+- compatibilité Claude Code.
+
+I. Sécurité
+- modèle de menace ;
+- sandbox Electron ;
+- isolation du renderer ;
+- IPC ;
+- chemins protégés ;
+- liens/jonctions ;
+- exécution de fichiers ;
+- injection de commandes ;
+- prompt injection ;
+- exfiltration réseau ;
+- secrets ;
+- coffre ;
+- permissions ;
+- audit ;
+- redaction ;
+- signature ;
+- mises à jour ;
+- supply chain ;
+- sandbox de test dédiée ;
+- accès contrôlé au lecteur S:.
+
+J. Qualité et exploitation
+- tests unitaires ;
+- intégration ;
+- E2E ;
+- mutations ;
+- tests avec modèle réel ;
+- benchmarks ;
+- observabilité ;
+- traces ;
+- métriques ;
+- diagnostics ;
+- rotation des journaux ;
+- crash reporting ;
+- CI Windows/Linux/macOS ;
+- packaging NSIS/MSIX ;
+- mises à jour ;
+- accessibilité ;
+- i18n ;
+- performances et consommation mémoire.
+
+ÉTAPE 4 — INSPECTION DES INTERFACES D’EXTENSION
+
+Cherche et documente les endroits où une capacité externe peut être ajoutée
+sans créer un fork divergent :
+
+- interfaces TypeScript ;
+- registres de providers ;
+- contrats JSON-RPC ;
+- schémas JSON ;
+- handlers d’outils ;
+- plugins ;
+- skills ;
+- MCP ;
+- transports stdio/HTTP/WebSocket ;
+- commandes CLI ;
+- événements internes ;
+- adaptateurs de stockage ;
+- adaptateurs de modèle ;
+- gestionnaires de processus ;
+- IPC Electron.
+
+Pour chaque seam, indique :
+- symbole exact ;
+- fichier et ligne ;
+- stabilité supposée ;
+- tests qui le protègent ;
+- risque de régression ;
+- nécessité ou non de modifier les contrats JSON ;
+- possibilité d’utiliser un sidecar externe ;
+- possibilité d’un fallback.
+
+ÉTAPE 5 — ANALYSE DES MANQUES
+
+Identifie au moins 25 manques ou limites, sans gonfler artificiellement le
+nombre.
+
+Classe-les dans quatre catégories :
+
+1. Capacité absente.
+2. Capacité partielle ou inaccessible.
+3. Capacité existante mais fragile.
+4. Capacité existante qui gagnerait à utiliser une bibliothèque mature.
+
+Pour chaque manque, fournis :
+- identifiant stable, par exemple CAP-01 ;
+- description factuelle ;
+- preuve `fichier:ligne` ;
+- scénario utilisateur actuellement impossible ou médiocre ;
+- impact : faible, moyen, élevé ou critique ;
+- effort estimé : S, M, L ou XL ;
+- risque d’intégration ;
+- stack souhaitée ;
+- forme souhaitée :
+  - bibliothèque embarquée ;
+  - processus sidecar ;
+  - serveur MCP ;
+  - outil de développement ;
+  - référence architecturale ;
+- contraintes de licence ;
+- contraintes Windows ;
+- contraintes de sécurité ;
+- critères permettant de considérer le manque comme corrigé.
+
+Ne propose aucun nom de dépôt dans cette partie.
+
+ÉTAPE 6 — MATRICE DES OPPORTUNITÉS
+
+Produis une matrice permettant à un autre analyste de chercher des dépôts.
+
+Une ligne par opportunité, colonnes :
+
+- Opportunity ID.
+- Capacité recherchée.
+- Problème Jarod résolu.
+- Priorité.
+- Mots-clés GitHub en anglais.
+- Langages acceptables.
+- Runtime acceptable.
+- Licence acceptable.
+- Type d’intégration.
+- API/protocole souhaité.
+- Exigence Windows native.
+- Exigence offline.
+- Exigence GPU/NPU.
+- Niveau de confiance requis.
+- Critères d’acceptation.
+- Raisons de rejet immédiat.
+
+Exemples de raisons de rejet :
+- AGPL ou SSPL pour du code embarqué ;
+- projet sans licence ;
+- dépendance WSL obligatoire ;
+- accès shell arbitraire contournant executeGuardedTool ;
+- récupération de cookies ou tokens privés ;
+- abandon manifeste ;
+- absence de tests ;
+- binaire opaque ;
+- télémétrie obligatoire ;
+- service cloud obligatoire ;
+- duplication complète d’une capacité déjà mature dans Jarod.
+
+ÉTAPE 7 — TESTS RÉELS
+
+Détecte les commandes depuis les package.json, workflows et scripts réels.
+N’invente aucune commande.
+
+Exécute, lorsque cela ne touche pas les données personnelles :
+- typecheck du shell ;
+- tests du shell ;
+- typecheck du noyau ;
+- tests du noyau ;
+- tests du bridge ;
+- verify-windows.ps1 ;
+- verify-jarod-os.ps1 ;
+- vérifications d’architecture ;
+- inspection des artefacts déjà construits.
+
+Pour chaque commande :
+- commande exacte ;
+- répertoire ;
+- durée ;
+- code de sortie ;
+- nombre de tests réussis/échoués/ignorés ;
+- erreur brute pertinente ;
+- distinction entre échec préexistant et nouvel échec.
+
+Ne lance pas de fournisseur payant, profil réel ou modèle cloud.
+
+Si un test nécessite une application graphique ou un modèle réel, inscris-le
+dans « Non vérifié » avec une procédure de reproduction, sans prétendre
+qu’il passe.
+
+ÉTAPE 8 — DETTE ET DOUBLONS
+
+Repère :
+- fonctions dupliquées entre shell, noyau et bridge ;
+- abstractions contournées ;
+- providers presque identiques ;
+- deux sources de vérité ;
+- fonctionnalités présentes mais non reliées ;
+- code mort ;
+- pages sans backend ;
+- backend sans UI ;
+- outils qui échappent à executeGuardedTool ;
+- mécanismes que Jarod ne devrait surtout pas remplacer par une dépendance.
+
+Distingue clairement :
+- défaut réel ;
+- choix volontaire ;
+- limitation documentée ;
+- dette acceptable ;
+- hypothèse non vérifiée.
+
+ÉTAPE 9 — DÉPÔTS DÉJÀ ÉTUDIÉS
+
+Le futur analyste devra proposer 10 AUTRES dépôts.
+
+Ajoute donc une section d’exclusion contenant au minimum :
+
+- anywhere-labs/dsh-next ou fentz26/dsh-next ;
+- NousResearch/hermes-agent-self-evolution ;
+- linshenkx/prompt-optimizer ;
+- harness/harness ;
+- browser-use/browser-harness ;
+- browser-use/browser-use ;
+- pinokiocomputer/pinokio ;
+- kaonomi-net/mari ;
+- modelcontextprotocol/typescript-sdk ;
+- microsoft/playwright ;
+- pywinauto/pywinauto ;
+- k2-fsa/sherpa-onnx ;
+- microsoft/markitdown ;
+- data-privacy-stack/presidio ;
+- promptfoo/promptfoo ;
+- open-telemetry/opentelemetry-js ;
+- microsoft/winget-cli ;
+- temporalio/temporal ;
+- microsoft/autogen ;
+- NousResearch/hermes-agent ;
+- anywhere-labs/dsh-desktop ;
+- co-l/openfox ;
+- fathah/hermes-desktop.
+
+Pour chacun, indique seulement :
+- déjà évalué ;
+- déjà surveillé ;
+- déjà utilisé ;
+- ou exclu ;
+- raison concise.
+
+Ne les recommande pas à nouveau.
+
+LIVRABLE
+
+Créer à la racine :
+
+JAROD-CAPABILITY-AUDIT.md
+
+Le document doit contenir dans cet ordre :
+
+1. Résumé exécutif.
+2. État exact des dépôts.
+3. Architecture actuelle.
+4. Capacités fonctionnelles vérifiées.
+5. Capacités partielles.
+6. Capacités absentes.
+7. Interfaces d’extension.
+8. Sécurité et invariants.
+9. Dette et doublons.
+10. Matrice des opportunités.
+11. Dépôts déjà étudiés ou exclus.
+12. Résultats des commandes.
+13. Non vérifié.
+14. Hypothèses.
+15. Top 15 des opportunités, sans nommer de dépôt.
+16. Annexe JSON.
+
+ANNEXE JSON OBLIGATOIRE
+
+Termine le fichier par un bloc JSON valide suivant ce schéma :
+
+{
+  "audit": {
+    "date": "",
+    "repositories": [
+      {
+        "path": "",
+        "branch": "",
+        "head": "",
+        "dirty": false
+      }
+    ]
+  },
+  "capabilities": [
+    {
+      "id": "CAP-01",
+      "domain": "",
+      "name": "",
+      "status": "absent|partial|fragile|verified",
+      "priority": "critical|high|medium|low",
+      "evidence": ["path/to/file.ts:123"],
+      "integrationSeams": ["symbol at path/to/file.ts:45"]
+    }
+  ],
+  "opportunities": [
+    {
+      "id": "OPP-01",
+      "capability": "",
+      "solves": ["CAP-01"],
+      "priority": "high",
+      "keywords": ["", ""],
+      "preferredLanguages": ["TypeScript"],
+      "integrationMode": "library|sidecar|mcp|dev-tool|reference",
+      "licenseAllow": ["MIT", "Apache-2.0", "BSD-2-Clause", "BSD-3-Clause"],
+      "licenseRejectForEmbedding": ["AGPL-3.0", "SSPL-1.0", "BUSL"],
+      "windowsNative": true,
+      "offlinePreferred": true,
+      "securityRequirements": [""],
+      "acceptanceCriteria": [""],
+      "rejectionCriteria": [""]
+    }
+  ],
+  "excludedRepositories": [
+    {
+      "repository": "owner/name",
+      "reason": "already evaluated"
+    }
+  ]
+}
+
+Le JSON doit être réellement parsable :
+- pas de commentaires ;
+- pas de virgule finale ;
+- guillemets doubles ;
+- valeurs cohérentes avec le document.
+
+QUALITÉ ATTENDUE
+
+- Chaque constat technique cite `fichier:ligne`.
+- Chaque fonctionnalité annoncée est reliée de bout en bout.
+- Chaque absence a été recherchée avec plusieurs termes.
+- Chaque test annoncé a réellement été lancé.
+- Les erreurs sont reproduites lorsque cela est sûr.
+- Les limites de l’audit sont déclarées.
+- Aucun dépôt externe n’est recommandé à ce stade.
+- Aucun changement de code n’est effectué.
+- Le rapport doit permettre à un autre analyste ne connaissant pas le projet
+  de sélectionner 10 dépôts GitHub sans relire tout le code.
+
+FIN DE MISSION
+
+Après avoir créé JAROD-CAPABILITY-AUDIT.md :
+- affiche `git status --short` ;
+- confirme que seul le rapport a été ajouté ou modifié par cette mission ;
+- ne commite pas ;
+- ne pousse pas ;
+- arrête-toi et attends ma validation.
