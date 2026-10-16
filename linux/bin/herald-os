@@ -1306,7 +1306,7 @@ HERMES_HOME = Path(os.environ.get("HERMES_HOME") or HOME / ".hermes")
 BRIDGE_DIRS = [HOME / "Herald-OS" / "plugins" / "herald-os-bridge", Path("/usr/share/herald-os/bridge"), Path("/opt/herald-os/resources/herald-os-bridge")]
 HERMES_INSTALLER = "https://hermes-agent.nousresearch.com/install.sh"
 #: SHA-256 of the installer script, pinned after review. Empty means not yet reviewed: nothing is installed.
-HERMES_INSTALLER_SHA256 = ""
+HERMES_INSTALLER_SHA256 = "20f44240ebada354a468104a6a6724d037afcb8883d4d09ddeb4815622c52d8b"
 
 
 def install_hermes() -> int:
