@@ -259,6 +259,20 @@
         "host-rust/crates/host-storage/tests/storage.rs",
         "the fixture walks of the TypeScript and Python suites"
       ]
+    },
+    {
+      "id": "c10-update-manifest",
+      "title": "Update manifest (the signed list of what an update bundle contains)",
+      "status": "provisional",
+      "schema": "c10-update-manifest.schema.json",
+      "fixtures": "fixtures/c10-update-manifest",
+      "source": [
+        "host-rust/crates/host-updater/src/manifest.rs (Manifest)"
+      ],
+      "protectedBy": [
+        "host-rust/crates/host-updater/tests/updater.rs",
+        "the fixture walks of the TypeScript and Python suites"
+      ]
     }
   ],
   "notFrozen": [

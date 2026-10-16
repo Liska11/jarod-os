@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "product": "jarod-os",
+  "version": "0.2.0",
+  "channel": "stable",
+  "createdAt": "2026-10-16T12:00:00Z",
+  "entry": "bin/herald-host.exe",
+  "files": [
+    {
+      "path": "bin/herald-host.exe",
+      "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      "size": 4194304
+    },
+    {
+      "path": "resources/jarod-core/gateway.mjs",
+      "sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "size": 123456
+    },
+    {
+      "path": "README.txt",
+      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "size": 0
+    }
+  ],
+  "downloadUrl": "https://example.invalid/update.zip"
+}

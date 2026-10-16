@@ -30,6 +30,7 @@ PY-bridge from the same files; TS-kernel repeats the walk for the contracts it o
 | `c8-trust-journal-entry` | frozen | `linux/bin/herald-os:1467` `trust_event` | `test_trust.py` | PY-linux: every decision (verified, 4 kinds of refusal, dev-unsigned) writes one valid line without a key |
 | `c9-storage-reservation` | provisional | `host-rust/crates/host-storage/src/volume.rs` `ReservationRequest` | none (new in phase 2) | Rust: every fixture decides `reserve_json`; protected zones answer `ZoneNotReservable`. TS and Python: the fixture walk |
 | `c9-storage-lease` | provisional | `host-rust/crates/host-storage/src/volume.rs` `Lease::to_json` | none (new in phase 2) | Rust: every lease the volume returns validates. TS and Python: the fixture walk |
+| `c10-update-manifest` | provisional | `host-rust/crates/host-updater/src/manifest.rs` `Manifest` | none (new in phase 2.5) | Rust: parsed only after its signature verifies, then validated against the schema and the path rules; every fixture is exercised. TS and Python: the fixture walk |
 
 Not frozen (no schema): see `README.md`, "What is NOT frozen", and `notFrozen` in `v1/index.json`.
 
