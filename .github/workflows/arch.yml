@@ -58,7 +58,7 @@ jobs:
           herald-os commands >/dev/null
           herald-os-catalog list >/dev/null
           herald-os-catalog pkg manager
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: herald-os-arch
           path: |
