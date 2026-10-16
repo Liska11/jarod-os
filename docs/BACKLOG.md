@@ -27,3 +27,10 @@ Items identified and deliberately not done. Each survives the session here.
 - Network confinement is configured (no capability by default) but has no test.
 - Per-attempt audit of refused writes is not possible from the kernel; the host reports what changed in the workspace
   instead (to wire into the audit journal).
+
+## From phase 4 (plugin platform)
+
+- Connect `PluginPlatform` to the kernel's real loader through a `PluginHost`, and sign the shipped plugins.
+- Real memory / VRAM / disk measurement feeding `reportUsage`.
+- Two frontends on one profile at once: locking and concurrent-write behaviour of settings, memory and skills
+  (shared data directory today, untested under concurrency).

@@ -15,6 +15,8 @@ export interface Skill {
   body: string;
   /** `agent` when the agent wrote it with `skill_manage`; absent for the user's own skills. */
   author?: string;
+  /** The folder path above the skill (`mlops/inference`); absent for a flat skill. */
+  category?: string;
 }
 
 /** Two skill folders with the same leaf name: one is loaded, the others are reported, never merged. */
@@ -277,6 +279,7 @@ export class SkillRegistry {
         path: f.path,
         body,
         ...(meta.author ? { author: meta.author } : {}),
+        ...(f.rel.includes("/") ? { category: f.rel.slice(0, f.rel.lastIndexOf("/")) } : {}),
       };
       next.set(skill.id, skill);
       const previous = versions[skill.id];
@@ -480,8 +483,20 @@ export class SkillRegistry {
     return target;
   }
 
-  promptSection(): string {
-    const list = this.enabled();
+  /** The categories that hold at least one skill, sorted. */
+  categories(): string[] {
+    return [...new Set(this.list().flatMap((s) => (s.category ? [s.category] : [])))].sort();
+  }
+
+  /**
+   * The skills the prompt names. With `categories`, only skills filed under one of them (or under a
+   * sub-category: whole path segments, not text prefixes) plus the flat ones, which belong to no category.
+   * The body never goes in: the agent loads it on demand.
+   */
+  promptSection(options: { categories?: string[] } = {}): string {
+    const wanted = options.categories;
+    const inScope = (s: Skill) => !wanted || !s.category || wanted.some((c) => s.category === c || s.category!.startsWith(`${c}/`));
+    const list = this.enabled().filter(inScope);
     if (list.length === 0) return "";
     const lines = list.map((s) => `- ${s.id} : ${s.name} — ${s.description}`);
     return `## Skills disponibles\nAvant une tâche qui correspond à une skill, charge ses instructions avec l'outil load_skill.\n${lines.join("\n")}`;

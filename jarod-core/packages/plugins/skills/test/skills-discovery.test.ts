@@ -169,3 +169,44 @@ describe("Q2 — cache manifeste", () => {
     }
   });
 });
+
+describe("phase 4 — chargement par catégorie", () => {
+  const tree = {
+    plate: md("Plate"),
+    "creative/ascii-art": md("ASCII"),
+    "mlops/inference/llama-cpp": md("llama.cpp"),
+    "mlops/train/lora": md("LoRA"),
+  };
+
+  it("chaque skill connaît sa catégorie ; une skill à plat n'en a pas", async () => {
+    const { skills } = await boot(tree);
+    expect(skills.get("plate")?.category).toBeUndefined();
+    expect(skills.get("ascii-art")?.category).toBe("creative");
+    expect(skills.get("llama-cpp")?.category).toBe("mlops/inference");
+    expect(skills.categories()).toEqual(["creative", "mlops/inference", "mlops/train"]);
+  });
+
+  it("sans filtre, l'invite est inchangée ; avec un filtre, seules les catégories demandées (et leurs sous-catégories) y figurent", async () => {
+    const { skills } = await boot(tree);
+    const all = skills.promptSection();
+    for (const id of ["plate", "ascii-art", "llama-cpp", "lora"]) expect(all).toContain(`- ${id} :`);
+
+    const mlops = skills.promptSection({ categories: ["mlops"] });
+    expect(mlops).toContain("- llama-cpp :");
+    expect(mlops).toContain("- lora :");
+    expect(mlops).toContain("- plate :"); // à plat : toujours présente
+    expect(mlops).not.toContain("- ascii-art :");
+
+    const only = skills.promptSection({ categories: ["mlops/train"] });
+    expect(only).toContain("- lora :");
+    expect(only).not.toContain("- llama-cpp :");
+    // « mlops/tr » n'est pas une catégorie parente de « mlops/train » : pas de correspondance par préfixe de texte.
+    expect(skills.promptSection({ categories: ["mlops/tr"] })).not.toContain("- lora :");
+  });
+
+  it("le corps n'est jamais dans l'invite : seul le nom et la description le sont", async () => {
+    const { skills } = await boot(tree);
+    expect(skills.promptSection()).not.toContain("corps de ASCII");
+  });
+});
+
