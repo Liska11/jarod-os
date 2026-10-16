@@ -41,6 +41,19 @@ export interface LocalModelEntry {
 /** Below this, the agent's tool list alone does not fit. */
 export const MIN_CONTEXT_LENGTH = 512;
 
+/**
+ * The context an LM Studio model is loaded with when nothing was set for it. LM Studio's own default (8192 on the machine this was measured
+ * on, 2026-10-15) is smaller than the tool list alone (~5700 tokens) plus a system prompt and a question, so the first turn that called a
+ * tool failed. 16384 leaves room for a conversation without the memory cost of the model's full window; a model that accepts less is
+ * loaded at its own maximum. A length set for the model (`setContextLength`) always wins. It applies to the loads made here, never to a
+ * model already in memory (see `lmStale`).
+ */
+export const DEFAULT_LM_CONTEXT = 16_384;
+
+export function defaultLmContext(model: { maxContext: number | null }): number {
+  return model.maxContext !== null && model.maxContext > 0 ? Math.min(DEFAULT_LM_CONTEXT, model.maxContext) : DEFAULT_LM_CONTEXT;
+}
+
 export interface LocalBackendView {
   /** False: the server does not answer (LM Studio closed) or is not set up (llama.cpp engine not installed). */
   available: boolean;
@@ -281,7 +294,7 @@ export class LocalModelsService {
     // In memory at another context than the one set here: unloaded, then loaded again at that size.
     const stale = this.lmStale(target);
     if (stale) await this.unloadLm(target);
-    const context = this.lmContext(id) ?? undefined;
+    const context = this.lmContext(id) ?? defaultLmContext(target);
     if (target.instances.length === 0 || stale) await this.track("load", "lmstudio", id, () => this.lmstudio.load(id, signal, context));
   }
 

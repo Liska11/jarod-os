@@ -77,7 +77,7 @@ describe("modèles locaux : canaux", () => {
     v = (await call("local-models-load", "lmstudio", "jean")) as View;
     expect(v.backends.lmstudio.models.find((m) => m.id === "jean")!.loaded).toBe(true);
     // Sans hotswap : rien d'autre n'est déchargé.
-    expect(lm.calls).toEqual(["load jean"]);
+    expect(lm.calls).toEqual(["load jean ctx=16384"]);
     v = (await call("local-models-unload", "lmstudio", "jean")) as View;
     expect(v.backends.lmstudio.models.find((m) => m.id === "jean")!.loaded).toBe(false);
   });
@@ -101,7 +101,7 @@ describe("modèles locaux : canaux", () => {
     // Le sélecteur du chat liste les modèles de chat de LM Studio (pas les embeddings).
     expect(app.agent.settings.get("providerOverrides").lmstudio?.models).toEqual(["qwen", "jean"]);
     await call("set-model-config", "lmstudio", "jean", "");
-    await expect.poll(() => lm.calls).toEqual(["unload qwen", "load jean"]);
+    await expect.poll(() => lm.calls).toEqual(["unload qwen", "load jean ctx=16384"]);
     expect(app.agent.settings.get("activeModel")).toBe("jean");
   });
 

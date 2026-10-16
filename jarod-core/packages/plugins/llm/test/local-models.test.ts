@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { EngineService, newPreset } from "../src/engine.js";
 import { LlamaServerSupervisor, type SpawnedProcess } from "../src/llama-server.js";
-import { type LocalModelActivity, LocalModelsService } from "../src/local-models.js";
+import { DEFAULT_LM_CONTEXT, defaultLmContext, type LocalModelActivity, LocalModelsService } from "../src/local-models.js";
 import { secretKeyFor } from "../src/providers.js";
 import { makeCore, tempDir } from "./helpers.js";
 
@@ -326,16 +326,28 @@ describe("longueur de contexte (LM Studio) : demandée au chargement, rechargée
   const lmRow = (v: Awaited<ReturnType<LocalModelsService["list"]>>, id: string) => v.backends.lmstudio.models.find((m) => m.id === id)!;
   const gestures = (calls: string[]) => calls.filter((c) => !c.startsWith("list"));
 
-  it("sans réglage, le chargement laisse LM Studio choisir (aucun context_length) ; réglée, elle part au chargement et la liste la montre", async () => {
+  it("sans réglage, le chargement demande la longueur par défaut (16384, assez pour la liste d'outils) plutôt que les 8192 de LM Studio ; réglée, la sienne part au chargement et la liste la montre", async () => {
     const { service, lmstudio } = await setup([{ key: "jean", max: 262144 }, { key: "qwen", max: 32768 }]);
     await service.load("lmstudio", "qwen");
-    expect(lmstudio.loads.at(-1)).toEqual({ model: "qwen" });
+    expect(lmstudio.loads.at(-1)).toEqual({ model: "qwen", context_length: DEFAULT_LM_CONTEXT });
     let v = await service.setContextLength("jean", 32768);
     expect(lmRow(v, "jean")).toMatchObject({ contextLength: 32768, loadedContext: null, maxContext: 262144, loaded: false });
     v = await service.load("lmstudio", "jean");
     expect(lmstudio.loads.at(-1)).toEqual({ model: "jean", context_length: 32768 });
     expect(lmRow(v, "jean")).toMatchObject({ loaded: true, contextLength: 32768, loadedContext: 32768 });
-    expect(lmRow(v, "qwen")).toMatchObject({ contextLength: null, loadedContext: 4096 });
+    expect(lmRow(v, "qwen")).toMatchObject({ contextLength: null, loadedContext: DEFAULT_LM_CONTEXT });
+  });
+
+  it("la longueur par défaut tient la liste d'outils (~5700 jetons) et ne dépasse jamais ce que le modèle accepte", async () => {
+    expect(DEFAULT_LM_CONTEXT).toBeGreaterThanOrEqual(5700 * 2);
+    expect(defaultLmContext({ maxContext: 262144 })).toBe(DEFAULT_LM_CONTEXT);
+    expect(defaultLmContext({ maxContext: null })).toBe(DEFAULT_LM_CONTEXT);
+    expect(defaultLmContext({ maxContext: 4096 })).toBe(4096);
+    const { service, lmstudio } = await setup([{ key: "petit", max: 4096 }, { key: "inconnu" }]);
+    await service.load("lmstudio", "petit");
+    expect(lmstudio.loads.at(-1)).toEqual({ model: "petit", context_length: 4096 });
+    await service.load("lmstudio", "inconnu");
+    expect(lmstudio.loads.at(-1)).toEqual({ model: "inconnu", context_length: DEFAULT_LM_CONTEXT });
   });
 
   it("refuse moins de 512, plus que le maximum du modèle, un nombre non entier, un modèle inconnu ; null revient au choix de LM Studio", async () => {
@@ -351,7 +363,7 @@ describe("longueur de contexte (LM Studio) : demandée au chargement, rechargée
     expect(lmRow(v, "jean").contextLength).toBeNull();
     expect(core.settings.get("localModels").lmstudioContext).toEqual({});
     await service.load("lmstudio", "jean");
-    expect(lmstudio.loads.at(-1)).toEqual({ model: "jean" });
+    expect(lmstudio.loads.at(-1)).toEqual({ model: "jean", context_length: DEFAULT_LM_CONTEXT });
   });
 
   it("en mémoire à une autre taille : « Load » le décharge puis le recharge à la taille demandée ; à la bonne taille, rien ne bouge", async () => {
