@@ -396,6 +396,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "host-sandbox"
+version = "0.1.0"
+dependencies = [
+ "host-control",
+ "host-storage",
+ "host-supervisor",
+ "serde_json",
+ "windows-sys",
+]
+
+[[package]]
 name = "host-storage"
 version = "0.1.0"
 dependencies = [

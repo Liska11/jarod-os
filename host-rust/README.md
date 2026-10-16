@@ -166,7 +166,12 @@ ordinary text); a value that is not valid UTF-8 cannot be matched as text; the c
 this process's memory while it is in use (the redaction keeps a copy to compare with), which only a separate
 process boundary would change.
 
-## Not done here (phase 2 and later)
+## The sandbox (phase 3.1): `crates/host-sandbox`
 
-The approval broker and supervisor, the updater, the sandbox. Unix-socket transport (Linux image).
+Write confinement of a command in an AppContainer (R4), with a `herald-sandbox` CLI and a machine self-test.
+See `docs/sandbox.md` (what is proven, and the stated limits: legacy `dir`/`del`/`attrib` do not work inside).
+
+## Not done here
+
+The TypeScript side of the sandbox (3.2), plugins (3.3). Unix-socket transport (Linux image).
 Authenticode/signing of the host binary (a different trust chain).
