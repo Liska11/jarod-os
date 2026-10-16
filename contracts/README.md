@@ -50,7 +50,12 @@ envelopes today). **Not frozen** means there is no schema at all, and `index.jso
 npm run test --workspace apps/desktop -- electron/shell/contracts.test.ts         # TypeScript, shell side
 (cd jarod-core/packages/plugins/agent && npx vitest run test/contracts.test.ts)    # TypeScript, kernel side
 npm run test:bridge                                                                # Python (needs jsonschema)
+(cd host-rust && cargo test)                                                       # Rust (the host, phase 0c)
 ```
+
+**Portability rule.** A schema pattern must compile in ECMAScript (ajv), Python `re` (jsonschema) and Rust
+`regex` (the host). The Rust consumer found the first violation (`\0` in a character class, now
+`\u0000`): when in doubt, spell a character as `\uXXXX` and avoid look-around and back-references.
 
 The Python suites need `jsonschema`: `scripts/test-bridge.sh` / `.ps1` and the CI job already ask for it.
 The TypeScript suites use `ajv` (2020-12 build, strict mode), which is hoisted at the workspace root and

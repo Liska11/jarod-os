@@ -9,7 +9,7 @@
       "pattern": "^pipe://herald-os-[0-9a-f]{16}$"
     },
     {
-      "pattern": "^/(?:[^/\\0]+/)*herald-os/control\\.sock$"
+      "pattern": "^/(?:[^/\\u0000]+/)*herald-os/control\\.sock$"
     }
   ]
 }

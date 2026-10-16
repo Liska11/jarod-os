@@ -66,12 +66,18 @@ Mission 0b forbids changing behaviour, so these are findings for the next phases
    `test_control_protocol_r2.py` skip on Windows (no `AF_UNIX`). The new contract tests do not depend
    on a socket: the client is exercised through a patched pipe transport, which runs on Windows.
 
+8. **A contract pattern was not portable** (found by the Rust host, phase 0c): `c1-control-endpoint` spelled a NUL
+   as `\0` in a regex class. Valid ECMAScript, rejected by Rust's engine, so a second implementation could not
+   load the contract. Now `\u0000` (same meaning everywhere); TS, Python and Rust all validate the 146 fixtures
+   identically. The Rust host's other divergences from the shell are listed in `host-rust/README.md`.
+
 ## Limits
 
 - `ajv` is imported by the TS suites but declared by no workspace package; it resolves from the root
   `node_modules` through hoisting. A clean install that dedupes differently could lose it. Declaring it
   as a `devDependency` needs a lockfile update (network), so it was left for the commit that can do it.
-- The schemas and the Python/TS code are checked against each other; the Rust host does not exist yet,
-  so nothing proves a second implementation can be written from these files alone. Phase 0c is that proof.
+- The schemas and the Python/TS code are checked against each other, and since phase 0c a Rust host
+  (`host-rust/`) loads these files at start and passes all 146 fixtures: a second implementation could be
+  written from this folder, with one portability fix (finding 8).
 - `c8-image-trust` records the policy; it cannot prove `bootc` enforces it
   (`--enforce-container-sigpolicy` was not exercised, as in 0a).
