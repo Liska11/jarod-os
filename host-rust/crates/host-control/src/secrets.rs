@@ -11,6 +11,8 @@ pub enum SecretKind {
     Token,
     Capability,
     Nonce,
+    /// A value held in the host's vault (an API key, a bot token…): known to this process, so masked like the others.
+    Vault,
 }
 
 impl SecretKind {
@@ -19,6 +21,7 @@ impl SecretKind {
             SecretKind::Token => "token",
             SecretKind::Capability => "capability",
             SecretKind::Nonce => "nonce",
+            SecretKind::Vault => "vault",
         }
     }
 }

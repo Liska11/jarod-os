@@ -96,6 +96,9 @@ Found by writing the second implementation from the contracts. See also `contrac
    capability never crosses a process boundary, so this only matters if two hosts ever share a store.
 10. **Whitespace and length units**: `trim()` follows Unicode `White_Space` (JavaScript also trims U+FEFF); the
     journal's 4096-character cut counts characters, not UTF-16 units.
+12. **The redaction is wider than the shell's.** The TypeScript `redactSecrets` finds values made of token
+    characters inside runs; the Rust one also finds free-form values (the vault's) anywhere in the text. The
+    host's own tokens, capabilities and nonces are in the token set, so both agree on them.
 11. **A token-shaped but well-formed `requestId`** is echoed to the caller who sent it, in both hosts (the caller
     already has it); the journal never holds it, because the redacted form is not a well-formed id and is dropped.
 
@@ -139,7 +142,31 @@ distinct identity, auditable reset" properties belong to the VM/sandbox that wil
 crate. NVMe temperature and wear were not readable without elevation on the development machine: the probe
 returned the disks and their Windows health, with the counters unknown.
 
+## The vault (phase 2.3): `crates/host-vault`
+
+The one place a secret lives at rest. Sealed with DPAPI (current-user scope, no UI) with the secret's **name
+as extra entropy**, one `<name>.sec` file each (`JVLT` + format byte + the sealed blob).
+
+- Nothing readable at rest: the tests scan the whole directory for each value in raw, UTF-16 and hex form,
+  and for fragments of it.
+- A blob that does not open (flipped byte, truncated, wrong header, **copied under another name**, sealed for
+  another user) is `VaultError::Corrupt`, never `None`, and is unknown to the redaction.
+- A protector that fails on `put` leaves no file and keeps the previous value; replacement is write-then-rename.
+- Names are plain lowercase ids (no path, no device name, no trailing dot); a vault directory that is a link is
+  refused; `open_hardened` also gives the directory the user-only DACL of the storage zone.
+- `SecretBytes` is zeroed on drop and prints `[redacted]`; the observer hears operations and names, never values.
+- **Redaction**: `vault.secret_source()` feeds `ControlSecurity::add_secret_source`, so a vault value in any
+  free-text field of a request is journalled as `[REDACTED:vault]` (tested with the real pipeline and a real
+  journal file, including a value stored after the host started). While doing this the redaction was extended:
+  values made only of token characters are still found inside runs (linear), anything else (a Telegram bot token
+  contains `:`) is searched at every position, both by constant-time digest comparison.
+
+Limits, stated: a value shorter than 8 characters is not masked (masking a 4-character PIN would destroy
+ordinary text); a value that is not valid UTF-8 cannot be matched as text; the cleartext necessarily exists in
+this process's memory while it is in use (the redaction keeps a copy to compare with), which only a separate
+process boundary would change.
+
 ## Not done here (phase 2 and later)
 
-The secret vault, the approval broker and supervisor, the updater, the sandbox. Unix-socket transport
-(Linux image). Authenticode/signing of the host binary (a different trust chain).
+The approval broker and supervisor, the updater, the sandbox. Unix-socket transport (Linux image).
+Authenticode/signing of the host binary (a different trust chain).
