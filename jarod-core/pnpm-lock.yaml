@@ -446,6 +446,15 @@ importers:
         specifier: 4.0.0-rc.10
         version: 4.0.0-rc.10
 
+  packages/plugins/integrations:
+    dependencies:
+      '@jarod/kernel':
+        specifier: workspace:*
+        version: link:../../kernel
+      cordis:
+        specifier: 4.0.0-rc.10
+        version: 4.0.0-rc.10
+
   packages/plugins/kanban:
     dependencies:
       '@jarod/kernel':
