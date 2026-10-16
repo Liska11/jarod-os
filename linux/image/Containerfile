@@ -7,10 +7,12 @@
 FROM quay.io/fedora/fedora-bootc:44
 
 ARG SHELL_TARBALL=herald-os-linux.tar.gz
+# 0 for every published build. 1 only for a local dev build, which then has no update trust at all.
+ARG HERALD_OS_DEV_UNSIGNED=0
 COPY linux /tmp/herald-os/linux
 COPY ${SHELL_TARBALL} /tmp/herald-os/shell.tar.gz
 
-RUN bash /tmp/herald-os/linux/image/packages.sh --image /tmp/herald-os/shell.tar.gz \
+RUN HERALD_OS_DEV_UNSIGNED="$HERALD_OS_DEV_UNSIGNED" bash /tmp/herald-os/linux/image/packages.sh --image /tmp/herald-os/shell.tar.gz \
  && dnf clean all \
  && rm -rf /tmp/herald-os /var/cache/* /var/log/* /var/lib/dnf
 

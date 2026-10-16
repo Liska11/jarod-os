@@ -60,15 +60,12 @@ jobs:
           npm ci
           npm run dist:linux --workspace apps/desktop -- --${{ matrix.shell }}
           cp apps/desktop/release/herald-os-*-linux-${{ matrix.shell }}.tar.gz herald-os-linux.tar.gz
-      - name: The signing key and its public half agree
+      - name: Refuse to publish an image that cannot be verified
         run: |
-          # Signing on without the public half would ship an image with no verification policy.
-          if [ "$SIGNING" = "true" ] && [ ! -f linux/image/cosign.pub ]; then
-            echo "::error::COSIGN_PRIVATE_KEY is set but linux/image/cosign.pub is not committed." >&2
+          # Fail-closed, for every channel: no key secret, or no committed public half, means no image.
+          if [ "$SIGNING" != "true" ] || [ ! -f linux/image/cosign.pub ]; then
+            echo "::error::Set COSIGN_PRIVATE_KEY and commit linux/image/cosign.pub. An unsigned image is never published." >&2
             exit 1
-          fi
-          if [ "$SIGNING" != "true" ]; then
-            echo "::warning::No signing key: this image is published unsigned and its updates are not verified."
           fi
       - name: Build the image
         run: |

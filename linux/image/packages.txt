@@ -95,3 +95,5 @@ foot
 firefox
 nautilus
 gnome-text-editor
+# Verifies an image's signature before the device switches to it (R6: verify_image in linux/bin/herald-os).
+cosign

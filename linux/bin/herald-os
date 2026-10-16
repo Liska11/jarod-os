@@ -1455,6 +1455,76 @@ def is_image() -> bool:
     return Path("/run/ostree-booted").exists()
 
 
+#: Image trust (R6). An image is installed or switched to only when its signature verifies.
+TRUST_KEY = Path("/etc/pki/containers/herald-os.pub")
+POLICY_PATH = Path("/etc/containers/policy.json")
+TRUST_JOURNAL = HOME / ".local" / "state" / "herald-os" / "trust.jsonl"
+IMAGE_REPO = "ghcr.io/iamlukethedev/herald-os"
+PUBLISHED_CHANNELS = ("stable", "edge")
+DEV_BYPASS = "HERALD_OS_DEV_UNSIGNED"
+
+
+def trust_event(outcome: str, ref: str, reason: str, journal: Path) -> None:
+    """One line per decision in the trust journal. It holds no key and no token."""
+    journal.parent.mkdir(parents=True, exist_ok=True)
+    line = {"at": datetime.now().isoformat(timespec="seconds"), "outcome": outcome, "ref": ref, "reason": reason}
+    with journal.open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(line) + "\n")
+
+
+def policy_requires_signature(policy: Path, repo: str = IMAGE_REPO) -> bool:
+    """True only when the container policy has a sigstoreSigned rule for the project's image repository."""
+    try:
+        rules = json.loads(policy.read_text(encoding="utf-8"))["transports"]["docker"][repo]
+        return any(rule.get("type") == "sigstoreSigned" for rule in rules)
+    except (OSError, ValueError, KeyError, TypeError, AttributeError):
+        return False
+
+
+def _cosign(argv: list[str]) -> tuple[int, str]:
+    try:
+        done = subprocess.run(argv, capture_output=True, text=True, timeout=120)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return 127, str(exc)
+    return done.returncode, done.stderr.strip()
+
+
+def _refuse(ref: str, reason: str, journal: Path) -> bool:
+    print(f"refused: {ref}: {reason}", file=sys.stderr)
+    trust_event("refused", ref, reason, journal)
+    return False
+
+
+def verify_image(
+    ref: str,
+    *,
+    key: Path = TRUST_KEY,
+    policy: Path = POLICY_PATH,
+    journal: Path = TRUST_JOURNAL,
+    run=_cosign,
+) -> bool:
+    """Is this image signed by the project's key? Fail-closed: any doubt is a refusal, with its reason journaled.
+
+    The published channels (stable, edge) have no bypass at all. A local build can be accepted unsigned with
+    HERALD_OS_DEV_UNSIGNED=1: that is loud on stderr and journaled as dev-unsigned."""
+    published = ref.startswith(IMAGE_REPO + ":")
+    if published and ref.rsplit(":", 1)[1] not in PUBLISHED_CHANNELS:
+        return _refuse(ref, f"unknown channel; only {', '.join(PUBLISHED_CHANNELS)} are published", journal)
+    if not published and os.environ.get(DEV_BYPASS) == "1":
+        print(f"WARNING: {ref} is accepted UNSIGNED ({DEV_BYPASS}=1, a local build)", file=sys.stderr)
+        trust_event("dev-unsigned", ref, "local build: signature not checked", journal)
+        return True
+    if not key.exists():
+        return _refuse(ref, f"no signing key at {key}", journal)
+    if not policy_requires_signature(policy):
+        return _refuse(ref, f"the container policy has no sigstoreSigned rule for {IMAGE_REPO}", journal)
+    code, err = run(["cosign", "verify", "--key", str(key), ref])
+    if code != 0:
+        return _refuse(ref, f"signature not verified: {err[-300:] or f'cosign exit {code}'}", journal)
+    trust_event("verified", ref, "signature matches the project key", journal)
+    return True
+
+
 def image_switch(channel: str) -> int:
     """Follow the image tag for a channel (stable for releases, edge for main)."""
     status = sh(["sudo", "bootc", "status", "--format", "json"], timeout=60)
@@ -1465,6 +1535,8 @@ def image_switch(channel: str) -> int:
     target = current.rsplit(":", 1)[0] + f":{channel}"
     if target == current:
         return 0
+    if not verify_image(target):
+        return 1
     print(f"==> following {target}")
     return subprocess.call(["sudo", "bootc", "switch", target])
 
