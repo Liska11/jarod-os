@@ -437,6 +437,15 @@ importers:
         specifier: 8.0.2
         version: 8.0.2
 
+  packages/plugins/hyperv:
+    dependencies:
+      '@jarod/kernel':
+        specifier: workspace:*
+        version: link:../../kernel
+      cordis:
+        specifier: 4.0.0-rc.10
+        version: 4.0.0-rc.10
+
   packages/plugins/kanban:
     dependencies:
       '@jarod/kernel':
@@ -534,6 +543,15 @@ importers:
         specifier: workspace:*
         version: link:../../kernel
 
+  packages/plugins/quarantine:
+    dependencies:
+      '@jarod/kernel':
+        specifier: workspace:*
+        version: link:../../kernel
+      cordis:
+        specifier: 4.0.0-rc.10
+        version: 4.0.0-rc.10
+
   packages/plugins/rag:
     dependencies:
       '@jarod/contracts':
@@ -545,6 +563,24 @@ importers:
       '@jarod/plugin-storage':
         specifier: workspace:*
         version: link:../storage
+      cordis:
+        specifier: 4.0.0-rc.10
+        version: 4.0.0-rc.10
+
+  packages/plugins/sandbox:
+    dependencies:
+      '@jarod/contracts':
+        specifier: workspace:*
+        version: link:../../contracts
+      '@jarod/kernel':
+        specifier: workspace:*
+        version: link:../../kernel
+      '@jarod/plugin-permissions':
+        specifier: workspace:*
+        version: link:../permissions
+      '@jarod/plugin-tools':
+        specifier: workspace:*
+        version: link:../tools
       cordis:
         specifier: 4.0.0-rc.10
         version: 4.0.0-rc.10
