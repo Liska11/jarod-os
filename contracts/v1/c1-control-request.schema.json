@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jarod-os.invalid/contracts/v1/c1-control-request.schema.json",
+  "title": "Control request (one JSON line sent to the control plane)",
+  "description": "What a client writes on the pipe or the unix socket. The host decodes JSON and trusts nothing: a request that does not match is refused, never repaired. Unknown keys are ignored by readers (additive evolution).",
+  "type": "object",
+  "required": [
+    "cmd"
+  ],
+  "properties": {
+    "cmd": {
+      "type": "string",
+      "pattern": "\\S",
+      "description": "The command; blank after trimming is refused with code `invalid`."
+    },
+    "token": {
+      "type": "string",
+      "description": "The per-launch credential (backend or cli). Never journalled."
+    },
+    "command": {
+      "type": "string",
+      "description": "The registry command id a typed call (`ui`, `run`) names."
+    },
+    "args": {
+      "type": [
+        "array",
+        "object"
+      ],
+      "description": "Array of strings for shell commands, object for registry commands."
+    },
+    "source": {
+      "type": "string"
+    },
+    "capability": {
+      "type": "string",
+      "description": "One-shot capability id the host issued for exactly this call. Never journalled."
+    },
+    "requestId": {
+      "type": "string",
+      "pattern": "^\\s*(?:[A-Za-z0-9._:-]{1,128})?\\s*$",
+      "description": "The caller's name for the attempt. Not a credential."
+    },
+    "attachments": {},
+    "shell": {},
+    "wallpaper": {},
+    "colors": {}
+  },
+  "additionalProperties": true
+}

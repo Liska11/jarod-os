@@ -1,0 +1,14 @@
+{
+  "ts": "2026-10-16T14:00:20+02:00",
+  "tool": "system_kill_process",
+  "tier": "destructive",
+  "action": "kill",
+  "decision": "denied",
+  "ok": false,
+  "summary": null,
+  "error": "The user did not approve this action.",
+  "requestId": "br-aaaaaaaaaaaa",
+  "args": {
+    "pid": 4242
+  }
+}

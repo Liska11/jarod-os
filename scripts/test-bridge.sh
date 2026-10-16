@@ -14,12 +14,12 @@ cd "$ROOT/plugins/herald-os-bridge/tests"
 SUITES=(. "$ROOT/linux/tests")
 [[ $# -eq 0 ]] || SUITES=()
 
-if [[ -x "$PY" ]] && "$PY" -c "import pytest" >/dev/null 2>&1; then
+if [[ -x "$PY" ]] && "$PY" -c "import pytest, jsonschema" >/dev/null 2>&1; then
   exec "$PY" -m pytest -q ${SUITES[@]+"${SUITES[@]}"} "$@"
 fi
 
 if command -v uv >/dev/null 2>&1; then
-  exec uv run --no-project --python 3.11 --with pytest --with pyyaml python -m pytest -q ${SUITES[@]+"${SUITES[@]}"} "$@"
+  exec uv run --no-project --python 3.11 --with pytest --with pyyaml --with jsonschema python -m pytest -q ${SUITES[@]+"${SUITES[@]}"} "$@"
 fi
 
 echo "test-bridge: need either pytest in $PY or uv on PATH" >&2

@@ -1,0 +1,13 @@
+{
+  "ts": "2026-10-16T14:00:00+02:00",
+  "tool": "system_info",
+  "tier": "read",
+  "action": null,
+  "decision": "allowed",
+  "ok": true,
+  "summary": null,
+  "error": null,
+  "requestId": null,
+  "args": {},
+  "token": "Zk3Qm9vX1pL7wR4tY8uN2cB6hJ5aD0eF"
+}

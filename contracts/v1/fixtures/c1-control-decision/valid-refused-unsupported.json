@@ -1,0 +1,6 @@
+{
+  "allowed": false,
+  "client": "backend",
+  "reason": "os was replaced by run/list/state",
+  "code": "unsupported"
+}

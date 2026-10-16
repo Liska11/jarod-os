@@ -1,0 +1,152 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jarod-os.invalid/contracts/v1/c2-authorization-matrix.schema.json",
+  "title": "Authorization matrix (which token opens which door, and what a command is worth)",
+  "description": "The data behind `adjudicate`: two per-launch tokens (`backend`, `cli`), two surfaces, the allow-lists, the retired commands and the tier of every shell command. The fixture `valid-current.json` is the golden copy; the tests compare it to the code, set for set. Per-command argument grammar is NOT part of this contract (see README, 'not frozen').",
+  "type": "object",
+  "required": [
+    "version",
+    "tiers",
+    "clients",
+    "surfaces",
+    "refusalCodes",
+    "registryCommands",
+    "typedRegistryCommands",
+    "retiredCommands",
+    "backendCommands",
+    "shellCommands"
+  ],
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "tiers": {
+      "const": [
+        "read",
+        "act",
+        "mutate",
+        "destructive"
+      ]
+    },
+    "clients": {
+      "const": [
+        "backend",
+        "cli",
+        "plugin",
+        "ui"
+      ]
+    },
+    "surfaces": {
+      "const": [
+        "panel",
+        "backend"
+      ]
+    },
+    "refusalCodes": {
+      "const": [
+        "unauthenticated",
+        "unauthorized",
+        "unsupported",
+        "invalid"
+      ]
+    },
+    "registryCommands": {
+      "const": [
+        "ui",
+        "ui-list",
+        "ui-state"
+      ]
+    },
+    "typedRegistryCommands": {
+      "const": [
+        "run",
+        "list",
+        "state"
+      ]
+    },
+    "retiredCommands": {
+      "const": [
+        "os",
+        "os-run"
+      ]
+    },
+    "backendCommands": {
+      "const": [
+        "ui",
+        "ui-list",
+        "ui-state",
+        "run",
+        "list",
+        "state",
+        "page",
+        "notify",
+        "voice"
+      ]
+    },
+    "shellCommands": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]*$"
+          },
+          "tier": {
+            "enum": [
+              "read",
+              "act",
+              "mutate",
+              "destructive"
+            ]
+          },
+          "tierByAction": {
+            "type": "object",
+            "required": [
+              "defaultAction",
+              "actions"
+            ],
+            "properties": {
+              "defaultAction": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9-]*$"
+              },
+              "actions": {
+                "type": "object",
+                "minProperties": 1,
+                "additionalProperties": {
+                  "enum": [
+                    "read",
+                    "act",
+                    "mutate",
+                    "destructive"
+                  ]
+                }
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false,
+        "oneOf": [
+          {
+            "required": [
+              "tier"
+            ]
+          },
+          {
+            "required": [
+              "tierByAction"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,14 @@
+{
+  "name": "x-bridge",
+  "version": "latest",
+  "description": "d",
+  "author": "a",
+  "kind": "standalone",
+  "requires_hermes": ">=0.19",
+  "platforms": [
+    "linux"
+  ],
+  "provides_tools": [
+    "t"
+  ]
+}

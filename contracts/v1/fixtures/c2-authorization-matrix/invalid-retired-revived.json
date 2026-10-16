@@ -1,0 +1,182 @@
+{
+  "version": 1,
+  "tiers": [
+    "read",
+    "act",
+    "mutate",
+    "destructive"
+  ],
+  "clients": [
+    "backend",
+    "cli",
+    "plugin",
+    "ui"
+  ],
+  "surfaces": [
+    "panel",
+    "backend"
+  ],
+  "refusalCodes": [
+    "unauthenticated",
+    "unauthorized",
+    "unsupported",
+    "invalid"
+  ],
+  "registryCommands": [
+    "ui",
+    "ui-list",
+    "ui-state"
+  ],
+  "typedRegistryCommands": [
+    "run",
+    "list",
+    "state"
+  ],
+  "retiredCommands": [],
+  "backendCommands": [
+    "ui",
+    "ui-list",
+    "ui-state",
+    "run",
+    "list",
+    "state",
+    "page",
+    "notify",
+    "voice"
+  ],
+  "shellCommands": [
+    {
+      "name": "state",
+      "tier": "read"
+    },
+    {
+      "name": "menu-check",
+      "tier": "read"
+    },
+    {
+      "name": "list",
+      "tier": "read"
+    },
+    {
+      "name": "ui-list",
+      "tier": "read"
+    },
+    {
+      "name": "ui-state",
+      "tier": "read"
+    },
+    {
+      "name": "page",
+      "tier": "act"
+    },
+    {
+      "name": "open",
+      "tier": "act"
+    },
+    {
+      "name": "launch",
+      "tier": "act"
+    },
+    {
+      "name": "notify",
+      "tier": "act"
+    },
+    {
+      "name": "dictate",
+      "tier": "act"
+    },
+    {
+      "name": "voice",
+      "tier": "act"
+    },
+    {
+      "name": "update-available",
+      "tier": "act"
+    },
+    {
+      "name": "switches",
+      "tier": "act"
+    },
+    {
+      "name": "screensaver",
+      "tier": "act"
+    },
+    {
+      "name": "panel",
+      "tier": "act"
+    },
+    {
+      "name": "event",
+      "tier": "act"
+    },
+    {
+      "name": "ask",
+      "tier": "act"
+    },
+    {
+      "name": "command",
+      "tier": "act"
+    },
+    {
+      "name": "applications",
+      "tier": "act"
+    },
+    {
+      "name": "menu",
+      "tier": "act"
+    },
+    {
+      "name": "power",
+      "tier": "act"
+    },
+    {
+      "name": "clipboard",
+      "tier": "act"
+    },
+    {
+      "name": "emoji",
+      "tier": "act"
+    },
+    {
+      "name": "webapp",
+      "tier": "mutate"
+    },
+    {
+      "name": "wallpaper",
+      "tier": "mutate"
+    },
+    {
+      "name": "theme",
+      "tier": "mutate"
+    },
+    {
+      "name": "theme-omarchy",
+      "tier": "mutate"
+    },
+    {
+      "name": "branding",
+      "tierByAction": {
+        "defaultAction": "show",
+        "actions": {
+          "show": "read",
+          "set": "mutate",
+          "reset": "mutate"
+        }
+      }
+    },
+    {
+      "name": "plugin",
+      "tierByAction": {
+        "defaultAction": "list",
+        "actions": {
+          "list": "read",
+          "add": "mutate",
+          "enable": "mutate",
+          "disable": "mutate",
+          "update": "mutate",
+          "remove": "destructive"
+        }
+      }
+    }
+  ]
+}

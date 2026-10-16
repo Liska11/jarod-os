@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jarod-os.invalid/contracts/v1/c7-tool-call.schema.json",
+  "title": "Tool call (what the model asked for)",
+  "description": "PROVISIONAL. `ToolCall` from `@jarod/contracts`: the shape `executeGuardedTool` receives. Arguments are untrusted model output; per-tool argument schemas are NOT covered (README, 'not frozen'). `__invalid_json__` is the marker a truncated call carries; it is refused, not repaired.",
+  "type": "object",
+  "required": [
+    "id",
+    "name",
+    "args"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "name": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]{1,64}$"
+    },
+    "args": {
+      "type": "object"
+    }
+  },
+  "additionalProperties": false
+}

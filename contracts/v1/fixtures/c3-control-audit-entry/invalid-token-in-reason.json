@@ -1,0 +1,12 @@
+{
+  "at": "2026-10-16T12:00:00.000Z",
+  "client": "unauthenticated",
+  "cmd": "ui",
+  "command": "page.open",
+  "tier": "read",
+  "source": "agent",
+  "allowed": false,
+  "reason": "invalid control token Zk3Qm9vX1pL7wR4tY8uN2cB6hJ5aD0eF",
+  "surface": "backend",
+  "code": "unauthenticated"
+}

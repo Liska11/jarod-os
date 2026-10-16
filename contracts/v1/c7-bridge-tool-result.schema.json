@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jarod-os.invalid/contracts/v1/c7-bridge-tool-result.schema.json",
+  "title": "Bridge tool result (ok / fail envelope, JSON string)",
+  "description": "PROVISIONAL. What every bridge tool handler returns to Hermes: a JSON string whose object has `success`; a failure always carries `error`. The remaining keys are per-tool payload and are NOT covered.",
+  "type": "object",
+  "required": [
+    "success"
+  ],
+  "properties": {
+    "success": {
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": true,
+  "oneOf": [
+    {
+      "properties": {
+        "success": {
+          "const": true
+        }
+      },
+      "not": {
+        "required": [
+          "error"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "success": {
+          "const": false
+        },
+        "error": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "error"
+      ]
+    }
+  ]
+}

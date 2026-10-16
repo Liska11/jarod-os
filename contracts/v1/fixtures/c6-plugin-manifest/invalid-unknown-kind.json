@@ -1,0 +1,14 @@
+{
+  "name": "x-bridge",
+  "version": "1.0.0",
+  "description": "d",
+  "author": "a",
+  "kind": "daemon",
+  "requires_hermes": ">=0.19",
+  "platforms": [
+    "linux"
+  ],
+  "provides_tools": [
+    "t"
+  ]
+}

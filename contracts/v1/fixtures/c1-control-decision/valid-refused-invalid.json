@@ -1,0 +1,6 @@
+{
+  "allowed": false,
+  "client": null,
+  "reason": "a control request needs a cmd",
+  "code": "invalid"
+}

@@ -1,0 +1,7 @@
+{
+  "cmd": "page",
+  "args": [
+    "missions"
+  ],
+  "token": "@cli"
+}

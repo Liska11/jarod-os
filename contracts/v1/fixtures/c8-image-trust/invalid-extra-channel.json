@@ -1,0 +1,58 @@
+{
+  "version": 1,
+  "image": {
+    "repository": "ghcr.io/iamlukethedev/herald-os",
+    "publishedChannels": [
+      "stable",
+      "edge",
+      "beta"
+    ]
+  },
+  "verification": {
+    "publicKeyInRepository": "linux/image/cosign.pub",
+    "publicKeyOnDevice": "/etc/pki/containers/herald-os.pub",
+    "policyPath": "/etc/containers/policy.json",
+    "policyRule": {
+      "type": "sigstoreSigned",
+      "keyPath": "/etc/pki/containers/herald-os.pub",
+      "signedIdentity": {
+        "type": "matchRepository"
+      }
+    },
+    "verifyCommand": [
+      "cosign",
+      "verify",
+      "--key",
+      "<publicKeyOnDevice>",
+      "<ref>"
+    ],
+    "failClosed": true,
+    "appliesTo": [
+      "install",
+      "update",
+      "channel-switch"
+    ]
+  },
+  "devBypass": {
+    "variable": "HERALD_OS_DEV_UNSIGNED",
+    "enablingValue": "1",
+    "unpublishedRefsOnly": true,
+    "publishedChannelsBypass": false,
+    "journalOutcome": "dev-unsigned"
+  },
+  "installerPin": {
+    "url": "https://hermes-agent.nousresearch.com/install.sh",
+    "constant": "HERMES_INSTALLER_SHA256",
+    "format": "^[0-9a-f]{64}$",
+    "emptyMeans": "refuse-install",
+    "mismatchMeans": "refuse-install"
+  },
+  "journal": {
+    "path": "~/.local/state/herald-os/trust.jsonl",
+    "outcomes": [
+      "refused",
+      "verified",
+      "dev-unsigned"
+    ]
+  }
+}

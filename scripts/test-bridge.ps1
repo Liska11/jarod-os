@@ -16,7 +16,7 @@ $suites = if ($args.Count -eq 0) { @('.') } else { @() }
 $ErrorActionPreference = 'Continue'
 
 if (Test-Path $Py) {
-    & $Py -c 'import pytest' 2>$null
+    & $Py -c 'import pytest, jsonschema' 2>$null
     if ($LASTEXITCODE -eq 0) {
         & $Py -m pytest -q @suites @args
         exit $LASTEXITCODE
@@ -24,7 +24,7 @@ if (Test-Path $Py) {
 }
 
 if (Get-Command uv -ErrorAction SilentlyContinue) {
-    & uv run --no-project --python 3.11 --with pytest --with pyyaml python -m pytest -q @suites @args
+    & uv run --no-project --python 3.11 --with pytest --with pyyaml --with jsonschema python -m pytest -q @suites @args
     exit $LASTEXITCODE
 }
 

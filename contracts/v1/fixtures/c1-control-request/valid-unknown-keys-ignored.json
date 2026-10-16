@@ -1,0 +1,8 @@
+{
+  "cmd": "theme",
+  "args": [
+    "nord"
+  ],
+  "token": "@cli",
+  "futureField": 1
+}

@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jarod-os.invalid/contracts/v1/c1-control-decision.schema.json",
+  "title": "Control decision (the adjudicator's answer)",
+  "description": "The pure result of `adjudicate`. Refusals carry a machine-readable `code`; an allow never does. `client` is null only when nobody was identified.",
+  "type": "object",
+  "required": [
+    "allowed",
+    "client",
+    "reason"
+  ],
+  "properties": {
+    "allowed": {
+      "type": "boolean"
+    },
+    "client": {
+      "enum": [
+        "backend",
+        "cli",
+        "plugin",
+        "ui",
+        null
+      ]
+    },
+    "reason": {
+      "type": "string",
+      "minLength": 1
+    },
+    "tier": {
+      "enum": [
+        "read",
+        "act",
+        "mutate",
+        "destructive"
+      ]
+    },
+    "code": {
+      "enum": [
+        "unauthenticated",
+        "unauthorized",
+        "unsupported",
+        "invalid"
+      ]
+    }
+  },
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "allowed": {
+            "const": true
+          }
+        },
+        "required": [
+          "allowed"
+        ]
+      },
+      "then": {
+        "not": {
+          "required": [
+            "code"
+          ]
+        },
+        "properties": {
+          "client": {
+            "enum": [
+              "backend",
+              "cli",
+              "plugin",
+              "ui"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "allowed": {
+            "const": false
+          }
+        },
+        "required": [
+          "allowed"
+        ]
+      },
+      "then": {
+        "required": [
+          "code"
+        ]
+      }
+    }
+  ]
+}

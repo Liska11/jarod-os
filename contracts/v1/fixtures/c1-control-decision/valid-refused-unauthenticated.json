@@ -1,0 +1,6 @@
+{
+  "allowed": false,
+  "client": null,
+  "reason": "invalid control token",
+  "code": "unauthenticated"
+}

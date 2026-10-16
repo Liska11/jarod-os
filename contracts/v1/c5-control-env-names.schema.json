@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jarod-os.invalid/contracts/v1/c5-control-env-names.schema.json",
+  "title": "CONTROL_ENV_NAMES (environment variables no child may inherit)",
+  "description": "A security contract, not an implementation detail: these eight names carry authority over the control plane or the gateway and are removed from every child process the bridge starts. Exactly these eight in v1; adding one is additive (a new revision of this file), removing one is forbidden. The Python constant and this schema must name the same set (cross-checked by a test).",
+  "type": "array",
+  "minItems": 8,
+  "maxItems": 8,
+  "uniqueItems": true,
+  "items": {
+    "enum": [
+      "HERALD_OS_CONTROL_TOKEN",
+      "HERALD_OS_CONTROL_SOCKET",
+      "HERMES_OS_CONTROL_TOKEN",
+      "HERMES_OS_CONTROL_SOCKET",
+      "HERALD_OS_CLI_TOKEN",
+      "HERMES_OS_CLI_TOKEN",
+      "JAROD_GATEWAY_TOKEN",
+      "HERMES_DASHBOARD_SESSION_TOKEN"
+    ]
+  }
+}

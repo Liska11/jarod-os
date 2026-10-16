@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "tiers": {
+    "read": "allow",
+    "act": "confirm",
+    "mutate": "deny",
+    "destructive": "deny"
+  },
+  "protected_paths": [
+    "~/Documents/private",
+    "$HERMES_HOME/secrets"
+  ]
+}

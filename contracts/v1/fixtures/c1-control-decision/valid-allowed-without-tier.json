@@ -1,0 +1,5 @@
+{
+  "allowed": true,
+  "client": "cli",
+  "reason": "run runs page.open"
+}

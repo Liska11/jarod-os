@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jarod-os.invalid/contracts/v1/c6-plugin-manifest.schema.json",
+  "title": "Bridge plugin manifest (plugin.yaml, parsed)",
+  "description": "The fields the Jarod-OS bridge declares to Hermes. Hermes owns the format and adds optional fields over time, so unknown keys are allowed — with one deliberate exception: `run` is forbidden. A manifest does not name a command to execute; the plugin is code loaded through `__init__.py:register`, and a `run:` key would be silently ignored by the loader while looking like a hook.",
+  "type": "object",
+  "required": [
+    "name",
+    "version",
+    "description",
+    "author",
+    "kind",
+    "requires_hermes",
+    "platforms",
+    "provides_tools"
+  ],
+  "properties": {
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1
+    },
+    "author": {
+      "type": "string",
+      "minLength": 1
+    },
+    "kind": {
+      "enum": [
+        "standalone",
+        "backend",
+        "exclusive",
+        "platform",
+        "model-provider"
+      ]
+    },
+    "requires_hermes": {
+      "type": "string",
+      "pattern": "^(>=|<=|==|!=|>|<)\\s*\\d+(\\.\\d+)*(\\s*,\\s*(>=|<=|==|!=|>|<)\\s*\\d+(\\.\\d+)*)*$"
+    },
+    "platforms": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "macos",
+          "linux",
+          "windows"
+        ]
+      }
+    },
+    "provides_tools": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9_]*$"
+      }
+    },
+    "run": false
+  },
+  "additionalProperties": true
+}

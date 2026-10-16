@@ -1,0 +1,62 @@
+{
+  "version": 1,
+  "tiers": [
+    "read",
+    "act",
+    "mutate",
+    "destructive"
+  ],
+  "clients": [
+    "backend",
+    "cli",
+    "plugin",
+    "ui"
+  ],
+  "surfaces": [
+    "panel",
+    "backend"
+  ],
+  "refusalCodes": [
+    "unauthenticated",
+    "unauthorized",
+    "unsupported",
+    "invalid"
+  ],
+  "registryCommands": [
+    "ui",
+    "ui-list",
+    "ui-state"
+  ],
+  "typedRegistryCommands": [
+    "run",
+    "list",
+    "state"
+  ],
+  "retiredCommands": [
+    "os",
+    "os-run"
+  ],
+  "backendCommands": [
+    "ui",
+    "ui-list",
+    "ui-state",
+    "run",
+    "list",
+    "state",
+    "page",
+    "notify",
+    "voice"
+  ],
+  "shellCommands": [
+    {
+      "name": "plugin",
+      "tier": "read",
+      "tierByAction": {
+        "defaultAction": "list",
+        "actions": {
+          "list": "read"
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "cmd": "ui",
+  "command": "memory.add",
+  "args": {
+    "text": "x"
+  },
+  "token": "@backend",
+  "capability": "cap_x",
+  "requestId": "a.b:c_d-e"
+}

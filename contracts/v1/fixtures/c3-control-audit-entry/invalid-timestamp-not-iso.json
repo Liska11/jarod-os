@@ -1,0 +1,11 @@
+{
+  "at": "yesterday",
+  "client": "backend",
+  "cmd": "ui",
+  "command": "page.open",
+  "tier": "read",
+  "source": "agent",
+  "allowed": true,
+  "reason": "ui runs in the command registry",
+  "surface": "backend"
+}

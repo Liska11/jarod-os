@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jarod-os.invalid/contracts/v1/c3-bridge-audit-entry.schema.json",
+  "title": "Bridge audit entry (one line of audit.jsonl)",
+  "description": "The bridge's journal under `$HERMES_HOME/herald-os/audit.jsonl`: one line per tool invocation, every key always present. Arguments whose NAME contains password, passphrase, secret, token or psk are written as `[redacted]` (an empty or null value is written as is). The field set is closed: no token, capability or nonce field exists. `decision` is an open vocabulary (allowed, approved, delegated, denied, blocked, protected, policy_denied today) and is not frozen.",
+  "type": "object",
+  "required": [
+    "ts",
+    "tool",
+    "tier",
+    "action",
+    "decision",
+    "ok",
+    "summary",
+    "error",
+    "requestId",
+    "args"
+  ],
+  "properties": {
+    "ts": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(Z|[+-]\\d{2}:\\d{2})$"
+    },
+    "tool": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*$"
+    },
+    "tier": {
+      "enum": [
+        "read",
+        "act",
+        "mutate",
+        "destructive"
+      ]
+    },
+    "action": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "decision": {
+      "type": "string",
+      "pattern": "^[a-z_]+$"
+    },
+    "ok": {
+      "type": "boolean"
+    },
+    "summary": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 300,
+      "not": {
+        "type": "string",
+        "pattern": "[A-Za-z0-9_-]{32,}"
+      }
+    },
+    "error": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 300,
+      "not": {
+        "type": "string",
+        "pattern": "[A-Za-z0-9_-]{32,}"
+      }
+    },
+    "requestId": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 128
+    },
+    "args": {
+      "type": "object",
+      "patternProperties": {
+        "[Pp][Aa][Ss][Ss][Ww][Oo][Rr][Dd]|[Pp][Aa][Ss][Ss][Pp][Hh][Rr][Aa][Ss][Ee]|[Ss][Ee][Cc][Rr][Ee][Tt]|[Tt][Oo][Kk][Ee][Nn]|[Pp][Ss][Kk]": {
+          "enum": [
+            "[redacted]",
+            "",
+            null
+          ]
+        }
+      },
+      "additionalProperties": {
+        "type": [
+          "string",
+          "number",
+          "boolean",
+          "null"
+        ]
+      }
+    }
+  },
+  "additionalProperties": false
+}

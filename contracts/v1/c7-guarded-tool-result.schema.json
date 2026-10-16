@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jarod-os.invalid/contracts/v1/c7-guarded-tool-result.schema.json",
+  "title": "Guarded tool result ({content, isError})",
+  "description": "PROVISIONAL. What `executeGuardedTool` returns for every outcome (ran, refused by rule, refused by the person, unknown tool, plan mode, invalid arguments, error). The `content` wording is user-facing text (French today) and is NOT part of the contract; only the envelope is.",
+  "type": "object",
+  "required": [
+    "content",
+    "isError"
+  ],
+  "properties": {
+    "content": {
+      "type": "string"
+    },
+    "isError": {
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": false
+}

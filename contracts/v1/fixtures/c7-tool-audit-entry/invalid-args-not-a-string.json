@@ -1,0 +1,8 @@
+{
+  "sessionId": "s1",
+  "tool": "write_file",
+  "args": {
+    "path": "a"
+  },
+  "decision": "accordé"
+}

@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jarod-os.invalid/contracts/v1/c7-tool-audit-entry.schema.json",
+  "title": "Tool audit entry (the agent's AuditEntry)",
+  "description": "PROVISIONAL. The line `executeGuardedTool` hands to its audit sink. `decision` is a French, user-facing literal today and is expected to change when the journal is internationalised; `args` is masked (`redactText`) before it is cut. Closed field set: no token, no capability.",
+  "type": "object",
+  "required": [
+    "sessionId",
+    "tool",
+    "args",
+    "decision"
+  ],
+  "properties": {
+    "sessionId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "tool": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]{1,64}$"
+    },
+    "args": {
+      "type": "string",
+      "maxLength": 600,
+      "description": "JSON of the arguments, masked then cut at 500 characters; a cut value ends with the marker `\n… [tronqué, N caractères de plus]`, so the bound is 500 plus the marker (measured: 537 for a 5000-character argument)."
+    },
+    "decision": {
+      "enum": [
+        "accordé",
+        "refusé",
+        "automatique",
+        "bloqué (mode Plan)",
+        "refusé (règle)"
+      ]
+    },
+    "ok": {
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": false
+}

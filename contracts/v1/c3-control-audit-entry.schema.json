@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jarod-os.invalid/contracts/v1/c3-control-audit-entry.schema.json",
+  "title": "Control audit entry (one line of control-audit.jsonl)",
+  "description": "The shell's journal: one line per control attempt, refusals included. The field set is CLOSED on purpose: there is no field in which a token, a capability or a nonce could be written, and a new field must be reviewed (and added here) before it ships. `approval` is a 12-hex fingerprint, never the capability. Free-text fields are also checked for a token-shaped run (32+ base64url characters): that is defence in depth, not a proof — the live tests mint real tokens and look for them. Same document as `ControlAuditEntry` (C1).",
+  "type": "object",
+  "required": [
+    "at",
+    "client",
+    "cmd",
+    "allowed",
+    "reason"
+  ],
+  "properties": {
+    "at": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(Z|[+-]\\d{2}:\\d{2})$"
+    },
+    "client": {
+      "enum": [
+        "backend",
+        "cli",
+        "plugin",
+        "ui",
+        "unauthenticated"
+      ]
+    },
+    "cmd": {
+      "type": "string",
+      "not": {
+        "type": "string",
+        "pattern": "[A-Za-z0-9_-]{32,}"
+      }
+    },
+    "command": {
+      "type": "string",
+      "not": {
+        "type": "string",
+        "pattern": "[A-Za-z0-9_-]{32,}"
+      }
+    },
+    "tier": {
+      "enum": [
+        "read",
+        "act",
+        "mutate",
+        "destructive"
+      ]
+    },
+    "source": {
+      "type": "string",
+      "not": {
+        "type": "string",
+        "pattern": "[A-Za-z0-9_-]{32,}"
+      }
+    },
+    "allowed": {
+      "type": "boolean"
+    },
+    "reason": {
+      "type": "string",
+      "not": {
+        "type": "string",
+        "pattern": "[A-Za-z0-9_-]{32,}"
+      }
+    },
+    "code": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$"
+    },
+    "approval": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{12}$"
+    },
+    "requestId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]{1,128}$"
+    },
+    "surface": {
+      "enum": [
+        "panel",
+        "backend"
+      ]
+    }
+  },
+  "additionalProperties": false
+}

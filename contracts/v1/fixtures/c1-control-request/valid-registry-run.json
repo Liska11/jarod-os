@@ -1,0 +1,10 @@
+{
+  "cmd": "ui",
+  "command": "page.open",
+  "args": {
+    "name": "missions"
+  },
+  "source": "agent",
+  "token": "@backend",
+  "requestId": "br-0123456789ab"
+}

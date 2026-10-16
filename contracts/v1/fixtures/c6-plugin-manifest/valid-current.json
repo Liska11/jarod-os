@@ -1,0 +1,28 @@
+{
+  "name": "herald-os-bridge",
+  "version": "0.1.0",
+  "description": "Jarod-OS system bridge.",
+  "author": "Luke The Dev",
+  "kind": "standalone",
+  "requires_hermes": ">=0.21",
+  "platforms": [
+    "macos",
+    "linux",
+    "windows"
+  ],
+  "provides_tools": [
+    "os_ui",
+    "system_network",
+    "system_control",
+    "system_logs",
+    "system_info",
+    "system_processes",
+    "system_disk_usage",
+    "system_find_files",
+    "system_apps",
+    "system_open",
+    "system_kill_process",
+    "system_files",
+    "system_os"
+  ]
+}

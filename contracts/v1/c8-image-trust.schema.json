@@ -1,0 +1,169 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jarod-os.invalid/contracts/v1/c8-image-trust.schema.json",
+  "title": "Image and installer trust policy",
+  "description": "R6 (fail-closed image verification) and R5 (pinned installer), stated as data: the cosign public key, the container-policy rule, the verify command, the published channels that have NO bypass, the single dev bypass variable and the installer pin. TLS is not a substitute for a signature and Authenticode (Windows installer) is a different trust chain, out of scope here. The fixture `valid-current.json` is the golden copy the Python tests compare to `linux/bin/herald-os`, `linux/image/packages.sh` and `linux/image/cosign.pub`.",
+  "type": "object",
+  "required": [
+    "version",
+    "image",
+    "verification",
+    "devBypass",
+    "installerPin",
+    "journal"
+  ],
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "image": {
+      "type": "object",
+      "required": [
+        "repository",
+        "publishedChannels"
+      ],
+      "properties": {
+        "repository": {
+          "const": "ghcr.io/iamlukethedev/herald-os"
+        },
+        "publishedChannels": {
+          "const": [
+            "stable",
+            "edge"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "verification": {
+      "type": "object",
+      "required": [
+        "publicKeyInRepository",
+        "publicKeyOnDevice",
+        "policyPath",
+        "policyRule",
+        "verifyCommand",
+        "failClosed",
+        "appliesTo"
+      ],
+      "properties": {
+        "publicKeyInRepository": {
+          "const": "linux/image/cosign.pub"
+        },
+        "publicKeyOnDevice": {
+          "const": "/etc/pki/containers/herald-os.pub"
+        },
+        "policyPath": {
+          "const": "/etc/containers/policy.json"
+        },
+        "policyRule": {
+          "const": {
+            "type": "sigstoreSigned",
+            "keyPath": "/etc/pki/containers/herald-os.pub",
+            "signedIdentity": {
+              "type": "matchRepository"
+            }
+          }
+        },
+        "verifyCommand": {
+          "const": [
+            "cosign",
+            "verify",
+            "--key",
+            "<publicKeyOnDevice>",
+            "<ref>"
+          ]
+        },
+        "failClosed": {
+          "const": true
+        },
+        "appliesTo": {
+          "const": [
+            "install",
+            "update",
+            "channel-switch"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "devBypass": {
+      "type": "object",
+      "required": [
+        "variable",
+        "enablingValue",
+        "unpublishedRefsOnly",
+        "publishedChannelsBypass",
+        "journalOutcome"
+      ],
+      "properties": {
+        "variable": {
+          "const": "HERALD_OS_DEV_UNSIGNED"
+        },
+        "enablingValue": {
+          "const": "1"
+        },
+        "unpublishedRefsOnly": {
+          "const": true
+        },
+        "publishedChannelsBypass": {
+          "const": false
+        },
+        "journalOutcome": {
+          "const": "dev-unsigned"
+        }
+      },
+      "additionalProperties": false
+    },
+    "installerPin": {
+      "type": "object",
+      "required": [
+        "url",
+        "constant",
+        "format",
+        "emptyMeans",
+        "mismatchMeans"
+      ],
+      "properties": {
+        "url": {
+          "type": "string",
+          "pattern": "^https://"
+        },
+        "constant": {
+          "const": "HERMES_INSTALLER_SHA256"
+        },
+        "format": {
+          "const": "^[0-9a-f]{64}$"
+        },
+        "emptyMeans": {
+          "const": "refuse-install"
+        },
+        "mismatchMeans": {
+          "const": "refuse-install"
+        }
+      },
+      "additionalProperties": false
+    },
+    "journal": {
+      "type": "object",
+      "required": [
+        "path",
+        "outcomes"
+      ],
+      "properties": {
+        "path": {
+          "const": "~/.local/state/herald-os/trust.jsonl"
+        },
+        "outcomes": {
+          "const": [
+            "refused",
+            "verified",
+            "dev-unsigned"
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,6 @@
+{
+  "allowed": true,
+  "client": "backend",
+  "reason": "ui runs in the command registry",
+  "tier": "mutate"
+}

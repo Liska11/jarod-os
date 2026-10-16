@@ -1,0 +1,11 @@
+{
+  "run_shell": true,
+  "android_shell": true,
+  "skill_hub_install": true,
+  "cronjob": true,
+  "http_request": true,
+  "web_fetch": true,
+  "system_files": true,
+  "system_kill_process": true,
+  "system_quit_app": true
+}

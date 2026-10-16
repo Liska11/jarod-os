@@ -1,0 +1,10 @@
+[
+  "herald_os_control_token",
+  "herald_os_control_socket",
+  "hermes_os_control_token",
+  "hermes_os_control_socket",
+  "herald_os_cli_token",
+  "hermes_os_cli_token",
+  "jarod_gateway_token",
+  "hermes_dashboard_session_token"
+]

@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "tiers": {
+    "read": "allow",
+    "act": "allow",
+    "mutate": "confirm",
+    "destructive": "confirm"
+  },
+  "protected_paths": []
+}

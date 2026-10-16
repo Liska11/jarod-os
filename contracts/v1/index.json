@@ -1,0 +1,270 @@
+{
+  "contractsVersion": 1,
+  "draft": "https://json-schema.org/draft/2020-12/schema",
+  "contracts": [
+    {
+      "id": "c1-control-request",
+      "title": "Control request (one JSON line sent to the control plane)",
+      "status": "frozen",
+      "schema": "c1-control-request.schema.json",
+      "fixtures": "fixtures/c1-control-request",
+      "source": [
+        "apps/desktop/electron/shell/control-authz.ts:80 (ControlRequestShape)",
+        "plugins/herald-os-bridge/bridge/ui.py:163 (run_command), :186 (list_commands), :194 (shell_state), :153 (identified)"
+      ],
+      "protectedBy": [
+        "apps/desktop/electron/shell/control-authz.test.ts",
+        "plugins/herald-os-bridge/tests/test_control_protocol_r2.py"
+      ]
+    },
+    {
+      "id": "c1-control-decision",
+      "title": "Control decision (the adjudicator's answer)",
+      "status": "frozen",
+      "schema": "c1-control-decision.schema.json",
+      "fixtures": "fixtures/c1-control-decision",
+      "source": [
+        "apps/desktop/electron/shell/control-authz.ts:102 (ControlDecision), :423 (adjudicate)"
+      ],
+      "protectedBy": [
+        "apps/desktop/electron/shell/control-authz.test.ts"
+      ]
+    },
+    {
+      "id": "c1-control-endpoint",
+      "title": "Control endpoint (what the backend is told to dial)",
+      "status": "frozen",
+      "schema": "c1-control-endpoint.schema.json",
+      "fixtures": "fixtures/c1-control-endpoint",
+      "source": [
+        "apps/desktop/electron/shell/control-authz.ts:671 (controlEndpoint)",
+        "apps/desktop/electron/shell/os-control.ts:180",
+        "plugins/herald-os-bridge/bridge/ui.py:36 (_PIPE_ENDPOINT), :61 (control_endpoint)"
+      ],
+      "protectedBy": [
+        "apps/desktop/electron/shell/control-authz.test.ts",
+        "plugins/herald-os-bridge/tests/test_os_ui.py (test_tcp_endpoint_is_refused_everywhere)"
+      ]
+    },
+    {
+      "id": "c2-authorization-matrix",
+      "title": "Authorization matrix (which token opens which door, and what a command is worth)",
+      "status": "frozen",
+      "schema": "c2-authorization-matrix.schema.json",
+      "fixtures": "fixtures/c2-authorization-matrix",
+      "source": [
+        "apps/desktop/electron/shell/control-authz.ts:47-70 (REGISTRY_COMMANDS, TYPED_REGISTRY_COMMANDS, RETIRED_COMMANDS, BACKEND_COMMANDS)",
+        "control-authz.ts:187 (SHELL_COMMANDS), :327 (shellTier)",
+        "control-authz.ts:423 (adjudicate)"
+      ],
+      "protectedBy": [
+        "apps/desktop/electron/shell/control-authz.test.ts"
+      ]
+    },
+    {
+      "id": "c3-control-audit-entry",
+      "title": "Control audit entry (one line of control-audit.jsonl)",
+      "status": "frozen",
+      "schema": "c3-control-audit-entry.schema.json",
+      "fixtures": "fixtures/c3-control-audit-entry",
+      "source": [
+        "apps/desktop/electron/shell/control-authz.ts:126 (ControlAuditEntry), :585 (ControlSecurity.record), :371 (controlAuditSink)"
+      ],
+      "protectedBy": [
+        "apps/desktop/electron/shell/control-authz.test.ts:131 (never writes a token)",
+        "apps/desktop/electron/shell/control-capability.test.ts"
+      ]
+    },
+    {
+      "id": "c3-bridge-audit-entry",
+      "title": "Bridge audit entry (one line of audit.jsonl)",
+      "status": "frozen",
+      "schema": "c3-bridge-audit-entry.schema.json",
+      "fixtures": "fixtures/c3-bridge-audit-entry",
+      "source": [
+        "plugins/herald-os-bridge/bridge/audit.py:33 (record), :19 (_compact_args)"
+      ],
+      "protectedBy": [
+        "plugins/herald-os-bridge/tests/test_tools.py:53",
+        "plugins/herald-os-bridge/tests/test_control_security.py"
+      ]
+    },
+    {
+      "id": "c4-permissions-policy",
+      "title": "Bridge permissions policy (permissions.yaml, parsed)",
+      "status": "frozen",
+      "schema": "c4-permissions-policy.schema.json",
+      "fixtures": "fixtures/c4-permissions-policy",
+      "source": [
+        "plugins/herald-os-bridge/bridge/permissions.py:29 (Tier), :36 (VALID_MODES), :95 (DEFAULT_POLICY_TEXT), :139 (parse_policy)"
+      ],
+      "protectedBy": [
+        "plugins/herald-os-bridge/tests/test_permissions.py"
+      ]
+    },
+    {
+      "id": "c4-never-always",
+      "title": "NEVER_ALWAYS (tools that never get a permanent 'always allow')",
+      "status": "frozen",
+      "schema": "c4-never-always.schema.json",
+      "fixtures": "fixtures/c4-never-always",
+      "source": [
+        "jarod-core/packages/plugins/agent/src/never-always.ts:10 (NEVER_ALWAYS_REASONS), :24 (NEVER_ALWAYS)"
+      ],
+      "protectedBy": [
+        "jarod-core/packages/plugins/agent/test/permissions-gate.test.ts",
+        "jarod-core/packages/plugins/agent/test/approval-failclosed.test.ts"
+      ]
+    },
+    {
+      "id": "c5-control-env-names",
+      "title": "CONTROL_ENV_NAMES (environment variables no child may inherit)",
+      "status": "frozen",
+      "schema": "c5-control-env-names.schema.json",
+      "fixtures": "fixtures/c5-control-env-names",
+      "source": [
+        "plugins/herald-os-bridge/bridge/util.py:31 (CONTROL_ENV_NAMES), :48 (child_env), :57 (control_env), :82 (take_control_env)",
+        "apps/desktop/electron/backend/manager.ts:335-343 (what the shell exports)",
+        "apps/desktop/electron/backend/jarod-core.ts:135-143"
+      ],
+      "protectedBy": [
+        "plugins/herald-os-bridge/tests/test_control_security.py"
+      ]
+    },
+    {
+      "id": "c6-plugin-manifest",
+      "title": "Bridge plugin manifest (plugin.yaml, parsed)",
+      "status": "frozen",
+      "schema": "c6-plugin-manifest.schema.json",
+      "fixtures": "fixtures/c6-plugin-manifest",
+      "source": [
+        "plugins/herald-os-bridge/plugin.yaml",
+        "plugins/herald-os-bridge/__init__.py:42 (register)",
+        "upstream/hermes-agent/hermes_cli/plugins_manifest.py:340 (PluginManifest), :28 (_VALID_PLUGIN_KINDS)"
+      ],
+      "protectedBy": [
+        "plugins/herald-os-bridge/tests/test_tools.py (registration)"
+      ]
+    },
+    {
+      "id": "c7-tool-call",
+      "title": "Tool call (what the model asked for)",
+      "status": "provisional",
+      "schema": "c7-tool-call.schema.json",
+      "fixtures": "fixtures/c7-tool-call",
+      "source": [
+        "jarod-core/packages/contracts/src/domain.ts:4 (ToolCall)",
+        "jarod-core/packages/plugins/agent/src/agent.ts:1158 (executeGuardedTool)"
+      ],
+      "protectedBy": [
+        "jarod-core/packages/plugins/agent/test/permissions-gate.test.ts",
+        "jarod-core/packages/plugins/agent/test/shell-guard.test.ts"
+      ]
+    },
+    {
+      "id": "c7-guarded-tool-result",
+      "title": "Guarded tool result ({content, isError})",
+      "status": "provisional",
+      "schema": "c7-guarded-tool-result.schema.json",
+      "fixtures": "fixtures/c7-guarded-tool-result",
+      "source": [
+        "jarod-core/packages/plugins/agent/src/agent.ts:1158 (executeGuardedTool)"
+      ],
+      "protectedBy": [
+        "jarod-core/packages/plugins/agent/test/permissions-gate.test.ts",
+        "jarod-core/packages/plugins/agent/test/approval-failclosed.test.ts"
+      ]
+    },
+    {
+      "id": "c7-tool-audit-entry",
+      "title": "Tool audit entry (the agent's AuditEntry)",
+      "status": "provisional",
+      "schema": "c7-tool-audit-entry.schema.json",
+      "fixtures": "fixtures/c7-tool-audit-entry",
+      "source": [
+        "jarod-core/packages/plugins/agent/src/agent.ts:1148 (AuditEntry), :1172 (audit closure)",
+        "jarod-core/packages/kernel/src/util.ts:42 (truncate)"
+      ],
+      "protectedBy": [
+        "jarod-core/packages/plugins/agent/test/permissions-gate.test.ts"
+      ]
+    },
+    {
+      "id": "c7-bridge-tool-result",
+      "title": "Bridge tool result (ok / fail envelope, JSON string)",
+      "status": "provisional",
+      "schema": "c7-bridge-tool-result.schema.json",
+      "fixtures": "fixtures/c7-bridge-tool-result",
+      "source": [
+        "plugins/herald-os-bridge/bridge/util.py:116 (ok), :120 (fail)"
+      ],
+      "protectedBy": [
+        "plugins/herald-os-bridge/tests/test_tools.py"
+      ]
+    },
+    {
+      "id": "c8-image-trust",
+      "title": "Image and installer trust policy",
+      "status": "frozen",
+      "schema": "c8-image-trust.schema.json",
+      "fixtures": "fixtures/c8-image-trust",
+      "source": [
+        "linux/bin/herald-os:1307-1309 (HERMES_INSTALLER, HERMES_INSTALLER_SHA256), :1459-1464 (trust constants), :1498 (verify_image), :1528 (image_switch)",
+        "linux/image/packages.sh:98-120",
+        "linux/image/Containerfile:11-15",
+        ".github/workflows/image.yml:63",
+        "linux/image/cosign.pub"
+      ],
+      "protectedBy": [
+        "linux/tests/test_trust.py"
+      ]
+    },
+    {
+      "id": "c8-trust-journal-entry",
+      "title": "Trust journal entry (one line of trust.jsonl)",
+      "status": "frozen",
+      "schema": "c8-trust-journal-entry.schema.json",
+      "fixtures": "fixtures/c8-trust-journal-entry",
+      "source": [
+        "linux/bin/herald-os:1467 (trust_event)"
+      ],
+      "protectedBy": [
+        "linux/tests/test_trust.py"
+      ]
+    }
+  ],
+  "notFrozen": [
+    {
+      "area": "Control reply envelope ({ok, code, error, result, capability, requestId})",
+      "reason": "Not in the 0b list and its `result` is the open output of every registry command; the approval-granted reply carries a capability object whose fields were not re-derived. To freeze in 0c with the transport."
+    },
+    {
+      "area": "Per-command argument grammar of the shell surface (SHELL_COMMANDS validators)",
+      "reason": "Validators are code (branding JSON, plugin url schemes, panel names, voice actions); only the tier of each command is frozen here. The Rust host must reproduce them from control-authz.test.ts until they are moved into schemas."
+    },
+    {
+      "area": "The registry command catalogue (ids, arguments, tiers of `ui`/`run` commands)",
+      "reason": "Registered at run time by the renderer (src/store/os-commands.ts); it changes with the UI."
+    },
+    {
+      "area": "Tool catalogue and per-tool argument schemas (C7)",
+      "reason": "Dozens of built-in, MCP, plugin and skill tools, each with its own JSON-schema fragment; they change with every feature. Only the call / result / audit envelopes are covered, as provisional."
+    },
+    {
+      "area": "User-facing wording (tool result text, refusal `reason` strings, French audit decisions)",
+      "reason": "Localisable text. Tests assert on codes and tiers, never on prose, except where a test already pins a sentence."
+    },
+    {
+      "area": "Open vocabularies: audit `code` values, bridge audit `decision` values",
+      "reason": "New outcomes are added as features land; only their lexical shape is frozen."
+    },
+    {
+      "area": "Capability / approval record layout (control-capability.ts)",
+      "reason": "Internal to the host; only its journal fingerprint (12 hex) is frozen."
+    },
+    {
+      "area": "Vault, approvals broker, supervisor, updater, D: volume",
+      "reason": "Not yet extracted behind a seam; phases 1-4."
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "at": "2026-10-16T12:00:01.250Z",
+  "client": "unauthenticated",
+  "cmd": "ui",
+  "command": "page.open",
+  "allowed": false,
+  "reason": "invalid control token",
+  "code": "unauthenticated",
+  "surface": "panel"
+}

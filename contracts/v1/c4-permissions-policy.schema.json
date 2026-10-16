@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jarod-os.invalid/contracts/v1/c4-permissions-policy.schema.json",
+  "title": "Bridge permissions policy (permissions.yaml, parsed)",
+  "description": "`$HERMES_HOME/herald-os/permissions.yaml` once parsed. The reader is tolerant (an unknown key or a bad value falls back to the default and never widens access); this contract is strict, so a typo is caught by a validator instead of silently ignored. `destructive: allow` is accepted by the file but the code never honours it: the effective mode is `confirm` (behaviour, not shape).",
+  "type": "object",
+  "properties": {
+    "version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "tiers": {
+      "type": "object",
+      "properties": {
+        "read": {
+          "enum": [
+            "allow",
+            "confirm",
+            "deny"
+          ]
+        },
+        "act": {
+          "enum": [
+            "allow",
+            "confirm",
+            "deny"
+          ]
+        },
+        "mutate": {
+          "enum": [
+            "allow",
+            "confirm",
+            "deny"
+          ]
+        },
+        "destructive": {
+          "enum": [
+            "allow",
+            "confirm",
+            "deny"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "protected_paths": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  },
+  "additionalProperties": false
+}

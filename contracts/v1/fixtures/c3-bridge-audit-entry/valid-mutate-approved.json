@@ -1,0 +1,15 @@
+{
+  "ts": "2026-10-16T14:00:05+02:00",
+  "tool": "system_files",
+  "tier": "mutate",
+  "action": "mkdir",
+  "decision": "approved",
+  "ok": true,
+  "summary": "created C:/Users/x/new",
+  "error": null,
+  "requestId": "br-0123456789ab",
+  "args": {
+    "action": "mkdir",
+    "path": "C:/Users/x/new"
+  }
+}

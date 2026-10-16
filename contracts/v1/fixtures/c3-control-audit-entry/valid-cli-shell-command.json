@@ -1,0 +1,9 @@
+{
+  "at": "2026-10-16T12:00:03.000Z",
+  "client": "cli",
+  "cmd": "wallpaper",
+  "tier": "mutate",
+  "allowed": true,
+  "reason": "wallpaper is a shell command",
+  "surface": "panel"
+}

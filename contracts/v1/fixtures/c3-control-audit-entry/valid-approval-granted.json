@@ -1,0 +1,14 @@
+{
+  "at": "2026-10-16T12:00:00.000Z",
+  "client": "backend",
+  "cmd": "ui",
+  "command": "page.open",
+  "tier": "mutate",
+  "source": "agent",
+  "allowed": true,
+  "reason": "ui runs in the command registry",
+  "surface": "backend",
+  "code": "approval-granted",
+  "approval": "0123456789ab",
+  "requestId": "br-0123456789ab"
+}

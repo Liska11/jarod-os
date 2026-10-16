@@ -1,0 +1,7 @@
+{
+  "id": "call_3",
+  "name": "write_file",
+  "args": {
+    "__invalid_json__": "{\"path\": \"a"
+  }
+}

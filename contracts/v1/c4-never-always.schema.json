@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jarod-os.invalid/contracts/v1/c4-never-always.schema.json",
+  "title": "NEVER_ALWAYS (tools that never get a permanent 'always allow')",
+  "description": "The tools for which the agent loop ignores a stored 'always allow' and the desktop broker hides the button. Adding or removing a name is an explicit user decision (never-always.ts says so); here it also means a revision of this file. Exactly these nine in v1.",
+  "type": "array",
+  "minItems": 9,
+  "maxItems": 9,
+  "uniqueItems": true,
+  "items": {
+    "enum": [
+      "run_shell",
+      "android_shell",
+      "skill_hub_install",
+      "cronjob",
+      "http_request",
+      "web_fetch",
+      "system_files",
+      "system_kill_process",
+      "system_quit_app"
+    ]
+  }
+}
