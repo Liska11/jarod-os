@@ -221,8 +221,11 @@ const approveMutation: ApprovalProvider = async ask => {
     approvalOpen = false
   }
 }
-const panelSecurity = new ControlSecurity({ tokens: surfaceTokens }, auditControl)
-const backendSecurity = new ControlSecurity({ tokens: surfaceTokens, surface: 'backend' }, auditControl)
+// The pipe nonce is a secret until the backend is told where to dial; the journal keeps it out too.
+const pipeNonce = randomBytes(8).toString('hex')
+const pipeSecrets = () => [{ kind: 'nonce' as const, value: pipeNonce }]
+const panelSecurity = new ControlSecurity({ tokens: surfaceTokens, secrets: pipeSecrets }, auditControl)
+const backendSecurity = new ControlSecurity({ tokens: surfaceTokens, surface: 'backend', secrets: pipeSecrets }, auditControl)
 const panelGate = new HostControlGate({ security: panelSecurity, approve: approveMutation })
 const backendGate = new HostControlGate({ security: backendSecurity, approve: approveMutation })
 /**
@@ -320,7 +323,7 @@ const osControl = panels
   : new OsControlServer(
       // The nonce is drawn here, once: the pipe name is then unguessable, and only this process knows
       // it until the DACL has been verified and the backend is told where to dial (R3.2).
-      controlEndpoint({ platform: process.platform, runtimeDir: heraldOsDataDir(), dataDir: heraldOsDataDir(), nonce: randomBytes(8).toString('hex') }),
+      controlEndpoint({ platform: process.platform, runtimeDir: heraldOsDataDir(), dataDir: heraldOsDataDir(), nonce: pipeNonce }),
       async request => {
         // One pipeline, then the work: who is asking, whether the argument shape matches the command,
         // and — for anything that changes the machine — an approval this process witnessed itself.

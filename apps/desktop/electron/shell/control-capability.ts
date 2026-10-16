@@ -199,6 +199,14 @@ export class CapabilityStore {
     return { outcome: 'ok', record, reason: 'approved for this call' }
   }
 
+  /** Every capability and nonce still on record, so the journal can keep them out. Never logged itself. */
+  secrets(): Array<{ kind: 'capability' | 'nonce'; value: string }> {
+    return [...this.records.values()].flatMap(record => [
+      { kind: 'capability' as const, value: record.id },
+      { kind: 'nonce' as const, value: record.nonce },
+    ])
+  }
+
   /** Burn a capability: it can be spent once, by one caller, for one call. */
   consume(record: CapabilityRecord): void {
     this.records.set(record.id, { ...record, usedAt: this.now() })

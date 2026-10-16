@@ -108,6 +108,19 @@ def test_journal_fixture_with_a_token_is_invalid():
     assert {"invalid-contains-token-field.json", "invalid-contains-capability-field.json", "invalid-contains-nonce-field.json", "invalid-token-in-reason.json", "invalid-token-in-command.json"} <= control
 
 
+def test_a_redacted_journal_line_is_valid_and_a_raw_one_is_not():
+    """Mission 0b.1: the shell replaces a live secret by ``[REDACTED:<kind>]``; the line stays valid."""
+    validator = VALIDATORS["c3-control-audit-entry"]
+    redacted = {name: doc for name, valid, doc in _fixtures("c3-control-audit-entry") if name.startswith("valid-redacted-")}
+    assert len(redacted) >= 2
+    text = json.dumps(redacted)
+    assert all(marker in text for marker in ("[REDACTED:token]", "[REDACTED:capability]", "[REDACTED:nonce]"))
+    for name, doc in redacted.items():
+        assert validator.is_valid(doc), name
+        raw = {**doc, "reason": "unknown command " + "Ab3_" * 10}
+        assert not validator.is_valid(raw), f"{name}: a raw token-shaped run must still be rejected"
+
+
 # ---------------------------------------------------------------------------------------------
 # C1: what the bridge puts on the wire, and the endpoints it accepts.
 # ---------------------------------------------------------------------------------------------

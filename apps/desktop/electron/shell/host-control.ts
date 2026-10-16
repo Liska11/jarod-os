@@ -184,6 +184,7 @@ export class HostControlGate {
       max: options.maxCapabilities,
     })
     this.approvalTimeoutMs = options.approvalTimeoutMs ?? 60_000
+    options.security.addSecretSource(() => this.capabilities.secrets())
   }
 
   /** The catalogue the renderer registered: ids, tiers (via the security) and argument shapes. */

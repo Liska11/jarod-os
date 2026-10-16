@@ -121,6 +121,89 @@ export interface ControlContext {
    * empty catalogue right after launch must not turn real commands away.
    */
   catalogueReady?: boolean
+  /** More values the journal must keep out (R1 invariant 7); the two tokens are always included. */
+  secrets?: () => readonly ControlSecret[]
+}
+
+/** A value this process holds right now that the journal must never contain, and what it is called there. */
+export interface ControlSecret {
+  kind: 'token' | 'capability' | 'nonce'
+  value: string
+}
+
+/** Longest free-text field the journal keeps; the rest is cut before scanning, so nothing escapes the scan. */
+const JOURNAL_FIELD_MAX = 4096
+const SECRET_RUN = /[A-Za-z0-9_-]+/g
+const MIN_SECRET_LENGTH = 8
+
+/**
+ * Replace every active secret of this process found in `text` by `[REDACTED:<kind>]`.
+ *
+ * Only values the process actually holds are masked, compared by sha256 digest with `timingSafeEqual`,
+ * so nothing is guessed from the shape of a string and a legitimate long id is never touched. Windows
+ * are tried only inside runs of token characters, at the lengths of the live values, which keeps the
+ * scan linear in the field size. A capability contains its own nonce; the longer match wins.
+ */
+export function redactSecrets(text: string, secrets: readonly ControlSecret[]): string {
+  const live = secrets.filter(secret => typeof secret.value === 'string' && secret.value.length >= MIN_SECRET_LENGTH)
+
+  if (!text || live.length === 0) {
+    return text
+  }
+
+  const bounded = text.length > JOURNAL_FIELD_MAX ? `${text.slice(0, JOURNAL_FIELD_MAX)}…[cut]` : text
+  const digest = (value: string) => crypto.createHash('sha256').update(value).digest()
+  const byLength = new Map<number, Array<{ kind: ControlSecret['kind']; hash: Buffer }>>()
+
+  for (const secret of live) {
+    const group = byLength.get(secret.value.length) ?? []
+
+    group.push({ kind: secret.kind, hash: digest(secret.value) })
+    byLength.set(secret.value.length, group)
+  }
+
+  const found: Array<{ start: number; end: number; kind: ControlSecret['kind'] }> = []
+
+  for (const run of bounded.matchAll(SECRET_RUN)) {
+    const base = run.index ?? 0
+
+    for (const [length, group] of byLength) {
+      for (let at = 0; at + length <= run[0].length; at += 1) {
+        const window = digest(run[0].slice(at, at + length))
+        let matched: ControlSecret['kind'] | undefined
+
+        for (const candidate of group) {
+          if (crypto.timingSafeEqual(window, candidate.hash)) {
+            matched = candidate.kind
+          }
+        }
+
+        if (matched) {
+          found.push({ start: base + at, end: base + at + length, kind: matched })
+        }
+      }
+    }
+  }
+
+  if (found.length === 0) {
+    return bounded
+  }
+
+  found.sort((a, b) => a.start - b.start || b.end - a.end)
+
+  let out = ''
+  let cursor = 0
+
+  for (const hit of found) {
+    if (hit.start < cursor) {
+      continue
+    }
+
+    out += `${bounded.slice(cursor, hit.start)}[REDACTED:${hit.kind}]`
+    cursor = hit.end
+  }
+
+  return out + bounded.slice(cursor)
 }
 
 export interface ControlAuditEntry {
@@ -534,6 +617,7 @@ export function adjudicate(request: ControlRequestShape, context: ControlContext
  */
 export class ControlSecurity {
   private context: ControlContext
+  private readonly secretSources: Array<() => readonly ControlSecret[]> = []
 
   constructor(
     context: ControlContext,
@@ -545,6 +629,20 @@ export class ControlSecurity {
 
   get tokens(): ControlTokens {
     return this.context.tokens
+  }
+
+  /** Another holder of live values (the capability store, the pipe nonce) the journal must keep out. */
+  addSecretSource(source: () => readonly ControlSecret[]): void {
+    this.secretSources.push(source)
+  }
+
+  private activeSecrets(): ControlSecret[] {
+    return [
+      { kind: 'token', value: this.context.tokens.backend },
+      { kind: 'token', value: this.context.tokens.cli },
+      ...(this.context.secrets?.() ?? []),
+      ...this.secretSources.flatMap(source => source()),
+    ]
   }
 
   /** Which door this instance guards, for the journal. */
@@ -583,20 +681,25 @@ export class ControlSecurity {
 
   /** One line in the journal. `code` and `approval` are the pipeline's, not the adjudicator's. */
   record(entry: Omit<ControlAuditEntry, 'at'> & { at?: string }): void {
+    const secrets = this.activeSecrets()
+    const clean = (value: string | undefined) => (value === undefined ? undefined : redactSecrets(value, secrets))
+    const requestId = entry.requestId ? redactSecrets(entry.requestId, secrets) : undefined
+
     this.audit({
       at: entry.at ?? this.now().toISOString(),
       client: entry.client,
-      cmd: entry.cmd,
-      command: entry.command || undefined,
+      cmd: clean(entry.cmd) ?? '',
+      command: clean(entry.command) || undefined,
       tier: entry.tier,
-      source: entry.source,
+      source: clean(entry.source),
       allowed: entry.allowed,
-      reason: entry.reason,
+      reason: clean(entry.reason) ?? '',
       code: entry.code,
       approval: entry.approval,
       // Only a well-formed name is journalled: a value that cannot be an id does not get written
       // down, so an attempt that put something secret in the id field cannot leak it here (R2.2).
-      requestId: entry.requestId && REQUEST_ID.test(entry.requestId) ? entry.requestId : undefined,
+      // A redacted id no longer matches the pattern, so it is dropped rather than half-kept.
+      requestId: requestId && REQUEST_ID.test(requestId) ? requestId : undefined,
       surface: entry.surface ?? this.surface,
     })
   }

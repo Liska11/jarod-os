@@ -35,7 +35,9 @@ Not frozen (no schema): see `README.md`, "What is NOT frozen", and `notFrozen` i
 
 Mission 0b forbids changing behaviour, so these are findings for the next phases.
 
-1. **The control journal can hold a token.** `ControlSecurity.record` writes the caller's `cmd`,
+1. **The control journal could hold a token. Closed by 0b.1** (`redactSecrets` in `control-authz.ts`: a live
+   token, capability, capability nonce or pipe nonce found in any free-text field is written as
+   `[REDACTED:token|capability|nonce]`; tests in `control-journal-redaction.test.ts`). Original finding: `ControlSecurity.record` writes the caller's `cmd`,
    `command` and `source` verbatim, and `reason` echoes a caller-chosen command id
    (`unknown command <id>`). A caller that sends a token in one of those fields has it written to
    `control-audit.jsonl` (verified with a probe: the other door's token in `source`, the backend token

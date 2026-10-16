@@ -1,0 +1,12 @@
+{
+  "at": "2026-10-16T12:00:03.000Z",
+  "client": "backend",
+  "cmd": "ui",
+  "command": "memory.add",
+  "tier": "mutate",
+  "source": "[REDACTED:capability]",
+  "allowed": false,
+  "reason": "saw [REDACTED:capability] and [REDACTED:nonce]",
+  "code": "capability-replayed",
+  "surface": "backend"
+}
