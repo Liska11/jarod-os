@@ -55,6 +55,9 @@ impl Default for Limits {
 pub struct ConfinedCommand {
     pub program: PathBuf,
     pub args: Vec<String>,
+    /// Appended to the command line exactly as given, after the quoted `args`. Only for programs that parse their
+    /// own command line (`cmd.exe /S /C "…"`), where the usual quoting would be read back wrongly.
+    pub raw_tail: Option<String>,
     /// Inside the workspace; the workspace itself when `None`.
     pub cwd: Option<PathBuf>,
     /// The only environment the command has (plus `TEMP` and `TMP`, which are the workspace's own `.tmp`).
@@ -64,13 +67,23 @@ pub struct ConfinedCommand {
 
 impl ConfinedCommand {
     pub fn new(program: impl Into<PathBuf>) -> ConfinedCommand {
-        ConfinedCommand { program: program.into(), args: Vec::new(), cwd: None, env: BTreeMap::new(), stdin: Vec::new() }
+        ConfinedCommand { program: program.into(), args: Vec::new(), raw_tail: None, cwd: None, env: BTreeMap::new(), stdin: Vec::new() }
     }
 
     pub fn args<I: IntoIterator<Item = S>, S: Into<String>>(mut self, args: I) -> ConfinedCommand {
         self.args.extend(args.into_iter().map(Into::into));
 
         self
+    }
+
+    /// A shell line for `cmd.exe /D /S /C`, passed verbatim (quotes inside the line mean what they mean to cmd).
+    pub fn shell_line(line: &str) -> ConfinedCommand {
+        let system = std::env::var("SystemRoot").unwrap_or_else(|_| r"C:\Windows".into());
+        let mut command = ConfinedCommand::new(PathBuf::from(system).join("System32").join("cmd.exe")).args(["/D", "/S", "/C"]);
+
+        command.raw_tail = Some(format!("\"{line}\""));
+
+        command
     }
 
     pub fn env(mut self, name: &str, value: &str) -> ConfinedCommand {

@@ -11,11 +11,14 @@
  *    existe ET qu'il s'exécute ; sinon on refuse de lancer (voir `mechanism()`).
  *
  * ── Ce qui n'est PAS tenu, et qui est donc refusé au lieu d'être promis ─────────────────────────
- *  - Windows : il n'existe aucun moyen, sans code natif ni binaire externe, de retenir les écritures
- *    d'un processus. Un Job Object limite la mémoire, le CPU et les processus — pas les fichiers ;
- *    retenir un `write` demande un jeton restreint ou un AppContainer, donc du code natif. Ce dépôt
- *    n'en ajoute pas : sur win32, `writeScope: "workspace"` est REFUSÉ, avec la raison, et la
- *    commande n'est jamais lancée sans protection.
+ *  - `herald-sandbox` (Windows) : un AppContainer par commande (crate `host-sandbox`, binaire
+ *    `herald-sandbox`). Le SID du conteneur reçoit « modification » sur le dossier de travail et rien
+ *    d'autre : c'est le noyau qui refuse tout `write` ailleurs, enfants compris. Le mécanisme n'est
+ *    retenu qu'après avoir exécuté `herald-sandbox selftest`, qui prouve sur CETTE machine qu'une écriture
+ *    dedans réussit et qu'une écriture à côté échoue. Sans le binaire, ou si l'épreuve échoue,
+ *    `writeScope: "workspace"` est REFUSÉ, avec la raison : la commande n'est jamais lancée sans
+ *    protection. Limites : voir host-rust/docs/sandbox.md (`dir`/`del`/`attrib` de cmd ne marchent pas
+ *    dedans ; seuls les dossiers système sont sur le PATH de la commande).
  *  - macOS : `sandbox-exec` existe mais Apple le déprécie, et il n'est pas déclaré ici ; le
  *    confinement y est donc refusé aussi, plutôt que présenté comme acquis.
  *  - La liste des programmes autorisés n'est PAS un confinement : une commande peut en enchaîner une
@@ -49,7 +52,7 @@ export type { WriteScope, ShellPolicy };
 // DEFAULT_SHELL_POLICY : déplacé dans @jarod/contracts (ré-exporté ci-dessous).
 
 /** Les mécanismes que le garde sait construire. Ni macOS ni Windows n'en ont : c'est un refus. */
-export type MechanismId = "bwrap" | "firejail" | "sandbox-exec" | "docker";
+export type MechanismId = "bwrap" | "firejail" | "sandbox-exec" | "herald-sandbox" | "docker";
 
 export interface ShellMechanismStatus {
   available: boolean;
@@ -195,6 +198,10 @@ interface MechanismDef {
   platforms: NodeJS.Platform[];
   /** L'argument qui prouve que le binaire s'exécute vraiment, pas seulement qu'il est là. */
   versionArg: string;
+  /** Vrai quand la sonde doit AUSSI se terminer par le code 0 (l'épreuve de `herald-sandbox`). */
+  mustExitZero?: boolean;
+  /** Une variable d'environnement qui désigne le binaire quand il n'est pas sur le PATH. */
+  envPath?: string;
   /** La ligne de commande qui retient le processus : racine en lecture seule, dossier autorisé en
    * lecture-écriture. C'est le noyau qui l'applique, pas une analyse de texte. */
   build(input: { bin: string; command: string; cwd: string; roots: string[] }): string[];
@@ -263,6 +270,28 @@ const MECHANISMS: MechanismDef[] = [
     // permis sauf l'écriture, rouverte seulement dans les dossiers autorisés et les temporaires.
     build: ({ bin, command, roots }) => [bin, "-p", seatbeltProfile(roots), "/bin/sh", "-c", command],
   },
+  {
+    id: "herald-sandbox",
+    binary: "herald-sandbox",
+    platforms: ["win32"],
+    versionArg: "selftest",
+    mustExitZero: true,
+    envPath: "HERALD_SANDBOX_BIN",
+    // Un AppContainer : le dossier de travail est le seul endroit inscriptible. La ligne passe telle quelle
+    // à `cmd /D /S /C` ; le délai du garde est l'autorité (le binaire n'a que le plafond de sécurité).
+    build: ({ bin, command, cwd, roots }) => [
+      bin,
+      "exec",
+      "--workspace",
+      roots[0] ?? cwd,
+      "--cwd",
+      cwd,
+      "--timeout",
+      "86400",
+      "--",
+      command,
+    ],
+  },
 ];
 
 /** Le profil Seatbelt : écriture refusée partout, sauf dans `roots` et les temporaires du système. */
@@ -287,6 +316,8 @@ export interface ShellProbeInput {
   binary: string;
   platforms: NodeJS.Platform[];
   versionArg: string;
+  mustExitZero?: boolean;
+  envPath?: string;
 }
 
 export interface ShellProbeResult {
@@ -315,15 +346,29 @@ export function probeMechanism(
   if (!input.platforms.includes(platform)) {
     return { ok: false, path: null, detail: `n'existe pas sur ${platform}` };
   }
-  const found = onPath(input.binary, env, platform);
+  const named = input.envPath ? env[input.envPath] : undefined;
+  const found = named && existsSync(named) ? named : onPath(input.binary, env, platform);
   if (!found) return { ok: false, path: null, detail: "absent du PATH" };
   const real = realPathOf(found);
-  const probed = spawnSync(real, [input.versionArg], { timeout: 5_000, windowsHide: true, env });
+  // L'épreuve de `herald-sandbox` démarre de vrais conteneurs : elle a droit à plus que 5 secondes.
+  const probed = spawnSync(real, [input.versionArg], {
+    timeout: input.mustExitZero ? 60_000 : 5_000,
+    windowsHide: true,
+    env,
+  });
   if (probed.error) {
     return {
       ok: false,
       path: real,
       detail: `trouvé en ${real} mais ne démarre pas : ${probed.error.message}`,
+    };
+  }
+  if (input.mustExitZero && probed.status !== 0) {
+    const said = String(probed.stdout ?? "").trim().slice(0, 300);
+    return {
+      ok: false,
+      path: real,
+      detail: `${input.binary} en ${real} a échoué à son épreuve sur cette machine (code ${probed.status}) : ${said || "aucune sortie"}`,
     };
   }
   return { ok: true, path: real, detail: `${input.binary} en ${real}, exécuté à l'instant pour vérifier` };
@@ -333,11 +378,9 @@ export function probeMechanism(
 function unavailableReason(tried: string[], platform: NodeJS.Platform): string {
   if (platform === "win32") {
     return (
-      "sur win32, aucun mécanisme sans code natif ne peut retenir les écritures d'un processus : " +
-      "un Job Object limite la mémoire, le CPU et les processus — pas les fichiers, et retenir un " +
-      "write demande un jeton restreint ou un AppContainer (donc du code natif ou un binaire " +
-      "externe, que ce dépôt n'ajoute pas). L'environnement Docker, lui, le tient : chaque commande " +
-      "tourne dans un conteneur qui ne partage que le dossier de travail"
+      `sur win32, le confinement des écritures demande le binaire herald-sandbox (AppContainer, crate host-sandbox) : ${tried.join(" ; ") || "aucun essai"}. ` +
+      "Il peut être indiqué par HERALD_SANDBOX_BIN. L'environnement Docker, lui, tient aussi ce confinement : " +
+      "chaque commande tourne dans un conteneur qui ne partage que le dossier de travail"
     );
   }
   if (platform === "darwin") {
@@ -405,6 +448,8 @@ export class ShellGuardService {
         binary: def.binary,
         platforms: def.platforms,
         versionArg: def.versionArg,
+        mustExitZero: def.mustExitZero,
+        envPath: def.envPath,
       };
       let result = this.probed.get(def.id);
       if (!result) {

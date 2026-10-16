@@ -104,8 +104,12 @@ pub fn plain(path: &Path) -> String {
 }
 
 /// The command line Windows gets: the program, then its arguments, quoted.
-pub fn command_line(program: &Path, args: &[String]) -> String {
-    std::iter::once(quote_arg(&plain(program))).chain(args.iter().map(|arg| quote_arg(arg))).collect::<Vec<_>>().join(" ")
+pub fn command_line(program: &Path, args: &[String], raw_tail: Option<&str>) -> String {
+    let mut parts: Vec<String> = std::iter::once(quote_arg(&plain(program))).chain(args.iter().map(|arg| quote_arg(arg))).collect();
+
+    parts.extend(raw_tail.map(str::to_string));
+
+    parts.join(" ")
 }
 
 /// A bare environment block: sorted, NUL-separated, double-NUL-terminated.
@@ -132,14 +136,17 @@ fn environment_block(vars: &BTreeMap<String, String>) -> Vec<u16> {
 
 /// The environment a confined command has: what it was given, plus the few names Windows programs need to start
 /// (never the user's `PATH`), with `TEMP` and `TMP` inside the workspace.
-fn build_environment(command: &ConfinedCommand, workspace: &Path) -> BTreeMap<String, String> {
+fn build_environment(command: &ConfinedCommand, workspace: &Path, read_roots: &[PathBuf]) -> BTreeMap<String, String> {
     let mut vars = BTreeMap::new();
     let windows = std::env::var("SystemRoot").unwrap_or_else(|_| r"C:\Windows".into());
 
     vars.insert("SystemRoot".into(), windows.clone());
     vars.insert("windir".into(), windows.clone());
     vars.insert("SystemDrive".into(), std::env::var("SystemDrive").unwrap_or_else(|_| "C:".into()));
-    vars.insert("PATH".into(), format!(r"{windows}\System32;{windows}"));
+    // The system folders, then the tool folders the policy made readable (a tool nobody may read cannot be on the PATH).
+    let tools: String = read_roots.iter().map(|root| format!(";{}", plain(root))).collect();
+
+    vars.insert("PATH".into(), format!(r"{windows}\System32;{windows}{tools}"));
     vars.insert("PATHEXT".into(), ".COM;.EXE;.BAT;.CMD".into());
     vars.insert("ComSpec".into(), format!(r"{windows}\System32\cmd.exe"));
 
@@ -297,18 +304,21 @@ pub fn run(policy: &Policy, command: &ConfinedCommand) -> Result<Output, Sandbox
 
     grants.add(&workspace, MODIFY)?;
 
+    let mut read_roots = Vec::new();
+
     for root in &policy.read_roots {
         let root = fs::canonicalize(root).map_err(|error| SandboxError::Invalid(format!("the read root {} cannot be used: {error}", root.display())))?;
 
         grants.add(&root, READ_EXECUTE)?;
+        read_roots.push(root);
     }
 
     let job = job_with(&policy.limits)?;
     let (stdin_read, stdin_write) = pipe(true)?;
     let (stdout_read, stdout_write) = pipe(false)?;
     let (stderr_read, stderr_write) = pipe(false)?;
-    let environment = environment_block(&build_environment(command, &workspace));
-    let mut cmdline = wide(&command_line(&program, &command.args));
+    let environment = environment_block(&build_environment(command, &workspace, &read_roots));
+    let mut cmdline = wide(&command_line(&program, &command.args, command.raw_tail.as_deref()));
     let (application, directory) = (wide(&plain(&program)), wide(&plain(&cwd)));
 
     // The capability list: none, unless the policy gives the network.

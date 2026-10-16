@@ -6,13 +6,14 @@
  * sur le disque avant et après. Rien ici ne juge une chaîne de caractères, sinon un filtre sur du
  * texte pourrait passer pour un confinement.
  */
-import { existsSync, mkdirSync, realpathSync, symlinkSync } from "node:fs";
+import { existsSync, mkdirSync, realpathSync, rmSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { executeGuardedTool } from "../src/agent.js";
 import { DEFAULT_SETTINGS, type Settings } from "@jarod/plugin-storage";
 import {
   firstToken,
+  probeMechanism,
   programKey,
   ShellGuardService,
   type ShellLaunchPlan,
@@ -409,5 +410,93 @@ describe("garde du shell — la politique en vigueur se lit", () => {
   it("un réglage partiel ne remplace pas le défaut", () => {
     const garde = new ShellGuardService({ workspace: tempDir(), policy: { deniedPrograms: ["x"] } });
     expect(garde.policy()).toEqual({ ...DEFAULT_SETTINGS.shellGuard, deniedPrograms: ["x"] });
+  });
+});
+
+describe("garde du shell — Windows : AppContainer (herald-sandbox) ou refus", () => {
+  const sondeWindows = (ok: boolean): ShellProbe => (input) =>
+    input.id === "herald-sandbox"
+      ? { ok, path: ok ? "C:\outils\herald-sandbox.exe" : null, detail: ok ? "présent (simulé)" : "absent (simulé)" }
+      : { ok: false, path: null, detail: `n'existe pas sur win32` };
+
+  it("avec le mécanisme, la ligne part telle quelle vers `herald-sandbox exec`, dossier de travail en tête", async () => {
+    const ws = tempDir();
+    const garde = new ShellGuardService({
+      workspace: ws,
+      policy: { writeScope: "workspace" },
+      platform: "win32",
+      probe: sondeWindows(true),
+    });
+    const ligne = 'echo "a b"> "c d.txt"';
+    const plan = planDe(await garde.plan(ligne, { cwd: ws }));
+    const racine = realpathSync.native(ws);
+
+    expect(plan.mechanism).toBe("herald-sandbox");
+    expect(plan.mode).toBe("exec");
+    expect(plan.bin).toBe("C:\outils\herald-sandbox.exe");
+    expect(plan.args.slice(0, 4)).toEqual(["exec", "--workspace", racine, "--cwd"]);
+    // La ligne est le dernier argument, entière, guillemets compris : aucun recollage.
+    expect(plan.args.slice(-2)).toEqual(["--", ligne]);
+    expect(plan.writableRoots).toEqual([racine]);
+  });
+
+  it("sans le binaire, le confinement demandé est refusé et la raison nomme herald-sandbox", async () => {
+    const ws = tempDir();
+    const cible = join(tempDir(), "interdit.txt");
+    const garde = new ShellGuardService({
+      workspace: ws,
+      policy: { writeScope: "workspace" },
+      platform: "win32",
+      probe: sondeWindows(false),
+    });
+    const refus = refusDe(await garde.plan(commandeEcriture(cible), { cwd: ws }));
+    expect(refus.reason).toMatch(/herald-sandbox/);
+    expect(refus.reason).toMatch(/PAS été lancée/);
+    expect(existsSync(cible)).toBe(false);
+  });
+
+  it("un binaire qui échoue à son épreuve n'est PAS retenu, même s'il démarre", () => {
+    // `node selftest` démarre (le binaire existe) mais se termine en erreur : exactement le cas d'une
+    // machine où l'AppContainer ne tient pas. La sonde doit le refuser.
+    const sonde = probeMechanism(
+      { id: "herald-sandbox", binary: "herald-sandbox", platforms: ["win32"], versionArg: "selftest", mustExitZero: true, envPath: "HERALD_SANDBOX_BIN" },
+      "win32",
+      { HERALD_SANDBOX_BIN: process.execPath },
+    );
+    expect(sonde.ok).toBe(false);
+    expect(sonde.detail).toMatch(/échoué à son épreuve/);
+  });
+
+  const binaire = join(__dirname, "..", "..", "..", "..", "..", "host-rust", "target", "debug", "herald-sandbox.exe");
+  const reel = process.platform === "win32" && existsSync(binaire) ? it : it.skip;
+
+  reel("pour de vrai : écrire dedans marche, écrire dehors est refusé par le noyau", async () => {
+    const ws = tempDir();
+    const dehors = tempDir();
+    const garde = new ShellGuardService({
+      workspace: ws,
+      policy: { writeScope: "workspace" },
+      env: { ...process.env, HERALD_SANDBOX_BIN: binaire },
+    });
+
+    expect(garde.mechanism().available).toBe(true);
+
+    const cibleDehors = join(dehors, "interdit.txt");
+    const ligneDehors = `echo piege> "${cibleDehors}"`;
+    // Témoin : la même ligne, sans le garde, écrit vraiment.
+    const libre = await runShell(ligneDehors, ws);
+    expect(libre.code).toBe(0);
+    expect(existsSync(cibleDehors)).toBe(true);
+    rmSync(cibleDehors);
+
+    const refuse = planDe(await garde.plan(ligneDehors, { cwd: ws }));
+    const dehorsRes = await runShell(ligneDehors, ws, undefined, 60_000, refuse);
+    expect(dehorsRes.code).not.toBe(0);
+    expect(existsSync(cibleDehors)).toBe(false);
+
+    const dedans = planDe(await garde.plan(`echo ok> "${join(ws, "dedans.txt")}"`, { cwd: ws }));
+    const dedansRes = await runShell("", ws, undefined, 60_000, dedans);
+    expect(dedansRes.code).toBe(0);
+    expect(existsSync(join(ws, "dedans.txt"))).toBe(true);
   });
 });

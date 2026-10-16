@@ -250,3 +250,30 @@ fn a_missing_program_is_not_started() {
 
     assert!(run(&arena.policy(), &ConfinedCommand::new(r"C:\does\not\exist.exe")).is_err());
 }
+
+#[test]
+fn a_shell_line_keeps_its_quotes_and_its_confinement() {
+    let arena = Arena::new("quotes");
+    let outside = arena.outside.join("quoted.txt");
+    let inside_line = r#"echo hello> "with space.txt" && type "with space.txt""#;
+    let out = run(&arena.policy(), &ConfinedCommand::shell_line(inside_line)).unwrap();
+
+    assert_eq!(out.exit_code, Some(0), "{}{}", out.stdout_text(), out.stderr_text());
+    assert!(arena.ws.join("with space.txt").exists());
+
+    // The same quoted, absolute form aimed outside: the quoting works (the control passes), the kernel refuses.
+    let line = format!(r#"echo hacked> "{}""#, outside.display());
+
+    let control = format!(r#"/D /S /C "echo ok> "{}"""#, arena.root.join("control.txt").display());
+
+    {
+        use std::os::windows::process::CommandExt;
+
+        let status = std::process::Command::new("cmd.exe").raw_arg(control).status().unwrap();
+
+        assert!(status.success() && arena.root.join("control.txt").exists(), "control");
+    }
+
+    assert_ne!(run(&arena.policy(), &ConfinedCommand::shell_line(&line)).unwrap().exit_code, Some(0));
+    assert!(!outside.exists());
+}
