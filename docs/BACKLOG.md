@@ -4,7 +4,15 @@ Items identified and deliberately not done. Each survives the session here.
 
 ## From the master prompt
 
-- 12 npm vulnerabilities in `apps/desktop` (2 critical, 2 high): detailed audit, then `npm audit fix` after validation.
+- **Vulnerability audit: done (2026-10-17).** `apps/desktop` (npm): the 12 findings were ALL in dev/build tooling (`npm audit --omit=dev`: 0, before and after).
+  Fixed: `concurrently` 10.0.5 → 10.0.6 (pulls `shell-quote` 1.12.0: the 2 critical), and `http-cache-semantics` 4.3.0 and `source-map-js` 1.2.2 (the 2 high), lock
+  only. `jarod-core` (pnpm): 11 findings, all dev (`pnpm audit --prod`: 0) — 3 critical + 3 high from an old `vitest` (^2) in `plugins/automation` (now
+  5.0.2 like the rest of the repo, which brings `tinypool`, `vite`, `@vitest/mocker`), 1 high in the test client `@modelcontextprotocol/client` (2.1.0 → 2.2.0), and
+  `source-map-js` 1.2.2 by a workspace override; `pnpm audit`: 0. Gates after: `npm run test:core` exit 0, desktop typecheck, 1128 unit tests, 19/19 e2e on the rebuilt app.
+  **Left, deliberately:** (1) 8 moderate in the `electron-builder` chain (`sprintf-js` DoS through `roarr` ← `global-agent` ← `@electron/get`): build-time download tooling, never in the
+  installed app; `npm audit` proposes `electron-builder@26.5.0`, which is a DOWNGRADE from the 26.15.3 in use, so it is not applied. (2) 10 high in the `promptfoo` test engine
+  (`engines.lock/node/promptfoo`, A5 adversarial scenarios): a pinned test-only tool, same kind of "fix" (an older major), not shipped. (3) `cargo audit` is not installed, so
+  `host-rust/Cargo.lock` and the Python engine requirements have NOT been audited yet.
 - 543 lint warnings (accepted debt).
 - 18 shell protocol tests skipped on Windows (no fake named pipe): restore coverage.
 - Rotation of `control-audit.jsonl` (unbounded growth).

@@ -16,3 +16,6 @@ overrides:
   # (bloqué), retirées pour rester dans la liste approuvée ; le code d'exécution ne doit importer ni l'un ni l'autre.
   "onnxruntime-node>global-agent": "-"
   "onnxruntime-node>adm-zip": "-"
+  # Audit 2026-10-17 : source-map-js < 1.2.2 (déni de service par décalages d'index, GHSA-68fv-2mgg-jv7q), tiré par vite > postcss dans les outils de test
+  # seulement (rien d'embarqué) ; 1.2.2 est le correctif de la même ligne.
+  "source-map-js": "1.2.2"
