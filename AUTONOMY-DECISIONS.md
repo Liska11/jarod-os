@@ -77,3 +77,8 @@ Un sujet par commit local. Les arbitrages sont ici, un par section, pour revue �
 - **Pourquoi** : le module n'est branché nulle part aujourd'hui (OPP-05 non fait) ; la borne est posée maintenant pour que le futur câblage ne l'oublie pas. Aucune clé réelle ni compte tiers touchés.
 - **Tests** : `oauth-timeout.test.ts` (rouge avant : suspendu) ; `wave-b.test.ts` inchangé 15/15 ; `tsc` propre.
 - **Annuler** : `git revert` du commit « fix(oauth) ».
+
+## 10. `taskkill` du worker d'analyse de documents : délai 15 s
+- **Décision** : balayage de tous les `spawnSync/execFileSync` non-test : un seul n'avait pas de délai (`rag/parser-worker.ts`, `taskkill`). Ajout de `timeout: 15_000`, comme les autres appels `taskkill` du dépôt.
+- **Tests** : `vitest packages/plugins/rag` 164 passés ; `tsc` propre. **Non testé en isolation** : un `taskkill` qui se bloque n'est pas reproductible sur demande ; la modification est une option d'appel d'une ligne.
+- **Annuler** : `git revert` du commit « fix(rag) ».

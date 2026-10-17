@@ -84,7 +84,7 @@ const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === "obj
 function killTree(proc: ChildProcess): void {
   const pid = proc.pid;
   try {
-    if (pid && process.platform === "win32") spawnSync("taskkill", ["/PID", String(pid), "/T", "/F"], { windowsHide: true, stdio: "ignore" });
+    if (pid && process.platform === "win32") spawnSync("taskkill", ["/PID", String(pid), "/T", "/F"], { windowsHide: true, stdio: "ignore", timeout: 15_000 });
     else if (pid) process.kill(-pid, "SIGKILL");
   } catch {
     /* déjà mort */
