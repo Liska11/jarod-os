@@ -75,6 +75,7 @@ describe("garde du shell — l'usage légitime passe exactement comme avant", ()
     expect(core.settings.get("shellGuard")).toEqual({
       writeScope: "off",
       writableRoots: [],
+      readRoots: [],
       allowedPrograms: [],
       deniedPrograms: [],
       askPrograms: [],

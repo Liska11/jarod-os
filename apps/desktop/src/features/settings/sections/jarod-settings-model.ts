@@ -15,6 +15,7 @@ export interface PermissionRule {
 export interface ShellGuard {
   writeScope: 'off' | 'workspace'
   writableRoots: string[]
+  readRoots: string[]
   allowedPrograms: string[]
   deniedPrograms: string[]
   askPrograms: string[]
@@ -118,6 +119,25 @@ export function programProblem(program: string): string | null {
   }
 
   return /^[^\s"'`;&|<>*?$%(){}[\]^!]+$/.test(p) ? null : t('validate.programChars')
+}
+
+/** A tools folder the confined command may read and run (never write): an absolute path, no `..`, no wildcard (the guard checks the real folder on every command). */
+export function readRootProblem(root: string): string | null {
+  const r = root.trim()
+
+  if (!r || r.length > 260) {
+    return t('validate.readRoot')
+  }
+
+  if (!/^([a-zA-Z]:[\\/]|\\\\|\/)/.test(r)) {
+    return t('validate.readRootAbsolute')
+  }
+
+  if (/(^|[\\/])\.\.([\\/]|$)/.test(r) || /[*?<>|"\u0000-\u001f]/.test(r)) {
+    return t('validate.readRootChars')
+  }
+
+  return null
 }
 
 /** A domain for the connected browser: a full lowercase domain, no wildcard, port, path or IP address (mirrors the engine). */

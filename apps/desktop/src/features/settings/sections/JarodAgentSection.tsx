@@ -17,6 +17,7 @@ import {
   moveItem,
   type PermissionRule,
   programProblem,
+  readRootProblem,
   rootProblem,
   ruleListProblem,
   ruleToolProblem,
@@ -257,6 +258,7 @@ function ShellGuardGroup({ s, api }: Props) {
         onChange={value => void patch({ writeScope: value })}
       />
       <SettingsRow icon={<IconTerminal2 />} label={t('settings.agent.writable')} description={t('settings.agent.writable.hint')} keywords="shell guard writable roots folders" below={<ChipsEditor items={g.writableRoots} validate={rootProblem} onChange={items => patch({ writableRoots: items })} disabled={saving} placeholder="build" label={t('settings.agent.writable.aria')} />} />
+      <SettingsRow icon={<IconTerminal2 />} label={t('settings.agent.readable')} description={t('settings.agent.readable.hint')} keywords="shell guard read roots tools folders path scoop cargo" below={<ChipsEditor items={g.readRoots} validate={readRootProblem} onChange={items => patch({ readRoots: items })} disabled={saving} placeholder={'C:\\Users\\you\\scoop\\shims'} label={t('settings.agent.readable.aria')} />} />
       <SettingsRow icon={<IconTerminal2 />} label={t('settings.agent.denied')} description={t('settings.agent.denied.hint')} keywords="shell guard denied programs blocklist" below={<ChipsEditor items={g.deniedPrograms} validate={programProblem} onChange={items => patch({ deniedPrograms: items })} disabled={saving} placeholder="rm" label={t('settings.agent.denied.aria')} />} />
       <SettingsRow icon={<IconTerminal2 />} label={t('settings.agent.ask')} description={t('settings.agent.ask.hint')} keywords="shell guard ask programs confirm" below={<ChipsEditor items={g.askPrograms} validate={programProblem} onChange={items => patch({ askPrograms: items })} disabled={saving} placeholder="git" label={t('settings.agent.ask.aria')} />} />
       <SettingsRow icon={<IconTerminal2 />} label={t('settings.agent.only')} description={g.allowedPrograms.length === 0 ? t('settings.agent.only.empty') : t('settings.agent.only.set')} keywords="shell guard allowed programs allowlist" below={<ChipsEditor items={g.allowedPrograms} validate={programProblem} onChange={items => patch({ allowedPrograms: items })} disabled={saving} placeholder="node" label={t('settings.agent.only.aria')} />} />

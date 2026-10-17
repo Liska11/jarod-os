@@ -133,6 +133,7 @@ function effectiveShell(p: Partial<ShellPolicy> | undefined): Required<Omit<Shel
   return {
     writeScope: q.writeScope === "workspace" ? "workspace" : "off",
     writableRoots: [...(q.writableRoots ?? [])],
+    readRoots: [...(q.readRoots ?? [])],
     allowedPrograms: [...(q.allowedPrograms ?? [])],
     deniedPrograms: [...(q.deniedPrograms ?? [])],
     askPrograms: [...(q.askPrograms ?? [])],
@@ -157,6 +158,16 @@ function stringList(key: string, v: unknown, max: number, itemMax: number, ok: (
 
 /** Un programme : un nom (`git`, `node.exe`) ou un chemin absolu ; ni espace, ni guillemet, ni métacaractère de shell. */
 const programOk = (s: string): string | null => (/^[^\s"'`;&|<>*?$%(){}\[\]^!]+$/.test(s) ? null : "nom de programme ou chemin absolu, sans espace ni caractère de shell");
+/**
+ * Un dossier de lecture (outils : node, git…) : chemin ABSOLU, sans « .. », sans joker ni caractère interdit d'un chemin. La vérification de fond (existe, est un dossier, n'est ni
+ * une racine de lecteur ni le dossier personnel ni un dossier de clés) est faite par le garde à chaque commande, sur le chemin réel : un dossier refusé là refuse la commande.
+ */
+const readRootOk = (s: string): string | null => {
+  if (!/^([a-zA-Z]:[\\/]|\\\\|\/)/.test(s)) return "chemin absolu (par exemple C:\\Users\\vous\\scoop\\shims)";
+  if (/(^|[\\/])\.\.([\\/]|$)/.test(s)) return "sans « .. »";
+  if (/[*?<>|"\u0000-\u001f]/.test(s)) return "sans joker ni caractère interdit dans un chemin";
+  return null;
+};
 /** Un dossier d'écriture : RELATIF au dossier de travail, sans « .. », sans lecteur ni racine. */
 const rootOk = (s: string): string | null => {
   if (/^([a-zA-Z]:|[\\/])/.test(s) || /(^|[\\/])\.\.([\\/]|$)/.test(s)) return "chemin relatif au dossier de travail, sans « .. » ni racine";
@@ -171,6 +182,7 @@ export function shellWeakenings(old: ReturnType<typeof effectiveShell>, next: Re
   if (old.writeScope === "workspace" && next.writeScope === "off") out.push("le confinement des écritures est retiré");
   if (old.environment === "docker" && next.environment === "local") out.push("les commandes tourneront sur la machine elle-même, plus dans Docker");
   for (const r of next.writableRoots.filter((x) => !old.writableRoots.includes(x))) out.push(`écriture permise dans « ${r} »`);
+  for (const r of next.readRoots.filter((x) => !old.readRoots.includes(x))) out.push(`lecture et exécution permises dans « ${r} »`);
   if (old.allowedPrograms.length > 0 && next.allowedPrograms.length === 0) out.push("tous les programmes redeviennent permis (la liste des permis est vidée)");
   else for (const p of next.allowedPrograms.filter((x) => !old.allowedPrograms.includes(x))) if (old.allowedPrograms.length > 0) out.push(`programme permis en plus : ${p}`);
   for (const p of old.deniedPrograms.filter((x) => !next.deniedPrograms.includes(x))) out.push(`programme n'est plus refusé : ${p}`);
@@ -376,7 +388,7 @@ const ENTRIES: Record<string, Entry> = {
   shellGuard: {
     read: (s) => effectiveShell(s.shellGuard),
     write: (v, current) => {
-      const o = record("shellGuard", v, ["writeScope", "writableRoots", "allowedPrograms", "deniedPrograms", "askPrograms", "environment", "docker"]);
+      const o = record("shellGuard", v, ["writeScope", "writableRoots", "readRoots", "allowedPrograms", "deniedPrograms", "askPrograms", "environment", "docker"]);
       const base = effectiveShell(current.shellGuard);
       const next = { ...base, docker: { ...base.docker } };
       if (o.writeScope !== undefined) {
@@ -388,6 +400,7 @@ const ENTRIES: Record<string, Entry> = {
         next.environment = o.environment as "local" | "docker";
       }
       if (o.writableRoots !== undefined) next.writableRoots = stringList("shellGuard.writableRoots", o.writableRoots, 20, 200, rootOk);
+      if (o.readRoots !== undefined) next.readRoots = stringList("shellGuard.readRoots", o.readRoots, 20, 260, readRootOk);
       for (const k of ["allowedPrograms", "deniedPrograms", "askPrograms"] as const) {
         if (o[k] !== undefined) next[k] = stringList(`shellGuard.${k}`, o[k], 100, 260, programOk);
       }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { domainProblem, intProblem, isUserRefusal, moneyProblem, moveItem, programProblem, rootProblem, ruleListProblem, ruleToolProblem, settingErrorText } from './jarod-settings-model.ts'
+import { domainProblem, intProblem, readRootProblem, isUserRefusal, moneyProblem, moveItem, programProblem, rootProblem, ruleListProblem, ruleToolProblem, settingErrorText } from './jarod-settings-model.ts'
 
 describe('intProblem', () => {
   it('accepts whole numbers in range; 0 only where it means off', () => {
@@ -81,5 +81,17 @@ describe('domainProblem', () => {
 
   it('refuses an IP address, which is not a domain', () => {
     for (const bad of ['127.0.0.1', '192.168.1.10', '10.0.0.1']) expect(domainProblem(bad), bad).toMatch(/IP address/)
+  })
+})
+
+describe('readRootProblem', () => {
+  it('accepts absolute folders (drive, UNC, POSIX)', () => {
+    for (const ok of ['C:\\Users\\me\\scoop\\shims', 'D:/tools/bin', '\\\\server\\share\\tools', '/home/me/.local/bin']) expect(readRootProblem(ok), ok).toBeNull()
+  })
+
+  it('refuses empty, relative, parent-walking, wildcard and control-character paths', () => {
+    expect(readRootProblem('')).toMatch(/full path/i)
+    for (const bad of ['tools', './tools', 'bin\\node']) expect(readRootProblem(bad), bad).toMatch(/absolute/i)
+    for (const bad of ['C:\\a\\..\\b', '/a/../b', 'C:\\tools\\*', 'C:\\a<b', '/a\u0001b']) expect(readRootProblem(bad), bad).toMatch(/wildcard|forbidden/i)
   })
 })

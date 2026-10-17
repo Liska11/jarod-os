@@ -11,6 +11,7 @@ afterEach(cleanup);
 type Eff = {
   writeScope: string;
   writableRoots: string[];
+  readRoots: string[];
   allowedPrograms: string[];
   deniedPrograms: string[];
   askPrograms: string[];
@@ -24,7 +25,7 @@ describe("garde du shell : lecture et durcissement", () => {
   it("lecture : la politique EFFECTIVE (défauts complétés), comme le garde la lit", async () => {
     const { call, app } = await setupKernel();
     expect(await eff(call)).toEqual({
-      writeScope: "off", writableRoots: [], allowedPrograms: [], deniedPrograms: [], askPrograms: [], environment: "local",
+      writeScope: "off", writableRoots: [], readRoots: [], allowedPrograms: [], deniedPrograms: [], askPrograms: [], environment: "local",
       docker: { image: "node:22-bookworm", network: true, memory: "4g", cpus: 2 },
     });
     app.agent.settings.set("shellGuard", { writeScope: "workspace", deniedPrograms: ["curl"] });
@@ -119,5 +120,51 @@ describe("garde du shell : validation", () => {
     expect(o.shellGuardText).toContain("Garde du shell");
     expect(o.shellGuardText).toContain("Mécanisme de confinement");
     expect(o.shellGuardText).not.toContain("**");
+  });
+});
+
+describe("garde du shell : dossiers de lecture (readRoots)", () => {
+  const win = process.platform === "win32";
+  const SEP = win ? "\\" : "/";
+  const OUTILS = win ? "C:\\Users\\moi\\scoop\\shims" : "/home/moi/.local/bin";
+
+  it("vide par défaut ; AJOUTER un dossier de lecture AFFAIBLIT : boîte native qui le nomme ; refusée rien n'est écrit, acceptée c'est écrit", async () => {
+    const { call, app, confirms } = await setupKernel(undefined, [false, true]);
+    expect((await eff(call)).readRoots).toEqual([]);
+    await rejects(() => call("set-jarod-settings", { shellGuard: { readRoots: [OUTILS] } }), /refusé par l'utilisateur/);
+    expect((await eff(call)).readRoots).toEqual([]);
+    expect(confirms[0]!.message).toMatch(/Affaiblir le garde/);
+    expect(confirms[0]!.detail).toContain("lecture et exécution permises dans");
+    expect(confirms[0]!.detail).toContain(OUTILS);
+    await call("set-jarod-settings", { shellGuard: { readRoots: [OUTILS] } });
+    expect(app.agent.settings.get("shellGuard")).toMatchObject({ readRoots: [OUTILS] });
+  });
+
+  it("RETIRER un dossier de lecture durcit : aucune boîte", async () => {
+    const { call, app, confirms } = await setupKernel();
+    app.agent.settings.set("shellGuard", { readRoots: [OUTILS] });
+    await call("set-jarod-settings", { shellGuard: { readRoots: [] } });
+    expect(confirms).toHaveLength(0);
+    expect((await eff(call)).readRoots).toEqual([]);
+  });
+
+  it("nettoyé (espaces, doublons) ; validation : relatif, « .. », joker, caractère de contrôle, trop nombreux, pas une liste — refus sans écriture partielle", async () => {
+    const { call, app } = await setupKernel(undefined, [true]);
+    await call("set-jarod-settings", { shellGuard: { readRoots: [` ${OUTILS} `, OUTILS] } });
+    expect((await eff(call)).readRoots).toEqual([OUTILS]);
+    const before = app.agent.settings.getAll();
+    const root = win ? "C:\\o" : "/o";
+    const bad: [unknown, RegExp][] = [
+      [["outils"], /absolu/],
+      [["./outils"], /absolu/],
+      [[`${OUTILS}${SEP}..${SEP}autre`], /\.\./],
+      [[`${root}${SEP}*`], /joker|caractère/],
+      [[`${root}<b`], /joker|caractère/],
+      [[`${root}\u0001b`], /contrôle|caractère/],
+      [root, /liste attendue/],
+      [Array.from({ length: 21 }, (_, i) => `${root}${i}`), /20 entrées/],
+    ];
+    for (const [v, why] of bad) await rejects(() => call("set-jarod-settings", { agentMode: "plan", shellGuard: { readRoots: v } }), why);
+    expect(app.agent.settings.getAll()).toEqual(before);
   });
 });

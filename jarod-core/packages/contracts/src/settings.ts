@@ -171,6 +171,12 @@ export interface ShellPolicy {
   writeScope: WriteScope;
   /** Dossiers supplémentaires où l'écriture reste permise (relatifs au dossier de travail). */
   writableRoots: string[];
+  /**
+   * Dossiers que la commande confinée peut LIRE et EXÉCUTER sans y écrire (ceux des outils : node, git…), chemins absolus. Ajoutés au PATH de la commande
+   * sous `jarod-sandbox` (Windows) ; ailleurs la racine est déjà lisible. Refusés en bloc s'ils désignent une racine de lecteur, le dossier personnel (ou un
+   * de ses ancêtres) ou un dossier de clés. Optionnel : absent = aucun.
+   */
+  readRoots?: string[];
   /** Programmes autorisés (nom ou chemin absolu). Vide = tous ceux que la machine a. */
   allowedPrograms: string[];
   /** Programmes toujours refusés. */
@@ -191,6 +197,7 @@ export interface ShellPolicy {
 export const DEFAULT_SHELL_POLICY: ShellPolicy = {
   writeScope: "off",
   writableRoots: [],
+  readRoots: [],
   allowedPrograms: [],
   deniedPrograms: [],
   askPrograms: [],

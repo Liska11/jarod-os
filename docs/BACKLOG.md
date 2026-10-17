@@ -13,10 +13,15 @@ Items identified and deliberately not done. Each survives the session here.
 
 ## From phase 3.1 / 3.2 (sandbox)
 
-- **`readRoots` in the shell policy** so `node`, `git`, etc. are reachable inside the sandbox. Today the confinement is
-  real but the command only sees the system folders on its PATH, which makes it of limited daily use. The Rust side
-  already supports `Policy::read_roots` (granted read+execute and appended to PATH); what is missing is the field in
-  `ShellPolicy` (`@jarod/contracts`), the settings UI and the plumbing in `shell-guard.ts`.
+- **`readRoots` in the shell policy: DONE (2026-10-17).** `ShellPolicy.readRoots` (absolute folders), plumbed to `jarod-sandbox exec --read-root`
+  (read + execute, never write, appended to the command's PATH), validated by the guard on the REAL path on every command and refused as a
+  whole (never silently dropped) when a root is a drive root, the home folder or one of its ancestors, or a key folder (`.ssh` `.aws`
+  `.gnupg` `.azure` `.kube` `.docker`, or anything containing/inside one); settings screen (Agent › Shell guard), adding a root is a
+  weakening with a native confirmation. MEASURED with the real binary: without it `node` is "not recognised"; with a user-owned folder
+  holding `node.exe` it runs (`v24.20.0`) and still cannot write outside the workspace or inside that folder. **Limit measured:** the
+  system install folder (`C:\Program Files\nodejs`) does NOT work even with the grant (`Accès refusé`): only folders that belong to the
+  user (scoop, cargo, a per-user Python…) are usable; the other mechanisms (bwrap, firejail, MXC, Docker) are unaffected (they already read the
+  system, or do not take the option). The sandbox binary does not say why a non-owned folder fails: the user only sees the command's own error.
 - **cmd.exe `dir` / `del` / `attrib` fail inside the sandbox** (they resolve every parent folder, which the
   AppContainer cannot list). Granting list on the ancestors was tried and rejected (it rewrites the DACL of the whole
   subtree of `%TEMP%`). Lead to evaluate later: a dedicated sandbox root (own `%TEMP%`-like parent, so the ancestors

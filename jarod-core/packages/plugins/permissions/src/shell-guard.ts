@@ -33,8 +33,9 @@
  */
 
 import { spawnSync } from "node:child_process";
-import { existsSync, realpathSync } from "node:fs";
-import { basename, delimiter, dirname, isAbsolute, join, relative, resolve } from "node:path";
+import { existsSync, realpathSync, statSync } from "node:fs";
+import { homedir } from "node:os";
+import { basename, delimiter, dirname, isAbsolute, join, parse, relative, resolve, sep } from "node:path";
 import type { ToolCall } from "@jarod/contracts";
 import { containerPath, DEFAULT_DOCKER, type DockerOptions, DockerSandbox, execArgs } from "./docker-sandbox.js";
 import { type WriteScope, type ShellPolicy, DEFAULT_SHELL_POLICY } from "@jarod/contracts";
@@ -97,6 +98,8 @@ export interface ShellGuardView {
   mechanism: ShellMechanismStatus;
   /** Les chemins réels où l'écriture est permise. */
   writableRoots: string[];
+  /** Les chemins réels que la commande peut lire et exécuter (sans y écrire). */
+  readRoots: string[];
   allowedPrograms: string[];
   deniedPrograms: string[];
   askPrograms: string[];
@@ -111,6 +114,11 @@ const inside = (root: string, target: string): boolean => {
   const rel = relative(root, target);
   return !rel.startsWith("..") && !isAbsolute(rel);
 };
+
+/** Les dossiers du dossier personnel qui portent des clés : jamais lisibles par une commande confinée, ni eux ni un dossier qui les contient. */
+const PROTECTED_HOME_DIRS = [".ssh", ".aws", ".gnupg", ".azure", ".kube", ".docker"];
+
+const samePath = (a: string, b: string): boolean => (process.platform === "win32" ? a.toLowerCase() === b.toLowerCase() : a === b);
 
 /** Le chemin réel de `p`, ou celui de son plus proche parent existant suivi du reste. */
 function realPathOf(p: string): string {
@@ -210,7 +218,7 @@ interface MechanismDef {
   gateEnv?: string;
   /** La ligne de commande qui retient le processus : racine en lecture seule, dossier autorisé en
    * lecture-écriture. C'est le noyau qui l'applique, pas une analyse de texte. */
-  build(input: { bin: string; command: string; cwd: string; roots: string[]; launcher?: string }): string[];
+  build(input: { bin: string; command: string; cwd: string; roots: string[]; readRoots?: string[]; launcher?: string }): string[];
 }
 
 const MECHANISMS: MechanismDef[] = [
@@ -286,7 +294,8 @@ const MECHANISMS: MechanismDef[] = [
     legacyEnvPath: "HERALD_SANDBOX_BIN",
     // Un AppContainer : le dossier de travail est le seul endroit inscriptible. La ligne passe telle quelle
     // à `cmd /D /S /C` ; le délai du garde est l'autorité (le binaire n'a que le plafond de sécurité).
-    build: ({ bin, command, cwd, roots }) => [
+    // `--read-root` : un dossier d'outils lisible et exécutable (jamais inscriptible), ajouté au PATH de la commande.
+    build: ({ bin, command, cwd, roots, readRoots }) => [
       bin,
       "exec",
       "--workspace",
@@ -295,6 +304,7 @@ const MECHANISMS: MechanismDef[] = [
       cwd,
       "--timeout",
       "86400",
+      ...(readRoots ?? []).flatMap((r) => ["--read-root", r]),
       "--",
       command,
     ],
@@ -451,6 +461,8 @@ export interface ShellGuardDeps {
   probe?: ShellProbe;
   /** Le pilote de Docker (injectable : les tests n'ont pas besoin d'un démon). */
   docker?: DockerSandbox;
+  /** Le dossier personnel (injectable) : les dossiers de lecture ne peuvent ni le contenir ni être un dossier de clés. */
+  home?: string;
 }
 
 export class ShellGuardService {
@@ -472,6 +484,7 @@ export class ShellGuardService {
     return {
       writeScope: p.writeScope === "workspace" ? "workspace" : "off",
       writableRoots: p.writableRoots ?? [],
+      readRoots: p.readRoots ?? [],
       allowedPrograms: p.allowedPrograms ?? [],
       deniedPrograms: p.deniedPrograms ?? [],
       askPrograms: p.askPrograms ?? [],
@@ -539,6 +552,36 @@ export class ShellGuardService {
         return { ok: false, reason: `« ${entry} » n'existe pas (chemin réel : ${real})` };
       }
       roots.push(real);
+    }
+    return { ok: true, roots };
+  }
+
+  /**
+   * Les dossiers de lecture, vérifiés sur le chemin RÉEL : absolus, existants, des dossiers, ni une racine de lecteur, ni le dossier personnel (ou un de ses
+   * ancêtres), ni un dossier de clés (ni rien qui en contienne un, ni rien qui soit dedans). Un seul refus refuse le tout : rien n'est ignoré en silence.
+   */
+  readRoots(): { ok: true; roots: string[] } | { ok: false; reason: string } {
+    const entries = this.policy().readRoots ?? [];
+    if (!entries.length) return { ok: true, roots: [] };
+    const home = realPathOf(resolve(this.d.home ?? homedir()));
+    const protectedDirs = PROTECTED_HOME_DIRS.map((n) => join(home, n));
+    const roots: string[] = [];
+    for (const entry of entries) {
+      if (!isAbsolute(entry)) return { ok: false, reason: `« ${entry} » n'est pas un chemin absolu (les dossiers de lecture sont toujours absolus)` };
+      const real = realPathOf(resolve(entry));
+      if (!existsSync(real)) return { ok: false, reason: `« ${entry} » n'existe pas (chemin réel : ${real})` };
+      let isDir = false;
+      try {
+        isDir = statSync(real).isDirectory();
+      } catch {
+        isDir = false;
+      }
+      if (!isDir) return { ok: false, reason: `« ${entry} » n'est pas un dossier` };
+      if (parse(real).root === real || parse(real).root === `${real}${sep}`) return { ok: false, reason: `« ${entry} » est la racine d'un lecteur : trop large` };
+      if (inside(real, home)) return { ok: false, reason: `« ${entry} » est le dossier personnel ou en contient un : il donnerait accès à tout le profil` };
+      const key = protectedDirs.find((p) => inside(real, p) || inside(p, real));
+      if (key) return { ok: false, reason: `« ${entry} » est (ou contient) un dossier protégé de clés (${key})` };
+      if (!roots.some((r) => samePath(r, real))) roots.push(real);
     }
     return { ok: true, roots };
   }
@@ -618,6 +661,7 @@ export class ShellGuardService {
     // 3. Le confinement des écritures, s'il est demandé : tenu par le noyau, ou refusé.
     let mechanism: MechanismId | "none" = "none";
     let planRoots: string[] = [];
+    let planReadRoots: string[] = [];
     let dockerPlan: { bin: string; args: string[]; detail: string } | null = null;
     if (inDocker) {
       if (!this.d.workspace) {
@@ -680,8 +724,12 @@ export class ShellGuardService {
           program.name,
         );
       }
+      // Les dossiers de lecture (outils) : vérifiés ici, refusés en bloc s'ils sont dangereux ; sans confinement demandé ils ne servent à rien.
+      const reads = this.readRoots();
+      if (!reads.ok) return this.refuse(`les dossiers de lecture sont refusés : ${reads.reason}.`, program.name);
       mechanism = status.id;
       planRoots = [rootReal, ...roots.roots];
+      planReadRoots = reads.roots;
     }
 
     // 4. L'accord de l'utilisateur, par la porte EXISTANTE du cœur. Sans porte, on refuse : un
@@ -741,7 +789,7 @@ export class ShellGuardService {
     const def = MECHANISMS.find((m) => m.id === mechanism)!;
     const status = this.mechanism();
     const launcher = def.launcherEnv ? this.env[def.launcherEnv] : undefined;
-    const args = def.build({ bin: status.path!, command: line, cwd, roots: planRoots, launcher });
+    const args = def.build({ bin: status.path!, command: line, cwd, roots: planRoots, readRoots: mechanism === "jarod-sandbox" ? planReadRoots : [], launcher });
     return {
       kind: "plan",
       mode: "exec",
@@ -750,7 +798,7 @@ export class ShellGuardService {
       cwd,
       mechanism,
       writableRoots: planRoots,
-      detail: `confiné par ${mechanism} : écriture permise seulement dans ${planRoots.join(", ")}`,
+      detail: `confiné par ${mechanism} : écriture permise seulement dans ${planRoots.join(", ")}${mechanism === "jarod-sandbox" && planReadRoots.length ? `; lecture seule et exécution dans ${planReadRoots.join(", ")}` : ""}`,
     };
   }
 
@@ -759,12 +807,14 @@ export class ShellGuardService {
     const policy = this.policy();
     const roots = this.writableRoots();
     const declared = this.d.workspace && roots.ok ? [realPathOf(resolve(this.d.workspace)), ...roots.roots] : [];
+    const reads = this.readRoots();
     return {
       platform: this.platform,
       writeScope: policy.writeScope,
       environment: policy.environment ?? "local",
       mechanism: this.mechanism(),
       writableRoots: policy.writeScope === "workspace" ? declared : [],
+      readRoots: reads.ok ? reads.roots : [],
       allowedPrograms: policy.allowedPrograms,
       deniedPrograms: policy.deniedPrograms,
       askPrograms: policy.askPrograms,
@@ -785,6 +835,7 @@ export class ShellGuardService {
       `- **Confinement des écritures** : ${v.writeScope === "workspace" ? 'demandé (`writeScope = "workspace"`) : tenu ou refusé, jamais promis' : "non demandé (`writeScope = off`)"}`,
       `- **Mécanisme de confinement** : ${v.mechanism.available ? `${v.mechanism.id} (${v.mechanism.path})` : `aucun — ${v.mechanism.detail}`}`,
       `- **Écritures autorisées** : ${writes}`,
+      `- **Dossiers lisibles** (lecture et exécution seulement) : ${liste(v.readRoots, "aucun en plus des dossiers système")}`,
       `- **Programmes autorisés** : ${liste(v.allowedPrograms, "tous ceux présents sur la machine")}`,
       `- **Programmes refusés** : ${liste(v.deniedPrograms, "aucun")}`,
       `- **Programmes soumis à un accord** : ${liste(v.askPrograms, "aucun")}`,
