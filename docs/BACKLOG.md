@@ -34,3 +34,14 @@ Items identified and deliberately not done. Each survives the session here.
 - Real memory / VRAM / disk measurement feeding `reportUsage`.
 - Two frontends on one profile at once: locking and concurrent-write behaviour of settings, memory and skills
   (shared data directory today, untested under concurrency).
+
+## Phase 7 - UI parity (status 2026-10-17)
+
+No new UI code was written in this pass: `jarod-core/PARITY.md` already tracks 23 rows, 19 done and checked in a real
+window (chat, settings, permissions/approval rules, applications, kanban, skills, etc.), 1 partial (voice: wake word,
+continuous capture, per-sentence streaming), 3 deliberately out (core updates, embeddings/NPU, Nous device-code login).
+Open items:
+- No automated end-to-end UI test exists (`apps/desktop` has vitest unit tests only, no Playwright config); R2 is still planned.
+- No onboarding screen was verified in this pass.
+- No UI yet for the new plugin platform, quarantine, sandbox or Hyper-V plugins (phases 3.3 / 4).
+- `linux/tests/test_cli.py` cannot be collected on Windows (`os.getuid`); run it on Linux.
