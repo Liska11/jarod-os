@@ -49,3 +49,10 @@ Un sujet par commit local. Les arbitrages sont ici, un par section, pour revue �
 - **Risque** : l'avertissement n'est qu'un journal ; il ne remplace pas l'ajout de la clé aux défauts. Le test mal posé a été remplacé, pas contourné.
 - **Tests** : `settings-unknown-keys.test.ts` (rouge avant) ; `vitest` sur storage/bridge/cli 955 passés ; suite jarod-core complète : les gates P0/P1/P2/P3 échouent avec et sans ma modification (dépendants de la machine) ; les moteurs navigateur (avant) et `hyperv` (après) échouent par intermittence sous charge — `hyperv` repasse seul ; le seul échec réellement causé par ma première version (`settings-memory.test.ts`) a mené au changement de décision ci-dessus. Porte de lot : ACCEPT 1.00.
 - **Annuler** : `git revert` du commit « fix(settings) ».
+
+## 6. Embeddings absents de l'application installée : message clair (audit D-03, partie « expérience »)
+- **Décision** : `makeGenaiLoader` (`embeddings/src/openvino.ts`) transforme `ERR_MODULE_NOT_FOUND` en « Le moteur d'embeddings (OpenVINO) n'est pas inclus dans cette installation : le RAG ne peut pas indexer ni chercher ici. » (cause d'origine conservée) ; toute autre erreur (DLL, version) passe telle quelle ; un échec n'est plus mis en cache à vie.
+- **Pourquoi** : le message affiché dans `metrics().lastError` citait un chemin de module Node, incompréhensible. Embarquer vraiment OpenVINO (natifs + modèle) est un chantier d'installateur : **non traité** (`B1b`, trop large, et non vérifiable sans réinstaller).
+- **Risque** : on ne distingue « non embarqué » que par le code d'erreur de Node ; une autre cause du même code recevrait le même message (cause conservée dans `cause`).
+- **Tests** : `openvino-missing.test.ts` 3/3 (rouge avant) ; `vitest packages/plugins/embeddings` 101 passés, 3 ignorés ; `tsc` propre. Pas relancé dans l'application installée (non vérifiable ici).
+- **Annuler** : `git revert` du commit « fix(embeddings) ».

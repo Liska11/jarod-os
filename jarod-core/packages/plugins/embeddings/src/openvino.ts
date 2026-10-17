@@ -25,8 +25,19 @@ import type * as Genai from "openvino-genai-node";
 type Resolved = Required<Omit<EmbeddingsConfig, "modelDir" | "port">> & Pick<EmbeddingsConfig, "modelDir" | "port">;
 
 /** Chargé au premier usage : les DLL OpenVINO n'ont rien à faire dans un `jarod ask` sans RAG. */
-let genai: Promise<typeof Genai> | null = null;
-const loadGenai = () => (genai ??= import("openvino-genai-node"));
+export function makeGenaiLoader(importer: () => Promise<typeof Genai>): () => Promise<typeof Genai> {
+  let cached: Promise<typeof Genai> | null = null;
+  return () =>
+    (cached ??= importer().catch((e: unknown) => {
+      cached = null; // un échec n'est pas gardé à vie
+      const code = (e as { code?: string } | null)?.code;
+      if (code === "ERR_MODULE_NOT_FOUND" || code === "MODULE_NOT_FOUND")
+        // L'application installée n'embarque pas OpenVINO (scripts/bundle-gateway.mjs, liste ABSENT) : on le dit, au lieu de citer un chemin de module.
+        throw new Error("Le moteur d'embeddings (OpenVINO) n'est pas inclus dans cette installation : le RAG ne peut pas indexer ni chercher ici.", { cause: e });
+      throw e;
+    }));
+}
+const loadGenai = makeGenaiLoader(() => import("openvino-genai-node"));
 
 const WINDOW = 1000;
 /** Q7 : `1 − cosinus` toléré entre un périphérique et le CPU, pour chaque texte sonde. */
