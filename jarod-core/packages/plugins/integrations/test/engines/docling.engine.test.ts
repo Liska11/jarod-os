@@ -49,3 +49,40 @@ describe.skipIf(!has)("B3 contre Docling (moteur réel)", () => {
     expect(existsSync(join(ROOT, "engines", "docling", "Lib", "site-packages", "torch"))).toBe(false);
   });
 });
+
+// ------------------------------------------------------------------ profil complet (PyTorch)
+
+const FULL_DIR = join(ROOT, "engines", "docling-full", "Scripts");
+const FULL_PY = join(FULL_DIR, "python.exe");
+
+describe.skipIf(!existsSync(FULL_PY))("B3 contre Docling COMPLET (PyTorch, modèles de mise en page et de tableaux)", () => {
+  const specFull = { ...DOCLING, launcher: `python "${join(ROOT, "jarod-core", "sidecars", "docling-md", "docling_md.py").split("\\").join("/")}"` };
+  const envFull = { ...process.env, PATH: `${FULL_DIR};${process.env.PATH}`, PYTHONUTF8: "1", JAROD_DOCLING_PROFILE: "full" };
+
+  it("un PDF fabriqué avec un titre et un tableau : le titre et le tableau sont reconnus (ce que le profil sans modèle ne fait pas)", () => {
+    writeFileSync(
+      join(dir, "mkstruct.py"),
+      [
+        "import pymupdf",
+        "d = pymupdf.open()",
+        "p = d.new_page()",
+        'p.insert_text((72, 90), "Rapport trimestriel", fontsize=26, fontname="hebo")',
+        'p.insert_text((72, 130), "Ce document presente les resultats du trimestre pour chaque region.", fontsize=11)',
+        "rows = [['Region', 'Ventes', 'Marge'], ['Nord', '120', '12'], ['Sud', '95', '9'], ['Est', '143', '15']]",
+        "x0, y0, w, h = 72, 170, 130, 28",
+        "for r, row in enumerate(rows):",
+        "    for c, cell in enumerate(row):",
+        "        rect = pymupdf.Rect(x0 + c * w, y0 + r * h, x0 + (c + 1) * w, y0 + (r + 1) * h)",
+        "        p.draw_rect(rect, width=1)",
+        "        p.insert_text((rect.x0 + 6, rect.y0 + 19), cell, fontsize=11)",
+        'd.save("docs/structure.pdf")',
+      ].join("\n"),
+    );
+    mkdirSync(join(dir, "docs"), { recursive: true });
+    execFileSync(PY, [join(dir, "mkstruct.py")], { cwd: dir, timeout: 60_000 });
+    const md = cleanOutput(specFull, execSync(String(planParse(specFull, { path: "docs/structure.pdf", sizeBytes: 20000 }, true).args.command), { cwd: dir, env: envFull, encoding: "utf8", timeout: 900_000 })).markdown;
+    expect(md).toMatch(/^#+ .*Rapport trimestriel/m);
+    expect(md).toMatch(/\|\s*Region\s*\|\s*Ventes\s*\|\s*Marge\s*\|/);
+    expect(md).toMatch(/\|\s*Nord\s*\|\s*120\s*\|\s*12\s*\|/);
+  }, 1_000_000);
+});

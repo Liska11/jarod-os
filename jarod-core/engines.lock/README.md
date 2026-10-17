@@ -8,6 +8,7 @@ fichiers de ce dossier. Les tests `*.engine.test.ts` les utilisent quand ils son
 |---|---|---|
 | Python 3.12 : markitdown, pymupdf, Presidio, spaCy `en_core_web_sm`, pywinauto, sherpa-onnx, onnxruntime | `engines/py` | `uv venv engines/py --python 3.12` puis `uv pip install -r jarod-core/engines.lock/py312-requirements.txt` (le modèle spaCy est une URL de la liste) |
 | Docling 2.140 (profil sans PyTorch) | `engines/docling` | `uv venv engines/docling --python 3.12` puis `uv pip install -r jarod-core/engines.lock/docling-requirements.txt` |
+| Docling 2.140 COMPLET (PyTorch, modèles de mise en page et de tableaux, téléchargés au premier usage) | `engines/docling-full` | `uv venv engines/docling-full --python 3.12` puis `uv pip install -r jarod-core/engines.lock/docling-full-requirements.txt` ; utiliser `JAROD_DOCLING_PROFILE=full` |
 | promptfoo 0.124.1 | `engines/promptfoo` | `npm ci` dans ce dossier, avec `node/promptfoo/package*.json` |
 | @huggingface/transformers 4.3.1 | `engines/transformers` | idem avec `node/transformers/` |
 | @microsoft/mxc-sdk 1.0.1 | `engines/mxc` | idem avec `node/mxc/` (Node 24+) |
