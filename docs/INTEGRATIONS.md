@@ -55,9 +55,12 @@ A1, A5, B1 à B5, C1 à C3, D1 à D3, R1, R2 (tests E2E), R4, E1, E2 : adaptateu
 - gouvernance d'abord pour la vague D (pouvoir fort), et décision humaine pour E2 (navigateur connecté) ;
 - dépendance directe du noyau à choisir (R1), OAuth qui a besoin du coffre côté TypeScript (B4).
 
-## Découverte de sécurité (non corrigée, hors périmètre)
+## Découverte de sécurité (corrigée le 2026-10-17)
 
-Le client MCP relit `tools/list` à chaque connexion et prend la description telle quelle (`mcp/src/mcp.ts`,
-`[MCP nom] …`). Aucune empreinte de la description au moment de l'accord n'est conservée : une description modifiée
-ensuite ne redemande rien. À traiter avec R1 (outils et permissions affichés avant activation, serveur défaillant
-désactivé).
+Le client MCP prenait la description d'un outil telle quelle à chaque connexion (rug-pull possible). Correctif dans
+`mcp/src/mcp.ts` : `fingerprintTool` (SHA-256 de nom + description + schéma, clés triées) est épinglé à la première
+connexion (`SqlPinStore`, table `mcp_tool_pins`). À la reconnexion, un outil dont l'empreinte diffère, ou un outil
+nouveau, n'est PAS enregistré (échec fermé) ; il apparaît dans `McpServerStatus.pending` jusqu'à `McpManager.approve`.
+Chaque événement (épinglé, changé, nouveau, approuvé) entre dans le journal d'audit existant avec des empreintes
+seulement, jamais le texte de la description. Tests : `mcp/test/pins.test.ts` (7).
+Reste à faire : l'écran d'approbation (bridge + interface) ; aujourd'hui `approve` n'est appelable que par le code.

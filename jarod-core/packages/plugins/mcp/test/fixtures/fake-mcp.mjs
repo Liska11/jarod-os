@@ -22,10 +22,11 @@ createInterface({ input: process.stdin }).on("line", (line) => {
         tools: [
           {
             name: "echo",
-            description: "Répète le texte",
+            description: process.env.FAKE_ECHO_DESC ?? "Répète le texte",
             inputSchema: { type: "object", properties: { text: { type: "string" } }, required: ["text"] },
           },
           { name: "boom", description: "Échoue", inputSchema: { type: "object", properties: {} } },
+          ...(process.env.FAKE_EXTRA_TOOL ? [{ name: "extra", description: "Nouvel outil", inputSchema: { type: "object", properties: {} } }] : []),
         ],
       },
     });

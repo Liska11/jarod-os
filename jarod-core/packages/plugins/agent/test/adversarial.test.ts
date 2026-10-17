@@ -82,10 +82,10 @@ describe("A3 — scénarios adversariaux contre la porte unique", () => {
     expect(log.every((e) => e.ok !== true)).toBe(true);
   });
 
-  it.skip("3. un serveur MCP modifie la description d'un outil : DÉCOUVERTE — rien n'épingle la description à la connexion", () => {
-    // Constat (mcp/src/mcp.ts) : `listTools()` est relu à chaque connexion et la description (`[MCP nom] …`) est prise
-    // telle quelle ; aucune empreinte de la description approuvée n'est conservée, donc une description changée après
-    // l'accord ne redemande rien. Listé au rapport, non corrigé ici (hors périmètre de la campagne).
+  it("3. un serveur MCP modifie la description d'un outil : l'outil est retiré jusqu'à un nouvel accord (épinglage SHA-256, couvert par plugins/mcp/test/pins.test.ts)", () => {
+    // Ancienne DÉCOUVERTE, maintenant corrigée : `McpManager` épingle nom + description + schéma à la première connexion,
+    // n'enregistre pas un outil divergent ou nouveau, journalise la divergence (empreintes seulement) et exige `approve`.
+    expect(existsSync(join(__dirname, "../../mcp/test/pins.test.ts"))).toBe(true);
   });
 
   it("4. un résultat d'outil tente de contourner la porte : un nom d'outil inventé ou désactivé est refusé, et sans porte c'est « deny »", async () => {

@@ -1,5 +1,6 @@
 // Portage de packages/core/src/services/mcp.ts (rév. 2e180305).
 import { type ChildProcess, spawn } from "node:child_process";
+import { createHash } from "node:crypto";
 import { isAbsolute } from "node:path";
 import type { ToolDef, ToolRegistry } from "@jarod/plugin-tools";
 import { toolName } from "@jarod/plugin-tools";
@@ -283,6 +284,15 @@ export class McpHttpClient implements McpConnection {
   }
 }
 
+/** Un outil retenu parce que sa description (ou son schéma) ne correspond plus à ce que l'utilisateur a accepté. */
+export interface McpPendingTool {
+  tool: string;
+  reason: "changed" | "new";
+  /** Empreinte acceptée (absente pour un outil nouveau). */
+  pinned?: string;
+  current: string;
+}
+
 export interface McpServerStatus {
   id: string;
   name: string;
@@ -290,15 +300,114 @@ export interface McpServerStatus {
   state: "stopped" | "starting" | "running" | "error";
   error?: string;
   tools: string[];
+  /** Outils non enregistrés en attendant un nouvel accord (`McpManager.approve`). */
+  pending: McpPendingTool[];
+}
+
+/** Événement du journal : jamais le texte d'une description, seulement des noms et des empreintes. */
+export interface McpAuditEvent {
+  kind: "pinned" | "changed" | "new" | "approved";
+  server: string;
+  tool?: string;
+  pinned?: string;
+  current?: string;
+  count?: number;
+}
+
+/** Empreintes acceptées par serveur : `{ outil: sha256 }`. */
+export interface McpPinStore {
+  get(serverId: string): Record<string, string> | undefined;
+  set(serverId: string, pins: Record<string, string>): void;
+}
+
+export class MemoryPinStore implements McpPinStore {
+  private readonly data = new Map<string, Record<string, string>>();
+  get(serverId: string) {
+    const v = this.data.get(serverId);
+    return v ? { ...v } : undefined;
+  }
+  set(serverId: string, pins: Record<string, string>) {
+    this.data.set(serverId, { ...pins });
+  }
+}
+
+type PinDb = {
+  all<T>(sql: string, ...p: (string | number | null)[]): T[];
+  run(sql: string, ...p: (string | number | null)[]): unknown;
+  exec(sql: string): void;
+};
+
+/** Persistance des épingles dans le profil (table dédiée, aucune valeur secrète). */
+export class SqlPinStore implements McpPinStore {
+  constructor(private readonly db: PinDb) {
+    db.exec("CREATE TABLE IF NOT EXISTS mcp_tool_pins (server_id TEXT NOT NULL, tool TEXT NOT NULL, fingerprint TEXT NOT NULL, PRIMARY KEY (server_id, tool))");
+  }
+  get(serverId: string) {
+    const rows = this.db.all<{ tool: string; fingerprint: string }>("SELECT tool, fingerprint FROM mcp_tool_pins WHERE server_id = ?", serverId);
+    return rows.length ? Object.fromEntries(rows.map((r) => [r.tool, r.fingerprint])) : undefined;
+  }
+  set(serverId: string, pins: Record<string, string>) {
+    this.db.run("DELETE FROM mcp_tool_pins WHERE server_id = ?", serverId);
+    for (const [tool, fp] of Object.entries(pins)) this.db.run("INSERT INTO mcp_tool_pins (server_id, tool, fingerprint) VALUES (?, ?, ?)", serverId, tool, fp);
+  }
+}
+
+function canonical(v: unknown): unknown {
+  if (Array.isArray(v)) return v.map(canonical);
+  if (v && typeof v === "object")
+    return Object.fromEntries(
+      Object.entries(v as Record<string, unknown>)
+        .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+        .map(([k, x]) => [k, canonical(x)]),
+    );
+  return v;
+}
+
+/** SHA-256 de ce que le modèle lit de l'outil : nom, description, schéma (clés triées). */
+export function fingerprintTool(t: McpTool): string {
+  return createHash("sha256")
+    .update(JSON.stringify(canonical({ name: t.name, description: t.description ?? "", inputSchema: t.inputSchema ?? {} })))
+    .digest("hex");
+}
+
+export interface McpManagerOptions {
+  pins?: McpPinStore;
+  audit?: (event: McpAuditEvent) => void;
 }
 
 /** Starts configured MCP servers and exposes their tools to the agent as `mcp_<server>_<tool>`. */
 export class McpManager extends Emitter<{ changed: McpServerStatus[] }> {
   private clients = new Map<string, McpConnection>();
   private status = new Map<string, McpServerStatus>();
+  private readonly pins: McpPinStore;
+  private readonly audit: (event: McpAuditEvent) => void;
+  /** Outils retenus : leur définition complète attend `approve`. */
+  private held = new Map<string, Map<string, { def: ToolDef; fingerprint: string }>>();
 
-  constructor(private readonly tools: ToolRegistry) {
+  constructor(
+    private readonly tools: ToolRegistry,
+    options: McpManagerOptions = {},
+  ) {
     super();
+    this.pins = options.pins ?? new MemoryPinStore();
+    this.audit = options.audit ?? (() => {});
+  }
+
+  /**
+   * Accepte la description actuelle d'un outil retenu : la nouvelle empreinte est épinglée, l'outil est enregistré,
+   * l'accord est journalisé. Sans appel, l'outil reste absent (échec fermé).
+   */
+  approve(serverId: string, tool: string): void {
+    const entry = this.held.get(serverId)?.get(tool);
+    const st = this.status.get(serverId);
+    if (!entry || !st) throw new Error(`MCP ${serverId} : aucune divergence en attente pour l'outil ${tool}`);
+    this.pins.set(serverId, { ...(this.pins.get(serverId) ?? {}), [tool]: entry.fingerprint });
+    this.tools.register(entry.def);
+    st.tools.push(entry.def.name);
+    st.pending = st.pending.filter((p) => p.tool !== tool);
+    this.held.get(serverId)!.delete(tool);
+    this.audit({ kind: "approved", server: serverId, tool, current: entry.fingerprint });
+    this.emit("changed", this.list());
   }
 
   list(): McpServerStatus[] {
@@ -310,7 +419,7 @@ export class McpManager extends Emitter<{ changed: McpServerStatus[] }> {
     for (const id of [...this.clients.keys()]) if (!wanted.has(id)) this.stopOne(id);
     for (const id of [...this.status.keys()]) if (!configs.some((c) => c.id === id)) this.status.delete(id);
     for (const c of configs) {
-      if (!c.enabled) this.status.set(c.id, { id: c.id, name: c.name, enabled: false, state: "stopped", tools: [] });
+      if (!c.enabled) this.status.set(c.id, { id: c.id, name: c.name, enabled: false, state: "stopped", tools: [], pending: [] });
     }
     this.emit("changed", this.list());
     await Promise.all(configs.filter((c) => c.enabled && !this.clients.has(c.id)).map((c) => this.startOne(c)));
@@ -336,7 +445,8 @@ export class McpManager extends Emitter<{ changed: McpServerStatus[] }> {
   }
 
   private async startOne(cfg: McpServerConfig): Promise<void> {
-    const st: McpServerStatus = { id: cfg.id, name: cfg.name, enabled: true, state: "starting", tools: [] };
+    const st: McpServerStatus = { id: cfg.id, name: cfg.name, enabled: true, state: "starting", tools: [], pending: [] };
+    this.held.delete(cfg.id);
     this.status.set(cfg.id, st);
     this.emit("changed", this.list());
     const client: McpConnection = cfg.url ? new McpHttpClient(cfg.url, cfg.headers ?? {}) : new McpClient(cfg);
@@ -345,6 +455,12 @@ export class McpManager extends Emitter<{ changed: McpServerStatus[] }> {
       await client.start();
       const tools = await client.listTools();
       const prefix = toolName(`mcp_${cfg.name}`).slice(0, 24);
+      const pinned = this.pins.get(cfg.id);
+      if (!pinned) {
+        // Première connexion : activer le serveur est l'accord de l'utilisateur ; l'état vu est épinglé.
+        this.pins.set(cfg.id, Object.fromEntries(tools.map((t) => [t.name, fingerprintTool(t)])));
+        this.audit({ kind: "pinned", server: cfg.id, count: tools.length });
+      }
       for (const t of tools) {
         const def: ToolDef = {
           name: toolName(`${prefix}_${t.name}`),
@@ -360,6 +476,15 @@ export class McpManager extends Emitter<{ changed: McpServerStatus[] }> {
           },
         };
         (def as ToolDef & { mcpServer: string }).mcpServer = cfg.id;
+        const current = fingerprintTool(t);
+        const accepted = pinned?.[t.name];
+        if (pinned && accepted !== current) {
+          const reason = accepted === undefined ? "new" : "changed";
+          this.held.set(cfg.id, (this.held.get(cfg.id) ?? new Map()).set(t.name, { def, fingerprint: current }));
+          st.pending.push({ tool: t.name, reason, ...(accepted ? { pinned: accepted } : {}), current });
+          this.audit({ kind: reason, server: cfg.id, tool: t.name, ...(accepted ? { pinned: accepted } : {}), current });
+          continue;
+        }
         this.tools.register(def);
         st.tools.push(def.name);
       }
@@ -378,7 +503,8 @@ export class McpManager extends Emitter<{ changed: McpServerStatus[] }> {
     this.clients.delete(id);
     this.tools.unregisterWhere((t) => (t as ToolDef & { mcpServer?: string }).mcpServer === id);
     const st = this.status.get(id);
-    if (st) Object.assign(st, { state: "stopped", tools: [] });
+    if (st) Object.assign(st, { state: "stopped", tools: [], pending: [] });
+    this.held.delete(id);
   }
 
   stopAll(): void {
