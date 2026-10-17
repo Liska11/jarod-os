@@ -78,6 +78,8 @@ export interface TokenVault {
 export interface OAuthDeps {
   fetch: typeof fetch;
   vault: TokenVault;
+  /** Délai de l'échange de jetons (défaut 30 s) : un point d'accès muet n'attend pas indéfiniment. */
+  timeoutMs?: number;
 }
 
 /** Échange le code contre des jetons, les dépose dans le coffre, rend les NOMS des entrées. */
@@ -95,6 +97,7 @@ export async function completeAuthorization(pending: PendingAuth, callbackUrl: s
     method: "POST",
     headers: { "content-type": "application/x-www-form-urlencoded", accept: "application/json" },
     body: new URLSearchParams({ grant_type: "authorization_code", code, redirect_uri: pending.request.redirectUri, client_id: pending.request.clientId, code_verifier: pending.verifier }).toString(),
+    signal: AbortSignal.timeout(deps.timeoutMs ?? 30_000),
   });
   if (!res.ok) throw new AdapterRefused("B4", `échange refusé (HTTP ${res.status})`);
   const body = (await res.json()) as { access_token?: unknown; refresh_token?: unknown; expires_in?: unknown; token_type?: unknown };

@@ -71,3 +71,9 @@ Un sujet par commit local. Les arbitrages sont ici, un par section, pour revue �
 - **Tests** : `gateway-timeouts.test.ts` (serveur muet, rouge avant : 3 tests suspendus 5 s), puis `vitest packages/plugins/gateways` 84/84 ; `tsc` propre.
 - **Risque** : un envoi de très gros fichier sur lien lent pourrait dépasser 60 s (erreur dite, pas de perte silencieuse).
 - **Annuler** : `git revert` du commit « fix(gateways) ».
+
+## 9. Échange de jetons OAuth borné (30 s)
+- **Décision** : `completeAuthorization` passe `AbortSignal.timeout(deps.timeoutMs ?? 30 000)` à l'échange. Une échéance fait échouer l'échange ; rien n'est déposé dans le coffre ; l'autorisation en attente reste marquée « utilisée » (fermeture par défaut : il faut recommencer).
+- **Pourquoi** : le module n'est branché nulle part aujourd'hui (OPP-05 non fait) ; la borne est posée maintenant pour que le futur câblage ne l'oublie pas. Aucune clé réelle ni compte tiers touchés.
+- **Tests** : `oauth-timeout.test.ts` (rouge avant : suspendu) ; `wave-b.test.ts` inchangé 15/15 ; `tsc` propre.
+- **Annuler** : `git revert` du commit « fix(oauth) ».
