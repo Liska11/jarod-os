@@ -28,3 +28,10 @@ Un sujet par commit local. Les arbitrages sont ici, un par section, pour revue �
 - **Risque** : une seule génération conservée (au plus ~10 Mo) ; écriture synchrone sur le fil principal (lignes courtes, redactées et bornées à 4 000 caractères).
 - **Tests** : `rotating-log.test.ts` 3/3 (rouge avant) ; `vitest run electron` 705 passés, 3 ignorés ; `tsc --noEmit` propre. Une coquille de ma part (appel à l'ancienne fonction) a été attrapée par ces tests et corrigée avant commit.
 - **Reste** : métriques/traces locales (non traité, chantier large).
+
+## 3. Journal de contrôle côté shell (`control-audit.jsonl`) borné
+- **Décision** : `controlAuditSink(file, limit = 8 Mo)` renomme le fichier en `<nom>.1` (génération précédente remplacée) avant d'ajouter une ligne quand il atteint la limite. Modes 0600/0700 conservés ; erreurs toujours avalées (un journal n'est pas un interrupteur).
+- **Pourquoi** : même défaut que côté Rust (fichier sans borne) ; mêmes règles des deux côtés.
+- **Risque** : une génération seulement ; `existsSync`+`statSync` à chaque ligne (coût négligeable pour des tentatives de contrôle).
+- **Tests** : `control-audit-rotation.test.ts` (rouge puis vert), `vitest run electron/shell` 345 passés, `tsc` propre.
+- **Annuler** : `git revert` du commit « bound the shell control journal ».

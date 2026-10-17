@@ -451,10 +451,17 @@ export function controlTokens(): ControlTokens {
  * The journal the shell writes: one JSON line per control attempt. It is a record, not a gate — a
  * disk that cannot be written must never change what the shell allows — so failures are swallowed.
  */
-export function controlAuditSink(filePath: string): (entry: ControlAuditEntry) => void {
+export function controlAuditSink(filePath: string, limit = 8 * 1024 * 1024): (entry: ControlAuditEntry) => void {
   return entry => {
     try {
       fs.mkdirSync(path.dirname(filePath), { recursive: true, mode: 0o700 })
+
+      // Bounded like the host's own journal: past the limit the file becomes <name>.1 (one older generation).
+      if (fs.existsSync(filePath) && fs.statSync(filePath).size >= limit) {
+        fs.rmSync(`${filePath}.1`, { force: true })
+        fs.renameSync(filePath, `${filePath}.1`)
+      }
+
       fs.appendFileSync(filePath, `${JSON.stringify(entry)}\n`, { mode: 0o600 })
     } catch {
       // An unwritable journal is a gap in the record, never a reason to permit or deny anything.
