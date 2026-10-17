@@ -28,6 +28,7 @@ export async function launchShell(extraEnv: Record<string, string> = {}): Promis
     HERALD_OS_CONFIG_DIR: path.join(root, 'config'),
     JAROD_OS_DATA: path.join(root, 'data'),
     JAROD_WORKSPACE: path.join(root, 'workspace'),
+    JAROD_OS_ISOLATED: '1',
     ...extraEnv
   })
 

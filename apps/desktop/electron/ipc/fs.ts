@@ -320,6 +320,14 @@ async function watchTree(owner: WebContents, target: string): Promise<string> {
   return watchId
 }
 
+/**
+ * A run started with JAROD_OS_ISOLATED=1 (the e2e suite, any throwaway profile) must not read the real one: the recent
+ * list and the file finder walk the user's own Recent folder and home, outside every sandbox and read root.
+ */
+export function isIsolatedProfile(env: NodeJS.ProcessEnv = process.env): boolean {
+  return env.JAROD_OS_ISOLATED === '1'
+}
+
 export function registerFsIpc(getWindow: () => BrowserWindow | null): void {
   ipcMain.handle(IPC.fsListTree, (_event, target: string, limit: number) => listTree(target, Math.max(1, Math.min(10_000, Number(limit) || 3000))))
   ipcMain.handle(IPC.fsWatchTree, (event, target: string) => watchTree(event.sender, target))
@@ -329,8 +337,8 @@ export function registerFsIpc(getWindow: () => BrowserWindow | null): void {
     }
   })
   ipcMain.handle(IPC.fsHome, () => os.homedir())
-  ipcMain.handle(IPC.fsRecent, (_event, limit: number) => hostPlatform().recentFiles(Math.max(1, Math.min(200, Number(limit) || 30))))
-  ipcMain.handle(IPC.fsFind, (_event, query: string, limit: number) => hostPlatform().findFiles(String(query ?? '').slice(0, 200), Math.max(1, Math.min(50, Number(limit) || 10))))
+  ipcMain.handle(IPC.fsRecent, (_event, limit: number) => (isIsolatedProfile() ? [] : hostPlatform().recentFiles(Math.max(1, Math.min(200, Number(limit) || 30)))))
+  ipcMain.handle(IPC.fsFind, (_event, query: string, limit: number) => (isIsolatedProfile() ? [] : hostPlatform().findFiles(String(query ?? '').slice(0, 200), Math.max(1, Math.min(50, Number(limit) || 10)))))
   ipcMain.handle(IPC.fsThumbnail, async (_event, target: string, size: number) => {
     const png = await hostPlatform().thumbnail(assertReadable(target), Math.max(64, Math.min(1024, Number(size) || 512)))
 
