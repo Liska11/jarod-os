@@ -41,7 +41,28 @@ No new UI code was written in this pass: `jarod-core/PARITY.md` already tracks 2
 window (chat, settings, permissions/approval rules, applications, kanban, skills, etc.), 1 partial (voice: wake word,
 continuous capture, per-sentence streaming), 3 deliberately out (core updates, embeddings/NPU, Nous device-code login).
 Open items:
-- No automated end-to-end UI test exists (`apps/desktop` has vitest unit tests only, no Playwright config); R2 is still planned.
-- No onboarding screen was verified in this pass.
+- Superseded: `apps/desktop/e2e` now holds 7 Playwright tests (onboarding, settings, permissions, chat); see the validation below.
 - No UI yet for the new plugin platform, quarantine, sandbox or Hyper-V plugins (phases 3.3 / 4).
 - `linux/tests/test_cli.py` cannot be collected on Windows (`os.getuid`); run it on Linux.
+
+### Phase 7 validation (2026-10-17)
+
+- **Mutation testing (manual, e2e rerun after each build, then reverted with `git checkout`)**:
+  | Mutation | Result |
+  |---|---|
+  | onboarding button label `setup.later` « Plus tard » -> « Ignorer » (`locales/fr.ts`) | red: the onboarding test fails (6 later tests not run) |
+  | settings filter `matches()` always true (`sections/shared.tsx`) | red: the filter test fails on the « Étapes par tour » count |
+  | permission rule not appended on submit (`sections/JarodAgentSection.tsx`) | red: the deny-rule test fails on « Aucune règle. » |
+  Limits: three mutations on three flows, not a systematic mutation run; the chat test and the wizard-does-not-return
+  test were not mutated.
+- **« Aucun réglage ne correspond »**: the message was in the DOM but never shown. The page shows it only when no
+  `.settings-item` survives the filter, and `VoiceCommandsSection` always rendered one (its legend card, plus its own
+  English « No command matches » line). Fixed: the legend renders only when a command matches and the local line is
+  gone, so the global state appears. The e2e now asserts the message (red before the fix, green after).
+  Still open (UX): the Voice section text is English-only, not in the locale catalogs.
+- **« Travail récent »**: not sandboxed. `recentFiles` (`electron/platform/windows.ts`) runs PowerShell over the real
+  `%APPDATA%\Microsoft\Windows\Recent` shortcuts and `fs.stat`s each target, so it reads the real profile, metadata
+  only, from the UI process (not through `executeGuardedTool` or the read roots). It ignores `HERALD_OS_CONFIG_DIR`,
+  so the e2e run shows real file names of this machine. To do: honour an isolation variable in tests, and decide if
+  the list must follow the agent read roots.
+- `prompt/` (master prompts) is now git-ignored; it is operator input, not product.

@@ -53,3 +53,6 @@ linux/vm/build/
 # The Pinokio engine as Jarod-OS ships it: built by apps/desktop/scripts/bundle-pinokio.mjs.
 /pinokio-runtime/host.cjs
 /pinokio-runtime/.bundle-stamp.json
+
+# Operator prompts driving the agent (kept local).
+prompt/

@@ -113,17 +113,20 @@ export function VoiceCommandsSection() {
         subtitle={`${commands.length} things Jarod-OS can do. ${voiceKey ? `Press ${voiceKey} (or say "hey hermes")` : 'Say "hey hermes"'} and say one of these; anything else goes to Hermes, who can use every command too.`}
       />
 
-      <GlassCard className="settings-item flex flex-wrap items-center gap-x-5 gap-y-2 px-4 py-3 text-[12px] text-fg-2">
-        <span className="flex items-center gap-1.5">
-          <IconMicrophone size={14} className="text-accent-strong" /> Instant: runs on this {deviceNoun()}, no tokens
-        </span>
-        <span className="flex items-center gap-1.5">
-          <IconShieldCheck size={14} className="text-warn" /> Asks first: Hermes shows an approval card
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className="rounded bg-accent-soft px-1 text-accent-strong">slot</span> say your own words there
-        </span>
-      </GlassCard>
+      {/* A settings-item always present would keep the page-level « no match » state hidden while searching. */}
+      {(spoken.length > 0 || agentOnly.length > 0) && (
+        <GlassCard className="settings-item flex flex-wrap items-center gap-x-5 gap-y-2 px-4 py-3 text-[12px] text-fg-2">
+          <span className="flex items-center gap-1.5">
+            <IconMicrophone size={14} className="text-accent-strong" /> Instant: runs on this {deviceNoun()}, no tokens
+          </span>
+          <span className="flex items-center gap-1.5">
+            <IconShieldCheck size={14} className="text-warn" /> Asks first: Hermes shows an approval card
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="rounded bg-accent-soft px-1 text-accent-strong">slot</span> say your own words there
+          </span>
+        </GlassCard>
+      )}
 
       {GROUPS.map(group => {
         const items = spoken.filter(command => groupOf(command) === group.id)
@@ -163,7 +166,6 @@ export function VoiceCommandsSection() {
         </section>
       )}
 
-      {spoken.length === 0 && agentOnly.length === 0 && <div className="settings-item px-1 text-[12.5px] text-fg-3">No command matches “{query}”.</div>}
     </>
   )
 }

@@ -76,6 +76,7 @@ test.describe('settings', () => {
 
     await search.fill('zzqxnomatch')
     await expect(page.getByText('Étapes par tour')).toHaveCount(0)
+    await expect(page.getByText('Aucun réglage ne correspond à « zzqxnomatch »')).toBeVisible()
     await search.fill('Étapes par tour')
     await expect(page.getByText('Étapes par tour').first()).toBeVisible()
     await search.fill('')
