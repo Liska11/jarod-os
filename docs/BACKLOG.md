@@ -142,6 +142,15 @@ Open items:
   propriété). Navigateur dédié seulement. Preuves exactes, réserves comprises : `docs/E2-VALIDATION.md` (e2e de l'application construite : 9
   essais ; révocation en cours d'opération ; confinement et confidentialité du point d'accès CDP ; nettoyage ; preuve réseau WebRTC/UDP).
 
+  **Voie Firefox par extension (2026-10-17)**, pour lire dans un navigateur déjà ouvert sans l'ouvrir au débogage : plan, manifeste et canal
+  dans `docs/E2-FIREFOX-READER-PLAN.md` ; extension `jarod-core/sidecars/firefox-reader/`, courtier `integrations/src/impl/firefox-reader.ts`
+  (désactivé, non branché). Essayée sur Firefox ESR 153.5.0 de test (`engines/firefox-test`, geckodriver 0.37.1, empreintes dans
+  `engines.lock/README.md`) avec onglets leurres : geste, accord, refus, domaine interdit, navigation/rechargement/fermeture pendant l'attente,
+  lecture de l'élément exact, formulaires refusés, document principal seulement, autres onglets intacts, déconnexion propre. Mesuré : Firefox
+  met `ws://` à niveau en `wss://` même vers le bouclage, d'où un canal HTTP en interrogation longue. Cette voie ne filtre pas le trafic de
+  Firefox. NON fait : installation dans le Firefox de l'utilisateur (extension signée ou chargement temporaire, à décider avec lui), cible
+  exacte à confirmer, branchement à l'application et affichage dans l'interface, messagerie native (alternative plus forte, non installée).
+
   NON fait : essai sur une vraie session connectée de l'utilisateur (volontairement jamais ouvert, nécessite une autorisation distincte) ;
   livraison du moteur et du Chromium dans l'installeur ; preuve réseau hors de la machine et du trafic du système (le confinement n'est PAS
   déclaré exhaustif, voir les réserves de `docs/E2-VALIDATION.md`).
