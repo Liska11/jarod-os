@@ -15,7 +15,7 @@ use crate::types::{HostCode, JournalClient, Surface, Tier};
 use serde::Serialize;
 use std::fs::{self, File, OpenOptions};
 use std::io::Write;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
@@ -85,28 +85,71 @@ impl AuditSink for MemoryJournal {
     }
 }
 
-/// An append-only JSON-lines file. Opening it is part of starting the host: a journal that cannot be
-/// opened is a host that does not serve. A line that fails to write later is a gap in the record,
-/// counted, and never a reason to permit or deny anything.
+/// Default size at which the live journal is rotated to `<name>.1` (one older generation is kept).
+pub const DEFAULT_JOURNAL_LIMIT: u64 = 8 * 1024 * 1024;
+
+/// An append-only JSON-lines file, bounded: past its limit it moves to `<name>.1` (replacing the previous
+/// generation) and a new file starts. Opening it is part of starting the host: a journal that cannot be
+/// opened is a host that does not serve. A line that fails to write later (or a rotation that fails) is a
+/// gap in the record, counted, and never a reason to permit or deny anything.
 pub struct FileJournal {
+    path: PathBuf,
+    limit: u64,
     file: Mutex<File>,
     failures: AtomicU64,
 }
 
 impl FileJournal {
     pub fn open(path: &Path) -> std::io::Result<FileJournal> {
+        FileJournal::open_with_limit(path, DEFAULT_JOURNAL_LIMIT)
+    }
+
+    pub fn open_with_limit(path: &Path, limit: u64) -> std::io::Result<FileJournal> {
         if let Some(parent) = path.parent() {
             fs::create_dir_all(parent)?;
         }
 
         let file = OpenOptions::new().create(true).append(true).open(path)?;
 
-        Ok(FileJournal { file: Mutex::new(file), failures: AtomicU64::new(0) })
+        Ok(FileJournal { path: path.to_path_buf(), limit, file: Mutex::new(file), failures: AtomicU64::new(0) })
+    }
+
+    pub fn limit(&self) -> u64 {
+        self.limit
     }
 
     /// How many lines could not be written since the journal was opened.
     pub fn failures(&self) -> u64 {
         self.failures.load(Ordering::Relaxed)
+    }
+
+    fn rotated_path(&self) -> PathBuf {
+        let mut name = self.path.as_os_str().to_owned();
+
+        name.push(".1");
+
+        PathBuf::from(name)
+    }
+
+    /// Called with the lock held, before a line is appended: rotate when the file is at or over the limit.
+    fn rotate_if_needed(&self, file: &mut File) -> std::io::Result<()> {
+        if file.metadata()?.len() < self.limit {
+            return Ok(());
+        }
+
+        let old = self.rotated_path();
+
+        // Windows cannot rename over an open file nor onto an existing one: drop the older generation first.
+        let _ = fs::remove_file(&old);
+        // Close our handle on the live file by swapping in a placeholder opened on the destination later.
+        let placeholder = OpenOptions::new().create(true).append(true).open(&self.path)?;
+        let live = std::mem::replace(file, placeholder);
+
+        drop(live);
+        fs::rename(&self.path, &old)?;
+        *file = OpenOptions::new().create(true).append(true).open(&self.path)?;
+
+        Ok(())
     }
 }
 
@@ -114,6 +157,10 @@ impl AuditSink for FileJournal {
     fn write(&self, entry: &AuditEntry) {
         let written = serde_json::to_string(entry).map_err(std::io::Error::other).and_then(|line| {
             let mut file = self.file.lock().map_err(|_| std::io::Error::other("journal lock poisoned"))?;
+
+            if self.rotate_if_needed(&mut file).is_err() {
+                self.failures.fetch_add(1, Ordering::Relaxed);
+            }
 
             file.write_all(format!("{line}\n").as_bytes())?;
             file.flush()
