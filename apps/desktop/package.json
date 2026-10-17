@@ -22,6 +22,7 @@
     "bundle:pinokio": "node scripts/bundle-pinokio.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.electron.json --noEmit",
     "test": "vitest run",
+    "test:e2e": "playwright test",
     "dist:mac": "npm run bundle:core && npm run build && electron-builder --mac --arm64 -c.npmRebuild=false --publish never",
     "dist:linux": "npm run bundle:core && npm run build && electron-builder --linux --publish never",
     "dist:win": "npm run bundle:core && npm run bundle:pinokio && npm run build && electron-builder --win --x64 -c.npmRebuild=false --publish never",
@@ -33,6 +34,7 @@
   "devDependencies": {
     "@herald-os/client": "*",
     "@nanostores/react": "1.1.0",
+    "@playwright/test": "^1.60.0",
     "@tabler/icons-react": "3.46.0",
     "@tailwindcss/vite": "4.3.3",
     "@testing-library/dom": "10.4.2",
