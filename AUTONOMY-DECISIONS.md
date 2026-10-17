@@ -56,3 +56,10 @@ Un sujet par commit local. Les arbitrages sont ici, un par section, pour revue �
 - **Risque** : on ne distingue « non embarqué » que par le code d'erreur de Node ; une autre cause du même code recevrait le même message (cause conservée dans `cause`).
 - **Tests** : `openvino-missing.test.ts` 3/3 (rouge avant) ; `vitest packages/plugins/embeddings` 101 passés, 3 ignorés ; `tsc` propre. Pas relancé dans l'application installée (non vérifiable ici).
 - **Annuler** : `git revert` du commit « fix(embeddings) ».
+
+## 7. `plugin-vision` : couverture (audit D-05) et délai d'une description
+- **Décision** : 7 tests ImageDescriber/supportsVision (cache, réponse vide non gardée, repli « Image non décrite », annulation utilisateur propagée, familles de modèles). Les tests de comportement existant sont verts d'emblée ; **un test était rouge et révélait un vrai défaut** : un fournisseur qui ne répond jamais suspendait le tour sans fin. Correctif : délai de 120 s par description (`AbortSignal.timeout`, combiné avec l'annulation de l'utilisateur), réglable par l'option `timeoutMs` du constructeur.
+- **Pourquoi 120 s** : une description de 2 000 jetons par un modèle local lent reste très en dessous ; au-delà, mieux vaut continuer sans l'image que bloquer.
+- **Risque** : un modèle local très lent au premier chargement pourrait dépasser 120 s → image non décrite (dite dans le texte, jamais en silence, non gardée en cache).
+- **Tests** : `vitest packages/plugins/vision` 7/7 ; `tsc` propre.
+- **Annuler** : `git revert` du commit « fix(vision) ».

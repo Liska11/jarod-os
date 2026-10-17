@@ -9,6 +9,6 @@
     { "id": "B2-settings-silent-drop", "title": "Setting keys absent from DEFAULT_SETTINGS are dropped silently (audit D-09)", "priority": "P1", "status": "done" },
     { "id": "B3-sandbox-cmd-builtins", "title": "cmd.exe dir/del/attrib fail in the sandbox: dedicated sandbox root", "priority": "P2", "status": "too-large" },
     { "id": "B4-local-metrics", "title": "Local metrics/traces (OPP-14)", "priority": "P2", "status": "too-large" },
-    { "id": "B5-vision-workflows-coverage", "title": "plugin-vision (1 test) and plugin-workflows (29) under-tested (D-05, D-06)", "priority": "P2", "status": "todo" }
+    { "id": "B5-vision-workflows-coverage", "title": "plugin-vision (1 test) and plugin-workflows (29) under-tested (D-05 done, D-06 open)", "priority": "P2", "status": "todo" }
   ]
 }

@@ -40,6 +40,8 @@ export function supportsVision(provider: string, model: string): boolean {
 const PROMPT =
   "Décris cette image pour quelqu'un qui ne peut pas la voir et doit pourtant travailler avec. Recopie mot pour mot tout le texte visible (messages d'erreur, code, libellés, chiffres). Décris la mise en page, les éléments d'interface et leur état, les schémas et graphiques (axes, valeurs), puis les personnes, objets et couleurs utiles. Sois précis et factuel, sans préambule ni interprétation inutile. Réponds en français.";
 
+const DESCRIBE_TIMEOUT_MS = 120_000;
+
 export class ImageDescriber {
   constructor(
     private readonly d: {
@@ -48,6 +50,8 @@ export class ImageDescriber {
       providers: ProviderRouter;
       attachments: AttachmentService;
     },
+    /** Délai d'UNE description : un fournisseur qui ne répond jamais ne doit pas suspendre le tour (l'image est alors dite « non décrite »). */
+    private readonly opts: { timeoutMs?: number } = {},
   ) {}
 
   config(): ImageDescriptionConfig {
@@ -73,6 +77,7 @@ export class ImageDescriber {
     const cfg = this.config();
     const data = image.data ?? this.d.attachments.load(image).data;
     if (!data) throw new Error("image illisible");
+    const timeout = AbortSignal.timeout(this.opts.timeoutMs ?? DESCRIBE_TIMEOUT_MS);
     const result = await this.d.providers.client(cfg.provider).chat(
       {
         model: cfg.model,
@@ -80,7 +85,7 @@ export class ImageDescriber {
         messages: [{ role: "user", content: PROMPT, attachments: [{ ...image, kind: "image", data }] }],
         tools: [],
         maxTokens: 2000,
-        ...(signal ? { signal } : {}),
+        signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
       },
       {},
     );
