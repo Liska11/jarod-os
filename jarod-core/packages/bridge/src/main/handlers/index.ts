@@ -24,6 +24,7 @@ import { createKanbanHandlers } from "./kanban.js";
 import { createLocalEngineHandlers } from "./local-engine.js";
 import { createLocalModelsHandlers } from "./local-models.js";
 import { createMcpHandlers } from "./mcp.js";
+import { createPlatformHandlers } from "./platform.js";
 import { createMemoryHandlers } from "./memory.js";
 import { createModelHandlers } from "./models.js";
 import { createPluginHandlers } from "./plugins.js";
@@ -82,6 +83,7 @@ export function createHandlers(ctx: HandlerContext): Record<string, OneaiHandler
     ...createUpdateHandlers(ctx),
     ...createJarodSettingsHandlers(ctx),
     ...createPluginHandlers(ctx),
+    ...createPlatformHandlers(ctx),
     ...createVaultHandlers(ctx),
     ...createSshHostHandlers(ctx),
     ...createPhoneHandlers(ctx),

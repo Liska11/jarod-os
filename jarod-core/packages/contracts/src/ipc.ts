@@ -105,6 +105,9 @@ export const JAROD_INVOKE_CHANNELS = [
   "automation-run",
   // Secrets illisibles (AV2-009) : les NOMS des clés que le trousseau ne sait plus lire — la fenêtre les liste et propose la ressaisie.
   "secrets-unreadable",
+  // Écran « Plateforme » : instantané en lecture seule + approbation d'un outil MCP dont la description a changé.
+  "platform-status",
+  "mcp-approve-tool",
 ] as const;
 /**
  * `voice-state` (listening/recording/transcribing), `voice-transcript` (commande transcrite), `voice-error` ; `tool-approval-request`

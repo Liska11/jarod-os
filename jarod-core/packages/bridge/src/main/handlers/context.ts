@@ -19,6 +19,25 @@ import type { RestoreKeys } from "../profile-restore.js";
 import type { KanbanPort } from "./kanban.js";
 import type { RegistryClient } from "../registry.js";
 
+/** Un serveur MCP tel que l'écran le montre. */
+export interface McpServerView {
+  id: string;
+  name: string;
+  enabled: boolean;
+  state: "stopped" | "starting" | "running" | "error";
+  error?: string;
+  tools: string[];
+  pending: Array<{ tool: string; reason: "changed" | "new"; pinned?: string; current: string }>;
+}
+
+/** Ce que l'écran « Plateforme » montre : rien d'exécutable, aucun chemin, aucun contenu. */
+export interface PlatformSnapshot {
+  plugins: Array<{ name: string; version: string; status: string; failures: number; reason?: string }>;
+  sandboxes: Array<{ id: string; profile: string; state: string; createdAt: number }>;
+  quarantine: Array<{ id: string; label: string; size: number; status: string; verdict: string | null }>;
+  hyperv: { cmdlets: boolean; admin: boolean; detail: string } | null;
+}
+
 /** Les services du kernel qu'atteignent les handlers (`app.agent`, `app.scheduler`…). */
 export interface DesktopKernel {
   agent: AgentRuntime;
@@ -35,7 +54,13 @@ export interface DesktopKernel {
   mcp?: {
     sync(configs: McpServerConfig[]): Promise<void>;
     probe(config: McpServerConfig): Promise<Array<{ name: string; description?: string }>>;
+    /** État des serveurs, dont les outils retenus parce que leur description a changé (épinglage SHA-256). */
+    list?(): McpServerView[];
+    /** Accepte la description actuelle d'un outil retenu. */
+    approve?(serverId: string, tool: string): void;
   };
+  /** Plateforme de plugins, quarantaine, bacs à sable, Hyper-V : un instantané en lecture seule. Absent = rien n'est offert. */
+  platform?: { snapshot(): Promise<PlatformSnapshot> };
   /** Garde `skill-guard` de plugin-skills (`ctx.skillsHub.scan`, port structurel) ; absent = installations de skills refusées. */
   skillsHub?: {
     scan(bundle: { files: { path: string; data: Buffer }[] }): { verdict: string; findings: unknown[] };

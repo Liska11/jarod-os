@@ -95,6 +95,34 @@ test.describe('settings', () => {
   })
 })
 
+test.describe('platform', () => {
+  test('the platform screen lists MCP approvals, quarantine, sandboxes and Hyper-V from the real engine', async () => {
+    await openSettings('Plateforme')
+
+    await expect(page.getByRole('heading', { name: 'Plateforme', level: 2 })).toBeVisible()
+
+    for (const name of ['Outils MCP à approuver', 'Plugins de la plateforme', 'Quarantaine', 'Bacs à sable', 'Hyper-V']) {
+      await expect(page.getByRole('heading', { name, level: 3 })).toBeVisible()
+    }
+
+    // A fresh profile has nothing held back, nothing in quarantine and no sandbox.
+    await expect(page.getByText('Aucune divergence')).toBeVisible()
+    await expect(page.getByText('Rien en quarantaine')).toBeVisible()
+    await expect(page.getByText('Aucun bac à sable')).toBeVisible()
+
+    // Hyper-V is asked for real (read-only): the answer depends on the machine, never on a guess.
+    await expect(page.getByText('Machines virtuelles isolées')).toBeVisible()
+    await expect(page.getByText(/^(Prêt|Session non administrateur|Absent)$/)).toBeVisible({ timeout: 30_000 })
+  })
+
+  test('the platform screen is found by the settings search', async () => {
+    await page.getByRole('button', { name: 'Réglages' }).first().click()
+    await page.getByPlaceholder('Rechercher dans les réglages').fill('quarantaine')
+    await expect(page.getByRole('heading', { name: 'Quarantaine', level: 3 })).toBeVisible()
+    await page.getByPlaceholder('Rechercher dans les réglages').fill('')
+  })
+})
+
 test.describe('permissions', () => {
   test('shell guard defaults to the workspace only', async () => {
     await openSettings('Agent et sécurité')
