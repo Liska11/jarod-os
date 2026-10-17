@@ -15,7 +15,7 @@ describe("réglages Agent", () => {
     const v = (await call("get-jarod-settings")) as Record<string, unknown>;
     // La liste blanche exacte : une clé de plus (ou de moins) doit se voir ici.
     expect(Object.keys(v).sort()).toEqual(
-      ["alwaysAllowTools", "android", "apiServer", "anthropicFallbacks", "autoApproveTools", "agentMode", "autoTitle", "browserPersistent", "browserVisible", "compactThreshold", "desktop", "disabledSkills", "ecosystem", "fallbacks", "imageDescription", "learning", "maxAgentSteps", "memoryInject", "mobile", "permissionsRules", "rag", "sessionBudget", "shellGuard", "terminalShell", "toolSearch", "voice"].sort(),
+      ["alwaysAllowTools", "android", "apiServer", "anthropicFallbacks", "autoApproveTools", "agentMode", "autoTitle", "browserPersistent", "browserVisible", "compactThreshold", "connectedBrowser", "desktop", "disabledSkills", "ecosystem", "fallbacks", "imageDescription", "learning", "maxAgentSteps", "memoryInject", "mobile", "permissionsRules", "rag", "sessionBudget", "shellGuard", "terminalShell", "toolSearch", "voice"].sort(),
     );
     expect(v).toMatchObject({
       autoApproveTools: false,

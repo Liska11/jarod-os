@@ -1,4 +1,4 @@
-import { IconAdjustments, IconArrowDown, IconArrowUp, IconBrain, IconListCheck, IconShieldLock, IconTerminal2, IconTrash } from '@tabler/icons-react'
+import { IconAdjustments, IconArrowDown, IconArrowUp, IconBrain, IconListCheck, IconShieldLock, IconTerminal2, IconTrash, IconWorld } from '@tabler/icons-react'
 import { useState } from 'react'
 import { GlassButton, Pill } from '../../../components/ui/glass.tsx'
 import { jarod } from '../../../lib/jarod.ts'
@@ -7,6 +7,7 @@ import { useBackendData } from '../../../lib/use-async.ts'
 import { ChipsEditor, ChoiceRow, NumberRow, reportEngineError, SwitchRow, useJarodSettings } from './jarod-controls.tsx'
 import {
   DECISION_LABEL,
+  domainProblem,
   type Decision,
   type FallbackEntry,
   intProblem,
@@ -55,6 +56,7 @@ export function JarodAgentSection() {
           <BehaviourGroup s={s} api={api} />
           <PermissionsGroup s={s} api={api} />
           <ShellGuardGroup s={s} api={api} />
+          <ConnectedBrowserGroup s={s} api={api} />
           <ModelsGroup s={s} api={api} />
         </>
       )}
@@ -278,6 +280,22 @@ function ShellGuardGroup({ s, api }: Props) {
           <Pill tone="muted">{t('settings.agent.readOnly')}</Pill>
         </SettingsRow>
       )}
+    </SettingsGroup>
+  )
+}
+
+function ConnectedBrowserGroup({ s, api }: Props) {
+  useT()
+  const { save, saving } = api
+  const c = s.connectedBrowser
+  const patch = (connectedBrowser: Record<string, unknown>) => save({ connectedBrowser }, t('settings.agent.cbrowser.updated'))
+
+  return (
+    <SettingsGroup title={t('settings.agent.cbrowser')}>
+      <SwitchRow icon={<IconWorld />} label={t('settings.agent.cbrowser.enable')} description={t('settings.agent.cbrowser.enable.hint')} keywords="connected browser web chrome e2 allow domains" value={c.enabled} disabled={saving} onChange={value => void patch({ enabled: value })} />
+      <SettingsRow icon={<IconWorld />} label={t('settings.agent.cbrowser.allow')} description={t('settings.agent.cbrowser.allow.hint')} keywords="connected browser allowed domains allowlist" below={<ChipsEditor items={c.allowDomains} validate={domainProblem} onChange={items => patch({ allowDomains: items })} disabled={saving} placeholder="example.org" label={t('settings.agent.cbrowser.allow.aria')} />} />
+      <SettingsRow icon={<IconWorld />} label={t('settings.agent.cbrowser.deny')} description={t('settings.agent.cbrowser.deny.hint')} keywords="connected browser blocked domains denylist" below={<ChipsEditor items={c.denyDomains} validate={domainProblem} onChange={items => patch({ denyDomains: items })} disabled={saving} placeholder="ads.example.org" label={t('settings.agent.cbrowser.deny.aria')} />} />
+      <InlineNote tone="info">{t('settings.agent.cbrowser.note')}</InlineNote>
     </SettingsGroup>
   )
 }

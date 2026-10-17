@@ -22,6 +22,12 @@ export interface ShellGuard {
   docker: { image: string; network: boolean; memory: string; cpus: number }
 }
 
+export interface ConnectedBrowserSettings {
+  enabled: boolean
+  allowDomains: string[]
+  denyDomains: string[]
+}
+
 export interface FallbackEntry {
   provider: string
   model?: string
@@ -43,6 +49,7 @@ export interface JarodSettings {
   sessionBudget: { maxTokens: number; maxCostUsd: number }
   permissionsRules: PermissionRule[]
   shellGuard: ShellGuard
+  connectedBrowser: ConnectedBrowserSettings
   rag: { enabled: boolean; embeddingsUrl: string; embeddingsModel: string; chunkSize: number; chunkOverlap: number; maxChunksPerDoc: number; topK: number }
   mobile: { port: number }
   android: { timeoutMs: number }
@@ -111,6 +118,17 @@ export function programProblem(program: string): string | null {
   }
 
   return /^[^\s"'`;&|<>*?$%(){}[\]^!]+$/.test(p) ? null : t('validate.programChars')
+}
+
+/** A domain for the connected browser: a full lowercase domain, no wildcard, port, path or IP address (mirrors the engine). */
+export function domainProblem(domain: string): string | null {
+  const d = domain.trim().toLowerCase()
+
+  if (!d || d.length > 253 || !/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(d)) {
+    return t('validate.domain')
+  }
+
+  return /^\d+$/.test(d.slice(d.lastIndexOf('.') + 1)) ? t('validate.domainIp') : null
 }
 
 /** A writable folder: relative to the work folder, no `..`, no drive. */

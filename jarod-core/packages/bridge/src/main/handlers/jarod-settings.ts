@@ -13,7 +13,7 @@
  * - rien d'ici ne rend ni n'accepte de secret.
  * Les écrans (volet Agent…) lisent `get-jarod-settings` : une clé absente de la réponse n'est pas gérée par ce main.
  */
-import { DEFAULT_DOCKER, EcosystemFlags, ecosystemFlags, PermissionRule, type Settings, type ShellPolicy } from "@jarod/contracts";
+import { type ConnectedBrowserSettings, connectedBrowserDomainProblem, DEFAULT_DOCKER, EcosystemFlags, ecosystemFlags, PermissionRule, type Settings, type ShellPolicy } from "@jarod/contracts";
 import { describeShellGuard } from "@jarod/plugin-agent";
 import { rulesWeakenings } from "@jarod/plugin-permissions";
 import { STT_DEFAULTS } from "@jarod/plugin-voice";
@@ -177,6 +177,36 @@ export function shellWeakenings(old: ReturnType<typeof effectiveShell>, next: Re
   for (const p of old.askPrograms.filter((x) => !next.askPrograms.includes(x))) out.push(`programme ne demande plus d'accord : ${p}`);
   if (!old.docker.network && next.docker.network) out.push("le conteneur Docker aura accès au réseau");
   if (old.docker.image !== next.docker.image && next.environment === "docker") out.push(`image Docker changée : ${next.docker.image}`);
+  return out;
+}
+
+// ── Navigateur connecté (E2) ─────────────────────────────────────────────────────────────────────────────
+/** Le réglage EFFECTIF (absent = éteint, aucun domaine). */
+function effectiveBrowser(c: Partial<ConnectedBrowserSettings> | undefined): ConnectedBrowserSettings {
+  const q = c ?? {};
+  return { enabled: q.enabled === true, allowDomains: [...(q.allowDomains ?? [])], denyDomains: [...(q.denyDomains ?? [])] };
+}
+
+/** Une liste de domaines : nettoyés (casse, espaces), sans doublon, chacun un domaine COMPLET. */
+function domainList(key: string, v: unknown): string[] {
+  if (!Array.isArray(v)) return bad(key, "liste attendue");
+  if (v.length > 100) return bad(key, "100 entrées au plus");
+  const out: string[] = [];
+  for (const [i, raw] of v.entries()) {
+    const d = text(`${key}[${i}]`, raw, 253, false).toLowerCase();
+    const why = connectedBrowserDomainProblem(d);
+    if (why) bad(`${key}[${i}]`, why);
+    if (!out.includes(d)) out.push(d);
+  }
+  return out;
+}
+
+/** Ce qui AFFAIBLIT le réglage : activer, permettre un domaine de plus, lever une interdiction. Durcir (éteindre, retirer, interdire) ne demande rien. */
+export function browserWeakenings(old: ConnectedBrowserSettings, next: ConnectedBrowserSettings): string[] {
+  const out: string[] = [];
+  if (!old.enabled && next.enabled) out.push("le navigateur connecté est activé");
+  for (const d of next.allowDomains.filter((x) => !old.allowDomains.includes(x))) out.push(`le domaine ${d} (et ses sous-domaines) devient accessible au navigateur`);
+  for (const d of old.denyDomains.filter((x) => !next.denyDomains.includes(x))) out.push(`le domaine ${d} n'est plus interdit`);
   return out;
 }
 
@@ -391,6 +421,30 @@ const ENTRIES: Record<string, Entry> = {
         message: "Affaiblir le garde du shell ?",
         detail: `${changes.map((c) => `• ${c}`).join("\n")}\n\nL'agent pourra faire ce que le garde lui interdisait jusque-là. Vous pourrez le rétablir à tout moment dans Réglages › Sécurité.`,
         action: "Affaiblir le garde",
+      };
+    },
+  },
+  // Le navigateur connecté (E2) : éteint et vide par défaut. Aucune clé pour un profil, un chemin de navigateur ou un moteur : le navigateur est toujours un Chrome jetable.
+  connectedBrowser: {
+    read: (s) => effectiveBrowser(s.connectedBrowser),
+    write: (v, current) => {
+      const o = record("connectedBrowser", v, ["enabled", "allowDomains", "denyDomains"]);
+      const next = effectiveBrowser(current.connectedBrowser);
+      if (o.enabled !== undefined) {
+        if (typeof o.enabled !== "boolean") bad("connectedBrowser.enabled", "booléen attendu");
+        next.enabled = o.enabled as boolean;
+      }
+      if (o.allowDomains !== undefined) next.allowDomains = domainList("connectedBrowser.allowDomains", o.allowDomains);
+      if (o.denyDomains !== undefined) next.denyDomains = domainList("connectedBrowser.denyDomains", o.denyDomains);
+      return { connectedBrowser: next };
+    },
+    confirm: (patch, current) => {
+      const changes = browserWeakenings(effectiveBrowser(current.connectedBrowser), effectiveBrowser(patch.connectedBrowser));
+      if (!changes.length) return null;
+      return {
+        message: "Activer ou élargir le navigateur connecté ?",
+        detail: `${changes.map((c) => `• ${c}`).join("\n")}\n\nL'agent pourra DEMANDER des actions sur ces domaines, dans un navigateur jetable (jamais votre profil). Chaque action — lecture comprise — vous demandera tout de même votre accord, avec la cible exacte, et ne vaudra que pour cette action. Vous pourrez tout retirer dans Réglages › Sécurité.`,
+        action: "Autoriser ces domaines",
       };
     },
   },

@@ -198,6 +198,30 @@ export const DEFAULT_SHELL_POLICY: ShellPolicy = {
   docker: DEFAULT_DOCKER,
 };
 
+/**
+ * E2 — le navigateur CONNECTÉ (réglage de l'utilisateur). ÉTEINT et sans aucun domaine par défaut : rien n'est branché tant que l'utilisateur n'a pas
+ * choisi, lui-même, des domaines. Même avec un domaine, chaque opération demande son accord et le navigateur n'est qu'un Chrome jetable à profil neuf :
+ * il n'ouvre jamais le profil quotidien. `allowDomains` vaut pour TOUTE destination réseau du navigateur (pages, sous-ressources, redirections), pas
+ * seulement pour les navigations.
+ */
+export interface ConnectedBrowserSettings {
+  enabled: boolean;
+  /** Domaines complets (« exemple.org », sous-domaines compris). Vide = rien n'est permis. */
+  allowDomains: string[];
+  /** Domaines refusés en plus de la liste noire intégrée ; la liste noire l'emporte toujours. */
+  denyDomains: string[];
+}
+
+export const DEFAULT_CONNECTED_BROWSER: ConnectedBrowserSettings = { enabled: false, allowDomains: [], denyDomains: [] };
+
+/** Pourquoi `d` n'est pas un domaine acceptable pour le réglage, ou null. Un domaine complet : ni joker, ni étiquette seule (« com »), ni adresse IP, ni port. */
+export function connectedBrowserDomainProblem(d: string): string | null {
+  if (d.length > 253) return "trop long";
+  if (!/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(d)) return "un domaine complet en minuscules, comme exemple.org (ni joker, ni port, ni chemin)";
+  if (/^\d+$/.test(d.slice(d.lastIndexOf(".") + 1))) return "une adresse IP n'est pas un domaine";
+  return null;
+}
+
 // services/ssh-hosts.ts:43-57
 /** Un hôte déclaré, tel qu'il est rangé. Six champs, et rien d'autre — pas de secret, pas d'option. */
 export interface SshHostRecord {
@@ -561,6 +585,8 @@ export interface Settings {
    * comportement reste celui d'avant. Voir `/shell-guard` pour ce qui est en vigueur.
    */
   shellGuard?: Partial<ShellPolicy>;
+  /** E2 — le navigateur connecté : éteint, aucun domaine par défaut. Voir `ConnectedBrowserSettings`. */
+  connectedBrowser?: Partial<ConnectedBrowserSettings>;
   /**
    * Les hôtes SSH DÉCLARÉS, vus depuis l'application : un nom, une adresse, un utilisateur, un port
    * et le CHEMIN d'une clé privée. Optionnel : les réglages existants restent valides tels quels, et
@@ -690,6 +716,7 @@ export const DEFAULT_SETTINGS: Settings = {
   learning: { enabled: true, reviewEvery: 8 },
   autoImprovement: DEFAULT_AUTO_IMPROVEMENT,
   shellGuard: DEFAULT_SHELL_POLICY,
+  connectedBrowser: DEFAULT_CONNECTED_BROWSER,
   ecosystem: DEFAULT_ECOSYSTEM_FLAGS,
 };
 

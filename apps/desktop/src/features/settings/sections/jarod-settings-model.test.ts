@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { intProblem, isUserRefusal, moneyProblem, moveItem, programProblem, rootProblem, ruleListProblem, ruleToolProblem, settingErrorText } from './jarod-settings-model.ts'
+import { domainProblem, intProblem, isUserRefusal, moneyProblem, moveItem, programProblem, rootProblem, ruleListProblem, ruleToolProblem, settingErrorText } from './jarod-settings-model.ts'
 
 describe('intProblem', () => {
   it('accepts whole numbers in range; 0 only where it means off', () => {
@@ -67,5 +67,19 @@ describe('engine messages', () => {
     expect(isUserRefusal('[oneai] réglage « shellGuard » : refusé par l’utilisateur')).toBe(true)
     expect(isUserRefusal("[oneai] réglage « shellGuard » : refusé par l'utilisateur")).toBe(true)
     expect(isUserRefusal('[oneai] réglage « x » : entier attendu')).toBe(false)
+  })
+})
+
+describe('domainProblem', () => {
+  it('accepts a full lowercase domain', () => {
+    for (const ok of ['example.org', 'docs.example.org', 'a-b.example.co.uk', ' Example.ORG ']) expect(domainProblem(ok), ok).toBeNull()
+  })
+
+  it('refuses wildcards, single labels, ports, paths, schemes and empty', () => {
+    for (const bad of ['', '*', '*.example.org', 'com', 'localhost', 'example.org:8080', 'example.org/path', 'https://example.org', 'exa mple.org', '-a.example.org']) expect(domainProblem(bad), JSON.stringify(bad)).toMatch(/full domain/)
+  })
+
+  it('refuses an IP address, which is not a domain', () => {
+    for (const bad of ['127.0.0.1', '192.168.1.10', '10.0.0.1']) expect(domainProblem(bad), bad).toMatch(/IP address/)
   })
 })
