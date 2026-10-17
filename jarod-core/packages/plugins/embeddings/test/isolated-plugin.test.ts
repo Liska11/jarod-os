@@ -51,8 +51,17 @@ describe("plugin embeddings : worker isolé", () => {
     expect(Array.from((await app.embeddings.embed(["abcd"]))[0]!)).toEqual([4, 1, 0, 0]);
     const pid = app.embeddings.host!.pid!;
     await shutdown(app);
-    await new Promise((r) => setTimeout(r, 300));
-    expect(() => process.kill(pid, 0)).toThrow();
+    // Attente d'un FAIT (le processus a disparu), pas d'un délai fixe : 300 ms était une course au démontage (audit D-04).
+    const alive = () => {
+      try {
+        process.kill(pid, 0);
+        return true;
+      } catch {
+        return false;
+      }
+    };
+    for (let i = 0; i < 100 && alive(); i++) await new Promise((r) => setTimeout(r, 50));
+    expect(alive()).toBe(false);
   });
 
   it("rag.enabled faux : AUCUN processus, service indisponible avec la raison dite", async () => {
