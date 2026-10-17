@@ -9,3 +9,4 @@ export * from "./speech.js";
 export * from "./sqlitevec.js";
 export * from "./uia-sidecar.js";
 export * from "./uia.js";
+export * from "./winget.js";

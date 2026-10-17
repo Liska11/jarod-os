@@ -15,10 +15,14 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "cordis": "4.0.0-rc.10",
     "@jarod/contracts": "workspace:*",
     "@jarod/kernel": "workspace:*",
     "@jarod/plugin-storage": "workspace:*",
-    "@jarod/plugin-tools": "workspace:*"
+    "@jarod/plugin-tools": "workspace:*",
+    "cordis": "4.0.0-rc.10"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/sdk": "1.32.1",
+    "zod": "4.6.5"
   }
 }

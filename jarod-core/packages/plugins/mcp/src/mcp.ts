@@ -373,7 +373,22 @@ export function fingerprintTool(t: McpTool): string {
 export interface McpManagerOptions {
   pins?: McpPinStore;
   audit?: (event: McpAuditEvent) => void;
+  /** Échecs de démarrage consécutifs avant que le serveur soit désactivé (défaut 3). */
+  maxFailures?: number;
 }
+
+/** Ce que l'utilisateur voit AVANT d'activer un serveur : ses outils, leur empreinte, et l'état par rapport à l'accord. */
+export interface McpPreviewTool {
+  name: string;
+  fingerprint: string;
+  /** Description nettoyée et tronquée : c'est du texte écrit par un tiers, jamais une consigne. */
+  description: string;
+  pinState: "approved" | "changed" | "new" | "unknown";
+  dangerous: true;
+}
+
+// eslint-disable-next-line no-control-regex
+const stripControl = (s: string): string => s.replace(/[ --​-‏‪-‮⁦-⁩]/g, "");
 
 /** Starts configured MCP servers and exposes their tools to the agent as `mcp_<server>_<tool>`. */
 export class McpManager extends Emitter<{ changed: McpServerStatus[] }> {
@@ -383,6 +398,8 @@ export class McpManager extends Emitter<{ changed: McpServerStatus[] }> {
   private readonly audit: (event: McpAuditEvent) => void;
   /** Outils retenus : leur définition complète attend `approve`. */
   private held = new Map<string, Map<string, { def: ToolDef; fingerprint: string }>>();
+  private readonly maxFailures: number;
+  private failures = new Map<string, number>();
 
   constructor(
     private readonly tools: ToolRegistry,
@@ -391,6 +408,26 @@ export class McpManager extends Emitter<{ changed: McpServerStatus[] }> {
     super();
     this.pins = options.pins ?? new MemoryPinStore();
     this.audit = options.audit ?? (() => {});
+    this.maxFailures = Math.max(1, options.maxFailures ?? 3);
+  }
+
+  /** Remet le compteur d'échecs à zéro : un serveur désactivé après des échecs ne redémarre qu'après ce geste explicite. */
+  resetFailures(serverId: string): void {
+    this.failures.delete(serverId);
+  }
+
+  /**
+   * Connexion TEMPORAIRE : liste les outils avec leur empreinte et leur état par rapport aux épingles, sans rien
+   * enregistrer ni épingler. Sert à montrer outils et permissions avant l'activation (tous les outils MCP demandent un accord).
+   */
+  async preview(cfg: McpServerConfig): Promise<McpPreviewTool[]> {
+    const pinned = this.pins.get(cfg.id);
+    return (await this.probe(cfg)).map((t) => {
+      const fingerprint = fingerprintTool(t);
+      const accepted = pinned?.[t.name];
+      const pinState: McpPreviewTool["pinState"] = !pinned ? "unknown" : accepted === undefined ? "new" : accepted === fingerprint ? "approved" : "changed";
+      return { name: t.name, fingerprint, description: stripControl(t.description ?? "").slice(0, 300), pinState, dangerous: true as const };
+    });
   }
 
   /**
@@ -422,7 +459,18 @@ export class McpManager extends Emitter<{ changed: McpServerStatus[] }> {
       if (!c.enabled) this.status.set(c.id, { id: c.id, name: c.name, enabled: false, state: "stopped", tools: [], pending: [] });
     }
     this.emit("changed", this.list());
-    await Promise.all(configs.filter((c) => c.enabled && !this.clients.has(c.id)).map((c) => this.startOne(c)));
+    await Promise.all(
+      configs
+        .filter((c) => c.enabled && !this.clients.has(c.id))
+        .map((c) => {
+          if ((this.failures.get(c.id) ?? 0) >= this.maxFailures) {
+            this.status.set(c.id, { id: c.id, name: c.name, enabled: false, state: "error", error: `désactivé après ${this.maxFailures} échecs de démarrage`, tools: [], pending: [] });
+            this.emit("changed", this.list());
+            return Promise.resolve();
+          }
+          return this.startOne(c);
+        }),
+    );
   }
 
   async restart(config: McpServerConfig): Promise<void> {
@@ -489,7 +537,9 @@ export class McpManager extends Emitter<{ changed: McpServerStatus[] }> {
         st.tools.push(def.name);
       }
       st.state = "running";
+      this.failures.delete(cfg.id);
     } catch (e) {
+      this.failures.set(cfg.id, (this.failures.get(cfg.id) ?? 0) + 1);
       st.state = "error";
       st.error = (e as Error).message;
       client.stop();
