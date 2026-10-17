@@ -210,7 +210,7 @@ const UserBubble = memo(function UserBubble({ message }: { message: UserMessage 
         <IconUser size={16} stroke={1.7} />
       </span>
       <div className="selectable min-w-0 max-w-[85%] rounded-xl border border-line-strong/50 bg-accent/35 px-4 py-2.5 shadow-card backdrop-blur-md">
-        <div className="text-[13.5px] leading-relaxed whitespace-pre-wrap text-fg">{message.text}</div>
+        <div data-testid="user-message" className="text-[13.5px] leading-relaxed whitespace-pre-wrap text-fg">{message.text}</div>
         <div className="mt-1 text-right text-[10.5px] tabular-nums text-fg-3">{formatTime(message.ts)}</div>
       </div>
     </div>

@@ -126,7 +126,7 @@ test.describe('chat', () => {
     await composer.press('Enter')
 
     // No provider is configured in the throwaway profile: the turn cannot complete, but the message must be on screen.
-    await expect(page.getByText('bonjour e2e').first()).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByTestId('user-message').filter({ hasText: 'bonjour e2e' })).toBeVisible({ timeout: 15_000 })
   })
 })
 
