@@ -137,6 +137,7 @@ export class ConnectedBrowserHost {
     const blocked = this.session?.guard.stats.blocked ?? 0;
     if (!cfg.enabled || cfg.allowDomains.length === 0) return { state: "disabled", reason: cfg.enabled ? "aucun domaine permis" : "désactivé dans les réglages", blocked };
     if (!this.d.engine()) return { state: "no-engine", reason: "moteur ou navigateur d'essai non installé", blocked };
+    if (this.session && !this.session.guard.healthy) return { state: "failed", reason: `garde perdue : ${this.session.guard.reason}`, blocked };
     if (this.failure) return { state: "failed", reason: this.failure, blocked };
     return { state: this.session ? "running" : "idle", reason: "", blocked };
   }
@@ -145,11 +146,12 @@ export class ConnectedBrowserHost {
   private async current(): Promise<ConnectedBrowser> {
     const cfg = parseBrowserConfig(this.d.settings());
     if (!cfg.enabled || cfg.allowDomains.length === 0) {
-      await this.shutdown();
+      await this.shutdown("réglage éteint ou vidé");
       throw new AdapterRefused(A, "navigateur connecté désactivé dans les réglages");
     }
     const sig = signature(cfg);
-    if (this.gate && this.gate.sig !== sig) await this.shutdown();
+    if (this.session && !this.session.guard.healthy) await this.shutdown("garde perdue");
+    if (this.gate && this.gate.sig !== sig) await this.shutdown("jeu de domaines changé");
     if (!this.gate) {
       const policy = policyFromConfig(cfg);
       const backend = new LazyBackend(() => this.ensureSession(cfg), () => this.session);
@@ -184,18 +186,30 @@ export class ConnectedBrowserHost {
     return this.starting;
   }
 
-  private async shutdown(): Promise<void> {
+  /** Révoque la session (garde fermée à toute requête, opérations en cours interrompues, navigateur et profil détruits). */
+  private async shutdown(why: string): Promise<void> {
     const s = this.session;
     const pending = this.starting;
     this.session = null;
     this.starting = null;
     this.gate = null;
-    if (pending) await pending.then((p) => p.close(), () => undefined);
-    if (s) await s.close().catch(() => undefined);
+    if (pending) await pending.then((p) => p.revoke(why), () => undefined);
+    if (s) await s.revoke(why).catch(() => undefined);
+  }
+
+  /**
+   * À appeler dès que le RÉGLAGE change (le cycle de vie de l'application le fait) : une session qui n'est plus permise est révoquée TOUT DE SUITE,
+   * sans attendre la prochaine opération — éteint ou vidé, un domaine retiré (le jeu change), ou une garde devenue non saine.
+   */
+  async reconcile(): Promise<void> {
+    const cfg = parseBrowserConfig(this.d.settings());
+    if (!cfg.enabled || cfg.allowDomains.length === 0) return this.shutdown("réglage éteint ou vidé");
+    if (this.session && !this.session.guard.healthy) return this.shutdown("garde perdue");
+    if (this.gate && this.gate.sig !== signature(cfg)) return this.shutdown("jeu de domaines changé");
   }
 
   async close(): Promise<void> {
-    await this.shutdown();
+    await this.shutdown("fermée");
   }
 
   async listTabs(caller?: unknown) {

@@ -3,6 +3,7 @@
 // plus un serveur TÉMOIN INTERDIT : aucune liste blanche ne le permet jamais, et tout ce qui l'atteint est compté (requêtes, mises à niveau
 // WebSocket, ET connexions TCP nues, ce qui attrape aussi les préconnexions qui n'envoient aucune requête).
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
+import { createSocket } from "node:dgram";
 import type { AddressInfo, Socket } from "node:net";
 
 export interface Hit {
@@ -94,6 +95,25 @@ fetch('/own-fetch').catch(()=>{});
       return { status: 200, headers: { "content-type": "text/javascript" }, body: `self.addEventListener('install',()=>{fetch('${W}/sw-fetch').catch(()=>{})});self.addEventListener('activate',()=>{fetch('${W}/sw-fetch2').catch(()=>{})})` };
     case "/form-witness":
       return html(`<form id="f" method="post" action="${W}/form"><input name="a" value="b"></form><script>document.getElementById('f').submit()</script>`);
+    // WebRTC : STUN (UDP) et TURN (TCP) vers des témoins ; les candidats trouvés sont écrits dans la page (ce qu'une page peut apprendre de la machine).
+    case "/rtc":
+      return html(`<p>RTC-PAGE</p><pre id="cands">attente</pre>
+<script>
+var q=new URLSearchParams(location.search);var cands=[];
+try{
+var pc=new RTCPeerConnection({iceServers:[{urls:'stun:127.0.0.1:'+q.get('udp')},{urls:'turn:127.0.0.1:'+q.get('tcp')+'?transport=tcp',username:'u',credential:'c'},{urls:'turn:127.0.0.1:'+q.get('udp')+'?transport=udp',username:'u',credential:'c'}]});
+pc.createDataChannel('x');
+pc.onicecandidate=function(e){if(e.candidate)cands.push(e.candidate.candidate);document.getElementById('cands').textContent='CANDS:'+cands.length+' '+cands.join(' | ')};
+pc.onicegatheringstatechange=function(){document.getElementById('cands').textContent='STATE:'+pc.iceGatheringState+' CANDS:'+cands.length+' '+cands.join(' | ')};
+pc.createOffer().then(function(o){return pc.setLocalDescription(o)});
+}catch(e){document.getElementById('cands').textContent='ERR:'+e}
+</script>`);
+    case "/wt":
+      return html(`<p id="wt">WT-PAGE</p><script>var q=new URLSearchParams(location.search);try{var t=new WebTransport('https://127.0.0.1:'+q.get('udp')+'/wt');t.ready.then(function(){document.getElementById('wt').textContent+=' READY'},function(e){document.getElementById('wt').textContent+=' FAILED'})}catch(e){document.getElementById('wt').textContent+=' ERR'}</script>`);
+    case "/slow":
+      return html(`<p>SLOW-PAGE</p>`);
+    case "/ticker":
+      return html(`<p>TICKER</p><script>setInterval(function(){fetch('/tick').catch(function(){})},80);var i=new Image();setInterval(function(){new Image().src='/tickimg?'+Math.random()},120)</script>`);
     case "/ws-only":
       return html(`<p>WS-ONLY</p><script>try{new WebSocket('ws://127.0.0.1:${wport}/ws-only')}catch(e){}</script>`);
     case "/preconnect-only":
@@ -136,7 +156,9 @@ export async function startTestSite(witnessPort = 0): Promise<TestSite> {
     hits.push({ host: (req.headers.host ?? "").replace(/:\d+$/, ""), path: u.pathname });
     const p = page(port, u.pathname, witnessPort);
     res.writeHead(p.status, p.headers);
-    res.end(p.body);
+    // « /slow » répond après un délai : une opération en cours le temps qu'on révoque la session.
+    if (u.pathname === "/slow") setTimeout(() => res.end(p.body), Number(u.searchParams.get("ms") ?? 4000));
+    else res.end(p.body);
   });
   await new Promise<void>((r) => server.listen(0, "127.0.0.1", r));
   port = (server.address() as AddressInfo).port;
@@ -145,5 +167,30 @@ export async function startTestSite(witnessPort = 0): Promise<TestSite> {
     hits,
     url: (host, path = "/") => `http://${host}:${port}${path}`,
     close: () => new Promise((r) => (server.closeAllConnections(), server.close(() => r()))),
+  };
+}
+
+export interface UdpWitness {
+  port: number;
+  /** Datagrammes reçus (STUN, TURN, QUIC, DNS… tout ce qui arrive en UDP). */
+  packets: number;
+  reset(): void;
+  close(): Promise<void>;
+}
+
+/** Témoin UDP sur 127.0.0.1 : compte chaque datagramme reçu, quel qu'en soit le contenu. */
+export async function startUdpWitness(): Promise<UdpWitness> {
+  const sock = createSocket("udp4");
+  const w = { packets: 0 };
+  sock.on("message", () => void w.packets++);
+  await new Promise<void>((r) => sock.bind(0, "127.0.0.1", r));
+  const port = sock.address().port;
+  return {
+    port,
+    get packets() {
+      return w.packets;
+    },
+    reset: () => void (w.packets = 0),
+    close: () => new Promise((r) => sock.close(() => r())),
   };
 }

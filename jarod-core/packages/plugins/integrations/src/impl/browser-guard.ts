@@ -32,6 +32,8 @@ export interface NetworkGuardOptions {
   permits: (url: string) => boolean;
   /** Pour compter/journaliser les refus (hôte seulement). */
   onBlock?: (b: GuardBlock) => void;
+  /** Appelée UNE fois, au moment où la garde cesse d'être saine (perte de la connexion, cible non gardable, révocation). L'hôte y arrête la session. */
+  onUnhealthy?: (why: string) => void;
   timeoutMs?: number;
 }
 
@@ -74,8 +76,16 @@ export class NetworkGuard {
   }
 
   private fail(why: string): void {
-    if (this.ok) this.why = why;
+    const first = this.ok;
+    if (first) this.why = why;
     this.ok = false;
+    if (first) {
+      try {
+        this.o.onUnhealthy?.(why);
+      } catch {
+        /* l'arrêt de la session ne doit pas dépendre de ce rappel */
+      }
+    }
     for (const p of this.pending.values()) p.rej(new Error(why));
     this.pending.clear();
   }
@@ -113,7 +123,7 @@ export class NetworkGuard {
     const url = p.request.url;
     let allowed = false;
     try {
-      allowed = this.o.permits(url);
+      allowed = this.ok && this.o.permits(url);
     } catch {
       allowed = false;
     }
@@ -195,10 +205,14 @@ export class NetworkGuard {
       await g.send("Browser.setDownloadBehavior", { behavior: "deny" });
       await g.send("Target.setAutoAttach", { autoAttach: true, waitForDebuggerOnStart: true, flatten: true });
       // Sonde : une cible neuve vers l'hôte-canari doit être VUE puis refusée par Fetch. Pas vue = l'interception n'est pas certaine.
-      const t = (await g.send("Target.createTarget", { url: CANARY_URL })) as { targetId: string };
-      const deadline = Date.now() + limit;
-      while (!g.canarySeen && Date.now() < deadline && g.ok) await new Promise((r) => setTimeout(r, 50));
-      await g.send("Target.closeTarget", { targetId: t.targetId }).catch(() => undefined);
+      // Sonde (jusqu'à trois cibles-canaris successives, chacune attendue un tiers du délai) : une machine chargée peut retarder la première.
+      // Chaque canari VU puis refusé est une preuve complète ; aucun vu en tout = l'interception n'est pas certaine.
+      for (let attempt = 0; attempt < 3 && !g.canarySeen && g.ok; attempt++) {
+        const t = (await g.send("Target.createTarget", { url: CANARY_URL })) as { targetId: string };
+        const deadline = Date.now() + Math.ceil(limit / 3);
+        while (!g.canarySeen && Date.now() < deadline && g.ok) await new Promise((r) => setTimeout(r, 50));
+        await g.send("Target.closeTarget", { targetId: t.targetId }).catch(() => undefined);
+      }
       if (!g.canarySeen) throw new Error("canari non vu");
       if (!g.ok) throw new Error(g.why);
     } catch (e) {
@@ -206,6 +220,11 @@ export class NetworkGuard {
       throw new AdapterUnavailable(A, `garde réseau : l'interception obligatoire n'est pas démontrée (${(e as Error).message})`);
     }
     return g;
+  }
+
+  /** Révocation immédiate : plus AUCUNE requête n'est permise (celles déjà en pause sont refusées), puis la session est arrêtée par `onUnhealthy`. */
+  revoke(why = "révoquée"): void {
+    this.fail(`garde ${why}`);
   }
 
   close(): void {

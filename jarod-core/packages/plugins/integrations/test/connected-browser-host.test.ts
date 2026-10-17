@@ -38,7 +38,7 @@ function world(settings: { v: unknown }, over: Partial<ConnectedBrowserHostDeps>
     approve: async (r) => (asked.push(r), true),
     start: async (o) => {
       starts.push(o);
-      return { browser: { cdpUrl: "http://127.0.0.1:1", profileDir: "x", close: async () => undefined }, guard: { healthy: true, stats: { allowed: 0, blocked: 2 } }, backend, close: async () => void closed.push("closed") } as unknown as GuardedSession;
+      return { browser: { cdpUrl: "http://127.0.0.1:1", profileDir: "x", close: async () => undefined }, guard: { healthy: true, stats: { allowed: 0, blocked: 2 } }, backend, revoke: async () => void closed.push("closed"), close: async () => void closed.push("closed") } as unknown as GuardedSession;
     },
     ...over,
   };

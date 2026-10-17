@@ -264,14 +264,16 @@ describe.skipIf(!HAS)("E2 — moteur réel, navigateur jetable, site contrôlé"
     expect(() => new HarnessBackend({ python: PYTHON, bridge: BRIDGE, browser } as never)).toThrow();
   }, 120_000);
 
-  it("garde perdue en cours de session : le moteur refuse toute opération (aucune requête ne part sans garde)", async () => {
+  it("garde perdue en cours de session : le moteur refuse toute opération ET la session s'arrête d'elle-même (navigateur et profil détruits)", async () => {
     const s = await startGuardedSession({ chromeBin: CHROME, python: PYTHON, bridge: BRIDGE, policy: TEST_POLICY });
     try {
       const id = await s.backend.openTab(site.url("localhost"));
       expect((await s.backend.readPage(id)).text).toContain("Page d'essai");
       s.guard.close();
-      await expect(s.backend.listTabs()).rejects.toThrow(/garde réseau perdue/);
-      await expect(s.backend.openTab(site.url("localhost"))).rejects.toThrow(/garde réseau perdue/);
+      await expect(s.backend.listTabs()).rejects.toThrow(/révoquée|garde réseau perdue/);
+      await expect(s.backend.openTab(site.url("localhost"))).rejects.toThrow(/révoquée|garde réseau perdue/);
+      for (let i = 0; i < 100 && existsSync(s.browser.profileDir); i++) await new Promise((r) => setTimeout(r, 100));
+      expect(existsSync(s.browser.profileDir)).toBe(false);
     } finally {
       await s.close();
     }
@@ -294,7 +296,7 @@ describe.skipIf(!HAS)("E2 — moteur réel, navigateur jetable, site contrôlé"
     await new Promise((r) => setTimeout(r, 2000));
     const pre = witness.connections;
     // Mesure consignée : sans filet, le WebSocket atteint le témoin ; la préconnexion peut ouvrir une connexion sans requête.
-    writeFileSync(join(tmpdir(), `jarod-e2-mesure-${process.pid}.json`), JSON.stringify({ websocketAtteintLeTemoin: ws, connexionsDePreconnexion: pre }));
+    console.info(`[mesure E2, garde CDP seule] WebSocket atteignant le témoin : ${ws} ; connexions de préconnexion : ${pre}`);
     expect(ws).toBeGreaterThanOrEqual(1);
     await engine.closeTab(a);
     await engine.closeTab(b);

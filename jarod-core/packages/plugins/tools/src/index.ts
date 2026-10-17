@@ -14,7 +14,7 @@ import { type Context, Service } from "cordis";
 import { annotationTools } from "./annotations-tools.js";
 import { builtinTools, webSearchTool } from "./builtin.js";
 import { type BrowserPort, browserTools } from "./browser-tools.js";
-import { type ConnectedBrowserPort, connectedBrowserTool } from "./connected-browser-tool.js";
+import { approverFromToolContext, type ConnectedBrowserPort, connectedBrowserTool } from "./connected-browser-tool.js";
 import { profileTools } from "./profile-tools.js";
 import { ragTools } from "./rag-tools.js";
 import { systemActTools } from "./system/act.js";
@@ -73,6 +73,8 @@ export class ToolsService extends Service {
   private connectedPort: ConnectedBrowserPort | null = null;
 
   readonly lsp: LspManager;
+  /** Le canal d'accord de E2 (porte d'approbation du cœur, accord PAR ACTION) : l'hôte le passe tel quel à `ConnectedBrowserHost`. */
+  readonly approveConnectedBrowser = approverFromToolContext;
 
   constructor(ctx: Context) {
     super(ctx, "tools");
