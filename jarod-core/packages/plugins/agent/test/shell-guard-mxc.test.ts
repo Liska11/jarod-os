@@ -1,6 +1,6 @@
 /**
  * A1 branché dans `run_shell` : MXC (ProcessContainer de Windows) est un mécanisme de confinement du garde du shell, essayé APRÈS
- * herald-sandbox, absent tant que JAROD_MXC_RUNNER / JAROD_MXC_SDK ne sont pas réglés. Les tests de politique emploient une sonde
+ * jarod-sandbox, absent tant que JAROD_MXC_RUNNER / JAROD_MXC_SDK ne sont pas réglés. Les tests de politique emploient une sonde
  * simulée ; le bloc « moteur réel » lance de VRAIES commandes par l'outil `run_shell` et regarde le disque.
  */
 import { existsSync, readFileSync, rmSync } from "node:fs";
@@ -39,11 +39,11 @@ describe("A1 dans run_shell — la politique", () => {
     expect(p.detail).toMatch(/mxc/);
   });
 
-  it("herald-sandbox garde la priorité : MXC ne le remplace pas", async () => {
+  it("jarod-sandbox garde la priorité : MXC ne le remplace pas", async () => {
     const both: ShellProbe = (input, platform) =>
       input.platforms.includes(platform) ? { ok: true, path: `C:\\outils\\${input.binary}.exe`, detail: "simulé" } : { ok: false, path: null, detail: "absent" };
     const p = (await plan(both, env, tempDir())) as ShellLaunchPlan;
-    expect(p.mechanism).toBe("herald-sandbox");
+    expect(p.mechanism).toBe("jarod-sandbox");
   });
 
   it("sans les deux variables, MXC est absent : le confinement demandé est refusé, jamais promis", () => {
@@ -72,14 +72,14 @@ describe("A1 dans run_shell — la politique", () => {
 const supported = process.platform === "win32" && existsSync(SDK) && existsSync(RUNNER);
 
 describe.skipIf(!supported)("A1 dans run_shell — contre MXC réel, par l'outil run_shell", () => {
-  const saved = { runner: process.env.JAROD_MXC_RUNNER, sdk: process.env.JAROD_MXC_SDK, bin: process.env.HERALD_SANDBOX_BIN };
+  const saved = { runner: process.env.JAROD_MXC_RUNNER, sdk: process.env.JAROD_MXC_SDK, bin: process.env.JAROD_SANDBOX_BIN };
   beforeAll(() => {
     process.env.JAROD_MXC_RUNNER = RUNNER;
     process.env.JAROD_MXC_SDK = SDK;
-    delete process.env.HERALD_SANDBOX_BIN;
+    delete process.env.JAROD_SANDBOX_BIN;
   });
   afterAll(() => {
-    for (const [k, v] of [["JAROD_MXC_RUNNER", saved.runner], ["JAROD_MXC_SDK", saved.sdk], ["HERALD_SANDBOX_BIN", saved.bin]] as const) {
+    for (const [k, v] of [["JAROD_MXC_RUNNER", saved.runner], ["JAROD_MXC_SDK", saved.sdk], ["JAROD_SANDBOX_BIN", saved.bin]] as const) {
       if (v === undefined) delete process.env[k];
       else process.env[k] = v;
     }

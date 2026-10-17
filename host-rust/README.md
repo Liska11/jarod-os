@@ -168,7 +168,7 @@ process boundary would change.
 
 ## The sandbox (phase 3.1): `crates/host-sandbox`
 
-Write confinement of a command in an AppContainer (R4), with a `herald-sandbox` CLI and a machine self-test.
+Write confinement of a command in an AppContainer (R4), with a `jarod-sandbox` CLI and a machine self-test.
 See `docs/sandbox.md` (what is proven, and the stated limits: legacy `dir`/`del`/`attrib` do not work inside).
 
 ## Not done here

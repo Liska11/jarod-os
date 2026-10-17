@@ -34,7 +34,7 @@ exit and after a timeout, too-broad workspaces and a missing program are refused
 
 **Mutation check:** granting `MODIFY` on the workspace's *parent* instead makes 6 of the 15 tests fail.
 
-`self_test()` (and `herald-sandbox selftest`) runs the inside/outside pair on the machine in front of it. The
+`self_test()` (and `jarod-sandbox selftest`) runs the inside/outside pair on the machine in front of it. The
 host must not accept `writeScope: workspace` where it is not `confining`.
 
 ## Known limits, stated
@@ -58,8 +58,8 @@ host must not accept `writeScope: workspace` where it is not `confining`.
 ## CLI
 
 ```text
-herald-sandbox selftest
-herald-sandbox run --workspace DIR [--timeout SECONDS] [--read-root DIR]... [--network] -- PROGRAM [ARGS...]
+jarod-sandbox selftest
+jarod-sandbox run --workspace DIR [--timeout SECONDS] [--read-root DIR]... [--network] -- PROGRAM [ARGS...]
 ```
 
 One JSON line on stdout. `run` exits 0 when the command ran (its exit code is in `exitCode`), 2 with

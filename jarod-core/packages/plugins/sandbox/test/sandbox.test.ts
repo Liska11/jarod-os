@@ -1,7 +1,7 @@
 /**
  * Le cycle d'un bac : création, exécution confinée ou refus, collecte, destruction. Les tests de refus et
  * de destruction emploient de vrais dossiers ; le test de bout en bout emploie le vrai AppContainer quand le
- * binaire `herald-sandbox` est construit (sinon il est sauté, et le dit).
+ * binaire `jarod-sandbox` est construit (sinon il est sauté, et le dit).
  */
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -20,7 +20,7 @@ afterEach(() => {
 });
 
 const probeAbsent = (input: { id: string }) => ({ ok: false, path: null, detail: `absent (simulé, ${input.id})` });
-const binary = join(__dirname, "..", "..", "..", "..", "..", "host-rust", "target", "debug", "herald-sandbox.exe");
+const binary = join(__dirname, "..", "..", "..", "..", "..", "host-rust", "target", "debug", "jarod-sandbox.exe");
 
 describe("plugin-sandbox", () => {
   it("crée un dossier propre au bac, sous la racine gérée, avec un profil connu", () => {
@@ -109,12 +109,12 @@ describe("plugin-sandbox", () => {
 
   reel("pour de vrai : écrit dedans, collecte, et ne sort pas du bac", async () => {
     const dehors = temp();
-    const svc = new SandboxService({ root: temp(), guard: { env: { ...process.env, HERALD_SANDBOX_BIN: binary } } });
+    const svc = new SandboxService({ root: temp(), guard: { env: { ...process.env, JAROD_SANDBOX_BIN: binary } } });
     const box = svc.create();
     const cible = join(dehors, "interdit.txt");
 
     const ok = await svc.exec(box.id, "echo bonjour> dedans.txt");
-    expect(ok).toMatchObject({ kind: "ran", code: 0, mechanism: "herald-sandbox" });
+    expect(ok).toMatchObject({ kind: "ran", code: 0, mechanism: "jarod-sandbox" });
 
     const piege = await svc.exec(box.id, `echo piege> "${cible}"`);
     expect(piege.kind === "ran" && piege.code !== 0).toBe(true);

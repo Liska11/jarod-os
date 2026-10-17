@@ -21,7 +21,7 @@ Items identified and deliberately not done. Each survives the session here.
   AppContainer cannot list). Granting list on the ancestors was tried and rejected (it rewrites the DACL of the whole
   subtree of `%TEMP%`). Lead to evaluate later: a dedicated sandbox root (own `%TEMP%`-like parent, so the ancestors
   are folders we own and may adjust cheaply) instead of list access on the user's folders.
-- **Packaging of `herald-sandbox`**: found on PATH or through `HERALD_SANDBOX_BIN`, documented but not distributed. The
+- **Packaging of `jarod-sandbox`**: found on PATH or through `JAROD_SANDBOX_BIN` (l'ancien `HERALD_SANDBOX_BIN` reste lu), documented but not distributed. The
   real end-to-end test (`shell-guard.test.ts`) skips on a machine without a build.
 - Tested on one Windows build (10.0.26300); a second version is still to try.
 - Network confinement is configured (no capability by default) but has no test.
@@ -91,7 +91,7 @@ Open items:
 - **6B** : moteur de recettes déterministe additif, voir `PINOKIO-PORT-EVALUATION.md` § 10. L'ADR-022 (pinokiod embarqué) n'est ni
   modifié ni retiré. **Tranché (2026-10-17)** : l'ADR-022 reste la voie par défaut, les recettes sont additives.
 - **A1 branché à `run_shell` (2026-10-17)** : mécanisme `mxc` du garde du shell (`permissions/src/shell-guard.ts`), lanceur
-  `jarod-core/sidecars/mxc-run/mxc_run.mjs`. Essayé APRÈS herald-sandbox (il ne le remplace pas), absent tant que `JAROD_MXC_RUNNER`
+  `jarod-core/sidecars/mxc-run/mxc_run.mjs`. Essayé APRÈS jarod-sandbox (il ne le remplace pas), absent tant que `JAROD_MXC_RUNNER`
   et `JAROD_MXC_SDK` ne sont pas réglés : sans eux le comportement et le refus d'avant sont inchangés. Tenu par le noyau :
   écriture dans le dossier de travail seulement, réseau refusé, `.ssh` `.aws` `.gnupg` `.azure` `.kube` `.docker` du dossier
   personnel interdits ; épreuve `selftest` au sondage (une écriture hors zone qui réussirait le fait écarter). Les valeurs du coffre

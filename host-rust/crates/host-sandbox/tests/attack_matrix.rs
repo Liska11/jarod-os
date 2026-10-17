@@ -156,7 +156,7 @@ fn an_alternate_data_stream_on_an_outside_file_is_refused() {
 #[test]
 fn the_registry_cannot_be_written() {
     let arena = Arena::new("registry");
-    let key = format!(r"HKCU\Software\HeraldSandboxTest{}", std::process::id());
+    let key = format!(r"HKCU\Software\JarodSandboxTest{}", std::process::id());
     let (ok, text) = arena.confined(&format!("reg add {key} /v x /d 1 /f"));
 
     // Cleanup first, so a failing assertion cannot leave a key behind.
@@ -169,12 +169,12 @@ fn the_registry_cannot_be_written() {
 #[test]
 fn the_environment_of_the_parent_is_not_inherited() {
     // SAFETY: only this test reads or writes the variable.
-    unsafe { std::env::set_var("HERALD_SBX_LEAKCHECK", "visible") };
+    unsafe { std::env::set_var("JAROD_SBX_LEAKCHECK", "visible") };
 
     let arena = Arena::new("env");
-    let (_, text) = arena.confined("echo [%HERALD_SBX_LEAKCHECK%]");
+    let (_, text) = arena.confined("echo [%JAROD_SBX_LEAKCHECK%]");
 
-    assert!(text.contains("[%HERALD_SBX_LEAKCHECK%]"), "{text}");
+    assert!(text.contains("[%JAROD_SBX_LEAKCHECK%]"), "{text}");
     assert!(!text.contains("visible"));
 }
 

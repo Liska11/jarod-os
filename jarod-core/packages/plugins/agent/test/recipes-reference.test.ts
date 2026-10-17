@@ -77,7 +77,7 @@ describe("recette de référence à travers la porte unique", () => {
     const plan = compileRecipe({ ...recipe, steps: [{ id: "sh", verb: "shell.run", params: { command: "echo built" } }] });
     expect(plan.steps[0]!.args).toMatchObject({ isolation: "workspace" });
     const res = await runPlan(plan, { execute: a.execute, vars: { tool: "hello" } });
-    // Sur cette machine le confinement dépend de herald-sandbox : les deux issues sont admises, la troisième (lancé sans protection) ne l'est pas.
+    // Sur cette machine le confinement dépend de jarod-sandbox : les deux issues sont admises, la troisième (lancé sans protection) ne l'est pas.
     if (res.ok) expect(a.audit.some((e) => e.tool === "run_shell" && e.ok === true)).toBe(true);
     else expect(res.error).toMatch(/isolation|confin|sandbox|retenue|refus/i);
   });

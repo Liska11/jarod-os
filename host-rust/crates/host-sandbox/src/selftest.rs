@@ -30,7 +30,7 @@ fn check(checks: &mut Vec<(String, bool)>, name: &str, ok: bool) -> bool {
 pub fn self_test() -> SelfTest {
     let mut checks = Vec::new();
     let id = random_hex(6).unwrap_or_else(|_| "x".into());
-    let root = std::env::temp_dir().join(format!("herald-sandbox-selftest-{id}"));
+    let root = std::env::temp_dir().join(format!("jarod-sandbox-selftest-{id}"));
     let (inside, outside) = (root.join("workspace"), root.join("outside"));
     let finish = |checks: Vec<(String, bool)>, detail: String| {
         let _ = fs::remove_dir_all(&root);

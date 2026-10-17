@@ -3,7 +3,7 @@
  *
  * Ce service n'ouvre AUCUNE porte d'exécution à lui seul : toute commande passe par le garde du shell
  * (`ShellGuardService.plan` avec `writeScope: "workspace"`), c'est-à-dire par un mécanisme que le noyau tient
- * (AppContainer via `herald-sandbox` sous Windows, bwrap/firejail sous Linux) ou par un refus. Pas de
+ * (AppContainer via `jarod-sandbox` sous Windows, bwrap/firejail sous Linux) ou par un refus. Pas de
  * mécanisme vérifié : la commande n'est pas lancée. Exposer ce service à l'agent comme outil est l'affaire de
  * l'enregistrement d'outils, qui passe par `executeGuardedTool`.
  *

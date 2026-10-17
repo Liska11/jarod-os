@@ -73,7 +73,7 @@ par `executeGuardedTool`**. Aucune seconde porte d'exécution.
    -> compilateur : étapes -> appels d'outils typés (liste blanche de verbes)
    -> exécuteur déterministe : pour chaque étape, executeGuardedTool(outil, paramètres)
         -> permissions par outil (demande à l'utilisateur au premier usage)
-        -> run_shell : shell-guard + herald-sandbox (AppContainer), zone = dossier de la recette
+        -> run_shell : shell-guard + jarod-sandbox (AppContainer), zone = dossier de la recette
         -> téléchargements : quarantaine 3.3 puis promotion explicite
         -> secrets : coffre uniquement, jamais dans la recette
         -> audit : une entrée signée par étape (condensat, jamais le contenu)

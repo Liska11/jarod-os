@@ -11,10 +11,10 @@
  *    existe ET qu'il s'exécute ; sinon on refuse de lancer (voir `mechanism()`).
  *
  * ── Ce qui n'est PAS tenu, et qui est donc refusé au lieu d'être promis ─────────────────────────
- *  - `herald-sandbox` (Windows) : un AppContainer par commande (crate `host-sandbox`, binaire
- *    `herald-sandbox`). Le SID du conteneur reçoit « modification » sur le dossier de travail et rien
+ *  - `jarod-sandbox` (Windows) : un AppContainer par commande (crate `host-sandbox`, binaire
+ *    `jarod-sandbox`). Le SID du conteneur reçoit « modification » sur le dossier de travail et rien
  *    d'autre : c'est le noyau qui refuse tout `write` ailleurs, enfants compris. Le mécanisme n'est
- *    retenu qu'après avoir exécuté `herald-sandbox selftest`, qui prouve sur CETTE machine qu'une écriture
+ *    retenu qu'après avoir exécuté `jarod-sandbox selftest`, qui prouve sur CETTE machine qu'une écriture
  *    dedans réussit et qu'une écriture à côté échoue. Sans le binaire, ou si l'épreuve échoue,
  *    `writeScope: "workspace"` est REFUSÉ, avec la raison : la commande n'est jamais lancée sans
  *    protection. Limites : voir host-rust/docs/sandbox.md (`dir`/`del`/`attrib` de cmd ne marchent pas
@@ -52,7 +52,7 @@ export type { WriteScope, ShellPolicy };
 // DEFAULT_SHELL_POLICY : déplacé dans @jarod/contracts (ré-exporté ci-dessous).
 
 /** Les mécanismes que le garde sait construire. Ni macOS ni Windows n'en ont : c'est un refus. */
-export type MechanismId = "bwrap" | "firejail" | "sandbox-exec" | "herald-sandbox" | "mxc" | "docker";
+export type MechanismId = "bwrap" | "firejail" | "sandbox-exec" | "jarod-sandbox" | "mxc" | "docker";
 
 export interface ShellMechanismStatus {
   available: boolean;
@@ -198,7 +198,7 @@ interface MechanismDef {
   platforms: NodeJS.Platform[];
   /** L'argument qui prouve que le binaire s'exécute vraiment, pas seulement qu'il est là. */
   versionArg: string;
-  /** Vrai quand la sonde doit AUSSI se terminer par le code 0 (l'épreuve de `herald-sandbox`). */
+  /** Vrai quand la sonde doit AUSSI se terminer par le code 0 (l'épreuve de `jarod-sandbox`). */
   mustExitZero?: boolean;
   /** Une variable d'environnement qui désigne le binaire quand il n'est pas sur le PATH. */
   envPath?: string;
@@ -275,12 +275,13 @@ const MECHANISMS: MechanismDef[] = [
     build: ({ bin, command, roots }) => [bin, "-p", seatbeltProfile(roots), "/bin/sh", "-c", command],
   },
   {
-    id: "herald-sandbox",
-    binary: "herald-sandbox",
+    id: "jarod-sandbox",
+    binary: "jarod-sandbox",
     platforms: ["win32"],
     versionArg: "selftest",
     mustExitZero: true,
-    envPath: "HERALD_SANDBOX_BIN",
+    envPath: "JAROD_SANDBOX_BIN",
+    legacyEnvPath: "HERALD_SANDBOX_BIN",
     // Un AppContainer : le dossier de travail est le seul endroit inscriptible. La ligne passe telle quelle
     // à `cmd /D /S /C` ; le délai du garde est l'autorité (le binaire n'a que le plafond de sécurité).
     build: ({ bin, command, cwd, roots }) => [
@@ -297,8 +298,8 @@ const MECHANISMS: MechanismDef[] = [
     ],
   },
   {
-    // A1 (microsoft/mxc) : ProcessContainer de Windows, derrière `sidecars/mxc-run/mxc_run.mjs`. Essayé APRÈS herald-sandbox : il
-    // ne remplace rien, il tient le confinement là où herald-sandbox est absent. Absent tant que JAROD_MXC_RUNNER et JAROD_MXC_SDK
+    // A1 (microsoft/mxc) : ProcessContainer de Windows, derrière `sidecars/mxc-run/mxc_run.mjs`. Essayé APRÈS jarod-sandbox : il
+    // ne remplace rien, il tient le confinement là où jarod-sandbox est absent. Absent tant que JAROD_MXC_RUNNER et JAROD_MXC_SDK
     // ne sont pas réglés. Écriture dans le dossier de travail seulement, réseau refusé, secrets du coffre non transmis (refus).
     id: "mxc",
     binary: "node",
@@ -377,7 +378,7 @@ export function probeMechanism(
   if (!input.platforms.includes(platform)) {
     return { ok: false, path: null, detail: `n'existe pas sur ${platform}` };
   }
-  const named = input.envPath ? env[input.envPath] : undefined;
+  const named = input.envPath ? (env[input.envPath] ?? (input.legacyEnvPath ? env[input.legacyEnvPath] : undefined)) : undefined;
   const found = named && existsSync(named) ? named : onPath(input.binary, env, platform);
   if (!found) return { ok: false, path: null, detail: "absent du PATH" };
   const real = realPathOf(found);
@@ -390,7 +391,7 @@ export function probeMechanism(
     if (input.gateEnv && (!engine || !existsSync(engine))) return { ok: false, path: null, detail: `non configuré (${input.gateEnv} ne désigne aucun moteur)` };
     probeArgs = [script, input.versionArg];
   }
-  // L'épreuve de `herald-sandbox` démarre de vrais conteneurs : elle a droit à plus que 5 secondes.
+  // L'épreuve de `jarod-sandbox` démarre de vrais conteneurs : elle a droit à plus que 5 secondes.
   const probed = spawnSync(real, probeArgs, {
     timeout: input.mustExitZero ? 60_000 : 5_000,
     windowsHide: true,
@@ -418,8 +419,8 @@ export function probeMechanism(
 function unavailableReason(tried: string[], platform: NodeJS.Platform): string {
   if (platform === "win32") {
     return (
-      `sur win32, le confinement des écritures demande le binaire herald-sandbox (AppContainer, crate host-sandbox) ou MXC : ${tried.join(" ; ") || "aucun essai"}. ` +
-      "Le premier peut être indiqué par HERALD_SANDBOX_BIN, le second par JAROD_MXC_RUNNER et JAROD_MXC_SDK. L'environnement Docker, lui, tient aussi ce confinement : " +
+      `sur win32, le confinement des écritures demande le binaire jarod-sandbox (AppContainer, crate host-sandbox) ou MXC : ${tried.join(" ; ") || "aucun essai"}. ` +
+      "Le premier peut être indiqué par JAROD_SANDBOX_BIN (ou l'ancien HERALD_SANDBOX_BIN), le second par JAROD_MXC_RUNNER et JAROD_MXC_SDK. L'environnement Docker, lui, tient aussi ce confinement : " +
       "chaque commande tourne dans un conteneur qui ne partage que le dossier de travail"
     );
   }
@@ -671,7 +672,7 @@ export class ShellGuardService {
       // Les promettre puis ne pas les fournir ferait échouer la commande sans raison lisible : on refuse, avant de lancer.
       if (status.id === "mxc" && (opts.envKeys ?? []).length) {
         return this.refuse(
-          "le confinement MXC ne transmet pas les secrets du coffre à la commande (retirer `secrets`, ou utiliser herald-sandbox ou Docker).",
+          "le confinement MXC ne transmet pas les secrets du coffre à la commande (retirer `secrets`, ou utiliser jarod-sandbox ou Docker).",
           program.name,
         );
       }

@@ -1,9 +1,9 @@
-//! `herald-sandbox`: the way the TypeScript guard (and a person) uses the sandbox.
+//! `jarod-sandbox`: the way the TypeScript guard (and a person) uses the sandbox.
 //!
 //! ```text
-//! herald-sandbox selftest
-//! herald-sandbox run --workspace DIR [--timeout SECONDS] [--read-root DIR]... [--network] -- PROGRAM [ARGS...]
-//! herald-sandbox exec --workspace DIR [--cwd DIR] [--timeout SECONDS] [--read-root DIR]... [--network] -- SHELL LINE
+//! jarod-sandbox selftest
+//! jarod-sandbox run --workspace DIR [--timeout SECONDS] [--read-root DIR]... [--network] -- PROGRAM [ARGS...]
+//! jarod-sandbox exec --workspace DIR [--cwd DIR] [--timeout SECONDS] [--read-root DIR]... [--network] -- SHELL LINE
 //! ```
 //!
 //! `exec` runs the line through `cmd.exe /D /S /C`, verbatim, and behaves like the shell it replaces: the command's
@@ -159,6 +159,6 @@ fn main() {
                 Err(error) => refuse(&error.to_string()),
             }
         }
-        _ => refuse("usage: herald-sandbox selftest | run --workspace DIR [--timeout S] [--read-root DIR] [--network] -- PROGRAM [ARGS...]"),
+        _ => refuse("usage: jarod-sandbox selftest | run --workspace DIR [--timeout S] [--read-root DIR] [--network] -- PROGRAM [ARGS...]"),
     }
 }

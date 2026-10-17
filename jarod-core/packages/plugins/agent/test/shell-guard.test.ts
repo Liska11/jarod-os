@@ -413,13 +413,13 @@ describe("garde du shell — la politique en vigueur se lit", () => {
   });
 });
 
-describe("garde du shell — Windows : AppContainer (herald-sandbox) ou refus", () => {
+describe("garde du shell — Windows : AppContainer (jarod-sandbox) ou refus", () => {
   const sondeWindows = (ok: boolean): ShellProbe => (input) =>
-    input.id === "herald-sandbox"
-      ? { ok, path: ok ? "C:\outils\herald-sandbox.exe" : null, detail: ok ? "présent (simulé)" : "absent (simulé)" }
+    input.id === "jarod-sandbox"
+      ? { ok, path: ok ? "C:\outils\jarod-sandbox.exe" : null, detail: ok ? "présent (simulé)" : "absent (simulé)" }
       : { ok: false, path: null, detail: `n'existe pas sur win32` };
 
-  it("avec le mécanisme, la ligne part telle quelle vers `herald-sandbox exec`, dossier de travail en tête", async () => {
+  it("avec le mécanisme, la ligne part telle quelle vers `jarod-sandbox exec`, dossier de travail en tête", async () => {
     const ws = tempDir();
     const garde = new ShellGuardService({
       workspace: ws,
@@ -431,16 +431,16 @@ describe("garde du shell — Windows : AppContainer (herald-sandbox) ou refus", 
     const plan = planDe(await garde.plan(ligne, { cwd: ws }));
     const racine = realpathSync.native(ws);
 
-    expect(plan.mechanism).toBe("herald-sandbox");
+    expect(plan.mechanism).toBe("jarod-sandbox");
     expect(plan.mode).toBe("exec");
-    expect(plan.bin).toBe("C:\outils\herald-sandbox.exe");
+    expect(plan.bin).toBe("C:\outils\jarod-sandbox.exe");
     expect(plan.args.slice(0, 4)).toEqual(["exec", "--workspace", racine, "--cwd"]);
     // La ligne est le dernier argument, entière, guillemets compris : aucun recollage.
     expect(plan.args.slice(-2)).toEqual(["--", ligne]);
     expect(plan.writableRoots).toEqual([racine]);
   });
 
-  it("sans le binaire, le confinement demandé est refusé et la raison nomme herald-sandbox", async () => {
+  it("sans le binaire, le confinement demandé est refusé et la raison nomme jarod-sandbox", async () => {
     const ws = tempDir();
     const cible = join(tempDir(), "interdit.txt");
     const garde = new ShellGuardService({
@@ -450,24 +450,32 @@ describe("garde du shell — Windows : AppContainer (herald-sandbox) ou refus", 
       probe: sondeWindows(false),
     });
     const refus = refusDe(await garde.plan(commandeEcriture(cible), { cwd: ws }));
-    expect(refus.reason).toMatch(/herald-sandbox/);
+    expect(refus.reason).toMatch(/jarod-sandbox/);
     expect(refus.reason).toMatch(/PAS été lancée/);
     expect(existsSync(cible)).toBe(false);
+  });
+
+  it("l'ancien nom de variable (HERALD_SANDBOX_BIN) est encore lu, le nouveau passe avant", () => {
+    const def = { id: "jarod-sandbox" as const, binary: "jarod-sandbox", platforms: ["win32" as const], versionArg: "selftest", mustExitZero: true, envPath: "JAROD_SANDBOX_BIN", legacyEnvPath: "HERALD_SANDBOX_BIN" };
+    // l'ancien nom seul : le binaire est trouvé (et refusé ici par son épreuve, ce qui prouve qu'il a été lancé)
+    expect(probeMechanism(def, "win32", { HERALD_SANDBOX_BIN: process.execPath }).detail).toMatch(/échoué à son épreuve/);
+    // le nouveau nom l'emporte sur l'ancien
+    expect(probeMechanism(def, "win32", { JAROD_SANDBOX_BIN: "C:\n-existe-pas.exe", HERALD_SANDBOX_BIN: process.execPath, PATH: "" }).detail).toBe("absent du PATH");
   });
 
   it("un binaire qui échoue à son épreuve n'est PAS retenu, même s'il démarre", () => {
     // `node selftest` démarre (le binaire existe) mais se termine en erreur : exactement le cas d'une
     // machine où l'AppContainer ne tient pas. La sonde doit le refuser.
     const sonde = probeMechanism(
-      { id: "herald-sandbox", binary: "herald-sandbox", platforms: ["win32"], versionArg: "selftest", mustExitZero: true, envPath: "HERALD_SANDBOX_BIN" },
+      { id: "jarod-sandbox", binary: "jarod-sandbox", platforms: ["win32"], versionArg: "selftest", mustExitZero: true, envPath: "JAROD_SANDBOX_BIN" },
       "win32",
-      { HERALD_SANDBOX_BIN: process.execPath },
+      { JAROD_SANDBOX_BIN: process.execPath },
     );
     expect(sonde.ok).toBe(false);
     expect(sonde.detail).toMatch(/échoué à son épreuve/);
   });
 
-  const binaire = join(__dirname, "..", "..", "..", "..", "..", "host-rust", "target", "debug", "herald-sandbox.exe");
+  const binaire = join(__dirname, "..", "..", "..", "..", "..", "host-rust", "target", "debug", "jarod-sandbox.exe");
   const reel = process.platform === "win32" && existsSync(binaire) ? it : it.skip;
 
   reel("pour de vrai : écrire dedans marche, écrire dehors est refusé par le noyau", async () => {
@@ -476,7 +484,7 @@ describe("garde du shell — Windows : AppContainer (herald-sandbox) ou refus", 
     const garde = new ShellGuardService({
       workspace: ws,
       policy: { writeScope: "workspace" },
-      env: { ...process.env, HERALD_SANDBOX_BIN: binaire },
+      env: { ...process.env, JAROD_SANDBOX_BIN: binaire },
     });
 
     expect(garde.mechanism().available).toBe(true);
