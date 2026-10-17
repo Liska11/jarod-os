@@ -12,3 +12,4 @@ export * from "./uia-sidecar.js";
 export * from "./uia.js";
 export * from "./winget.js";
 export * from "./durable.js";
+export * from "./browser-engine.js";

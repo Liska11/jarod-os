@@ -14,6 +14,7 @@ import { type Context, Service } from "cordis";
 import { annotationTools } from "./annotations-tools.js";
 import { builtinTools, webSearchTool } from "./builtin.js";
 import { type BrowserPort, browserTools } from "./browser-tools.js";
+import { type ConnectedBrowserPort, connectedBrowserTool } from "./connected-browser-tool.js";
 import { profileTools } from "./profile-tools.js";
 import { ragTools } from "./rag-tools.js";
 import { systemActTools } from "./system/act.js";
@@ -32,6 +33,7 @@ import { LspManager, lspTools } from "./lsp.js";
 export * from "./annotations-tools.js";
 export * from "./browser-tools.js";
 export * from "./builtin.js";
+export * from "./connected-browser-tool.js";
 export * from "./console-text.js";
 export * from "./lsp.js";
 export * from "./present.js";
@@ -68,6 +70,7 @@ export class ToolsService extends Service {
   readonly ssh = new SshService();
   readonly sshHosts: SshHostsService;
   private browserPort: BrowserPort | null = null;
+  private connectedPort: ConnectedBrowserPort | null = null;
 
   readonly lsp: LspManager;
 
@@ -114,6 +117,19 @@ export class ToolsService extends Service {
         this.browserPort = null;
         void port.close().catch(() => {});
       }
+    };
+  }
+
+  /**
+   * E2 : branche le navigateur CONNECTÉ (port construit par l'hôte avec un réglage activé, une liste blanche non vide et la politique de
+   * `ConnectedBrowser`). Sans cet appel l'outil `connected_browser` n'existe pas : éteint par défaut. Rend le détachement.
+   */
+  attachConnectedBrowser(port: ConnectedBrowserPort): () => void {
+    this.connectedPort = port;
+    const off = this.registry.register(connectedBrowserTool(() => this.connectedPort));
+    return () => {
+      off();
+      if (this.connectedPort === port) this.connectedPort = null;
     };
   }
 

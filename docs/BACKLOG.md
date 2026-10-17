@@ -100,10 +100,23 @@ Open items:
   celui du processus. Non fait : activation par un réglage de l'interface, empaquetage du SDK (variables d'environnement
   seulement), mesure d'une longue commande (plafond 600 s).
 - **E2 (navigateur connecté)** : posture décidée (2026-10-17) : permis, accord explicite par opération (lectures comprises) et
-  journal. Contrat et politique écrits (`integrations/src/impl/browser.ts`, 11 tests avec moteur simulé) : liste blanche de domaines
-  obligatoire, liste noire prioritaire (messagerie, banque, paiement, coffres), jamais de champ de mot de passe, aucune opération
-  cookies/stockage/profil, journal sans adresse complète ni contenu ni texte saisi. NON fait : moteur browser-harness (ni installé,
-  ni épinglé, ni testé : statut du registre resté « prévu »), branchement à un outil, écran de réglage des domaines.
+  journal. Moteur INSTALLÉ et ÉPINGLÉ (2026-10-17) : browser-harness 0.1.13, venv `engines/browser-harness`, dépendances à empreintes
+  (`engines.lock/browser-harness-requirements.txt`, recréation dans `engines.lock/README.md`). Code du moteur LU avant installation :
+  il contient une télémétrie PostHog (coupée par le pont, et vérifiée par un écouteur local qui ne reçoit rien), un `run.py` qui
+  exécute du code d'agent et un chargement de `agent_helpers.py` (le pont n'expose ni l'un ni l'autre et refuse de démarrer si le
+  second existe), et, sans point d'entrée explicite, il cherche le Chrome quotidien de l'utilisateur (le pont exige un navigateur de
+  bouclage lancé par Jarod avec un profil jetable `jarod-e2-*` sous le dossier temporaire, et sa variable d'environnement est minimale).
+  Contrat : `integrations/src/impl/browser.ts` ; moteur : `browser-engine.ts` + `sidecars/browser-bridge/bh_ops.py` ; outil :
+  `connected_browser` (`tools/src/connected-browser-tool.ts`), éteint par défaut (n'existe que si un hôte appelle
+  `ToolsService.attachConnectedBrowser`), accord demandé dans l'outil à chaque opération par la porte d'approbation du cœur, avec la
+  description de l'action (le courtier n'offre alors ni « toujours » ni « pour cette conversation », et l'auto-approbation ne s'applique
+  pas). Configuration utilisateur : `parseBrowserConfig` (désactivé, liste blanche vide par défaut ; entrées trop larges écartées) ;
+  la configuration de TEST est distincte (liste blanche `localhost`, site contrôlé, Chrome jetable). Tests : 23 unitaires, 9 de l'outil
+  par `executeGuardedTool`, 19 contre le moteur réel (`integrations/test/engines/browser.engine.test.ts`), mutation-testés (accord lié
+  à l'action, fermeture des onglets hors politique, accord de l'outil). MESURÉ : la redirection HTTP est suivie par le navigateur avant
+  que la politique la voie (la requête part, la réponse n'est jamais rendue, l'onglet est fermé). NON fait : essai sur une vraie
+  session connectée de l'utilisateur (jamais ouverte, volontairement), écran de réglage des domaines, branchement de l'outil à un hôte
+  (rien n'appelle `attachConnectedBrowser`), interception réseau CDP pour empêcher la requête de redirection.
 - **Phase 5** : 16 adaptateurs en contrat testés contre leur moteur réel (voir `INTEGRATIONS.md`, `engines.lock/README.md`).
   Non branchés : aucun n'est câblé à run_shell, au rag, à la voix. A1 (MXC) mesuré : `ui.disable: true` empêche node de démarrer ;
   node exige `--preserve-symlinks --preserve-symlinks-main` sous ProcessContainer.
@@ -117,3 +130,14 @@ Open items:
 - **Limites** : voix testée en synthèse (anglais) ; Presidio anglais seulement ; B1 sans preuve depuis l'installation empaquetée ;
   Docling complet télécharge ses modèles au premier usage (réseau) ; D1/D2 n'ont qu'une fenêtre fabriquée pour cible.
 
+## Renommage JAROD-OS / jarod-sandbox (vérifié 2026-10-17)
+
+- **Fait** : le confinement des écritures s'appelle `jarod-sandbox` (binaire Rust de la crate `host-sandbox`, identifiant du mécanisme du
+  garde du shell, variable `JAROD_SANDBOX_BIN`, documentation, tests). L'ancienne variable `HERALD_SANDBOX_BIN` est encore LUE quand la
+  nouvelle n'est pas réglée (la nouvelle l'emporte), pour ne casser aucune installation. Les variables et les données propres à Jarod
+  (`JAROD_*`, `%LOCALAPPDATA%\Jarod-OS`, `@jarod/*`) portaient déjà le nom.
+- **Laissé tel quel, volontairement** : les identifiants du shell d'interface dérivé de Herald OS (MIT, `licenses/HERALD-OS.md`) :
+  `apps/desktop`, paquets `@herald-os/*`, variables `HERALD_OS_*`, tubes `pipe://herald-os-*`, binaires `herald-host-spike` et
+  `herald-supervise`, identifiant d'application, partitions `persist:herald-*`. Les renommer change des contrats entre processus et des données
+  d'installations existantes (la migration de l'ADR-016 les traite déjà dans l'autre sens) ; c'est un chantier à part, à décider, pas un
+  renommage de surface. Environ 3 000 occurrences dans 500 fichiers, dont l'attribution de licence à conserver.
