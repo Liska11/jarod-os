@@ -24,6 +24,15 @@ pub const READ_EXECUTE: u32 = 0x0012_00A9;
 /// `OBJECT_INHERIT_ACE | CONTAINER_INHERIT_ACE`: the ACE applies to files and to folders below.
 const SUB_CONTAINERS_AND_OBJECTS_INHERIT: u32 = 3;
 
+/// Win32 5 (access denied) and 1314 (privilege not held) mean the folder is not ours to share: say so, because
+/// "error 5" tells nobody that the folder belongs to another account or to the system (e.g. Program Files).
+pub(crate) fn hint(code: u32) -> &'static str {
+    match code {
+        5 | 1314 => " - this folder is not owned by your account, so JAROD-OS may not change who can read it; copy the tool into a folder you own and list that one",
+        _ => "",
+    }
+}
+
 fn change(path: &Path, sid: *mut c_void, rights: u32, mode: i32) -> Result<(), SandboxError> {
     let target = wide(&path.to_string_lossy());
     let mut old: *mut ACL = std::ptr::null_mut();
@@ -56,7 +65,7 @@ fn change(path: &Path, sid: *mut c_void, rights: u32, mode: i32) -> Result<(), S
         );
 
         if status != 0 {
-            return Err(SandboxError::Refused(format!("cannot read the DACL of {} (error {status})", path.display())));
+            return Err(SandboxError::Refused(format!("cannot read the DACL of {} (error {status}{})", path.display(), hint(status))));
         }
 
         let mut updated: *mut ACL = std::ptr::null_mut();
@@ -65,7 +74,7 @@ fn change(path: &Path, sid: *mut c_void, rights: u32, mode: i32) -> Result<(), S
         if built != 0 {
             LocalFree(descriptor);
 
-            return Err(SandboxError::Refused(format!("cannot build the new DACL of {} (error {built})", path.display())));
+            return Err(SandboxError::Refused(format!("cannot build the new DACL of {} (error {built}{})", path.display(), hint(built))));
         }
 
         // Not marked protected or unprotected: whatever the folder already says stays, and the change propagates.
@@ -76,7 +85,7 @@ fn change(path: &Path, sid: *mut c_void, rights: u32, mode: i32) -> Result<(), S
         LocalFree(descriptor);
 
         if applied != 0 {
-            return Err(SandboxError::Refused(format!("cannot set the DACL of {} (error {applied})", path.display())));
+            return Err(SandboxError::Refused(format!("cannot set the DACL of {} (error {applied}{})", path.display(), hint(applied))));
         }
     }
 
@@ -126,5 +135,17 @@ impl Grants {
 impl Drop for Grants {
     fn drop(&mut self) {
         let _ = self.revoke_all();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::hint;
+
+    #[test]
+    fn access_denied_explains_the_folder_is_not_the_users() {
+        assert!(hint(5).contains("not owned by your account"));
+        assert!(hint(1314).contains("copy the tool"));
+        assert_eq!(hint(87), "");
     }
 }

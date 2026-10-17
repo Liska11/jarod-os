@@ -22,7 +22,7 @@ Items identified and deliberately not done. Each survives the session here.
   transformers 5.20.1 and are clean. The spaCy model (`en-core-web-sm`, a URL requirement) cannot be audited by version.
 - 543 lint warnings (accepted debt).
 - 18 shell protocol tests skipped on Windows (no fake named pipe): restore coverage.
-- Rotation of `control-audit.jsonl` (unbounded growth).
+- **Rotation of `control-audit.jsonl`: DONE (2026-10-17).** `FileJournal` rotates to `<name>.1` (one older generation, replaced each time) once the file reaches 8 MiB (`DEFAULT_JOURNAL_LIMIT`), also at opening; a failed rotation is counted in `failures()` and never changes a decision. Tests: `host-control/tests/journal_rotation.rs`.
 - The Python client is more tolerant than the shell on pipe endpoints (the Rust host emits the strict form).
 - R2/R3 end-to-end in the real application to re-prove (disposable profile).
 
@@ -36,7 +36,7 @@ Items identified and deliberately not done. Each survives the session here.
   holding `node.exe` it runs (`v24.20.0`) and still cannot write outside the workspace or inside that folder. **Limit measured:** the
   system install folder (`C:\Program Files\nodejs`) does NOT work even with the grant (`Accès refusé`): only folders that belong to the
   user (scoop, cargo, a per-user Python…) are usable; the other mechanisms (bwrap, firejail, MXC, Docker) are unaffected (they already read the
-  system, or do not take the option). The sandbox binary does not say why a non-owned folder fails: the user only sees the command's own error.
+  system, or do not take the option). The sandbox now explains a refused DACL change (Win32 5 / 1314: folder not owned by the account, copy the tool into a folder you own) instead of a bare error number (`acl::hint`, unit-tested); a path that cannot even be opened still reports the OS error.
 - **cmd.exe `dir` / `del` / `attrib` fail inside the sandbox** (they resolve every parent folder, which the
   AppContainer cannot list). Granting list on the ancestors was tried and rejected (it rewrites the DACL of the whole
   subtree of `%TEMP%`). Lead to evaluate later: a dedicated sandbox root (own `%TEMP%`-like parent, so the ancestors
