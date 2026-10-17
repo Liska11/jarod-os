@@ -1,3 +1,0 @@
-1000	p50=0.8ms	p95=1.5ms	max=1.7ms	(remplissage 123 ms)
-10000	p50=9.8ms	p95=11.4ms	max=12.6ms	(remplissage 1144 ms)
-100000	p50=110.4ms	p95=140.4ms	max=149.0ms	(remplissage 12114 ms)

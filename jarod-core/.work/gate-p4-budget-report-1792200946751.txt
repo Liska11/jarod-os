@@ -1,9 +1,0 @@
-tour 1 : exit=0 appels fournisseur=1 stdout="pong" stderr=""
-tour 2 : exit=0 appels fournisseur=1 stdout="pong" stderr="… 80 % du plafond de la conversation atteint (1 000 / 1 200 tokens)."
-tour 3 : exit=0 appels fournisseur=1 stdout="pong" stderr=""
-tour 4 : exit=1 appels fournisseur=0 stdout="" stderr="Erreur : Plafond de la conversation atteint (1 500 / 1 200 tokens). Pour poursuivre, relevez-le : `/budget <tokens> [<usd>]`."
-base après le refus : 900 + 600 tokens
-/budget 5000 → "**Plafond (propre à cette conversation) :** 1 500 / 5 000 tokens — 30 %"
-tour 5 : exit=0 appels fournisseur=1 stdout="pong" stderr=""
-tour 6 : exit=0 appels fournisseur=1 stdout="pong" stderr=""
-GATE P4 budget : verte
