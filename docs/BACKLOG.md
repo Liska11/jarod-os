@@ -89,7 +89,18 @@ Open items:
 - **Recent / find** : `JAROD_OS_ISOLATED=1` ne lit plus le vrai profil (test unitaire + e2e). Sans la variable, comportement inchangé.
 - **Mutation testing** : six flux couverts, dont chat (la première version de l'assertion survivait : corrigée) et non-retour de l'assistant.
 - **6B** : moteur de recettes déterministe additif, voir `PINOKIO-PORT-EVALUATION.md` § 10. L'ADR-022 (pinokiod embarqué) n'est ni
-  modifié ni retiré : à trancher par l'humain.
+  modifié ni retiré. **Tranché (2026-10-17)** : l'ADR-022 reste la voie par défaut, les recettes sont additives.
+- **A1 branché à `run_shell` (2026-10-17)** : mécanisme `mxc` du garde du shell (`permissions/src/shell-guard.ts`), lanceur
+  `jarod-core/sidecars/mxc-run/mxc_run.mjs`. Essayé APRÈS herald-sandbox (il ne le remplace pas), absent tant que `JAROD_MXC_RUNNER`
+  et `JAROD_MXC_SDK` ne sont pas réglés : sans eux le comportement et le refus d'avant sont inchangés. Tenu par le noyau :
+  écriture dans le dossier de travail seulement, réseau refusé, `.ssh` `.aws` `.gnupg` `.azure` `.kube` `.docker` du dossier
+  personnel interdits ; épreuve `selftest` au sondage (une écriture hors zone qui réussirait le fait écarter). Les valeurs du coffre
+  ne sont pas transmises au conteneur : la demande avec `secrets` est refusée avant de lancer. MESURÉ : la commande interne `dir` de
+  cmd est refusée dans le conteneur, `node` et PowerShell listent un dossier ; le conteneur reçoit un environnement par défaut, pas
+  celui du processus. Non fait : activation par un réglage de l'interface, empaquetage du SDK (variables d'environnement
+  seulement), mesure d'une longue commande (plafond 600 s).
+- **E2 (navigateur connecté)** : non branché. Le message « E2 : posture navigateur connecté » ne dit pas quelle posture est
+  retenue (agent autorisé à toucher le navigateur de l'utilisateur, ou non). Aucun code écrit avant une réponse explicite.
 - **Phase 5** : 16 adaptateurs en contrat testés contre leur moteur réel (voir `INTEGRATIONS.md`, `engines.lock/README.md`).
   Non branchés : aucun n'est câblé à run_shell, au rag, à la voix. A1 (MXC) mesuré : `ui.disable: true` empêche node de démarrer ;
   node exige `--preserve-symlinks --preserve-symlinks-main` sous ProcessContainer.

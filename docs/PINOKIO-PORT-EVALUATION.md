@@ -150,9 +150,9 @@ totale avec les lanceurs publiés ; le §5 propose l'inverse (sous-ensemble, tou
    net, web, local, gradio, hf, cloudflare, exec, proc, script, fs.download, et `sudo`/`env`/`venv`/`daemon`/`next` partout ;
 4. déterministe pour installation/démarrage/arrêt/mise à jour, agentique réservé au diagnostic (non écrit ici).
 
-**Reste à trancher par l'humain** : l'ADR-022 doit-il rester la voie par défaut (compatibilité) ou le moteur embarqué
-doit-il passer derrière un accord renforcé / être retiré au profit des recettes ? Cette question n'est pas tranchée
-par le code livré : les deux voies coexistent.
+**Tranché par l'humain (2026-10-17)** : l'ADR-022 reste la voie par défaut (compatibilité avec les lanceurs publiés). Le moteur
+de recettes est additif : il ne remplace pas `pinokiod` embarqué, qui n'est ni retiré ni passé derrière un accord renforcé. Les
+deux voies coexistent ; rien n'est modifié dans l'ADR-022 ni dans `pinokio-runtime/`.
 
 **Livré** : `recipes/template.ts` (substitution sans évaluation, un seul passage), `recipes/recipe.ts` (schéma strict,
 liste blanche, plan empreinté SHA-256, isolation du shell imposée), `recipes/run.ts` (exécuteur injecté, échec fermé,

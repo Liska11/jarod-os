@@ -11,7 +11,7 @@ permissive/copyleft/inconnue) et ne rejette plus rien sur ce critère ; les attr
 
 | Id | Dépôt | Licence | Statut | Version épinglée ; note |
 |---|---|---|---|---|
-| A1 | microsoft/mxc | MIT | adapter-ready | `@microsoft/mxc-sdk@1.0.1` ; confinement des scripts générés et des outils MCP non approuvés ; vérifier l'exigence de version de Node avant embarquement ; TESTÉ contre MXC réel (ProcessContainer) : écriture hors zone, lecture d'un dossier interdit, réseau et délai tenus ; mesuré : ui.disable=true empêche node de démarrer, et node doit être lancé avec --preserve-symlinks. Pas encore branché à run_shell |
+| A1 | microsoft/mxc | MIT | adapter-ready | `@microsoft/mxc-sdk@1.0.1` ; confinement des scripts générés et des outils MCP non approuvés ; vérifier l'exigence de version de Node avant embarquement ; TESTÉ contre MXC réel (ProcessContainer) : écriture hors zone, lecture d'un dossier interdit, réseau et délai tenus ; mesuré : ui.disable=true empêche node de démarrer, et node doit être lancé avec --preserve-symlinks. BRANCHÉ à run_shell (2026-10-17) comme mécanisme `mxc` du garde du shell, essayé après herald-sandbox, actif seulement si JAROD_MXC_RUNNER et JAROD_MXC_SDK sont réglés (lanceur sidecars/mxc-run) ; testé par l'outil run_shell : écriture dans la zone, hors zone refusée avec témoin, secrets du coffre non transmis donc refusés ; mesuré : la commande interne dir de cmd est refusée, node et PowerShell listent |
 | A2 | sigstore/cosign | Apache-2.0 | integrated | `cle-publique-committee` ; intégré en 0a (clé publique committée) ; chaîne CI à vérifier seulement si les secrets existent (réservé à l'humain) |
 | A3 | microsoft/RAMPART | MIT | adapter-ready | `scenarios-internes-v1` ; les 7 scénarios obligatoires tournent contre la porte unique avec un faux modèle (agent/test/adversarial.test.ts) ; le dépôt lui-même n'est pas embarqué |
 | A4 | StackOneHQ/defender | Apache-2.0 | adapter-ready | `observateur-base-v1` ; observateur d'injections en mode OBSERVATION (aucun blocage) avec détecteur de base et harnais de mesure des faux positifs ; le paquet n'est pas encore branché |
@@ -51,10 +51,11 @@ pour recréer les moteurs. Les documents, fenêtres, voix et phrases des tests s
 
 ## Ce qui n'est PAS fait, et pourquoi
 
-- **Branchement** : aucun de ces adaptateurs n'est encore câblé à `run_shell`, au plugin rag, à la voix ou à l'interface. Ils sont
-  prêts et testés ; les brancher est un travail par intégration (A1 : remplacer le confinement de `run_shell` par MXC reste à
-  décider, la sandbox 3.1/3.2 existe déjà).
-- **E2** : décision de posture de l'humain (navigateur connecté) ; X1 (prompt-optimizer) : AGPL intégrable, aucun cas d'usage écrit.
+- **Branchement** : seul A1 est câblé, à `run_shell` (mécanisme `mxc` du garde du shell, après herald-sandbox, actif seulement si
+  JAROD_MXC_RUNNER et JAROD_MXC_SDK sont réglés ; il ne remplace pas la sandbox 3.1/3.2). Les autres ne sont câblés ni au plugin
+  rag, ni à la voix, ni à l'interface : ils sont prêts et testés, les brancher est un travail par intégration.
+- **E2** : la posture « navigateur connecté » n'est pas écrite : le message reçu ne dit pas quelle posture est retenue, donc aucun
+  branchement (voir BACKLOG). X1 (prompt-optimizer) : AGPL intégrable, aucun cas d'usage écrit.
 - **B1** : la preuve depuis l'installation empaquetée reste à faire. **C1/C2** : testés en anglais synthétique, pas sur une voix
   humaine. **C3** : Presidio est anglais seulement dans ce profil. **B3** : PDF sans titres ni tableaux (profil sans PyTorch).
 - **D1/D2** : approbation de chaque action par l'utilisateur obligatoire ; aucun outil n'est encore exposé au modèle.

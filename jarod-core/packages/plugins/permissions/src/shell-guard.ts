@@ -52,7 +52,7 @@ export type { WriteScope, ShellPolicy };
 // DEFAULT_SHELL_POLICY : déplacé dans @jarod/contracts (ré-exporté ci-dessous).
 
 /** Les mécanismes que le garde sait construire. Ni macOS ni Windows n'en ont : c'est un refus. */
-export type MechanismId = "bwrap" | "firejail" | "sandbox-exec" | "herald-sandbox" | "docker";
+export type MechanismId = "bwrap" | "firejail" | "sandbox-exec" | "herald-sandbox" | "mxc" | "docker";
 
 export interface ShellMechanismStatus {
   available: boolean;
@@ -202,9 +202,13 @@ interface MechanismDef {
   mustExitZero?: boolean;
   /** Une variable d'environnement qui désigne le binaire quand il n'est pas sur le PATH. */
   envPath?: string;
+  /** Un mécanisme porté par un script (ex. MXC) : la variable qui désigne le script, et celle qui désigne son moteur.
+   * Sans les deux, le mécanisme est absent — jamais deviné. */
+  launcherEnv?: string;
+  gateEnv?: string;
   /** La ligne de commande qui retient le processus : racine en lecture seule, dossier autorisé en
    * lecture-écriture. C'est le noyau qui l'applique, pas une analyse de texte. */
-  build(input: { bin: string; command: string; cwd: string; roots: string[] }): string[];
+  build(input: { bin: string; command: string; cwd: string; roots: string[]; launcher?: string }): string[];
 }
 
 const MECHANISMS: MechanismDef[] = [
@@ -292,6 +296,31 @@ const MECHANISMS: MechanismDef[] = [
       command,
     ],
   },
+  {
+    // A1 (microsoft/mxc) : ProcessContainer de Windows, derrière `sidecars/mxc-run/mxc_run.mjs`. Essayé APRÈS herald-sandbox : il
+    // ne remplace rien, il tient le confinement là où herald-sandbox est absent. Absent tant que JAROD_MXC_RUNNER et JAROD_MXC_SDK
+    // ne sont pas réglés. Écriture dans le dossier de travail seulement, réseau refusé, secrets du coffre non transmis (refus).
+    id: "mxc",
+    binary: "node",
+    platforms: ["win32"],
+    versionArg: "selftest",
+    mustExitZero: true,
+    launcherEnv: "JAROD_MXC_RUNNER",
+    gateEnv: "JAROD_MXC_SDK",
+    build: ({ bin, command, cwd, roots, launcher }) => [
+      bin,
+      launcher ?? "",
+      "exec",
+      "--workspace",
+      roots[0] ?? cwd,
+      "--cwd",
+      cwd,
+      "--timeout",
+      "600",
+      "--",
+      command,
+    ],
+  },
 ];
 
 /** Le profil Seatbelt : écriture refusée partout, sauf dans `roots` et les temporaires du système. */
@@ -318,6 +347,8 @@ export interface ShellProbeInput {
   versionArg: string;
   mustExitZero?: boolean;
   envPath?: string;
+  launcherEnv?: string;
+  gateEnv?: string;
 }
 
 export interface ShellProbeResult {
@@ -350,8 +381,17 @@ export function probeMechanism(
   const found = named && existsSync(named) ? named : onPath(input.binary, env, platform);
   if (!found) return { ok: false, path: null, detail: "absent du PATH" };
   const real = realPathOf(found);
+  // Un mécanisme porté par un script : les deux variables doivent désigner des fichiers présents, sinon il est absent.
+  let probeArgs = [input.versionArg];
+  if (input.launcherEnv) {
+    const script = env[input.launcherEnv];
+    const engine = input.gateEnv ? env[input.gateEnv] : undefined;
+    if (!script || !existsSync(script)) return { ok: false, path: null, detail: `non configuré (${input.launcherEnv} ne désigne aucun script)` };
+    if (input.gateEnv && (!engine || !existsSync(engine))) return { ok: false, path: null, detail: `non configuré (${input.gateEnv} ne désigne aucun moteur)` };
+    probeArgs = [script, input.versionArg];
+  }
   // L'épreuve de `herald-sandbox` démarre de vrais conteneurs : elle a droit à plus que 5 secondes.
-  const probed = spawnSync(real, [input.versionArg], {
+  const probed = spawnSync(real, probeArgs, {
     timeout: input.mustExitZero ? 60_000 : 5_000,
     windowsHide: true,
     env,
@@ -378,8 +418,8 @@ export function probeMechanism(
 function unavailableReason(tried: string[], platform: NodeJS.Platform): string {
   if (platform === "win32") {
     return (
-      `sur win32, le confinement des écritures demande le binaire herald-sandbox (AppContainer, crate host-sandbox) : ${tried.join(" ; ") || "aucun essai"}. ` +
-      "Il peut être indiqué par HERALD_SANDBOX_BIN. L'environnement Docker, lui, tient aussi ce confinement : " +
+      `sur win32, le confinement des écritures demande le binaire herald-sandbox (AppContainer, crate host-sandbox) ou MXC : ${tried.join(" ; ") || "aucun essai"}. ` +
+      "Le premier peut être indiqué par HERALD_SANDBOX_BIN, le second par JAROD_MXC_RUNNER et JAROD_MXC_SDK. L'environnement Docker, lui, tient aussi ce confinement : " +
       "chaque commande tourne dans un conteneur qui ne partage que le dossier de travail"
     );
   }
@@ -450,6 +490,8 @@ export class ShellGuardService {
         versionArg: def.versionArg,
         mustExitZero: def.mustExitZero,
         envPath: def.envPath,
+        launcherEnv: def.launcherEnv,
+        gateEnv: def.gateEnv,
       };
       let result = this.probed.get(def.id);
       if (!result) {
@@ -625,6 +667,14 @@ export class ShellGuardService {
           program.name,
         );
       }
+      // MXC lance la commande dans un conteneur dont l'environnement est celui du moteur : les secrets du coffre n'y arrivent pas.
+      // Les promettre puis ne pas les fournir ferait échouer la commande sans raison lisible : on refuse, avant de lancer.
+      if (status.id === "mxc" && (opts.envKeys ?? []).length) {
+        return this.refuse(
+          "le confinement MXC ne transmet pas les secrets du coffre à la commande (retirer `secrets`, ou utiliser herald-sandbox ou Docker).",
+          program.name,
+        );
+      }
       mechanism = status.id;
       planRoots = [rootReal, ...roots.roots];
     }
@@ -685,7 +735,8 @@ export class ShellGuardService {
     }
     const def = MECHANISMS.find((m) => m.id === mechanism)!;
     const status = this.mechanism();
-    const args = def.build({ bin: status.path!, command: line, cwd, roots: planRoots });
+    const launcher = def.launcherEnv ? this.env[def.launcherEnv] : undefined;
+    const args = def.build({ bin: status.path!, command: line, cwd, roots: planRoots, launcher });
     return {
       kind: "plan",
       mode: "exec",
