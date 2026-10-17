@@ -100,23 +100,44 @@ Open items:
   celui du processus. Non fait : activation par un réglage de l'interface, empaquetage du SDK (variables d'environnement
   seulement), mesure d'une longue commande (plafond 600 s).
 - **E2 (navigateur connecté)** : posture décidée (2026-10-17) : permis, accord explicite par opération (lectures comprises) et
-  journal. Moteur INSTALLÉ et ÉPINGLÉ (2026-10-17) : browser-harness 0.1.13, venv `engines/browser-harness`, dépendances à empreintes
+  journal. Moteur INSTALLÉ et ÉPINGLÉ : browser-harness 0.1.13, venv `engines/browser-harness`, dépendances à empreintes
   (`engines.lock/browser-harness-requirements.txt`, recréation dans `engines.lock/README.md`). Code du moteur LU avant installation :
-  il contient une télémétrie PostHog (coupée par le pont, et vérifiée par un écouteur local qui ne reçoit rien), un `run.py` qui
-  exécute du code d'agent et un chargement de `agent_helpers.py` (le pont n'expose ni l'un ni l'autre et refuse de démarrer si le
-  second existe), et, sans point d'entrée explicite, il cherche le Chrome quotidien de l'utilisateur (le pont exige un navigateur de
-  bouclage lancé par Jarod avec un profil jetable `jarod-e2-*` sous le dossier temporaire, et sa variable d'environnement est minimale).
-  Contrat : `integrations/src/impl/browser.ts` ; moteur : `browser-engine.ts` + `sidecars/browser-bridge/bh_ops.py` ; outil :
-  `connected_browser` (`tools/src/connected-browser-tool.ts`), éteint par défaut (n'existe que si un hôte appelle
-  `ToolsService.attachConnectedBrowser`), accord demandé dans l'outil à chaque opération par la porte d'approbation du cœur, avec la
-  description de l'action (le courtier n'offre alors ni « toujours » ni « pour cette conversation », et l'auto-approbation ne s'applique
-  pas). Configuration utilisateur : `parseBrowserConfig` (désactivé, liste blanche vide par défaut ; entrées trop larges écartées) ;
-  la configuration de TEST est distincte (liste blanche `localhost`, site contrôlé, Chrome jetable). Tests : 23 unitaires, 9 de l'outil
-  par `executeGuardedTool`, 19 contre le moteur réel (`integrations/test/engines/browser.engine.test.ts`), mutation-testés (accord lié
-  à l'action, fermeture des onglets hors politique, accord de l'outil). MESURÉ : la redirection HTTP est suivie par le navigateur avant
-  que la politique la voie (la requête part, la réponse n'est jamais rendue, l'onglet est fermé). NON fait : essai sur une vraie
-  session connectée de l'utilisateur (jamais ouverte, volontairement), écran de réglage des domaines, branchement de l'outil à un hôte
-  (rien n'appelle `attachConnectedBrowser`), interception réseau CDP pour empêcher la requête de redirection.
+  télémétrie PostHog (coupée par le pont, vérifiée par un écouteur local qui ne reçoit rien), `run.py` qui exécute du code d'agent et
+  chargement de `agent_helpers.py` (le pont n'expose ni l'un ni l'autre), recherche du Chrome quotidien sans point d'entrée explicite
+  (le pont exige un navigateur de bouclage lancé par Jarod avec un profil jetable `jarod-e2-*`, environnement minimal). Contrat :
+  `integrations/src/impl/browser.ts` ; moteur : `browser-engine.ts` + `sidecars/browser-bridge/bh_ops.py` ; outil : `connected_browser`
+  (`tools/src/connected-browser-tool.ts`), éteint par défaut, accord demandé dans l'outil à chaque opération par la porte d'approbation
+  du cœur, avec la description de l'action (ni « toujours », ni « pour cette conversation », ni auto-approbation).
+
+  **Garde réseau (2026-10-17).** Portée DÉCIDÉE : la liste blanche vaut pour TOUTE destination réseau du navigateur (documents, trames,
+  sous-ressources, fetch/XHR, balises, travailleurs, chaque saut de redirection), pas pour les seules navigations ; une seule règle
+  (`urlPermitted`) sert au contrôleur et à la garde. `integrations/src/impl/browser-guard.ts` : client CDP qui s'attache à chaque cible
+  AVANT sa première requête (`waitForDebuggerOnStart`), active `Fetch` sur `*` et refuse (`failRequest`) ce que la règle ne permet pas,
+  avant le réseau ; téléchargements refusés ; AUCUN service worker (son script est refusé, l'inscription échoue). Filet en plus : le
+  navigateur passe par un proxy mort sauf pour les domaines permis (WebSocket, préconnexions, IP littérales). FAIL-CLOSED :
+  `startGuardedSession` est la seule façon de démarrer E2 ; liste blanche vide, garde non démontrée (cible-canari vers un hôte interdit
+  qui doit être vue puis refusée) ou injoignable = pas de session ; cible sur laquelle `Fetch` ne s'active pas = fermée et garde « non
+  saine » ; garde perdue = plus aucune opération. Mesure AVANT : la redirection HTTP envoyait la requête (+1 au serveur interdit).
+  Mesure APRÈS, avec un serveur TÉMOIN interdit qui compte requêtes, mises à niveau WebSocket et connexions TCP : garde CDP seule = zéro
+  REQUÊTE (302, 307, chaîne, meta, img, script, css, trame, fetch, XHR, balise, SSE, travailleur, nouvelle fenêtre, formulaire) ; pile
+  complète = zéro requête ET zéro connexion. MESURÉ NON COUVERT par `Fetch` : le WebSocket atteint le témoin (1) et une connexion
+  nue peut précéder une navigation par meta ; le filet réseau les couvre. NON couvert du tout : WebRTC/UDP (drapeau posé, non
+  démontré), résolution DNS d'un hôte permis, contenu d'un hôte permis (reste non fiable), hôte permis qui redirige vers un autre hôte
+  permis (suivi). Mutations vérifiées : garde qui laisse tout passer, `Fetch` non activé, filet absent, service worker permis, garde
+  perdue ignorée.
+
+  **Réglage et hôte (2026-10-17).** Écran Réglages › Agent › Navigateur connecté (`JarodAgentSection`, entrée `connectedBrowser` du
+  pont de réglages) : éteint et vide par défaut ; domaines complets seulement (ni joker, ni étiquette seule, ni IP, ni port) ; activer,
+  ajouter un domaine ou lever une interdiction passe par une boîte native qui nomme les domaines, durcir ne demande rien ; aucune clé
+  pour un profil, un chemin de navigateur ou un moteur. `prepareConnectedBrowser` (`connected-browser-host.ts`) : seul point d'entrée
+  d'un hôte, ne branche l'outil que si le réglage est activé avec un domaine ET que le moteur est installé ; le navigateur jetable ne
+  démarre qu'à la première action APPROUVÉE ; chaque opération relit le réglage (éteint = session fermée, autre jeu de domaines =
+  nouvelle session et nouvelle garde). Tests : 25 unitaires (règle, hôte), 9 de l'outil par `executeGuardedTool`, 29 contre le moteur
+  réel, 8 du pont de réglages, tests de l'interface.
+
+  NON fait : l'appel de `prepareConnectedBrowser` par le démarrage de l'application (rien ne l'appelle : l'outil n'existe pas) ; essai
+  sur une vraie session connectée de l'utilisateur (volontairement jamais ouverte, nécessite une autorisation distincte) ; ouverture du
+  navigateur jetable visible (il est sans interface par défaut).
 - **Phase 5** : 16 adaptateurs en contrat testés contre leur moteur réel (voir `INTEGRATIONS.md`, `engines.lock/README.md`).
   Non branchés : aucun n'est câblé à run_shell, au rag, à la voix. A1 (MXC) mesuré : `ui.disable: true` empêche node de démarrer ;
   node exige `--preserve-symlinks --preserve-symlinks-main` sous ProcessContainer.
@@ -140,4 +161,5 @@ Open items:
   `apps/desktop`, paquets `@herald-os/*`, variables `HERALD_OS_*`, tubes `pipe://herald-os-*`, binaires `herald-host-spike` et
   `herald-supervise`, identifiant d'application, partitions `persist:herald-*`. Les renommer change des contrats entre processus et des données
   d'installations existantes (la migration de l'ADR-016 les traite déjà dans l'autre sens) ; c'est un chantier à part, à décider, pas un
-  renommage de surface. Environ 3 000 occurrences dans 500 fichiers, dont l'attribution de licence à conserver.
+  renommage de surface. Environ 3 000 occurrences dans 500 fichiers, dont l'attribution de licence à conserver. **Plan préparé** (phases,
+  contrats à migrer, repli, décisions de l'humain) : `docs/RENAME-PLAN-JAROD-OS.md`. Rien n'y est lancé.
