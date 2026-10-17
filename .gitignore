@@ -61,3 +61,6 @@ prompt/
 /engines/
 jarod-core/sidecars/uia-flaui/obj/
 jarod-core/sidecars/uia-flaui/bin/
+
+# local lot gate state (the journal and the backlog are tracked)
+autonomy/lots.json

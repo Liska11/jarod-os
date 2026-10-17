@@ -1,0 +1,9 @@
+{
+  "_comment": "The evaluator of the local lot gate (scripts/autonomy). Fingerprinted when a lot starts: a lot cannot edit it and pass. Add checks here, in a separate lot.",
+  "checks": [
+    { "id": "desktop-typecheck", "cwd": "apps/desktop", "cmd": "npx tsc --noEmit", "timeoutSec": 600 },
+    { "id": "desktop-electron-tests", "cwd": "apps/desktop", "cmd": "npx vitest run electron", "timeoutSec": 900 },
+    { "id": "host-rust-tests", "cwd": "host-rust", "cmd": "cargo test --workspace", "timeoutSec": 900 },
+    { "id": "autonomy-gate-tests", "cwd": ".", "cmd": "node --test scripts/autonomy/lot.test.mjs", "timeoutSec": 120 }
+  ]
+}

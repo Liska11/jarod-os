@@ -35,3 +35,10 @@ Un sujet par commit local. Les arbitrages sont ici, un par section, pour revue �
 - **Risque** : une génération seulement ; `existsSync`+`statSync` à chaque ligne (coût négligeable pour des tentatives de contrôle).
 - **Tests** : `control-audit-rotation.test.ts` (rouge puis vert), `vitest run electron/shell` 345 passés, `tsc` propre.
 - **Annuler** : `git revert` du commit « bound the shell control journal ».
+
+## 4. Recherche « harness autonome » + porte de lot locale
+- **Décision** : `AUTONOMY-RESEARCH.md` (références avec niveau de preuve), `scripts/autonomy/` (porte start/check/status), `autonomy/{checks,backlog}.json`, `autonomy/journal.jsonl` (créé à l'usage), `lots.json` ignoré par git.
+- **Pourquoi** : retenir seulement les invariants utiles et peu coûteux — évaluateur figé pendant le lot, accepter/rejeter par vérifications déterministes, abandon après 3 échecs avec trace, annulation seulement *proposée*. Pas de commit automatique, pas d'auto-modification.
+- **Honnêteté sur la recherche** : un résumé de moteur attribuait à l'arXiv 2603.17973 (TDAD) une boucle d'auto-amélioration ; la lecture de l'abstract ne la confirme pas → non citée comme telle. DGM et autoresearch ne sont connus que par extraits/articles secondaires.
+- **Tests** : `node --test scripts/autonomy/lot.test.mjs` 5/5. NB : les tests et le code ont été écrits ensemble (pas de rouge préalable) — contrairement aux lots 2 et 3. Le test « évaluateur modifié » vérifie le garde-fou ; pas de mutation faite.
+- **Annuler** : voir la section « Annuler cette partie » de `AUTONOMY-RESEARCH.md`.
