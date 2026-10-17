@@ -135,9 +135,16 @@ Open items:
   nouvelle session et nouvelle garde). Tests : 25 unitaires (règle, hôte), 9 de l'outil par `executeGuardedTool`, 29 contre le moteur
   réel, 8 du pont de réglages, tests de l'interface.
 
-  NON fait : l'appel de `prepareConnectedBrowser` par le démarrage de l'application (rien ne l'appelle : l'outil n'existe pas) ; essai
-  sur une vraie session connectée de l'utilisateur (volontairement jamais ouverte, nécessite une autorisation distincte) ; ouverture du
-  navigateur jetable visible (il est sans interface par défaut).
+  **Branchement à l'application (2026-10-17).** `cli/src/gateway/main.ts` appelle `startConnectedBrowser` au démarrage de la passerelle
+  (cycle de vie : `integrations/src/impl/connected-browser-lifecycle.ts`) : rien n'est branché et aucun navigateur ne démarre tant que le
+  réglage n'est pas activé avec un domaine ET que le moteur n'est pas trouvé (`JAROD_E2_ENGINE_ROOT`). Changement de réglage = rebranchement à
+  chaud et révocation immédiate de la session ; garde perdue = session arrêtée ; balayage des sessions abandonnées au démarrage (marqueur de
+  propriété). Navigateur dédié seulement. Preuves exactes, réserves comprises : `docs/E2-VALIDATION.md` (e2e de l'application construite : 9
+  essais ; révocation en cours d'opération ; confinement et confidentialité du point d'accès CDP ; nettoyage ; preuve réseau WebRTC/UDP).
+
+  NON fait : essai sur une vraie session connectée de l'utilisateur (volontairement jamais ouvert, nécessite une autorisation distincte) ;
+  livraison du moteur et du Chromium dans l'installeur ; preuve réseau hors de la machine et du trafic du système (le confinement n'est PAS
+  déclaré exhaustif, voir les réserves de `docs/E2-VALIDATION.md`).
 - **Phase 5** : 16 adaptateurs en contrat testés contre leur moteur réel (voir `INTEGRATIONS.md`, `engines.lock/README.md`).
   Non branchés : aucun n'est câblé à run_shell, au rag, à la voix. A1 (MXC) mesuré : `ui.disable: true` empêche node de démarrer ;
   node exige `--preserve-symlinks --preserve-symlinks-main` sous ProcessContainer.
