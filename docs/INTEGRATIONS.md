@@ -9,51 +9,55 @@ permissive/copyleft/inconnue) et ne rejette plus rien sur ce critère ; les attr
 `docs/THIRD-PARTY-NOTICES.md`.
 
 
-| Id | Dépôt | Licence | Statut | Note |
+| Id | Dépôt | Licence | Statut | Version épinglée ; note |
 |---|---|---|---|---|
-| A1 | microsoft/mxc | MIT | planned | confinement des scripts générés et des outils MCP non approuvés ; vérifier l'exigence de version de Node |
-| A2 | sigstore/cosign | Apache-2.0 | integrated | intégré en 0a (clé publique committée) ; chaîne CI complète vérifiable seulement si les secrets de CI existent (réservé à l'humain) |
-| A3 | microsoft/RAMPART | MIT | adapter-ready | 7 scénarios obligatoires contre la porte unique, faux modèle (`agent/test/adversarial.test.ts`) ; le dépôt n'est pas embarqué |
-| A4 | StackOneHQ/defender | Apache-2.0 | adapter-ready | observateur d'injections en mode observation + mesure des faux positifs ; le paquet n'est pas branché |
-| A5 | promptfoo/promptfoo | MIT | planned | évaluation comportementale, campagnes dans la sandbox dédiée seulement |
-| B1 | huggingface/transformers.js | Apache-2.0 | planned | embeddings dans le paquet installé ; accord avant téléchargement, poids épinglés |
-| B2 | asg017/sqlite-vec | Apache-2.0 | planned | PoC d'ABI avec better-sqlite3-multiple-ciphers obligatoire ; repli MemoryVectorIndex |
-| B3 | docling-project/docling | MIT | planned | sidecar Python derrière documentParser ; licences des modèles optionnels à auditer |
-| B4 | panva/oauth4webapi | MIT | planned | McpOAuthManager, jetons dans le coffre uniquement |
-| B5 | microsoft/markitdown | MIT | planned | parsing ; extensions OCR autorisées (PyMuPDF, AGPL, informationnel) |
-| C1 | snakers4/silero-vad | MIT | planned | VAD entre capture et Whisper |
-| C2 | k2-fsa/sherpa-onnx | Apache-2.0 | planned | processus natif séparé, aucun audio vers le cloud par défaut |
-| C3 | data-privacy-stack/presidio | MIT | planned | PII avant envoi cloud ; couche supplémentaire, pas une garantie |
-| D1 | FlaUI/FlaUI | MIT | planned | sidecar .NET, 7 opérations sémantiques, jamais d'exécution arbitraire |
-| D2 | pywinauto/pywinauto | BSD-3-Clause | planned | alternative UIA, mêmes contraintes |
-| D3 | microsoft/winget-cli | MIT | planned | identifiants exacts seulement, jamais une ligne construite par un modèle |
-| R1 | modelcontextprotocol/typescript-sdk | MIT → Apache-2.0 (transition) | planned | LICENSE mixte en transition, les deux permissives ; à ré-examiner à l'embarquement |
-| R2 | microsoft/playwright | Apache-2.0 | reference-only | tests E2E ; jamais le profil Chrome personnel |
-| R3 | open-telemetry/opentelemetry-js | Apache-2.0 | adapter-ready | épurateur d'attributs (liste blanche) ; SDK non branché |
-| R4 | temporalio/temporal | MIT | reference-only | concepts seulement → version SQLite minimale à écrire |
-| E1 | pinokiocomputer/pinokio | MIT | adapter-ready | phase 6B : recettes déterministes (traduire, jamais exécuter) + importeur JSON ; coexiste avec le moteur embarqué ADR-022 |
-| E2 | browser-use/browser-harness | MIT | planned | question de posture pour l'humain avant tout branchement |
-| X1 | linshenkx/prompt-optimizer | AGPL-3.0-only | planned | AGPL, intégrable si pertinent (politique révisée) ; NOTICE conservée |
-| X2 | harness/harness | Apache-2.0 | rejected | verdict déjà rendu |
+| A1 | microsoft/mxc | MIT | adapter-ready | `@microsoft/mxc-sdk@1.0.1` ; confinement des scripts générés et des outils MCP non approuvés ; vérifier l'exigence de version de Node avant embarquement ; TESTÉ contre MXC réel (ProcessContainer) : écriture hors zone, lecture d'un dossier interdit, réseau et délai tenus ; mesuré : ui.disable=true empêche node de démarrer, et node doit être lancé avec --preserve-symlinks. Pas encore branché à run_shell |
+| A2 | sigstore/cosign | Apache-2.0 | integrated | `cle-publique-committee` ; intégré en 0a (clé publique committée) ; chaîne CI à vérifier seulement si les secrets existent (réservé à l'humain) |
+| A3 | microsoft/RAMPART | MIT | adapter-ready | `scenarios-internes-v1` ; les 7 scénarios obligatoires tournent contre la porte unique avec un faux modèle (agent/test/adversarial.test.ts) ; le dépôt lui-même n'est pas embarqué |
+| A4 | StackOneHQ/defender | Apache-2.0 | adapter-ready | `observateur-base-v1` ; observateur d'injections en mode OBSERVATION (aucun blocage) avec détecteur de base et harnais de mesure des faux positifs ; le paquet n'est pas encore branché |
+| A5 | promptfoo/promptfoo | MIT | adapter-ready | `promptfoo@0.124.1` ; suite d'évaluation comportementale ; campagnes dans la sandbox dédiée seulement ; TESTÉ : la configuration exportée est exécutée par promptfoo réel (fournisseur echo, hors ligne) |
+| B1 | huggingface/transformers.js | Apache-2.0 | adapter-ready | `@huggingface/transformers@4.3.1 + Xenova/all-MiniLM-L6-v2@751bff3` ; embeddings dans le paquet installé ; exige l'accord avant téléchargement du modèle, poids épinglés, test depuis l'installation empaquetée ; TESTÉ avec le moteur réel : poids épinglés SHA-256, altération d'un octet refusée, aucun téléchargement sans accord, vecteurs sémantiques 384 dimensions. Reste : preuve depuis l'installation empaquetée |
+| B2 | asg017/sqlite-vec | Apache-2.0 | adapter-ready | `sqlite-vec@0.1.9` ; PoC de compatibilité avec better-sqlite3-multiple-ciphers obligatoire ; repli MemoryVectorIndex ; TESTÉ : PoC d'ABI réel dans better-sqlite3-multiple-ciphers 13.0.3, base en clair ET chiffrée |
+| B3 | docling-project/docling | MIT | adapter-ready | `docling-slim@2.140.0 (profil sans PyTorch)` ; sidecar Python derrière le seam documentParser ; licences des modèles optionnels à auditer séparément ; TESTÉ avec Docling réel (docx, pptx, xlsx, html, pdf natif) ; le CLI docling exige la pile complète, un script de conversion natif le remplace ; PDF sans titres ni tableaux (limite du profil sans modèle) |
+| B4 | panva/oauth4webapi | MIT | adapter-ready | `oauth4webapi@3.8.8` ; McpOAuthManager : jetons dans le coffre uniquement ; TESTÉ contre oauth4webapi réel (défi PKCE identique, validation de redirection) et un serveur de jetons HTTP local |
+| B5 | microsoft/markitdown | MIT | adapter-ready | `markitdown@0.1.8 + pymupdf@1.28.2` ; parsing ; extensions OCR autorisées (PyMuPDF, AGPL, informationnel) ; à brancher dans le sidecar Python ; TESTÉ avec markitdown réel (HTML, PDF avec --use-plugins) ; sortie nettoyée des caractères invisibles |
+| C1 | snakers4/silero-vad | MIT | adapter-ready | `silero-vad@v5.1.2 (silero_vad.onnx sha256 2623a295…)` ; VAD entre capture et Whisper ; TESTÉ avec le modèle ONNX réel sur de la parole synthétisée : segment dans la bonne zone, silence et bruit blanc ignorés |
+| C2 | k2-fsa/sherpa-onnx | Apache-2.0 | adapter-ready | `sherpa-onnx@1.13.8 + zipformer-en-20M-2023-02-17` ; processus natif séparé, protocole local, aucun audio vers le cloud par défaut ; TESTÉ avec le modèle réel hors ligne (parole synthétisée) ; le moteur ne rend pas de confiance ; moteur distant refusé par défaut |
+| C3 | data-privacy-stack/presidio | MIT | adapter-ready | `presidio-analyzer@2.2.364 + en_core_web_sm@3.8.0` ; détection de PII avant tout envoi cloud ; couche supplémentaire, jamais une garantie absolue ; TESTÉ contre Presidio réel : ce que la couche locale masque est reconnu par Presidio ; l'union masque aussi noms et lieux ; Presidio est anglais seulement dans ce profil |
+| D1 | FlaUI/FlaUI | MIT | adapter-ready | `FlaUI.UIA3@5.0.0 (sidecar .NET)` ; sidecar .NET limité à 7 opérations sémantiques ; jamais d'exécution arbitraire ; TESTÉ sur une fenêtre WinForms fabriquée : saisie, clic, lecture, champ protégé jamais rempli |
+| D2 | pywinauto/pywinauto | BSD-3-Clause | adapter-ready | `pywinauto@0.6.9` ; alternative UIA si FlaUI est insuffisant, mêmes contraintes ; TESTÉ sur la même fenêtre fabriquée ; politique de gouvernance commune (processus permis/interdits, accord par action, débit) |
+| D3 | microsoft/winget-cli | MIT | adapter-ready | `winget@v1.29.380 (version de la machine)` ; identifiants exacts seulement ; jamais une ligne construite par un modèle ; TESTÉ avec winget réel en lecture seule (show, search, list) ; aucune installation lancée par les tests |
+| R1 | modelcontextprotocol/typescript-sdk | MIT | adapter-ready | `@modelcontextprotocol/sdk@1.32.1` ; LICENSE en transition MIT → Apache-2.0 (contributions mixtes) : les deux sont permissives, à ré-examiner à l'embarquement ; dépendance directe du noyau ; TESTÉ contre un serveur construit avec le SDK officiel : aperçu avant activation, épinglage, rug-pull retenu, désactivation après 3 échecs. Le SDK n'est qu'une dépendance de test |
+| R2 | microsoft/playwright | Apache-2.0 | integrated | `@playwright/test (devDependency de apps/desktop)` ; tests E2E ; jamais le profil Chrome personnel ; TESTÉ : 8 tests e2e sur le shell construit, profil jetable ; mutation-testés |
+| R3 | open-telemetry/opentelemetry-js | Apache-2.0 | adapter-ready | `epurateur-v1` ; épurateur d'attributs (liste blanche : identifiants, durées, tailles, statuts, catégories d'erreur) ; le SDK n'est pas encore branché |
+| R4 | temporalio/temporal | MIT | adapter-ready | `concepts-temporal-v1 (durable.ts)` ; concepts seulement (activités idempotentes, historique rejouable) → version SQLite minimale à écrire ; pas de serveur Temporal ; TESTÉ sur SQLite réel : reprise depuis une AUTRE connexion sans rejouer les activités terminées, plafond d'échecs, masquage |
+| E1 | pinokiocomputer/pinokio | MIT | adapter-ready | `pinokio@8.2.0-comportement-observe` ; phase 6B : moteur de recettes déterministe (recipes/), importeur de scripts JSON simples ; réécriture du comportement observé, aucune ligne de pinokiod reprise. Coexiste avec le moteur embarqué de l'ADR-022, sans le remplacer ni le modifier |
+| E2 | browser-use/browser-harness | MIT | planned | QUESTION DE POSTURE pour l'humain : l'agent doit-il toucher le navigateur CONNECTÉ de l'utilisateur ? Aucun branchement avant la réponse |
+| X1 | linshenkx/prompt-optimizer | AGPL-3.0-only | planned | AGPL-3.0 (LICENSE vérifiée) : intégrable si pertinent depuis la révision de la politique (usage strictement personnel) ; NOTICE à conserver |
+| X2 | harness/harness | Apache-2.0 | rejected | verdict déjà rendu : aucun cas d'usage |
 
 ## Ce qui est réellement fait
 
-- **A3** : les 7 scénarios adversariaux tournent contre la porte unique, sans profil réel. 6 passent ; le 3e (un
-  serveur MCP change la description d'un outil) est une **découverte** (ci-dessous).
-- **A4** : le texte passe inchangé en observation, seules des catégories sont journalisées ; `enforce` est refusé
-  sans taux de faux positifs mesuré sous 2 %. Corpus : 10 bénins, 6 malveillants, 0 faux positif, 100 % de détection.
-  C'est un petit corpus, pas une preuve de robustesse.
-- **R3** : épurateur d'attributs de trace à liste blanche (nom ET forme de valeur) ; le SDK OpenTelemetry n'est pas branché.
+Chaque adaptateur est un CONTRAT (politique d'échec fermé, refus par défaut) dans `integrations/src/impl/`, et la plupart sont
+testés contre leur moteur RÉEL (`integrations/test/engines/*.engine.test.ts`, plus de quarante tests) : voir `jarod-core/engines.lock/README.md`
+pour recréer les moteurs. Les documents, fenêtres, voix et phrases des tests sont fabriqués ; aucun profil réel n'est touché.
+
+- **Tenu contre le moteur réel** : A1 (MXC ProcessContainer : écriture hors zone, dossier interdit, réseau, délai), A5 (promptfoo),
+  B1 (transformers.js + MiniLM épinglé), B2 (sqlite-vec dans la base chiffrée), B3 (Docling sans PyTorch), B4 (oauth4webapi),
+  B5 (markitdown + OCR), C1 (silero-vad), C2 (sherpa-onnx), C3 (Presidio), D1 (FlaUI), D2 (pywinauto), D3 (winget, lecture
+  seule), R1 (SDK MCP officiel), R2 (Playwright, 8 tests e2e du shell), R4 (SQLite réel, reprise sur une autre connexion).
+- **A3, A4, R3** : comme avant (scénarios adversariaux, observateur en observation, épurateur d'attributs).
+- **E1** : moteur de recettes déterministe (voir `PINOKIO-PORT-EVALUATION.md` § 10).
 
 ## Ce qui n'est PAS fait, et pourquoi
 
-A1, A5, B1 à B5, C1 à C3, D1 à D3, R1, R2 (tests E2E), R4, E1, E2 : adaptateur non écrit.
-
-- installations et téléchargements hors périmètre automatique (modèles ONNX, runtimes natifs, sidecars Python ou
-  .NET, toolchains) : B1, B3, B5, C1, C2, C3, D1, D2 ;
-- preuve exigée depuis l'installation empaquetée (B1) ou PoC d'ABI natif (B2) ;
-- gouvernance d'abord pour la vague D (pouvoir fort), et décision humaine pour E2 (navigateur connecté) ;
-- dépendance directe du noyau à choisir (R1), OAuth qui a besoin du coffre côté TypeScript (B4).
+- **Branchement** : aucun de ces adaptateurs n'est encore câblé à `run_shell`, au plugin rag, à la voix ou à l'interface. Ils sont
+  prêts et testés ; les brancher est un travail par intégration (A1 : remplacer le confinement de `run_shell` par MXC reste à
+  décider, la sandbox 3.1/3.2 existe déjà).
+- **E2** : décision de posture de l'humain (navigateur connecté) ; X1 (prompt-optimizer) : AGPL intégrable, aucun cas d'usage écrit.
+- **B1** : la preuve depuis l'installation empaquetée reste à faire. **C1/C2** : testés en anglais synthétique, pas sur une voix
+  humaine. **C3** : Presidio est anglais seulement dans ce profil. **B3** : PDF sans titres ni tableaux (profil sans PyTorch).
+- **D1/D2** : approbation de chaque action par l'utilisateur obligatoire ; aucun outil n'est encore exposé au modèle.
 
 ## Découverte de sécurité (corrigée le 2026-10-17)
 

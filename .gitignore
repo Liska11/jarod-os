@@ -59,3 +59,5 @@ prompt/
 
 # Real-engine sandboxes (venvs, downloaded weights): local, never committed.
 engines/
+jarod-core/sidecars/uia-flaui/obj/
+jarod-core/sidecars/uia-flaui/bin/

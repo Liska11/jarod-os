@@ -12,7 +12,7 @@ export type ScriptLanguage = "python" | "node" | "powershell";
 
 const RUNNERS: Record<ScriptLanguage, { ext: string; argv: (file: string) => string }> = {
   python: { ext: "py", argv: (f) => `python "${f}"` },
-  node: { ext: "mjs", argv: (f) => `node "${f}"` },
+  node: { ext: "mjs", argv: (f) => `node --preserve-symlinks --preserve-symlinks-main "${f}"` },
   powershell: { ext: "ps1", argv: (f) => `powershell -NoProfile -ExecutionPolicy Restrict -File "${f}"` },
 };
 
@@ -54,4 +54,51 @@ export type McpExposure = "offer" | "hold" | "block";
 export function mcpExposure(tool: { serverEnabled: boolean; serverHealthy: boolean; pinState: "approved" | "changed" | "new" | "unknown" }): McpExposure {
   if (!tool.serverEnabled || !tool.serverHealthy) return "block";
   return tool.pinState === "approved" ? "offer" : "hold";
+}
+
+// ---------------------------------------------------------------- moteur mxc
+
+/** Requête de conteneur MXC (sous-ensemble du contrat v1 que nous utilisons). */
+export interface MxcRequest {
+  command: string;
+  filesystem: { readwritePaths: string[]; readonlyPaths: string[]; deniedPaths: string[] };
+  network: { egress: { default: "deny" } };
+  ui: { disable: false; clipboard: "none"; allowInputInjection: false };
+  timeoutMs: number;
+  workingDirectory: string;
+}
+
+export interface MxcPolicy {
+  /** Dossier de travail ABSOLU : le seul chemin où le contenu peut écrire. */
+  workspace: string;
+  /** Dossiers lisibles (interpréteurs, bibliothèques). */
+  readonlyPaths?: string[];
+  /** Dossiers interdits en plus (dossier personnel sensible, profils de navigateur…). */
+  deniedPaths?: string[];
+}
+
+const ABS = /^(?:[A-Za-z]:[\\/]|\/)/;
+const SEP = /[\\/]/;
+const TRAILING_SEP = /[\\/]+$/;
+
+/**
+ * Traduit une commande déjà validée en requête MXC : écriture dans la zone seulement, réseau refusé (pas d'option pour
+ * l'ouvrir), interface refusée, délai borné. Les chemins relatifs ou contenant `..` sont refusés.
+ */
+export function toMxcRequest(command: string, policy: MxcPolicy, timeoutSeconds = 60): MxcRequest {
+  if (!command.trim() || command.includes("\0")) throw new AdapterRefused("A1", "commande vide ou invalide");
+  const all = [policy.workspace, ...(policy.readonlyPaths ?? []), ...(policy.deniedPaths ?? [])];
+  for (const p of all) if (!ABS.test(p) || p.split(SEP).includes("..")) throw new AdapterRefused("A1", `chemin de politique non absolu ou contenant « .. » : ${p}`);
+  const ws = policy.workspace.replace(TRAILING_SEP, "");
+  if ((policy.readonlyPaths ?? []).concat(policy.deniedPaths ?? []).some((p) => p.replace(TRAILING_SEP, "").toLowerCase() === ws.toLowerCase())) throw new AdapterRefused("A1", "la zone de travail ne peut pas être aussi en lecture seule ou interdite");
+  return {
+    command,
+    filesystem: { readwritePaths: [policy.workspace], readonlyPaths: policy.readonlyPaths ?? [], deniedPaths: policy.deniedPaths ?? [] },
+    network: { egress: { default: "deny" } },
+    // MESURÉ : `ui.disable: true` empêche tout programme Win32 qui charge user32 de démarrer (node, PowerShell : 0xC0000142). Les
+    // processus ont donc une pile UI, sans presse-papiers ni injection d'entrée.
+    ui: { disable: false, clipboard: "none", allowInputInjection: false },
+    timeoutMs: Math.max(1, Math.min(600, Math.floor(timeoutSeconds))) * 1000,
+    workingDirectory: policy.workspace,
+  };
 }
