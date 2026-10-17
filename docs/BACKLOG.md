@@ -80,3 +80,26 @@ Open items:
   host platform (unit test + e2e). Without the variable the real Recent folder is still read, outside the sandbox and
   the agent read roots: unchanged for normal use, to decide with the file-roots policy.
 - **MCP description pinning**: done, see `docs/INTEGRATIONS.md`. The approval screen is still to build.
+
+## Reprise du 2026-10-17 (après le rapport final)
+
+- **MCP : épinglage SHA-256 des descriptions** fait (`mcp/src/mcp.ts`, 7 tests + 4 contre le SDK officiel), approbation visible dans
+  l'écran Plateforme. Reste : l'épingle est créée à la première connexion sans demander (activer le serveur vaut accord) ;
+  durcir en montrant l'aperçu AVANT la première activation si on le veut (l'aperçu existe : `McpManager.preview`).
+- **Recent / find** : `JAROD_OS_ISOLATED=1` ne lit plus le vrai profil (test unitaire + e2e). Sans la variable, comportement inchangé.
+- **Mutation testing** : six flux couverts, dont chat (la première version de l'assertion survivait : corrigée) et non-retour de l'assistant.
+- **6B** : moteur de recettes déterministe additif, voir `PINOKIO-PORT-EVALUATION.md` § 10. L'ADR-022 (pinokiod embarqué) n'est ni
+  modifié ni retiré : à trancher par l'humain.
+- **Phase 5** : 16 adaptateurs en contrat testés contre leur moteur réel (voir `INTEGRATIONS.md`, `engines.lock/README.md`).
+  Non branchés : aucun n'est câblé à run_shell, au rag, à la voix. A1 (MXC) mesuré : `ui.disable: true` empêche node de démarrer ;
+  node exige `--preserve-symlinks --preserve-symlinks-main` sous ProcessContainer.
+- **Écran Plateforme** (plugins de la plateforme, quarantaine, bacs à sable, Hyper-V, outils MCP à approuver) : canaux
+  `platform-status` et `mcp-approve-tool`, 2 tests e2e du shell construit. Lecture seule sauf l'approbation d'un outil. Pas encore
+  d'actions (créer un bac à sable, promouvoir une pièce) depuis l'écran : à ouvrir seulement avec un accord par action.
+- **Piège de construction** : l'e2e lit le bundle `jarod-core/dist/gateway` (ignoré par git). Après toute modification du cœur,
+  `pnpm --dir jarod-core run bundle:gateway`, sinon l'écran voit un ancien moteur (c'est ce qui a montré « État inconnu »).
+- **Piège de dépôt** : la règle `engines/` du `.gitignore` cachait `test/engines/` ; elle est devenue `/engines/`. Un contrôle
+  `git status` après avoir écrit des tests dans un dossier au nom courant évite de les croire commités.
+- **Limites** : voix testée en synthèse (anglais) ; Presidio anglais seulement ; B1 sans preuve depuis l'installation empaquetée ;
+  Docling complet télécharge ses modèles au premier usage (réseau) ; D1/D2 n'ont qu'une fenêtre fabriquée pour cible.
+

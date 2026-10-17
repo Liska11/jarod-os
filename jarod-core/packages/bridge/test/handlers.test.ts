@@ -1257,8 +1257,9 @@ describe("W8 handlers : carte et garde", () => {
     // + 6 canaux d'automation (SPECS-P5-AUTOMATION.md : automation-list, automation-create, automation-get, automation-update, automation-delete, automation-run).
     // + 1 canal des secrets illisibles (AV2-009 : secrets-unreadable, les noms seulement).
     // + 4 canaux des modèles locaux (2026-10-06 : local-models-list, local-models-load, local-models-unload, local-models-configure — hotswap).
-    // Jarod-OS : 271 = 277 moins les 6 canaux du terminal intégré (`terminal-*`, node-pty écarté).
-    expect(keys).toHaveLength(271);
+    // + 2 canaux de l'écran « Plateforme » (2026-10-17 : platform-status, mcp-approve-tool).
+    // Jarod-OS : 273 = 279 moins les 6 canaux du terminal intégré (`terminal-*`, node-pty écarté).
+    expect(keys).toHaveLength(273);
     const hermes = keys.filter((k) => (HERMES_INVOKE_CHANNELS as readonly string[]).includes(k));
     expect(hermes).toHaveLength(207);
     expect(keys.filter((k) => !hermes.includes(k)).sort()).toEqual([...JAROD_INVOKE_CHANNELS].filter((k) => !k.startsWith("terminal-")).sort());
