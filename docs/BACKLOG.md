@@ -29,7 +29,9 @@ Items identified and deliberately not done. Each survives the session here.
 - **Packaging of `jarod-sandbox`**: found on PATH or through `JAROD_SANDBOX_BIN` (l'ancien `HERALD_SANDBOX_BIN` reste lu), documented but not distributed. The
   real end-to-end test (`shell-guard.test.ts`) skips on a machine without a build.
 - Tested on one Windows build (10.0.26300); a second version is still to try.
-- Network confinement is configured (no capability by default) but has no test.
+- Network confinement: **tested (2026-10-17)**, on demand (`JAROD_NET_PROBE=1`, one TCP handshake to 1.1.1.1:443, no data sent; `agent/test/sandbox-network.test.ts`).
+  Outside the container the connection succeeds; inside, the kernel refuses it (`EACCES`, not a timeout); with `--network` it succeeds. A loopback
+  witness cannot be used: measured, an AppContainer does not reach 127.0.0.1 even with the network capability (ETIMEDOUT both ways).
 - Per-attempt audit of refused writes is not possible from the kernel; the host reports what changed in the workspace
   instead (to wire into the audit journal).
 
