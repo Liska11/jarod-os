@@ -61,9 +61,13 @@ export class SettingsService {
   }
 
   patch(values: Partial<Settings>): Settings {
+    // Une clé absente de DEFAULT_SETTINGS est toujours ÉCARTÉE (un profil exporté par une autre version ne doit pas casser un enregistrement),
+    // mais plus EN SILENCE (audit D-09) : les NOMS sont dits, jamais les valeurs. Les clés connues du même lot sont écrites.
+    const dropped = Object.keys(values).filter((k) => !Object.hasOwn(DEFAULT_SETTINGS, k));
+    if (dropped.length > 0) console.warn(`[settings] clé(s) inconnue(s) ignorée(s) : ${dropped.join(", ")} — à ajouter à DEFAULT_SETTINGS (contracts/src/settings.ts)`);
     this.db.tx(() => {
       for (const [k, v] of Object.entries(values)) {
-        if (k in DEFAULT_SETTINGS) this.set(k as keyof Settings, v as never);
+        if (Object.hasOwn(DEFAULT_SETTINGS, k)) this.set(k as keyof Settings, v as never);
       }
     });
     return this.getAll();

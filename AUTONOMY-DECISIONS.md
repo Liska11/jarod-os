@@ -42,3 +42,10 @@ Un sujet par commit local. Les arbitrages sont ici, un par section, pour revue �
 - **Honnêteté sur la recherche** : un résumé de moteur attribuait à l'arXiv 2603.17973 (TDAD) une boucle d'auto-amélioration ; la lecture de l'abstract ne la confirme pas → non citée comme telle. DGM et autoresearch ne sont connus que par extraits/articles secondaires.
 - **Tests** : `node --test scripts/autonomy/lot.test.mjs` 5/5. NB : les tests et le code ont été écrits ensemble (pas de rouge préalable) — contrairement aux lots 2 et 3. Le test « évaluateur modifié » vérifie le garde-fou ; pas de mutation faite.
 - **Annuler** : voir la section « Annuler cette partie » de `AUTONOMY-RESEARCH.md`.
+
+## 5. Clés de réglage inconnues : plus de perte silencieuse (audit D-09) — lot B2, passé par la porte (ACCEPT)
+- **Décision** : `SettingsService.patch` écarte toujours une clé absente de `DEFAULT_SETTINGS`, mais **dit son nom** (`console.warn`, jamais la valeur) ; les clés connues du même lot sont écrites. Au passage `k in DEFAULT_SETTINGS` devient `Object.hasOwn` (une clé comme `toString` n'est plus « connue » par héritage du prototype).
+- **Option rejetée** : lever une erreur. Premier essai (rouge → vert) : cela a cassé `settings-memory.test.ts`, qui documente l'écartement des clés inconnues. Lever une erreur ferait aussi échouer l'enregistrement d'un profil venant d'une autre version : trop risqué pour un gain de diagnostic.
+- **Risque** : l'avertissement n'est qu'un journal ; il ne remplace pas l'ajout de la clé aux défauts. Le test mal posé a été remplacé, pas contourné.
+- **Tests** : `settings-unknown-keys.test.ts` (rouge avant) ; `vitest` sur storage/bridge/cli 955 passés ; suite jarod-core complète : les gates P0/P1/P2/P3 échouent avec et sans ma modification (dépendants de la machine) ; les moteurs navigateur (avant) et `hyperv` (après) échouent par intermittence sous charge — `hyperv` repasse seul ; le seul échec réellement causé par ma première version (`settings-memory.test.ts`) a mené au changement de décision ci-dessus. Porte de lot : ACCEPT 1.00.
+- **Annuler** : `git revert` du commit « fix(settings) ».
