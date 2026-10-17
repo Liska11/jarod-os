@@ -21,3 +21,10 @@ Un sujet par commit local. Les arbitrages sont ici, un par section, pour revue �
 - **Tests** : `isolated-plugin.test.ts` ×3 passes, 5/5 à chaque fois.
 - **Commit** : voir `git log` (sujet « test(embeddings) »).
 - **Reste** : rien.
+
+## 2. Journal applicatif `herald-os.log` borné (audit CAP-19 / OPP-14, partie rotation)
+- **Décision** : nouvelle classe `RotatingLog` (`apps/desktop/electron/rotating-log.ts`) ; `log.ts` l'utilise. Au-delà de 5 Mo le fichier devient `herald-os.log.1` (une génération), un nouveau fichier démarre ; une ligne n'est jamais coupée ; une erreur d'écriture est avalée.
+- **Pourquoi** : le fichier croissait sans borne. Écriture synchrone par ligne (`appendFileSync`, aucun descripteur gardé ouvert) : plus simple et sans fuite, volume de logs faible. Pas d'OpenTelemetry : dépendance et surface réseau inutiles pour ce besoin (l'audit le classe « moyenne », et la rotation seule règle le risque disque).
+- **Risque** : une seule génération conservée (au plus ~10 Mo) ; écriture synchrone sur le fil principal (lignes courtes, redactées et bornées à 4 000 caractères).
+- **Tests** : `rotating-log.test.ts` 3/3 (rouge avant) ; `vitest run electron` 705 passés, 3 ignorés ; `tsc --noEmit` propre. Une coquille de ma part (appel à l'ancienne fonction) a été attrapée par ces tests et corrigée avant commit.
+- **Reste** : métriques/traces locales (non traité, chantier large).

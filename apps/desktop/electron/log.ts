@@ -1,15 +1,16 @@
-import fs from 'node:fs'
 import path from 'node:path'
 import { redactLine } from '../shared/redact.ts'
 import { hermesHome } from './paths.ts'
+import { RotatingLog } from './rotating-log.ts'
 
 const MAX_TAIL = 400
 const tail: string[] = []
-let stream: fs.WriteStream | null = null
+const MAX_LOG_BYTES = 5 * 1024 * 1024
+let sink: RotatingLog | null = null
 
-function ensureStream(): fs.WriteStream | null {
-  if (stream) {
-    return stream
+function ensureSink(): RotatingLog | null {
+  if (sink) {
+    return sink
   }
 
   // Under Vitest the log stays in memory: tests used to append to the person's real herald-os.log (HERMES_HOME).
@@ -17,15 +18,9 @@ function ensureStream(): fs.WriteStream | null {
     return null
   }
 
-  try {
-    const dir = path.join(hermesHome(), 'logs')
-    fs.mkdirSync(dir, { recursive: true })
-    stream = fs.createWriteStream(path.join(dir, 'herald-os.log'), { flags: 'a' })
-  } catch {
-    stream = null
-  }
+  sink = new RotatingLog(path.join(hermesHome(), 'logs', 'herald-os.log'), MAX_LOG_BYTES)
 
-  return stream
+  return sink
 }
 
 export function log(scope: string, message: string): void {
@@ -39,7 +34,7 @@ export function log(scope: string, message: string): void {
   }
 
   console.log(line)
-  ensureStream()?.write(line + '\n')
+  ensureSink()?.write(line)
 }
 
 export function logTail(lines = 120): string[] {
