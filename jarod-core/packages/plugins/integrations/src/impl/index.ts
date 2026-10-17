@@ -13,3 +13,5 @@ export * from "./uia.js";
 export * from "./winget.js";
 export * from "./durable.js";
 export * from "./browser-engine.js";
+export * from "./browser-guard.js";
+export * from "./connected-browser-host.js";

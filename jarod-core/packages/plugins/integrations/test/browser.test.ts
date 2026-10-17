@@ -9,8 +9,10 @@ import {
   ConnectedBrowser,
   DEFAULT_BROWSER_CONFIG,
   parseBrowserConfig,
+  hostPermitted,
   policyFromConfig,
   type TabRef,
+  urlPermitted,
 } from "../src/index.js";
 
 function world() {
@@ -280,5 +282,36 @@ describe("E2 — configuration de l'utilisateur : désactivé et liste blanche v
     expect(c.enabled).toBe(true);
     expect(c.allowDomains).toEqual(["exemple.org", "docs.exemple.org"]);
     expect(c.denyDomains).toEqual(["tracker.net"]);
+  });
+});
+
+describe("urlPermitted / hostPermitted — la règle unique du contrôleur et de la garde réseau", () => {
+  const policy = { allowDomains: ["docs.exemple.org", "localhost"], denyDomains: ["pub.exemple.org"] };
+  it("portée = toute destination réseau : seuls les hôtes permis passent, sous-ressources comprises", () => {
+    expect(urlPermitted("https://docs.exemple.org/a/b.png?x=1", policy)).toBe(true);
+    expect(urlPermitted("https://cdn.docs.exemple.org/lib.js", policy)).toBe(true);
+    expect(urlPermitted("https://cdn.autre.net/lib.js", policy)).toBe(false);
+    expect(urlPermitted("http://127.0.0.1:8080/", policy)).toBe(false);
+    expect(urlPermitted("https://docs.exemple.org.evil.net/", policy)).toBe(false);
+  });
+  it("les interdictions l'emportent (liste noire de l'utilisateur, liste noire par défaut, mots d'hôte)", () => {
+    expect(urlPermitted("https://pub.exemple.org/", { ...policy, allowDomains: ["exemple.org"] })).toBe(false);
+    expect(urlPermitted("https://accounts.google.com/", { allowDomains: ["google.com"] })).toBe(false);
+    expect(urlPermitted("http://checkout.localhost/", policy)).toBe(false);
+  });
+  it("schémas : sans réseau (about, data, blob) permis ; tout le reste refusé ; identifiants dans l'adresse refusés ; illisible refusé", () => {
+    for (const u of ["about:blank", "data:text/plain,x", "blob:http://localhost/1"]) expect(urlPermitted(u, policy)).toBe(true);
+    for (const u of ["ftp://docs.exemple.org/", "file:///C:/x", "ws://docs.exemple.org/", "wss://docs.exemple.org/", "chrome://settings", "javascript:alert(1)", "https://u:p@docs.exemple.org/", "pas une adresse", ""]) expect(urlPermitted(u, policy)).toBe(false);
+  });
+  it("liste blanche vide (réglage par défaut) : plus aucune destination réseau", () => {
+    const empty = policyFromConfig(DEFAULT_BROWSER_CONFIG);
+    expect(urlPermitted("https://docs.exemple.org/", empty)).toBe(false);
+    expect(hostPermitted("localhost", empty)).toBe(false);
+  });
+  it("le contrôleur et la garde appliquent la même règle", () => {
+    const cb = new ConnectedBrowser({ policy });
+    for (const h of ["docs.exemple.org", "x.docs.exemple.org", "pub.exemple.org", "autre.net", "localhost", "checkout.localhost", "mail.google.com"]) {
+      expect(cb.allowedHost(h)).toBe(hostPermitted(h, policy));
+    }
   });
 });

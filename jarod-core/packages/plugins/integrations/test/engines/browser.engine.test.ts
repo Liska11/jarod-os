@@ -1,7 +1,7 @@
 // E2 contre le VRAI moteur : browser-harness (épinglé) derrière le pont borné, pilotant un Chrome JETABLE (profil neuf, effacé à la fin)
 // sur un site d'essai contrôlé. Aucun profil réel n'est ouvert ; la configuration de test (liste blanche « localhost ») n'est PAS celle de l'utilisateur.
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
@@ -15,12 +15,18 @@ import {
   ConnectedBrowser,
   type BrowserPolicy,
   type DisposableBrowser,
+  type GuardedSession,
   HarnessBackend,
+  discoverEnginePaths,
   isDisposableProfile,
-  launchDisposableBrowser,
+  NetworkGuard,
+  parseBrowserConfig,
+  prepareConnectedBrowser,
+  urlPermitted,
+  startGuardedSession,
 } from "../../src/index.js";
 import { ROOT } from "./helpers.js";
-import { startTestSite, type TestSite } from "./browser_site.js";
+import { startTestSite, startWitness, type TestSite, type Witness } from "./browser_site.js";
 
 const PYTHON = join(ROOT, "engines", "browser-harness", "Scripts", "python.exe");
 const BRIDGE = join(ROOT, "jarod-core", "sidecars", "browser-bridge", "bh_ops.py");
@@ -33,11 +39,14 @@ const TEST_POLICY: BrowserPolicy = { allowDomains: ["localhost"] };
 
 describe.skipIf(!HAS)("E2 — moteur réel, navigateur jetable, site contrôlé", () => {
   let site: TestSite;
+  let witness: Witness;
+  let session: GuardedSession;
   let browser: DisposableBrowser;
   let engine: HarnessBackend;
   let beacon: Server;
   let beaconHits = 0;
   const approvals: BrowserApprovalRequest[] = [];
+  const blocks: { host: string; resourceType: string }[] = [];
   const audit: BrowserAuditEntry[] = [];
 
   const gate = (policy: BrowserPolicy = TEST_POLICY, over: Partial<ConstructorParameters<typeof ConnectedBrowser>[0]> = {}) =>
@@ -47,18 +56,22 @@ describe.skipIf(!HAS)("E2 — moteur réel, navigateur jetable, site contrôlé"
   const count = async (tab: string) => (await engine.readPage(tab)).text.match(/cliquer\s*(\d+)/)?.[1];
 
   beforeAll(async () => {
-    site = await startTestSite();
+    witness = await startWitness();
+    site = await startTestSite(witness.port);
     // Une « télémétrie » qui écoute : si le moteur envoyait quoi que ce soit hors de la machine, ce serait ici.
     beacon = createServer((_q, r) => (beaconHits++, r.end("ok")));
     await new Promise<void>((r) => beacon.listen(0, "127.0.0.1", r));
-    browser = await launchDisposableBrowser({ chromeBin: CHROME });
-    engine = new HarnessBackend({ python: PYTHON, bridge: BRIDGE, browser, telemetryHost: `http://127.0.0.1:${(beacon.address() as AddressInfo).port}` });
+    // La SEULE façon de démarrer E2 : navigateur jetable + garde réseau démontrée (sonde-canari) + moteur.
+    // Session principale SANS filet réseau : ainsi chaque essai d'exfiltration ci-dessous prouve la garde CDP SEULE (le filet a ses propres essais).
+    session = await startGuardedSession({ chromeBin: CHROME, python: PYTHON, bridge: BRIDGE, policy: TEST_POLICY, proxyBackstop: false, onBlock: (b) => blocks.push(b), telemetryHost: `http://127.0.0.1:${(beacon.address() as AddressInfo).port}` });
+    browser = session.browser;
+    engine = session.backend;
   }, 60_000);
 
   afterAll(async () => {
-    await engine?.shutdown();
-    await browser?.close();
+    await session?.close();
     await site?.close();
+    await witness?.close();
     await new Promise((r) => beacon?.close(r));
     if (browser) expect(existsSync(browser.profileDir)).toBe(false);
   }, 60_000);
@@ -77,8 +90,8 @@ describe.skipIf(!HAS)("E2 — moteur réel, navigateur jetable, site contrôlé"
     expect(isDisposableProfile(join(process.env.LOCALAPPDATA ?? "C:\\", "Google", "Chrome", "User Data"))).toBe(false);
     expect(isDisposableProfile(tmpdir())).toBe(false);
     expect(isDisposableProfile(join(tmpdir(), "autre-chose"))).toBe(false);
-    expect(() => new HarnessBackend({ python: PYTHON, bridge: BRIDGE, browser: { cdpUrl: browser.cdpUrl, profileDir: join(process.env.LOCALAPPDATA ?? "C:\\", "Google", "Chrome", "User Data") } })).toThrow(AdapterRefused);
-    expect(() => new HarnessBackend({ python: PYTHON, bridge: BRIDGE, browser: { cdpUrl: "http://example.com:9222", profileDir: browser.profileDir } })).toThrow(AdapterRefused);
+    expect(() => new HarnessBackend({ python: PYTHON, bridge: BRIDGE, browser: { cdpUrl: browser.cdpUrl, profileDir: join(process.env.LOCALAPPDATA ?? "C:\\", "Google", "Chrome", "User Data") }, guard: session.guard })).toThrow(AdapterRefused);
+    expect(() => new HarnessBackend({ python: PYTHON, bridge: BRIDGE, browser: { cdpUrl: "http://example.com:9222", profileDir: browser.profileDir }, guard: session.guard })).toThrow(AdapterRefused);
   });
 
   it("le pont refuse de démarrer sans navigateur de bouclage et profil jetable, et refuse toute opération hors de son jeu fermé", () => {
@@ -182,15 +195,184 @@ describe.skipIf(!HAS)("E2 — moteur réel, navigateur jetable, site contrôlé"
     expect(audit.slice(n).at(-1)).toMatchObject({ op: "navigate", ok: false, closedTabs: 1 });
   }, 120_000);
 
-  it("LIMITE MESURÉE : la redirection est suivie par le navigateur avant que la politique la voie — la requête part, la réponse n'est jamais rendue", async () => {
+  it("TÉMOIN INTERDIT : une redirection du site permis vers un serveur interdit n'envoie aucune requête, n'ouvre aucune connexion (HTTP 302, 307, chaîne, meta)", async () => {
+    for (const path of ["/redir-witness", "/redir-witness-307", "/redir-chain", "/metaredir-witness"]) {
+      witness.reset();
+      const own = await setupTab(site.url("localhost"));
+      await gate().navigate(own, site.url("localhost", path)).catch(() => undefined);
+      await new Promise((r) => setTimeout(r, 800));
+      // Garde CDP seule : aucune REQUÊTE n'atteint le témoin. (Une connexion TCP nue est possible : le navigateur peut préconnecter à l'adresse
+      // d'une navigation avant que Fetch la voie ; seul le filet réseau l'empêche, voir le test « pile complète ».)
+      expect({ path, requests: [...witness.requests] }).toEqual({ path, requests: [] });
+      await engine.closeTab(own).catch(() => undefined);
+    }
+  }, 180_000);
+
+  it("LIMITE LEVÉE (2026-10-17) : la requête de redirection hors politique ne part plus — la garde réseau la refuse avant le réseau, l'onglet est fermé, le journal le dit", async () => {
     const own = await setupTab(site.url("localhost"));
     const before = site.hits.filter((h) => h.host === "127.0.0.1" && h.path === "/landing").length;
+    const blocked = session.guard.stats.blocked;
     await expect(gate().navigate(own, site.url("localhost", "/redir"))).rejects.toThrow(/hors de la politique/);
-    // Mesuré le 2026-10-17 : le navigateur a déjà demandé l'adresse de destination. Empêcher la requête elle-même demanderait l'interception
-    // réseau du navigateur (CDP Fetch), non faite ; ce qui est tenu : la page n'est ni lue ni rendue, et l'onglet est fermé.
-    expect(site.hits.filter((h) => h.host === "127.0.0.1" && h.path === "/landing").length).toBe(before + 1);
+    // Mesuré avant la garde : +1 (le navigateur suivait la redirection). Avec la garde : 0, et le refus est compté.
+    expect(site.hits.filter((h) => h.host === "127.0.0.1" && h.path === "/landing").length).toBe(before);
+    expect(session.guard.stats.blocked).toBeGreaterThan(blocked);
     expect((await engine.listTabs()).map((t) => t.id)).not.toContain(own);
   }, 120_000);
+
+  it("sous-ressources et mécanismes réseau d'une page PERMISE (img, script, css, trame, fetch, XHR, balise, WebSocket, SSE, travailleur, service worker, préconnexion, ping) : le témoin n'est jamais atteint, le site permis, lui, fonctionne", async () => {
+    witness.reset();
+    const own = await setupTab(site.url("localhost", "/subs"));
+    await new Promise((r) => setTimeout(r, 3000));
+    // le WebSocket échappe à Fetch (voir la limite mesurée plus bas) ; tout le reste est refusé par la garde CDP seule
+    expect(witness.requests.filter((r) => !r.startsWith("UPGRADE"))).toEqual([]);
+    // la portée est « toute destination », pas « navigations seules » ; mais l'origine permise reste servie
+    const own2 = site.hits.map((h) => h.path);
+    expect(own2).toContain("/pixel-own");
+    expect(own2).toContain("/own-fetch");
+    expect(own2).toContain("/worker.js");
+    // aucun service worker : son script est refusé avant le réseau, l'inscription échoue, il n'existe jamais de contexte réseau hors de la page
+    expect(own2).not.toContain("/sw.js");
+    expect((await engine.readPage(own)).text).toMatch(/SW-REFUSED/);
+    expect(session.guard.healthy, session.guard.reason).toBe(true);
+    await engine.closeTab(own).catch(() => undefined);
+  }, 120_000);
+
+  it("nouvelle fenêtre vers le témoin (window.open) et envoi de formulaire vers le témoin : aucune requête, aucune connexion", async () => {
+    witness.reset();
+    const own = await setupTab(site.url("localhost"));
+    await gate().click(own, "#openw");
+    await new Promise((r) => setTimeout(r, 1200));
+    const forms = await setupTab(site.url("localhost", "/form-witness"));
+    await new Promise((r) => setTimeout(r, 1200));
+    expect(witness.requests).toEqual([]);
+    for (const t of await engine.listTabs()) if (t.id !== own) await engine.closeTab(t.id).catch(() => undefined);
+    await engine.closeTab(own).catch(() => undefined);
+    void forms;
+  }, 120_000);
+
+  it("fail-closed au démarrage : liste blanche vide = pas de session ; hôte-canari permis = refus ; navigateur injoignable = pas de garde ; garde perdue = plus aucune opération", async () => {
+    await expect(startGuardedSession({ chromeBin: CHROME, python: PYTHON, bridge: BRIDGE, policy: { allowDomains: [] } })).rejects.toThrow(/liste blanche vide/);
+    await expect(startGuardedSession({ chromeBin: CHROME, python: PYTHON, bridge: BRIDGE, policy: parseBrowserConfig(undefined) as never })).rejects.toThrow();
+    await expect(NetworkGuard.start({ cdpUrl: browser.cdpUrl, permits: () => true })).rejects.toThrow(/canari/);
+    await expect(NetworkGuard.start({ cdpUrl: "http://127.0.0.1:1", permits: () => false, timeoutMs: 1500 })).rejects.toThrow(/injoignable|garde/);
+    await expect(NetworkGuard.start({ cdpUrl: "http://example.com:9222", permits: () => false })).rejects.toThrow(/bouclage/);
+    // le moteur ne s'instancie pas sans garde saine
+    const dead = await NetworkGuard.start({ cdpUrl: browser.cdpUrl, permits: (u) => urlPermitted(u, TEST_POLICY) });
+    dead.close();
+    expect(dead.healthy).toBe(false);
+    expect(() => new HarnessBackend({ python: PYTHON, bridge: BRIDGE, browser, guard: dead })).toThrow(/garde réseau saine/);
+    expect(() => new HarnessBackend({ python: PYTHON, bridge: BRIDGE, browser } as never)).toThrow();
+  }, 120_000);
+
+  it("garde perdue en cours de session : le moteur refuse toute opération (aucune requête ne part sans garde)", async () => {
+    const s = await startGuardedSession({ chromeBin: CHROME, python: PYTHON, bridge: BRIDGE, policy: TEST_POLICY });
+    try {
+      const id = await s.backend.openTab(site.url("localhost"));
+      expect((await s.backend.readPage(id)).text).toContain("Page d'essai");
+      s.guard.close();
+      await expect(s.backend.listTabs()).rejects.toThrow(/garde réseau perdue/);
+      await expect(s.backend.openTab(site.url("localhost"))).rejects.toThrow(/garde réseau perdue/);
+    } finally {
+      await s.close();
+    }
+  }, 120_000);
+
+  it("la garde journalise ses refus par hôte seulement (jamais le chemin ni la requête de l'adresse)", () => {
+    expect(blocks.length).toBeGreaterThan(5);
+    for (const b of blocks) expect(Object.keys(b).sort()).toEqual(["host", "resourceType"]);
+    expect(JSON.stringify(blocks)).not.toMatch(/\/(img|script|fetch|xhr|ws|sse|redir)/);
+    expect(blocks.some((b) => b.resourceType === "ServiceWorker")).toBe(true);
+  });
+
+  it("LIMITE MESURÉE de Fetch : WebSocket et préconnexion échappent à la garde CDP seule (c'est pourquoi le filet réseau existe)", async () => {
+    witness.reset();
+    const a = await setupTab(site.url("localhost", "/ws-only"));
+    await new Promise((r) => setTimeout(r, 2000));
+    const ws = witness.requests.filter((r) => r.startsWith("UPGRADE")).length;
+    witness.reset();
+    const b = await setupTab(site.url("localhost", "/preconnect-only"));
+    await new Promise((r) => setTimeout(r, 2000));
+    const pre = witness.connections;
+    // Mesure consignée : sans filet, le WebSocket atteint le témoin ; la préconnexion peut ouvrir une connexion sans requête.
+    writeFileSync(join(tmpdir(), `jarod-e2-mesure-${process.pid}.json`), JSON.stringify({ websocketAtteintLeTemoin: ws, connexionsDePreconnexion: pre }));
+    expect(ws).toBeGreaterThanOrEqual(1);
+    await engine.closeTab(a);
+    await engine.closeTab(b);
+  }, 120_000);
+
+  it("PILE COMPLÈTE (garde CDP + filet réseau) : redirections, sous-ressources, WebSocket, préconnexion, nouvelle fenêtre, formulaire — zéro requête ET zéro connexion vers le témoin", async () => {
+    const s = await startGuardedSession({ chromeBin: CHROME, python: PYTHON, bridge: BRIDGE, policy: TEST_POLICY });
+    try {
+      witness.reset();
+      const g = new ConnectedBrowser({ backend: s.backend, policy: TEST_POLICY, approve: async () => true });
+      const own = await s.backend.openTab(site.url("localhost"));
+      for (const path of ["/redir-witness", "/redir-witness-307", "/redir-chain", "/metaredir-witness"]) await g.navigate(own, site.url("localhost", path)).catch(() => undefined);
+      const subs = await s.backend.openTab(site.url("localhost", "/subs"));
+      const form = await s.backend.openTab(site.url("localhost", "/form-witness"));
+      const home = await s.backend.openTab(site.url("localhost"));
+      await g.click(home, "#openw");
+      await new Promise((r) => setTimeout(r, 3500));
+      expect({ requests: [...witness.requests], connections: witness.connections }).toEqual({ requests: [], connections: 0 });
+      void subs;
+      void form;
+    } finally {
+      await s.close();
+    }
+  }, 180_000);
+
+  it("filet réseau (proxy mort hors liste blanche) : le WebSocket et la préconnexion vers l'hôte interdit n'atteignent PAS le témoin ; le site permis reste joignable", async () => {
+    const s = await startGuardedSession({ chromeBin: CHROME, python: PYTHON, bridge: BRIDGE, policy: TEST_POLICY });
+    try {
+      witness.reset();
+      const a = await s.backend.openTab(site.url("localhost", "/ws-only"));
+      const b = await s.backend.openTab(site.url("localhost", "/preconnect-only"));
+      await new Promise((r) => setTimeout(r, 2500));
+      expect({ requests: [...witness.requests], connections: witness.connections }).toEqual({ requests: [], connections: 0 });
+      expect((await s.backend.readPage(a)).text).toContain("WS-ONLY");
+      await s.backend.closeTab(a);
+      await s.backend.closeTab(b);
+    } finally {
+      await s.close();
+    }
+  }, 120_000);
+
+  it("HÔTE (préparation du branchement) sur le moteur réel : éteint = rien ; activé via le RÉGLAGE UTILISATEUR (domaine pointé, pas « localhost ») = session lancée au premier accord, témoin à zéro, fermeture complète quand le réglage s'éteint", async () => {
+    const jetables = () => readdirSync(tmpdir()).filter((n) => n.startsWith("jarod-e2-")).length;
+    const settings: { v: unknown } = { v: { enabled: false, allowDomains: ["site.localhost"] } };
+    const attached: unknown[] = [];
+    const tools = { attachConnectedBrowser: (p: unknown) => (attached.push(p), () => void attached.pop()) };
+    const asked: BrowserApprovalRequest[] = [];
+    const deps = { settings: () => settings.v, engine: () => discoverEnginePaths({ root: ROOT }), approve: async (r: BrowserApprovalRequest) => (asked.push(r), true) };
+    expect(discoverEnginePaths({ root: ROOT })).not.toBeNull();
+    expect(prepareConnectedBrowser(tools, deps).attached).toBe(false);
+    expect(attached).toHaveLength(0);
+    settings.v = { enabled: true, allowDomains: ["site.localhost"] };
+    const base = jetables();
+    const prep = prepareConnectedBrowser(tools, deps);
+    expect(prep.attached).toBe(true);
+    const host = prep.host!;
+    try {
+      expect(await host.listTabs()).toEqual([]);
+      expect(jetables()).toBe(base); // rien n'a démarré avant l'accord
+      witness.reset();
+      const id = await host.openTab(`http://site.localhost:${site.port}/`);
+      expect(jetables()).toBe(base + 1);
+      expect(await host.readPage(id)).toContain("Page d'essai");
+      await expect(host.openTab(site.url("localhost"))).rejects.toThrow(/politique/);
+      await host.navigate(id, `http://site.localhost:${site.port}/redir-witness`).catch(() => undefined);
+      await new Promise((r) => setTimeout(r, 1000));
+      expect({ requests: [...witness.requests], connections: witness.connections }).toEqual({ requests: [], connections: 0 });
+      expect(host.status()).toMatchObject({ state: "running" });
+      expect(host.status().blocked).toBeGreaterThan(0);
+      settings.v = { enabled: false, allowDomains: ["site.localhost"] };
+      await expect(host.readPage(id)).rejects.toThrow(/désactivé/);
+      expect(jetables()).toBe(base); // navigateur fermé, profil jetable effacé
+      expect(asked.every((a) => a.summary.length > 0)).toBe(true);
+    } finally {
+      await prep.detach();
+    }
+    expect(jetables()).toBe(base);
+  }, 180_000);
 
   it("redirections par script et par meta : l'opération suivante est refusée et rien de la page de destination n'est lu", async () => {
     for (const path of ["/jsredir", "/metaredir"]) {
@@ -212,8 +394,12 @@ describe.skipIf(!HAS)("E2 — moteur réel, navigateur jetable, site contrôlé"
     const g = gate();
     const before = (await engine.listTabs()).length;
     await g.click(own, "#open");
-    await new Promise((r) => setTimeout(r, 600));
-    const after = await engine.listTabs();
+    // la fenêtre naît en pause (la garde s'y attache d'abord) : on attend qu'elle apparaisse plutôt que de supposer un délai
+    let after = await engine.listTabs();
+    for (let i = 0; i < 40 && !after.some((t) => t.url.endsWith("/second")); i++) {
+      await new Promise((r) => setTimeout(r, 150));
+      after = await engine.listTabs();
+    }
     expect(after.length).toBe(before + 1);
     const extra = after.find((t) => t.url.endsWith("/second"));
     expect(extra).toBeTruthy();

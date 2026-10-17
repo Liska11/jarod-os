@@ -73,7 +73,8 @@ export function parseBrowserConfig(raw: unknown): BrowserConfig {
     for (const e of v) {
       if (typeof e !== "string") continue;
       const d = e.trim().toLowerCase();
-      if (DOMAIN.test(d) && !out.includes(d)) out.push(d);
+      // une adresse IP n'est pas un domaine (le réseau local ne s'autorise pas par ce réglage)
+      if (DOMAIN.test(d) && !/^\d+$/.test(d.slice(d.lastIndexOf(".") + 1)) && !out.includes(d)) out.push(d);
     }
     return out;
   };
@@ -156,6 +157,38 @@ interface Prepared {
   tab?: string;
 }
 
+/**
+ * LA règle de domaines, une seule : le contrôleur (`ConnectedBrowser`) et la garde réseau du navigateur (`NetworkGuard`) l'appellent toutes deux.
+ * Permis = dans la liste blanche ET hors de toutes les listes noires (la liste noire l'emporte).
+ */
+export function hostPermitted(host: string, policy: BrowserPolicy): boolean {
+  const h = host.toLowerCase();
+  const matches = (d: string) => {
+    const dom = d.toLowerCase().split("/")[0]!;
+    return h === dom || h.endsWith(`.${dom}`);
+  };
+  if ([...DEFAULT_DENY_DOMAINS, ...(policy.denyDomains ?? [])].some(matches)) return false;
+  if (DENY_HOST_WORDS.test(h)) return false;
+  return policy.allowDomains.some(matches);
+}
+
+/**
+ * PORTÉE de la liste blanche : TOUTE destination réseau du navigateur (documents, trames, sous-ressources, fetch/XHR, balises, travailleurs,
+ * redirections de chaque saut), pas seulement les navigations. Seuls les schémas sans réseau (about:, data:, blob:) passent sans hôte.
+ */
+export function urlPermitted(raw: string, policy: BrowserPolicy): boolean {
+  let u: URL;
+  try {
+    u = new URL(raw);
+  } catch {
+    return false;
+  }
+  if (u.protocol === "about:" || u.protocol === "data:" || u.protocol === "blob:") return true;
+  if (u.protocol !== "http:" && u.protocol !== "https:") return false;
+  if (u.username || u.password) return false;
+  return hostPermitted(u.hostname, policy);
+}
+
 export class ConnectedBrowser {
   private readonly calls: number[] = [];
   constructor(private readonly deps: BrowserDeps) {}
@@ -174,14 +207,7 @@ export class ConnectedBrowser {
 
   /** Permis = dans la liste blanche ET hors de toutes les listes noires (la liste noire l'emporte). */
   allowedHost(host: string): boolean {
-    const h = host.toLowerCase();
-    const matches = (d: string) => {
-      const dom = d.toLowerCase().split("/")[0]!;
-      return h === dom || h.endsWith(`.${dom}`);
-    };
-    if ([...DEFAULT_DENY_DOMAINS, ...(this.deps.policy.denyDomains ?? [])].some(matches)) return false;
-    if (DENY_HOST_WORDS.test(h)) return false;
-    return this.deps.policy.allowDomains.some(matches);
+    return hostPermitted(host, this.deps.policy);
   }
 
   private permitted(url: string): boolean {
