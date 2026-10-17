@@ -32,7 +32,7 @@ permissive/copyleft/inconnue) et ne rejette plus rien sur ce critère ; les attr
 | R3 | open-telemetry/opentelemetry-js | Apache-2.0 | adapter-ready | `epurateur-v1` ; épurateur d'attributs (liste blanche : identifiants, durées, tailles, statuts, catégories d'erreur) ; le SDK n'est pas encore branché |
 | R4 | temporalio/temporal | MIT | adapter-ready | `concepts-temporal-v1 (durable.ts)` ; concepts seulement (activités idempotentes, historique rejouable) → version SQLite minimale à écrire ; pas de serveur Temporal ; TESTÉ sur SQLite réel : reprise depuis une AUTRE connexion sans rejouer les activités terminées, plafond d'échecs, masquage |
 | E1 | pinokiocomputer/pinokio | MIT | adapter-ready | `pinokio@8.2.0-comportement-observe` ; phase 6B : moteur de recettes déterministe (recipes/), importeur de scripts JSON simples ; réécriture du comportement observé, aucune ligne de pinokiod reprise. Coexiste avec le moteur embarqué de l'ADR-022, sans le remplacer ni le modifier |
-| E2 | browser-use/browser-harness | MIT | planned | QUESTION DE POSTURE pour l'humain : l'agent doit-il toucher le navigateur CONNECTÉ de l'utilisateur ? Aucun branchement avant la réponse |
+| E2 | browser-use/browser-harness | MIT | planned | POSTURE décidée par l'humain (2026-10-17) : le navigateur connecté est permis, avec un accord explicite PAR OPÉRATION (lectures comprises) et un journal (opération, hôte, résultat — jamais l'adresse complète, le contenu ni le texte saisi). Contrat et politique testés avec un moteur simulé (liste blanche obligatoire, liste noire prioritaire, jamais de champ de mot de passe, aucune opération cookies/stockage/profil). Statut « prévu » tant que le moteur browser-harness n'est ni installé, ni épinglé, ni testé (contrat dans impl/browser.ts) : aucun branchement à un outil ni à l'interface |
 | X1 | linshenkx/prompt-optimizer | AGPL-3.0-only | planned | AGPL-3.0 (LICENSE vérifiée) : intégrable si pertinent depuis la révision de la politique (usage strictement personnel) ; NOTICE à conserver |
 | X2 | harness/harness | Apache-2.0 | rejected | verdict déjà rendu : aucun cas d'usage |
 
@@ -54,8 +54,8 @@ pour recréer les moteurs. Les documents, fenêtres, voix et phrases des tests s
 - **Branchement** : seul A1 est câblé, à `run_shell` (mécanisme `mxc` du garde du shell, après herald-sandbox, actif seulement si
   JAROD_MXC_RUNNER et JAROD_MXC_SDK sont réglés ; il ne remplace pas la sandbox 3.1/3.2). Les autres ne sont câblés ni au plugin
   rag, ni à la voix, ni à l'interface : ils sont prêts et testés, les brancher est un travail par intégration.
-- **E2** : la posture « navigateur connecté » n'est pas écrite : le message reçu ne dit pas quelle posture est retenue, donc aucun
-  branchement (voir BACKLOG). X1 (prompt-optimizer) : AGPL intégrable, aucun cas d'usage écrit.
+- **E2** : posture décidée (navigateur connecté permis, accord par opération, journal) ; contrat testé avec un moteur simulé, moteur
+  non installé, aucun branchement (voir BACKLOG). X1 (prompt-optimizer) : AGPL intégrable, aucun cas d'usage écrit.
 - **B1** : la preuve depuis l'installation empaquetée reste à faire. **C1/C2** : testés en anglais synthétique, pas sur une voix
   humaine. **C3** : Presidio est anglais seulement dans ce profil. **B3** : PDF sans titres ni tableaux (profil sans PyTorch).
 - **D1/D2** : approbation de chaque action par l'utilisateur obligatoire ; aucun outil n'est encore exposé au modèle.

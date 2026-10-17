@@ -99,8 +99,11 @@ Open items:
   cmd est refusée dans le conteneur, `node` et PowerShell listent un dossier ; le conteneur reçoit un environnement par défaut, pas
   celui du processus. Non fait : activation par un réglage de l'interface, empaquetage du SDK (variables d'environnement
   seulement), mesure d'une longue commande (plafond 600 s).
-- **E2 (navigateur connecté)** : non branché. Le message « E2 : posture navigateur connecté » ne dit pas quelle posture est
-  retenue (agent autorisé à toucher le navigateur de l'utilisateur, ou non). Aucun code écrit avant une réponse explicite.
+- **E2 (navigateur connecté)** : posture décidée (2026-10-17) : permis, accord explicite par opération (lectures comprises) et
+  journal. Contrat et politique écrits (`integrations/src/impl/browser.ts`, 11 tests avec moteur simulé) : liste blanche de domaines
+  obligatoire, liste noire prioritaire (messagerie, banque, paiement, coffres), jamais de champ de mot de passe, aucune opération
+  cookies/stockage/profil, journal sans adresse complète ni contenu ni texte saisi. NON fait : moteur browser-harness (ni installé,
+  ni épinglé, ni testé : statut du registre resté « prévu »), branchement à un outil, écran de réglage des domaines.
 - **Phase 5** : 16 adaptateurs en contrat testés contre leur moteur réel (voir `INTEGRATIONS.md`, `engines.lock/README.md`).
   Non branchés : aucun n'est câblé à run_shell, au rag, à la voix. A1 (MXC) mesuré : `ui.disable: true` empêche node de démarrer ;
   node exige `--preserve-symlinks --preserve-symlinks-main` sous ProcessContainer.
