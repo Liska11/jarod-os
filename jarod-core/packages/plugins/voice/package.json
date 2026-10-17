@@ -20,6 +20,6 @@
     "@jarod/kernel": "workspace:*",
     "@jarod/plugin-storage": "workspace:*",
     "@jarod/plugin-llm": "workspace:*",
-    "openvino-node": "2026.4.0"
+    "openvino-node": "2026.4.1"
   }
 }
