@@ -91,7 +91,7 @@ describe("B3 / B5 — sidecars d'analyse de documents", () => {
   const ok = { path: "docs/rapport.pdf", sizeBytes: 1000 };
 
   it("construit un appel confiné, jamais une exécution directe", () => {
-    expect(planParse(DOCLING, ok, true)).toEqual({ name: "run_shell", args: { command: 'docling "docs/rapport.pdf"', isolation: "workspace", timeout_seconds: 300 } });
+    expect(planParse(DOCLING, ok, true)).toEqual({ name: "run_shell", args: { command: 'python "jarod-core/sidecars/docling-md/docling_md.py" "docs/rapport.pdf"', isolation: "workspace", timeout_seconds: 300 } });
     expect(String(planParse(MARKITDOWN, { ...ok, ocr: true }, true).args.command)).toContain("--use-plugins");
   });
 

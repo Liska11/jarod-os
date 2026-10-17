@@ -85,7 +85,7 @@ export async function runSuite(suite: EvalSuite, ctx: { ask(input: string): Prom
 }
 
 /** Export au format de configuration promptfoo (JSON, accepté par `promptfoo eval -c`). */
-export function toPromptfooConfig(suite: EvalSuite): string {
+export function toPromptfooConfig(suite: EvalSuite, opts: { providers?: string[] } = {}): string {
   const assertMap = (a: Assertion) => {
     switch (a.type) {
       case "contains":
@@ -103,7 +103,7 @@ export function toPromptfooConfig(suite: EvalSuite): string {
     }
   };
   return JSON.stringify(
-    { description: suite.id, prompts: ["{{input}}"], tests: suite.cases.map((c) => ({ description: c.id, vars: { input: c.input }, assert: c.expect.map(assertMap) })) },
+    { description: suite.id, ...(opts.providers ? { providers: opts.providers } : {}), prompts: ["{{input}}"], tests: suite.cases.map((c) => ({ description: c.id, vars: { input: c.input }, assert: c.expect.map(assertMap) })) },
     null,
     2,
   );

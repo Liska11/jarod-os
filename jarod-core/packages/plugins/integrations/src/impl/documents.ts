@@ -14,10 +14,12 @@ export interface ParserSpec {
   extensions: string[];
   maxBytes: number;
   maxOutputChars: number;
+  /** Début de la commande, avant le chemin du document. Le profil Docling sans PyTorch n'a pas de CLI utilisable : un petit script natif la remplace. */
+  launcher: string;
 }
 
-export const DOCLING: ParserSpec = { id: "B3", tool: "docling", extensions: [".pdf", ".docx", ".pptx", ".xlsx", ".html", ".png", ".jpg"], maxBytes: 50_000_000, maxOutputChars: 400_000 };
-export const MARKITDOWN: ParserSpec = { id: "B5", tool: "markitdown", extensions: [".pdf", ".docx", ".pptx", ".xlsx", ".html", ".csv", ".json", ".xml", ".txt"], maxBytes: 50_000_000, maxOutputChars: 400_000 };
+export const DOCLING: ParserSpec = { id: "B3", tool: "docling", extensions: [".pdf", ".docx", ".pptx", ".xlsx", ".html"], maxBytes: 50_000_000, maxOutputChars: 400_000, launcher: 'python "jarod-core/sidecars/docling-md/docling_md.py"' };
+export const MARKITDOWN: ParserSpec = { id: "B5", tool: "markitdown", extensions: [".pdf", ".docx", ".pptx", ".xlsx", ".html", ".csv", ".json", ".xml", ".txt"], maxBytes: 50_000_000, maxOutputChars: 400_000, launcher: "markitdown" };
 
 const SAFE_PATH = /^[A-Za-z0-9_@%+=,.\-\/ ]+$/;
 
@@ -37,7 +39,7 @@ export function planParse(spec: ParserSpec, req: ParseRequest, sidecarAvailable:
   if (!(req.sizeBytes >= 0) || req.sizeBytes > spec.maxBytes) throw new AdapterRefused(spec.id, `taille ${req.sizeBytes} > ${spec.maxBytes}`);
   if (req.ocr && spec.id !== "B5") throw new AdapterRefused(spec.id, "OCR : option de markitdown seulement");
   const ocr = req.ocr ? " --use-plugins" : "";
-  return { name: "run_shell", args: { command: `${spec.tool} "${req.path}"${ocr}`, isolation: "workspace", timeout_seconds: 300 } };
+  return { name: "run_shell", args: { command: `${spec.launcher} "${req.path}"${ocr}`, isolation: "workspace", timeout_seconds: 300 } };
 }
 
 export interface ParsedDocument {
