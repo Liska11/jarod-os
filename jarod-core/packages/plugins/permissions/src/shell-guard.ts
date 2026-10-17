@@ -202,6 +202,8 @@ interface MechanismDef {
   mustExitZero?: boolean;
   /** Une variable d'environnement qui désigne le binaire quand il n'est pas sur le PATH. */
   envPath?: string;
+  /** Ancien nom de la variable (avant le renommage), lu seulement si le nouveau n'est pas réglé. */
+  legacyEnvPath?: string;
   /** Un mécanisme porté par un script (ex. MXC) : la variable qui désigne le script, et celle qui désigne son moteur.
    * Sans les deux, le mécanisme est absent — jamais deviné. */
   launcherEnv?: string;
@@ -348,6 +350,7 @@ export interface ShellProbeInput {
   versionArg: string;
   mustExitZero?: boolean;
   envPath?: string;
+  legacyEnvPath?: string;
   launcherEnv?: string;
   gateEnv?: string;
 }
@@ -491,6 +494,7 @@ export class ShellGuardService {
         versionArg: def.versionArg,
         mustExitZero: def.mustExitZero,
         envPath: def.envPath,
+        legacyEnvPath: def.legacyEnvPath,
         launcherEnv: def.launcherEnv,
         gateEnv: def.gateEnv,
       };

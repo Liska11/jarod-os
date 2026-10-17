@@ -463,6 +463,11 @@ describe("garde du shell — Windows : AppContainer (jarod-sandbox) ou refus", (
     expect(probeMechanism(def, "win32", { JAROD_SANDBOX_BIN: "C:\n-existe-pas.exe", HERALD_SANDBOX_BIN: process.execPath, PATH: "" }).detail).toBe("absent du PATH");
   });
 
+  it("par le garde : l'ancienne variable HERALD_SANDBOX_BIN désigne encore le binaire (il est lancé, donc jugé par son épreuve)", () => {
+    const garde = new ShellGuardService({ workspace: tempDir(), platform: "win32", env: { HERALD_SANDBOX_BIN: process.execPath } });
+    expect(garde.mechanism().detail ?? "").toMatch(/échoué à son épreuve/);
+  });
+
   it("un binaire qui échoue à son épreuve n'est PAS retenu, même s'il démarre", () => {
     // `node selftest` démarre (le binaire existe) mais se termine en erreur : exactement le cas d'une
     // machine où l'AppContainer ne tient pas. La sonde doit le refuser.
