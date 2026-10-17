@@ -58,6 +58,6 @@ linux/vm/build/
 prompt/
 
 # Real-engine sandboxes (venvs, downloaded weights): local, never committed.
-engines/
+/engines/
 jarod-core/sidecars/uia-flaui/obj/
 jarod-core/sidecars/uia-flaui/bin/
