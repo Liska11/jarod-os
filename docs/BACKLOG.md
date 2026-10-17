@@ -66,3 +66,17 @@ Open items:
   so the e2e run shows real file names of this machine. To do: honour an isolation variable in tests, and decide if
   the list must follow the agent read roots.
 - `prompt/` (master prompts) is now git-ignored; it is operator input, not product.
+
+### Phase 7 validation, second round (2026-10-17)
+
+- **Mutation coverage completed**:
+  | Mutation | Result |
+  |---|---|
+  | user bubble not rendered (`hermes/Conversation.tsx`) | first run SURVIVED: the old chat assertion matched any text on screen. Assertion now targets `data-testid="user-message"`; second run red |
+  | `setup.finish` no longer writes the done file (`ipc/setup.ts`) | red: the wizard-does-not-return test fails |
+  | isolation flag ignored (`ipc/fs.ts`) | red: the isolation test fails |
+  Six flows now mutation-checked (onboarding, filter, rule, chat, wizard return, isolation).
+- **Recent work / file finder**: `JAROD_OS_ISOLATED=1` returns nothing for `fs.recent` and `fs.find` without asking the
+  host platform (unit test + e2e). Without the variable the real Recent folder is still read, outside the sandbox and
+  the agent read roots: unchanged for normal use, to decide with the file-roots policy.
+- **MCP description pinning**: done, see `docs/INTEGRATIONS.md`. The approval screen is still to build.
