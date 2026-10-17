@@ -31,7 +31,7 @@ permissive/copyleft/inconnue) et ne rejette plus rien sur ce critère ; les attr
 | R2 | microsoft/playwright | Apache-2.0 | reference-only | tests E2E ; jamais le profil Chrome personnel |
 | R3 | open-telemetry/opentelemetry-js | Apache-2.0 | adapter-ready | épurateur d'attributs (liste blanche) ; SDK non branché |
 | R4 | temporalio/temporal | MIT | reference-only | concepts seulement → version SQLite minimale à écrire |
-| E1 | pinokiocomputer/pinokio | MIT | planned | phase 6A : audit écrit, puis arrêt |
+| E1 | pinokiocomputer/pinokio | MIT | adapter-ready | phase 6B : recettes déterministes (traduire, jamais exécuter) + importeur JSON ; coexiste avec le moteur embarqué ADR-022 |
 | E2 | browser-use/browser-harness | MIT | planned | question de posture pour l'humain avant tout branchement |
 | X1 | linshenkx/prompt-optimizer | AGPL-3.0-only | planned | AGPL, intégrable si pertinent (politique révisée) ; NOTICE conservée |
 | X2 | harness/harness | Apache-2.0 | rejected | verdict déjà rendu |

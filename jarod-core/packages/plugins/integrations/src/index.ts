@@ -9,6 +9,7 @@ import { assertAdapters, REGISTRY } from "./adapters.js";
 
 export * from "./adapters.js";
 export * from "./observer.js";
+export * from "./recipes/index.js";
 export * from "./telemetry.js";
 
 declare module "cordis" {

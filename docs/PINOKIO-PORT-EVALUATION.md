@@ -134,4 +134,30 @@ compatibilité totale avec le catalogue communautaire : il importe un sous-ensem
 3. Valider le sous-ensemble de verbes et la liste des verbes refusés.
 4. Confirmer la répartition déterministe / agentique du §6.
 
-**Arrêt ici : aucune phase 6B ne démarre sans réponse.**
+## 10. Correction et statut de la phase 6B (2026-10-17)
+
+**Omission de l'audit 6A.** Ce document n'avait pas vu que le dépôt embarque déjà `pinokiod` sans modification
+(`docs/DECISIONS.md`, ADR-022 : `pinokio-runtime/`, hôte `apps/desktop/electron/pinokio/`, outils `pinokio_search`,
+`pinokio_status`, `pinokio_logs`, `pinokio_install`, `pinokio_run`, `pinokio_stop`, un accord par appel). Constat de
+sécurité : les scripts installés ou lancés par ce moteur s'exécutent avec les droits de l'utilisateur, hors de la
+sandbox et hors de `executeGuardedTool` ; seul l'appel d'outil est soumis à l'accord. L'ADR choisit la compatibilité
+totale avec les lanceurs publiés ; le §5 propose l'inverse (sous-ensemble, tout confiné).
+
+**Décision prise pour 6B, additive** (instruction du 2026-10-17 : « valider l'audit puis lancer 6B ») :
+1. principe « traduire, jamais exécuter » retenu pour le NOUVEAU chemin (`integrations/src/recipes/`) ;
+2. `pinokiod` sans LICENSE : réécriture seule, aucune ligne reprise ; l'embarquement existant de l'ADR-022 n'est pas touché ;
+3. sous-ensemble de verbes : `shell.run`, `fs.read|write|list`, `http.get`, `log`, `set`, `json.get` ; refusés :
+   net, web, local, gradio, hf, cloudflare, exec, proc, script, fs.download, et `sudo`/`env`/`venv`/`daemon`/`next` partout ;
+4. déterministe pour installation/démarrage/arrêt/mise à jour, agentique réservé au diagnostic (non écrit ici).
+
+**Reste à trancher par l'humain** : l'ADR-022 doit-il rester la voie par défaut (compatibilité) ou le moteur embarqué
+doit-il passer derrière un accord renforcé / être retiré au profit des recettes ? Cette question n'est pas tranchée
+par le code livré : les deux voies coexistent.
+
+**Livré** : `recipes/template.ts` (substitution sans évaluation, un seul passage), `recipes/recipe.ts` (schéma strict,
+liste blanche, plan empreinté SHA-256, isolation du shell imposée), `recipes/run.ts` (exécuteur injecté, échec fermé,
+retour arrière, valeurs sûres pour un shell, journal d'empreintes), `recipes/pinokio-import.ts` (sous-ensemble sûr + rapport
+des refus). Tests : `integrations/test/recipes.test.ts` (16) et `agent/test/recipes-reference.test.ts` (4, vraie porte
+unique, recette de référence mesurée). Non fait : signature du plan par la plateforme de plugins, branchement à une
+commande/UI, rôle agentique de diagnostic, taux d'import mesuré sur le catalogue communautaire (non examiné).
+
