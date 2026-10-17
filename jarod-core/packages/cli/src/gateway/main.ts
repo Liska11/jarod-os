@@ -10,6 +10,7 @@ import { ProfileManager } from "@jarod/plugin-persona";
 import { defaultDataRoot, openCore } from "../context.js";
 import { createBridgePort } from "./bridge.js";
 import { createRemoteBrowser } from "./browser.js";
+import { startConnectedBrowser } from "./connected-browser.js";
 import { createBridgeShell } from "./bridge-shell.js";
 import { removeSecretFile, writeSecretFile } from "./secret-file.js";
 import { createGateway } from "./server.js";
@@ -97,6 +98,8 @@ const switchProfile = async (name: string): Promise<void> => {
 // Le navigateur de l'agent : les outils `browser_*` n'existent qu'avec un hôte ; ici c'est la fenêtre de Jarod-OS (sa fenêtre isolée est tenue par son processus principal).
 const remoteBrowser = createRemoteBrowser({ link: gateway.link, visible: () => core.settings.get("browserVisible") !== false, persistent: () => core.settings.get("browserPersistent") === true });
 const detachBrowser = (core.app as unknown as { tools?: { attachBrowser(port: typeof remoteBrowser): () => void } }).tools?.attachBrowser(remoteBrowser);
+// E2 (navigateur connecté) : branché au cycle de vie de la passerelle, ÉTEINT par défaut (voir `connected-browser.ts`).
+const connectedBrowser = startConnectedBrowser(core, env, (line) => console.error(`[passerelle] ${line}`));
 const shell = createBridgeShell({ version: gatewayVersion, dataDir, link: gateway.link });
 gateway.attachBridge(createBridgePort(createHandlers({ kernel: () => kernel, shell, registry: new RegistryClient(HERMES_REGISTRY), switchProfile, agentBrowser: remoteBrowser }), (channel) => assertOneaiChannel("invoke", channel)));
 const pushEvent = (channel: string, ...args: unknown[]) => gateway.link.send(channel, args);
@@ -121,6 +124,7 @@ const stop = async () => {
   console.error(boundedMessage(`[passerelle] non servi : ${JSON.stringify(gateway.unhandled())}`));
   console.error(boundedMessage(`[passerelle] événements de Jarod sans équivalent : ${JSON.stringify(gateway.ignoredEvents())}`));
   for (const off of unbindEvents) off();
+  await connectedBrowser?.stop().catch(() => {});
   detachBrowser?.();
   closeAllApiServers();
   await gateway.close();
