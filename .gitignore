@@ -56,3 +56,6 @@ linux/vm/build/
 
 # Operator prompts driving the agent (kept local).
 prompt/
+
+# Real-engine sandboxes (venvs, downloaded weights): local, never committed.
+engines/

@@ -74,12 +74,12 @@ export function detectPii(text: string): PiiFinding[] {
 
 export interface MaskResult {
   text: string;
-  counts: Partial<Record<PiiCategory, number>>;
+  counts: Record<string, number>;
 }
 
 export function maskPii(text: string): MaskResult {
   const findings = detectPii(text);
-  const counts: MaskResult["counts"] = {};
+  const counts: Record<string, number> = {};
   let out = "";
   let at = 0;
   for (const f of findings) {
@@ -93,4 +93,44 @@ export function maskPii(text: string): MaskResult {
 /** Garde d'envoi : rend le texte masqué et les comptes ; ne dit jamais la valeur masquée. */
 export function guardCloudSend(text: string, opts: { enabled?: boolean } = {}): MaskResult {
   return opts.enabled === false ? { text, counts: {} } : maskPii(text);
+}
+
+/** Entité trouvée par un moteur externe (Presidio) : type, bornes, score. Jamais le texte. */
+export interface ExternalFinding {
+  entity: string;
+  start: number;
+  end: number;
+  score: number;
+}
+
+const EXTERNAL_LABEL = /^[A-Z_]{2,30}$/;
+
+/**
+ * Union de la couche locale et d'un moteur externe : ce que Presidio trouve en plus (noms, lieux, organisations…) est masqué
+ * sous son type ; un recouvrement garde la zone la plus large. Les bornes invalides sont ignorées, jamais appliquées.
+ */
+export function maskPiiWith(text: string, external: ExternalFinding[], minScore = 0.6): MaskResult {
+  type Span = { start: number; end: number; label: string };
+  const spans: Span[] = detectPii(text).map((f) => ({ start: f.start, end: f.end, label: f.category.toUpperCase() }));
+  for (const e of external) {
+    if (e.score < minScore || !Number.isInteger(e.start) || !Number.isInteger(e.end) || e.start < 0 || e.end > text.length || e.start >= e.end || !EXTERNAL_LABEL.test(e.entity)) continue;
+    spans.push({ start: e.start, end: e.end, label: e.entity });
+  }
+  spans.sort((a, b) => a.start - b.start || b.end - a.end);
+  const merged: Span[] = [];
+  for (const s of spans) {
+    const last = merged[merged.length - 1];
+    if (last && s.start < last.end) {
+      if (s.end > last.end) last.end = s.end;
+    } else merged.push({ ...s });
+  }
+  const counts: Record<string, number> = {};
+  let out = "";
+  let at = 0;
+  for (const s of merged) {
+    out += `${text.slice(at, s.start)}[${s.label}]`;
+    at = s.end;
+    counts[s.label] = (counts[s.label] ?? 0) + 1;
+  }
+  return { text: out + text.slice(at), counts };
 }
