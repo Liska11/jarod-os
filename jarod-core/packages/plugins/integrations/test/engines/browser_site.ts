@@ -110,6 +110,14 @@ pc.createOffer().then(function(o){return pc.setLocalDescription(o)});
 </script>`);
     case "/wt":
       return html(`<p id="wt">WT-PAGE</p><script>var q=new URLSearchParams(location.search);try{var t=new WebTransport('https://127.0.0.1:'+q.get('udp')+'/wt');t.ready.then(function(){document.getElementById('wt').textContent+=' READY'},function(e){document.getElementById('wt').textContent+=' FAILED'})}catch(e){document.getElementById('wt').textContent+=' ERR'}</script>`);
+    // Pages pour les lectures ponctuelles (extension Firefox) : éléments permis, éléments de formulaire, éditable, cadre.
+    case "/readable":
+      return html(`<h1 id="titre">Titre lisible</h1><p id="note" class="note">NOTE-CONVENUE</p><div id="autre-zone">AUTRE-ZONE-NON-DEMANDEE</div>
+<form><div id="infoform">DANS-UN-FORMULAIRE</div><input id="pw" type="password" value="valeur-fabriquee-du-champ"></form>
+<div id="avecchamp">texte <input id="inner" value="VALEUR-DU-CHAMP"></div><div id="editable" contenteditable="true">TEXTE-EDITABLE</div>
+<button id="bouton">BOUTON</button><textarea id="zone">ZONE-DE-SAISIE</textarea>`);
+    case "/frames":
+      return html(`<h1 id="cadre-parent">Page à cadre</h1><iframe src="/second" title="cadre"></iframe>`);
     case "/slow":
       return html(`<p>SLOW-PAGE</p>`);
     case "/ticker":

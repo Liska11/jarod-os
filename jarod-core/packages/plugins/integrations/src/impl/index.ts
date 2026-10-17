@@ -16,3 +16,4 @@ export * from "./browser-engine.js";
 export * from "./browser-guard.js";
 export * from "./connected-browser-host.js";
 export * from "./connected-browser-lifecycle.js";
+export * from "./firefox-reader.js";

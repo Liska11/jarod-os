@@ -1,0 +1,11 @@
+{
+  "manifest_version": 3,
+  "name": "JAROD-OS — lecture ponctuelle",
+  "version": "0.1.0",
+  "description": "Propose l'onglet que vous choisissez à JAROD-OS pour une lecture unique, après accord.",
+  "browser_specific_settings": { "gecko": { "id": "jarod-reader@jarod.os", "strict_min_version": "128.0" } },
+  "permissions": ["activeTab", "scripting", "storage"],
+  "action": { "default_title": "JAROD-OS : proposer cet onglet pour une lecture" },
+  "background": { "scripts": ["background.js"] },
+  "options_ui": { "page": "options.html", "open_in_tab": false }
+}
