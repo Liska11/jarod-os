@@ -93,3 +93,20 @@ Firefox ESR 153.5.0 de test (build séparé, profil neuf créé par geckodriver,
 Mutations vérifiées : sans le refus de formulaire, sans la revérification à la lecture, sans la revérification après accord, ou avec `tabs.query` ajouté, les essais échouent.
 
 **Ce que cette voie ne fournit pas** : le confinement réseau du Chrome jetable. Elle ne filtre aucun trafic de Firefox ; elle limite ce que JAROD-OS peut lire.
+
+## 8. Installation signée dans VOTRE Firefox (décision : extension signée) — procédure, à faire par vous
+
+Firefox n'installe durablement qu'une extension signée par Mozilla. La signature se fait avec **votre** compte Mozilla : je n'ouvre pas de compte, je ne saisis ni ne vois aucune clé d'API, et je ne soumets rien. Ce qui est prêt :
+
+- **Paquet reproductible** : `python jarod-core/scripts/package-firefox-reader.py` écrit `jarod-core/dist/firefox-reader/jarod-reader-0.1.0.zip` (quatre fichiers, ordre et dates fixes) et son empreinte. Empreinte du paquet actuel : `f492805ac557eddd60b7f02ea579e95c2deb007a828fcdb72978518edd9cfca2` (à recalculer si le code change). Le code n'est pas minifié : rien à fournir en plus pour la relecture de Mozilla.
+- **Contrôle de l'outil officiel** : `web-ext lint` rend 0 erreur, 0 avertissement, 0 note (déclaration « aucune collecte de données » comprise : l'extension n'envoie rien ailleurs que vers `127.0.0.1`).
+
+Étapes (vous) :
+
+1. **Compte et canal.** Sur addons.mozilla.org, avec votre compte, choisir la distribution **non listée** (« On your own ») : l'extension n'est pas publiée dans le catalogue ; Mozilla l'examine automatiquement et rend un `.xpi` signé. **Le code source de l'extension est envoyé à Mozilla** (c'est le prix de la signature) ; il ne contient aucune donnée personnelle.
+2. **Soumission.** Soit en envoyant le fichier `.zip` dans le Developer Hub (aucune clé nécessaire), soit en ligne de commande avec vos clés d'API (`npx web-ext sign --channel=unlisted --source-dir jarod-core/sidecars/firefox-reader`, clés dans les variables `WEB_EXT_API_KEY` et `WEB_EXT_API_SECRET` de votre seul terminal). Ne me communiquez jamais ces clés et ne les écrivez dans aucun fichier du dépôt.
+3. **Contrôle avant installation.** `python jarod-core/scripts/package-firefox-reader.py --verify <fichier-signé>.xpi` doit répondre « conforme » : le paquet signé contient exactement nos quatre fichiers, octet pour octet, plus la signature de Mozilla. Sinon, ne pas installer.
+4. **Installation.** Dans Firefox : `about:addons` > roue dentée > « Installer un module depuis un fichier… ». Firefox liste les permissions demandées (accès à l'onglet actif, exécution de scripts, stockage) : elles doivent être exactement ces trois-là. Vous pouvez retirer l'extension à tout moment ; rien d'autre n'est modifié dans votre profil.
+5. **Avant toute connexion réelle**, nous confirmons ensemble : la cible (onglet, domaine, élément convenu), l'ajout éventuel du domaine à la liste blanche (votre réglage actuel est vide : sans cela la lecture est refusée), et la fenêtre d'essai (le canal n'est ouvert que pendant l'essai). Premier essai en lecture seule : titre et un élément non sensible.
+
+Rien n'est installé, signé ni soumis à ce jour.
