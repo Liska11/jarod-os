@@ -3,8 +3,10 @@
  * ouvrirait un second canal d'exécution à côté de `executeGuardedTool`.
  *
  * Ce que `checkAdapter` impose (testé sur tout le registre) :
- *  - licence permissive de la liste blanche, vérifiée à une date ; AGPL, SSPL et copyleft fort sont REFUSÉS, y
- *    compris pour un outil externe ;
+ *  - licence INFORMATIONNELLE (décision du 2026-10-17 : application strictement personnelle, jamais redistribuée
+ *    ni offerte en service réseau) : le registre trace la provenance et la licence vérifiée à une date, et classe
+ *    la licence (permissive / copyleft / inconnue) sans rien rejeter sur ce critère. Les NOTICE d'origine sont
+ *    conservées dans docs/THIRD-PARTY-NOTICES.md ;
  *  - version épinglée (une étiquette ou un commit, jamais « latest ») ;
  *  - un repli explicite quand l'intégration échoue ;
  *  - `execution` ne peut valoir que « none » ou « via-guarded-tool » : un adaptateur ne s'exécute pas lui-même ;
@@ -38,9 +40,15 @@ export interface AdapterManifest {
 
 export class AdapterPolicyError extends Error {}
 
-/** Licences acceptées pour du code embarqué ou appelé. Liste blanche : toute autre est refusée. */
-export const ALLOWED_LICENSES = new Set(["MIT", "Apache-2.0", "BSD-2-Clause", "BSD-3-Clause", "ISC", "0BSD", "MPL-2.0", "MIT-0"]);
-export const FORBIDDEN_PATTERN = /(^|[^A-Z])(AGPL|SSPL|GPL|LGPL|BUSL|Commons-Clause)/i;
+/** Licences permissives connues. Information de traçabilité : ne rejette plus rien. */
+export const PERMISSIVE_LICENSES = new Set(["MIT", "Apache-2.0", "BSD-2-Clause", "BSD-3-Clause", "ISC", "0BSD", "MPL-2.0", "MIT-0"]);
+export const COPYLEFT_PATTERN = /(^|[^A-Z])(AGPL|SSPL|GPL|LGPL|BUSL|Commons-Clause)/i;
+export type LicenseClass = "permissive" | "copyleft" | "unknown";
+
+export function classifyLicense(license: string): LicenseClass {
+  if (COPYLEFT_PATTERN.test(license)) return "copyleft";
+  return PERMISSIVE_LICENSES.has(license) ? "permissive" : "unknown";
+}
 export const MAX_FALSE_POSITIVE_RATE = 0.02;
 
 export function checkAdapter(m: AdapterManifest): string[] {
@@ -52,8 +60,7 @@ export function checkAdapter(m: AdapterManifest): string[] {
     if (m.pinned !== null) bad("un dépôt rejeté n'a rien d'épinglé");
     return problems;
   }
-  if (FORBIDDEN_PATTERN.test(m.license)) bad(`licence interdite (${m.license}), même en outil externe`);
-  else if (!ALLOWED_LICENSES.has(m.license)) bad(`licence hors liste blanche (${m.license}) : à examiner avant tout portage`);
+  if (!m.license) bad("licence non renseignée (provenance à tracer)");
   if (!/^\d{4}-\d{2}-\d{2}$/.test(m.licenseCheckedAt)) bad("date de vérification de la licence absente");
   if (m.execution !== "none" && m.execution !== "via-guarded-tool") bad(`execution « ${String(m.execution)} » : seule la porte unique est permise`);
   if (m.status === "integrated" || m.status === "adapter-ready") {
@@ -117,7 +124,7 @@ export const REGISTRY: AdapterManifest[] = [
   row("B2", "asg017/sqlite-vec", "B", "Apache-2.0", "planned", "PoC de compatibilité avec better-sqlite3-multiple-ciphers obligatoire ; repli MemoryVectorIndex"),
   row("B3", "docling-project/docling", "B", "MIT", "planned", "sidecar Python derrière le seam documentParser ; licences des modèles optionnels à auditer séparément"),
   row("B4", "panva/oauth4webapi", "B", "MIT", "planned", "McpOAuthManager : jetons dans le coffre uniquement"),
-  row("B5", "microsoft/markitdown", "B", "MIT", "planned", "CŒUR seulement ; extensions OCR écartées (risque AGPL via PyMuPDF)"),
+  row("B5", "microsoft/markitdown", "B", "MIT", "planned", "parsing ; extensions OCR autorisées (PyMuPDF, AGPL, informationnel) ; à brancher dans le sidecar Python"),
   row("C1", "snakers4/silero-vad", "C", "MIT", "planned", "VAD entre capture et Whisper"),
   row("C2", "k2-fsa/sherpa-onnx", "C", "Apache-2.0", "planned", "processus natif séparé, protocole local, aucun audio vers le cloud par défaut"),
   row("C3", "data-privacy-stack/presidio", "C", "MIT", "planned", "détection de PII avant tout envoi cloud ; couche supplémentaire, jamais une garantie absolue"),
@@ -130,6 +137,6 @@ export const REGISTRY: AdapterManifest[] = [
   row("R4", "temporalio/temporal", "R", "MIT", "reference-only", "concepts seulement (activités idempotentes, historique rejouable) → version SQLite minimale à écrire ; pas de serveur Temporal"),
   row("E1", "pinokiocomputer/pinokio", "E", "MIT", "planned", "phase 6 : audit écrit (docs/PINOKIO-PORT-EVALUATION.md), puis arrêt avant tout code"),
   row("E2", "browser-use/browser-harness", "E", "MIT", "planned", "QUESTION DE POSTURE pour l'humain : l'agent doit-il toucher le navigateur CONNECTÉ de l'utilisateur ? Aucun branchement avant la réponse"),
-  row("X1", "linshenkx/prompt-optimizer", "E", "AGPL-3.0-only", "rejected", "AGPL (LICENSE vérifiée) : jamais dans le dépôt ; application de bureau personnelle seulement"),
+  row("X1", "linshenkx/prompt-optimizer", "E", "AGPL-3.0-only", "planned", "AGPL-3.0 (LICENSE vérifiée) : intégrable si pertinent depuis la révision de la politique (usage strictement personnel) ; NOTICE à conserver"),
   row("X2", "harness/harness", "E", "Apache-2.0", "rejected", "verdict déjà rendu : aucun cas d'usage"),
 ];

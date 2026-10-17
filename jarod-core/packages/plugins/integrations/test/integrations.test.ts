@@ -1,9 +1,12 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   type AdapterManifest,
   AdapterPolicyError,
   assertAdapters,
   checkAdapter,
+  classifyLicense,
   detect,
   InjectionObserver,
   measure,
@@ -33,18 +36,29 @@ describe("politique des adaptateurs", () => {
     expect(REGISTRY).toHaveLength(24);
   });
 
-  it("les dépôts à licence interdite sont rejetés et désactivés dans le registre", () => {
-    const x1 = REGISTRY.find((m) => m.id === "X1")!;
-    expect(x1).toMatchObject({ license: "AGPL-3.0-only", status: "rejected", mode: "disabled", pinned: null });
-    expect(REGISTRY.filter((m) => m.status !== "rejected").every((m) => !/AGPL|SSPL|GPL/i.test(m.license))).toBe(true);
+  it("la licence est informative : le copyleft est classé, tracé, jamais rejeté", () => {
+    for (const license of ["AGPL-3.0-only", "AGPL-3.0-or-later", "SSPL-1.0", "GPL-3.0", "LGPL-2.1", "BUSL-1.1"]) {
+      expect(classifyLicense(license)).toBe("copyleft");
+      expect(checkAdapter({ ...base, license })).toEqual([]);
+    }
+    expect(classifyLicense("MIT")).toBe("permissive");
+    expect(classifyLicense("NOASSERTION")).toBe("unknown");
+    expect(checkAdapter({ ...base, license: "NOASSERTION" })).toEqual([]);
+    expect(checkAdapter({ ...base, license: "" }).join()).toMatch(/non renseignée/);
+    expect(checkAdapter({ ...base, licenseCheckedAt: "" }).join()).toMatch(/date de vérification/);
   });
 
-  it("refuse AGPL, SSPL et GPL, y compris pour un outil externe, et toute licence hors liste blanche", () => {
-    for (const license of ["AGPL-3.0-only", "AGPL-3.0-or-later", "SSPL-1.0", "GPL-3.0", "LGPL-2.1", "BUSL-1.1"]) {
-      expect(checkAdapter({ ...base, license }).join()).toMatch(/licence interdite/);
+  it("prompt-optimizer (AGPL) n'est plus rejeté ; seul harness l'est, pour un autre motif", () => {
+    expect(REGISTRY.find((m) => m.id === "X1")).toMatchObject({ license: "AGPL-3.0-only", status: "planned" });
+    expect(REGISTRY.filter((m) => m.status === "rejected").map((m) => m.id)).toEqual(["X2"]);
+  });
+
+  it("toute licence du registre est classée et tracée dans THIRD-PARTY-NOTICES", () => {
+    const notices = readFileSync(resolve(__dirname, "../../../../../docs/THIRD-PARTY-NOTICES.md"), "utf8");
+    for (const m of REGISTRY) {
+      expect(classifyLicense(m.license)).toMatch(/permissive|copyleft|unknown/);
+      expect(notices, m.repo).toContain(m.repo);
     }
-    expect(checkAdapter({ ...base, license: "NOASSERTION" }).join()).toMatch(/hors liste blanche/);
-    expect(checkAdapter(base)).toEqual([]);
   });
 
   it("exige une version épinglée, un repli, et la porte unique", () => {

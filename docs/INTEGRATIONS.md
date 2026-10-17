@@ -1,8 +1,13 @@
 # Intégrations externes (phase 5)
 
 Source de vérité exécutable : `jarod-core/packages/plugins/integrations/src/adapters.ts` (`REGISTRY`), contrôlé au
-démarrage du plugin (`assertAdapters`) et par les tests. Licences lues sur les dépôts (API GitHub, fichier LICENSE)
-le 2026-10-17.
+démarrage du plugin (`assertAdapters`) et par les tests. Licences lues sur les dépôts le 2026-10-17.
+
+**Politique de licences révisée (2026-10-17, Prompt_maitre-2)** : application strictement personnelle, jamais
+redistribuée ni offerte en service réseau. Le registre est INFORMATIONNEL (provenance, licence, classe
+permissive/copyleft/inconnue) et ne rejette plus rien sur ce critère ; les attributions sont dans
+`docs/THIRD-PARTY-NOTICES.md`.
+
 
 | Id | Dépôt | Licence | Statut | Note |
 |---|---|---|---|---|
@@ -15,7 +20,7 @@ le 2026-10-17.
 | B2 | asg017/sqlite-vec | Apache-2.0 | planned | PoC d'ABI avec better-sqlite3-multiple-ciphers obligatoire ; repli MemoryVectorIndex |
 | B3 | docling-project/docling | MIT | planned | sidecar Python derrière documentParser ; licences des modèles optionnels à auditer |
 | B4 | panva/oauth4webapi | MIT | planned | McpOAuthManager, jetons dans le coffre uniquement |
-| B5 | microsoft/markitdown | MIT | planned | cœur seulement ; extensions OCR écartées (risque AGPL via PyMuPDF) |
+| B5 | microsoft/markitdown | MIT | planned | parsing ; extensions OCR autorisées (PyMuPDF, AGPL, informationnel) |
 | C1 | snakers4/silero-vad | MIT | planned | VAD entre capture et Whisper |
 | C2 | k2-fsa/sherpa-onnx | Apache-2.0 | planned | processus natif séparé, aucun audio vers le cloud par défaut |
 | C3 | data-privacy-stack/presidio | MIT | planned | PII avant envoi cloud ; couche supplémentaire, pas une garantie |
@@ -28,7 +33,7 @@ le 2026-10-17.
 | R4 | temporalio/temporal | MIT | reference-only | concepts seulement → version SQLite minimale à écrire |
 | E1 | pinokiocomputer/pinokio | MIT | planned | phase 6A : audit écrit, puis arrêt |
 | E2 | browser-use/browser-harness | MIT | planned | question de posture pour l'humain avant tout branchement |
-| X1 | linshenkx/prompt-optimizer | AGPL-3.0-only | rejected | AGPL : jamais dans le dépôt |
+| X1 | linshenkx/prompt-optimizer | AGPL-3.0-only | planned | AGPL, intégrable si pertinent (politique révisée) ; NOTICE conservée |
 | X2 | harness/harness | Apache-2.0 | rejected | verdict déjà rendu |
 
 ## Ce qui est réellement fait
