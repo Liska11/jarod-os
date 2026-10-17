@@ -63,3 +63,11 @@ Un sujet par commit local. Les arbitrages sont ici, un par section, pour revue �
 - **Risque** : un modèle local très lent au premier chargement pourrait dépasser 120 s → image non décrite (dite dans le texte, jamais en silence, non gardée en cache).
 - **Tests** : `vitest packages/plugins/vision` 7/7 ; `tsc` propre.
 - **Annuler** : `git revert` du commit « fix(vision) ».
+
+## 8. Délais sur les appels d'API Slack et Discord (robustesse/timeouts)
+- **Décision** : audit des `fetch(` du noyau (ceux sans aucun `signal`/`timeout` dans leur fichier) ; Slack (3 appels) et Discord (2) n'avaient aucune borne. Chaque appel reçoit `AbortSignal.timeout(requestTimeoutMs ?? 60 000)`. Telegram et WhatsApp en avaient déjà.
+- **Pourquoi 60 s** : au-dessus des 30 s de WhatsApp, car l'envoi d'un fichier est plus long ; un message texte qui prend plus d'une minute est de toute façon perdu.
+- **Reste non traité** : `cli/src/gateway/verify.ts` (script de vérification manuel), `gateways/mobile-page.ts` (fetch côté page du navigateur, pas du noyau) et `integrations/src/impl/oauth.ts` (échange de jeton via un `fetch` injecté : le délai dépend de l'appelant — à vérifier lors du câblage OAuth, qui n'est pas branché).
+- **Tests** : `gateway-timeouts.test.ts` (serveur muet, rouge avant : 3 tests suspendus 5 s), puis `vitest packages/plugins/gateways` 84/84 ; `tsc` propre.
+- **Risque** : un envoi de très gros fichier sur lien lent pourrait dépasser 60 s (erreur dite, pas de perte silencieuse).
+- **Annuler** : `git revert` du commit « fix(gateways) ».

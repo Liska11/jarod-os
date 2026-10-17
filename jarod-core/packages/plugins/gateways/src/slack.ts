@@ -52,11 +52,17 @@ export class SlackGateway extends Emitter<{ status: GatewayStatus }> {
     private readonly handler: SlackHandler,
     private readonly opts: {
       apiBase?: string;
+      /** Délai d'UN appel d'API (défaut 60 s) : un serveur qui ne répond pas ne suspend pas un envoi. */
+      requestTimeoutMs?: number;
       /** What an unknown user is told (pairing code); by default, how to allow them by hand. */
       unknown?: (userId: string, channelId: string) => Promise<string> | string;
     } = {},
   ) {
     super();
+  }
+
+  private get timeout(): AbortSignal {
+    return AbortSignal.timeout(this.opts.requestTimeoutMs ?? 60_000);
   }
 
   private get api(): string {
@@ -74,6 +80,7 @@ export class SlackGateway extends Emitter<{ status: GatewayStatus }> {
       method: "POST",
       headers: { authorization: `Bearer ${token}`, "content-type": "application/json; charset=utf-8" },
       body: JSON.stringify(body),
+      signal: this.timeout,
     });
     if (!res.ok) throw new Error(`Slack ${method} : HTTP ${res.status}`);
     const json = (await res.json()) as { ok: boolean; error?: string } & T;
@@ -87,6 +94,7 @@ export class SlackGateway extends Emitter<{ status: GatewayStatus }> {
       method: "POST",
       headers: { authorization: `Bearer ${this.botToken}`, "content-type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams(args).toString(),
+      signal: this.timeout,
     });
     if (!res.ok) throw new Error(`Slack ${method} : HTTP ${res.status}`);
     const json = (await res.json()) as { ok: boolean; error?: string } & T;
@@ -100,7 +108,7 @@ export class SlackGateway extends Emitter<{ status: GatewayStatus }> {
       filename: name,
       length: String(data.length),
     });
-    const res = await fetch(up.upload_url, { method: "POST", body: new Uint8Array(data) });
+    const res = await fetch(up.upload_url, { method: "POST", body: new Uint8Array(data), signal: this.timeout });
     if (!res.ok) throw new Error(`Slack envoi du fichier : HTTP ${res.status}`);
     await this.form("files.completeUploadExternal", {
       files: JSON.stringify([{ id: up.file_id, title: name }]),

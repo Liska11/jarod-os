@@ -44,12 +44,18 @@ export class DiscordGateway extends Emitter<{ status: GatewayStatus }> {
     private readonly handler: DiscordHandler,
     private readonly opts: {
       apiBase?: string;
+      /** Délai d'UN appel d'API (défaut 60 s) : un serveur qui ne répond pas ne suspend pas un envoi. */
+      requestTimeoutMs?: number;
       gatewayUrl?: string;
       /** What an unknown user is told (pairing code); by default, how to allow them by hand. */
       unknown?: (userId: string, name: string, channelId: string) => Promise<string> | string;
     } = {},
   ) {
     super();
+  }
+
+  private get timeout(): AbortSignal {
+    return AbortSignal.timeout(this.opts.requestTimeoutMs ?? 60_000);
   }
 
   private get api(): string {
@@ -66,6 +72,7 @@ export class DiscordGateway extends Emitter<{ status: GatewayStatus }> {
       method,
       headers: { authorization: `Bot ${this.token}`, "content-type": "application/json" },
       ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+      signal: this.timeout,
     });
     if (!res.ok) throw new Error(`Discord ${method} ${path} : HTTP ${res.status} ${(await res.text()).slice(0, 200)}`);
     return (res.status === 204 ? undefined : await res.json()) as T;
@@ -87,6 +94,7 @@ export class DiscordGateway extends Emitter<{ status: GatewayStatus }> {
       method: "POST",
       headers: { authorization: `Bot ${this.token}` },
       body: form,
+      signal: this.timeout,
     });
     if (!res.ok) throw new Error(`Discord envoi de fichier : HTTP ${res.status} ${(await res.text()).slice(0, 200)}`);
   }
