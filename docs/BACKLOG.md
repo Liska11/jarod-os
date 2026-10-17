@@ -11,8 +11,15 @@ Items identified and deliberately not done. Each survives the session here.
   `source-map-js` 1.2.2 by a workspace override; `pnpm audit`: 0. Gates after: `npm run test:core` exit 0, desktop typecheck, 1128 unit tests, 19/19 e2e on the rebuilt app.
   **Left, deliberately:** (1) 8 moderate in the `electron-builder` chain (`sprintf-js` DoS through `roarr` ← `global-agent` ← `@electron/get`): build-time download tooling, never in the
   installed app; `npm audit` proposes `electron-builder@26.5.0`, which is a DOWNGRADE from the 26.15.3 in use, so it is not applied. (2) 10 high in the `promptfoo` test engine
-  (`engines.lock/node/promptfoo`, A5 adversarial scenarios): a pinned test-only tool, same kind of "fix" (an older major), not shipped. (3) `cargo audit` is not installed, so
-  `host-rust/Cargo.lock` and the Python engine requirements have NOT been audited yet.
+  (`engines.lock/node/promptfoo`, A5 adversarial scenarios): a pinned test-only tool, same kind of "fix" (an older major), not shipped. (3) **Rust and Python audited (same day).**
+  `cargo audit` 0.22.2 on `host-rust/Cargo.lock` (132 crates, 1334 advisories): nothing found. `pip-audit` (`--no-deps --disable-pip`, exact pins) on every lock/requirements file:
+  `browser-harness`, `docling`, `docling-full`, `B19`: clean. `py312-requirements.txt` (Presidio, markitdown, pywinauto, sherpa): `cryptography` 48.0.1, 3 advisories (X.509 name-constraint
+  bypass and chain-building blow-up fixed in 49.0.0, PKCS#7 decryption oracle fixed in 50.0.0). NOT applied: `presidio-anonymizer` 2.2.364 (the latest) requires `cryptography<49`, so the fix cannot be
+  installed without breaking its declared constraint (measured with `uv pip check`: the engine tests still pass on 50.0.0, 90/90, but the combination is unsupported, so it was rolled back). Not
+  reachable: the only users of `cryptography` in that venv are `presidio_anonymizer/operators/aes_cipher.py` (AES), `pdfminer/pdfdocument.py` (PDF AES decryption), `requests` and `urllib3` (optional
+  pyOpenSSL); nothing calls the X.509 verifier or `pkcs7_decrypt_*`. To revisit when Presidio lifts its bound. `licenses/B20-requirements.txt` (docling-slim 2.131.0, 3 advisories) and
+  `licenses/B21-requirements.txt` (transformers 5.5.4, 2 advisories) are the HISTORICAL approval records of 2026-09-29, not what is installed: the current locks pin docling-slim 2.140.0 and
+  transformers 5.20.1 and are clean. The spaCy model (`en-core-web-sm`, a URL requirement) cannot be audited by version.
 - 543 lint warnings (accepted debt).
 - 18 shell protocol tests skipped on Windows (no fake named pipe): restore coverage.
 - Rotation of `control-audit.jsonl` (unbounded growth).
