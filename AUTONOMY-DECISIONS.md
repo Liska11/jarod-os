@@ -103,3 +103,7 @@ Un sujet par commit local. Les arbitrages sont ici, un par section, pour revue �
 - **Tests** : `firefox-trial.test.ts` (5, fausse extension : lecture après « oui », refus, autre domaine refusé avant toute question, délai, page neutre) ; `firefox.trial.engine.test.ts` (vraie extension, Firefox de test : lecture exacte du texte convenu, leurre jamais lu) ; `vitest .../test/firefox` 40/40 ; `tsc` propre.
 - **Risque** : première utilisation réelle dans le Firefox du propriétaire : comportement non vérifié là (version, politiques).
 - **Annuler** : supprimer `firefox-trial.ts`, `scripts/firefox-reader-trial.ts` et leurs deux tests (`git revert` du commit « feat(firefox) »).
+
+## 14. Premier essai réel de l'extension : réussi à la 2e tentative
+- Voir `docs/E2-FIREFOX-READER-PLAN.md` §9.1. Une lecture, sur la page neutre, avec un « oui » tapé par le propriétaire ; rien d'autre lu ; tout fermé. La 1re tentative (aucun geste) n'a pas de cause établie.
+- **Annuler** : rien à annuler côté système ; le module temporaire disparaît à la fermeture de Firefox. Documentation : `git revert` du commit « docs(firefox) : first real trial ».

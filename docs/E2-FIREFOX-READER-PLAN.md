@@ -129,3 +129,9 @@ La signature n'est exigée que pour une installation **durable** dans un Firefox
 
 **Voie C — signature non listée** (§8) : reste la seule voie pour une installation durable dans un Firefox de série.
 
+### 9.1 Résultat du premier essai réel (2026-10-18, Firefox du propriétaire, module temporaire, page neutre locale)
+- **Deuxième tentative : réussie.** Geste reçu (onglet 23, `http://essai.localhost:50555/`), demande affichée dans le terminal avec Firefox, l'origine, le chemin et `#sujet`, « oui » tapé par le propriétaire, lecture du titre et du texte de `#sujet` seulement, affichage local, canal et page fermés. Audit : une ligne `read_element ok` sans contenu.
+- **Première tentative : sans lecture** (aucun geste reçu pendant les 10 minutes ; audit vide). Cause non établie avec certitude : l'extension était appairée, l'icône n'affichait rien. La seconde tentative a été faite avec la console de l'extension ouverte et un code neuf. Hypothèse la plus probable : le clic a eu lieu avant que le code ne soit enregistré, ou sur un autre onglet ; non prouvé.
+- **Non vérifié par cet essai :** domaine interdit, refus de l'accord, navigation pendant l'attente, onglets leurres dans le Firefox réel (couverts dans le Firefox de test, §7) ; l'installation durable (signature).
+- **Aucune modification** de Firefox, de ses options, de son profil ni de ses autres onglets ; le module temporaire disparaît à la fermeture de Firefox.
+
