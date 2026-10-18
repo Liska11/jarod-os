@@ -106,15 +106,21 @@ export function byColumn(tasks: readonly Task[]): Record<(typeof COLUMNS)[number
   return out
 }
 
-/** What can be done to a task in its status; the engine still refuses what does not apply (and says why). */
+/**
+ * What can be done to a task in its status: only what the engine accepts there (plugin-kanban's `refuseUnless`), so a button never leads to a
+ * certain refusal. A rough idea (`triage`) leaves its column through « specify » (the agent) or is archived; a task set aside (`scheduled`) comes
+ * back with « unblock »; a task to review is accepted (« complete ») or sent back by blocking it with a reason.
+ */
 export type Verb = 'promote' | 'specify' | 'assign' | 'schedule' | 'block' | 'unblock' | 'complete' | 'reclaim' | 'archive' | 'comment'
 
 export function verbsFor(status: Status): Verb[] {
   switch (status) {
     case 'triage':
-      return ['specify', 'promote', 'assign', 'archive', 'comment']
+      return ['specify', 'assign', 'archive', 'comment']
     case 'todo':
+      return ['assign', 'schedule', 'block', 'archive', 'comment']
     case 'scheduled':
+      return ['unblock', 'assign', 'block', 'archive', 'comment']
     case 'ready':
       return ['assign', 'schedule', 'block', 'complete', 'archive', 'comment']
     case 'running':
@@ -122,7 +128,7 @@ export function verbsFor(status: Status): Verb[] {
     case 'blocked':
       return ['unblock', 'archive', 'comment']
     case 'review':
-      return ['complete', 'unblock', 'assign', 'archive', 'comment']
+      return ['complete', 'block', 'assign', 'archive', 'comment']
     case 'done':
       return ['archive', 'comment']
     default:
@@ -200,11 +206,17 @@ export function taskProblems(draft: TaskDraft): string[] {
   return out
 }
 
-export function taskInput(draft: TaskDraft): Record<string, unknown> {
+/**
+ * What `kanban-create-task` gets. An empty assignee means the profile Jarod serves (as the form says): left out, the task stayed unassigned and
+ * « Run next » skipped it for good (« non assignée »).
+ */
+export function taskInput(draft: TaskDraft, servedProfile?: string | null): Record<string, unknown> {
+  const assignee = draft.assignee.trim() || servedProfile?.trim() || ''
+
   return {
     title: draft.title.trim(),
     ...(draft.body.trim() ? { body: draft.body.trim() } : {}),
-    ...(draft.assignee.trim() ? { assignee: draft.assignee.trim() } : {}),
+    ...(assignee ? { assignee } : {}),
     priority: Number(draft.priority.trim()),
     ...(draft.triage ? { triage: true } : {}),
     workspace: draft.folder ? `dir:${draft.folder}` : 'scratch'

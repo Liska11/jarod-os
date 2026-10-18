@@ -1,6 +1,6 @@
 import type { GatewayEvent, SubagentEventPayload, ToolCompletePayload, ToolStartPayload } from '@herald-os/client'
 import { atom, computed, map } from 'nanostores'
-import type { ChatState } from '../lib/chat-model.ts'
+import { type ChatState, lastTurnFailed } from '../lib/chat-model.ts'
 import { systemFilesOutputs } from '../lib/file-ops.ts'
 import { $agents, type AgentActivity } from './agents.ts'
 import { $chats, SESSION_SOURCE } from './chat.ts'
@@ -365,6 +365,9 @@ function buildMission(
   if (chat?.streaming || missionAgents.some(a => a.status === 'running')) {
     status = waiting ? 'review' : 'active'
   } else if (waiting) {
+    status = 'review'
+  } else if (chat && lastTurnFailed(chat.messages) && !reviewed.has(id)) {
+    // The turn failed (no provider, a refusal): the user has to look at it, it is not done.
     status = 'review'
   } else if (chat && (missionArtifacts.length > 0 || steps.length > 0) && !reviewed.has(id) && progress >= 100) {
     status = 'review'

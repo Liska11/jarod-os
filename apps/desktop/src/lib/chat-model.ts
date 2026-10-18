@@ -143,6 +143,27 @@ function replaceMessage(state: ChatState, next: ChatMessage): ChatState {
   return { ...state, messages: state.messages.map(m => (m.id === next.id ? next : m)) }
 }
 
+/**
+ * True when the conversation's last turn ended in failure: an error line closes it, or its last answer carries an error status. A mission whose turn
+ * failed (no provider, a refused call) is not « completed ».
+ */
+export function lastTurnFailed(messages: readonly ChatMessage[]): boolean {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const message = messages[i]!
+
+    if (message.role === 'system') {
+      if (message.level === 'error') return true
+      continue
+    }
+
+    if (message.role === 'assistant') return message.status === 'error' || Boolean(message.error)
+
+    return false
+  }
+
+  return false
+}
+
 export function appendUser(state: ChatState, text: string): ChatState {
   return {
     ...state,
