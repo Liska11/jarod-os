@@ -33,7 +33,9 @@ Items identified and deliberately not done. Each survives the session here.
   (`apps/desktop/e2e/launch.ts`) now removes its roots robustly and a global teardown fails any run that leaves one (`2f16af8`).
   Stock found: 43 folders (392 MB) from this repository, created since 2026-10-17; 833 folders (131 MB) named by the ORIGINAL Jarod
   project's own e2e harness (`packages/desktop/test/e2e`, prefixes `jarod-e2e-coding`, `-worktrees`, `-mobile`, `-hermesone`,
-  `-<pid>-<ts>-hang/stray/upd-local-rel`…, profile at the root), which this repository never creates. One-time cleanup: owner's decision.
+  `-<pid>-<ts>-hang/stray/upd-local-rel`…, profile at the root), which this repository never creates. One-time cleanup DONE the same
+  day at the owner's request: 876 folders (523 MB) removed after checking no process used them, 0 failure, 0 left; `jarod-e2-*`
+  and `jarod-e2app-*` (other harnesses) not touched. The original project's harness may create new ones when it runs again.
 - **Rotation of `control-audit.jsonl`: DONE (2026-10-17).** `FileJournal` rotates to `<name>.1` (one older generation, replaced each time) once the file reaches 8 MiB (`DEFAULT_JOURNAL_LIMIT`), also at opening; a failed rotation is counted in `failures()` and never changes a decision. Tests: `host-control/tests/journal_rotation.rs`.
 - The Python client is more tolerant than the shell on pipe endpoints (the Rust host emits the strict form).
 - R2/R3 end-to-end in the real application to re-prove (disposable profile).
