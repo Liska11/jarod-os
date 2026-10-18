@@ -81,6 +81,8 @@ function usePanel(panel: LivePanel) {
 }
 
 export function StatusPanel({ panel, onClose }: { panel: StatusPanelId; onClose?: () => void }) {
+  const { t } = useT()
+
   const section = SETTINGS_FOR[panel]
 
   return (
@@ -88,7 +90,7 @@ export function StatusPanel({ panel, onClose }: { panel: StatusPanelId; onClose?
       <div className="flex items-center gap-2 px-4 pt-3.5 pb-2">
         <span className="flex-1 text-[13.5px] font-semibold text-fg">{PANEL_TITLES[panel]}</span>
         {onClose && (
-          <button type="button" aria-label="Close" onClick={onClose} className="flex size-6 items-center justify-center rounded-md text-fg-3 hover:bg-white/10 hover:text-fg">
+          <button type="button" aria-label={t('statusPanel.close')} onClick={onClose} className="flex size-6 items-center justify-center rounded-md text-fg-3 hover:bg-white/10 hover:text-fg">
             <IconX size={14} />
           </button>
         )}
@@ -289,7 +291,7 @@ function BluetoothPanel() {
   }
 
   if (!bluetooth.available) {
-    return <Note>This computer has no Bluetooth adapter.</Note>
+    return <Note>{t('statusPanel.noBluetooth')}</Note>
   }
 
   return (

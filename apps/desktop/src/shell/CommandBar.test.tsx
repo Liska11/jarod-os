@@ -43,7 +43,8 @@ async function openOnSetup() {
 
   render(<CommandPalette onClose={onClose} />)
 
-  const input = screen.getByPlaceholderText(/ask hermes anything/i)
+  // The placeholder names the assistant as set in Settings (Jarod, Hermes, or another name).
+  const input = screen.getByPlaceholderText(/^ask .+ anything, or type \/ for commands$/i)
 
   fireEvent.change(input, { target: { value: 'setup wizard' } })
 

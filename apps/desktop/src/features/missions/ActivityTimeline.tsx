@@ -2,15 +2,17 @@ import { IconActivity } from '@tabler/icons-react'
 import { EmptyGlass } from '../../components/ui/glass.tsx'
 import type { ActivityEntry } from '../../store/missions.ts'
 import { activityIcon, formatTime } from './mission-helpers.ts'
-import { t } from '../../lib/i18n.ts'
+import { useT } from '../../lib/i18n.ts'
 
 export function ActivityTimeline({ entries }: { entries: ActivityEntry[] }) {
+  const { t } = useT()
+
   if (entries.length === 0) {
     return <EmptyGlass icon={<IconActivity />} title={t('missions.noActivity')} description={t('missions.noActivity.hint')} />
   }
 
   return (
-    <ol className="stagger relative before:absolute before:top-4 before:bottom-4 before:left-[15px] before:w-px before:bg-line" aria-label="Recent activity">
+    <ol className="stagger relative before:absolute before:top-4 before:bottom-4 before:left-[15px] before:w-px before:bg-line" aria-label={t('missions.activity')}>
       {entries.map(entry => {
         const Icon = activityIcon(entry.kind)
 

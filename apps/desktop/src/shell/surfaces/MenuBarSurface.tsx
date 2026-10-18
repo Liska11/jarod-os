@@ -8,6 +8,7 @@ import { $wm, onShellCommand, openSurface, relayToMain, wmAction } from '../../s
 import { $activeSpace, $spaces, setActiveSpace } from '../../store/spaces.ts'
 import { BackendBadge, MenuBarStatus } from '../MenuBar.tsx'
 import { OUR_MAIN_TITLE, windowLabel } from './shell-utils.ts'
+import { useT } from '../../lib/i18n.ts'
 
 /**
  * Panels mode: the 30px bar is its own transparent window along the top edge (niri reserves the
@@ -139,6 +140,8 @@ const capitalize = (value: string) => (value ? value[0].toUpperCase() + value.sl
  * sidebar and session filters follow the compositor; unnamed ones show their index.
  */
 function SpacesSwitcher({ workspaces, available }: { workspaces: WmWorkspace[]; available: boolean }) {
+  const { t } = useT()
+
   const spaces = useStore($spaces)
   const activeSpace = useStore($activeSpace)
   const [menu, setMenu] = useState(false)
@@ -216,7 +219,7 @@ function SpacesSwitcher({ workspaces, available }: { workspaces: WmWorkspace[]; 
   }
 
   return (
-    <div className="flex h-6 items-center gap-0.5 rounded-full border border-line-strong bg-accent/25 p-0.5 shadow-[0_2px_10px_rgba(47,125,255,.3)]" role="tablist" aria-label="Spaces">
+    <div className="flex h-6 items-center gap-0.5 rounded-full border border-line-strong bg-accent/25 p-0.5 shadow-[0_2px_10px_rgba(47,125,255,.3)]" role="tablist" aria-label={t('sidebar.spaces')}>
       {ordered.map(ws => {
         const active = ws.focused
 

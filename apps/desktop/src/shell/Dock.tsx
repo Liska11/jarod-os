@@ -110,7 +110,7 @@ export function Dock() {
     try {
       await window.heraldOS.apps.launch(app.path)
     } catch (error) {
-      notify({ title: `Could not open ${app.name}`, body: error instanceof Error ? error.message : String(error), level: 'error' })
+      notify({ title: t('dock.openFailed', { name: app.name }), body: error instanceof Error ? error.message : String(error), level: 'error' })
     }
   }
 
@@ -155,7 +155,7 @@ export function Dock() {
   const hidden = autoHide && !revealed
 
   return (
-    <nav className="pointer-events-none absolute inset-x-0 bottom-0 z-(--z-dock) flex h-(--dock-h) items-end justify-center pb-3" aria-label="Dock" data-hidden={hidden || undefined}>
+    <nav className="pointer-events-none absolute inset-x-0 bottom-0 z-(--z-dock) flex h-(--dock-h) items-end justify-center pb-3" aria-label={t('dock.label')} data-hidden={hidden || undefined}>
       {/* Invisible strip along the bottom edge that wakes the Dock, like macOS. */}
       {autoHide && <div data-dock-trigger className="pointer-events-auto absolute inset-x-0 bottom-0 h-1.5" aria-hidden="true" />}
       <div

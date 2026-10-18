@@ -7,6 +7,7 @@ import { describeWebUrl } from '../../lib/web-url.ts'
 import { $webWindows } from '../../store/web-windows.ts'
 import type { OSWindow } from '../../store/windows.ts'
 import { useNativeView } from './native-view.ts'
+import { useT } from '../../lib/i18n.ts'
 
 /**
  * The frame of a web window: a read-only URL bar and an empty content area whose rect the native
@@ -14,6 +15,8 @@ import { useNativeView } from './native-view.ts'
  * the user needs sits above it; otherwise the area explains why the page is hidden.
  */
 export function WebWindow({ win }: { win: OSWindow }) {
+  const { t } = useT()
+
   const viewId = typeof win.payload?.viewId === 'string' ? win.payload.viewId : null
   const webWindows = useStore($webWindows)
   const entry = viewId ? webWindows[viewId] : undefined
@@ -30,8 +33,8 @@ export function WebWindow({ win }: { win: OSWindow }) {
   return (
     <div className="flex h-full flex-col">
       <div className="flex h-9 shrink-0 items-center gap-2 border-b border-line px-3">
-        <div className="glass-input flex h-6 min-w-0 flex-1 items-center gap-1.5 rounded-md px-2 text-[11.5px]" aria-label={filePath ? 'File' : 'Page address'} title={filePath ?? url}>
-          {filePath ? <IconFile size={12} className="shrink-0 text-fg-3" /> : parts?.secure ? <IconLock size={12} className="shrink-0 text-ok" aria-label="Secure connection" /> : <IconWorld size={12} className="shrink-0 text-fg-3" />}
+        <div className="glass-input flex h-6 min-w-0 flex-1 items-center gap-1.5 rounded-md px-2 text-[11.5px]" aria-label={filePath ? t('web.file') : t('web.address')} title={filePath ?? url}>
+          {filePath ? <IconFile size={12} className="shrink-0 text-fg-3" /> : parts?.secure ? <IconLock size={12} className="shrink-0 text-ok" aria-label={t('web.secure')} /> : <IconWorld size={12} className="shrink-0 text-fg-3" />}
           {filePath ? (
             <span className="truncate">
               <span className="text-fg-3">{fileDir}</span>

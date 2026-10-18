@@ -1,5 +1,6 @@
 import type React from 'react'
 import { cn } from '../../lib/cn.ts'
+import { useT } from '../../lib/i18n.ts'
 
 export function Kbd({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
@@ -23,8 +24,10 @@ export function Badge({ children, tone = 'muted', className }: { children: React
 }
 
 export function Spinner({ className }: { className?: string }) {
+  const { t } = useT()
+
   return (
-    <span className={cn('relative inline-block size-3.5', className)} aria-label="Working">
+    <span className={cn('relative inline-block size-3.5', className)} aria-label={t('working.working')}>
       <span className="absolute inset-0 rounded-full border border-fg-4" />
       <span className="absolute inset-0 animate-spin rounded-full border border-transparent border-t-accent" />
     </span>

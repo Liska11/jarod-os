@@ -7,6 +7,7 @@ import { $prefs } from '../../../store/backend.ts'
 import { notify } from '../../../store/notifications.ts'
 import { type CommandPhrase, type CommandSummary, listCommands, runCommand } from '../../../store/os-commands.ts'
 import { SectionTitle, SettingsFilterContext } from './shared.tsx'
+import { useT } from '../../../lib/i18n.ts'
 
 /*
  * Everything Jarod-OS can do by voice, generated from the command registry so it can never fall
@@ -89,6 +90,8 @@ export function exampleFor(command: CommandSummary): string | null {
 }
 
 export function VoiceCommandsSection() {
+  const { t } = useT()
+
   const query = useContext(SettingsFilterContext).trim().toLowerCase()
   const commands = useMemo(() => listCommands({ includeHidden: true }), [])
   const voiceKey = voiceKeyLabel(useStore($prefs).voice.hotkey)
@@ -109,8 +112,8 @@ export function VoiceCommandsSection() {
   return (
     <>
       <SectionTitle
-        title="Voice commands"
-        subtitle={`${commands.length} things Jarod-OS can do. ${voiceKey ? `Press ${voiceKey} (or say "hey hermes")` : 'Say "hey hermes"'} and say one of these; anything else goes to Hermes, who can use every command too.`}
+        title={t('voiceCommands.title')}
+        subtitle={voiceKey ? t('voiceCommands.subtitle.key', { count: commands.length, key: voiceKey }) : t('voiceCommands.subtitle.noKey', { count: commands.length })}
       />
 
       {/* A settings-item always present would keep the page-level « no match » state hidden while searching. */}
@@ -120,7 +123,7 @@ export function VoiceCommandsSection() {
             <IconMicrophone size={14} className="text-accent-strong" /> Instant: runs on this {deviceNoun()}, no tokens
           </span>
           <span className="flex items-center gap-1.5">
-            <IconShieldCheck size={14} className="text-warn" /> Asks first: Hermes shows an approval card
+            <IconShieldCheck size={14} className="text-warn" /> {t('voiceCommands.asksFirst')}
           </span>
           <span className="flex items-center gap-1.5">
             <span className="rounded bg-accent-soft px-1 text-accent-strong">slot</span> say your own words there
@@ -150,7 +153,7 @@ export function VoiceCommandsSection() {
       {agentOnly.length > 0 && (
         <section className="settings-item flex flex-col gap-1.5">
           <h3 className="flex items-center gap-1.5 px-0.5 text-[12.5px] font-medium text-fg-2">
-            <IconRobot size={14} /> Ask Hermes to do these
+            <IconRobot size={14} /> {t('voiceCommands.askAssistant')}
           </h3>
           <GlassCard className="flex flex-col divide-y divide-line">
             {agentOnly.map(command => (
@@ -171,6 +174,8 @@ export function VoiceCommandsSection() {
 }
 
 function CommandRow({ command, onTry }: { command: CommandSummary; onTry: () => void }) {
+  const { t } = useT()
+
   const phrases = command.phrases.map(phraseText)
   const shown = phrases.slice(0, 4)
   const more = phrases.length - shown.length
@@ -202,9 +207,9 @@ function CommandRow({ command, onTry }: { command: CommandSummary; onTry: () => 
         <div className="mt-1 text-[12px] leading-snug text-fg-3">{command.description}</div>
       </div>
       {canTry && (
-        <GlassButton size="sm" variant="ghost" onClick={onTry} aria-label={`Try ${command.title}`}>
+        <GlassButton size="sm" variant="ghost" onClick={onTry} aria-label={t('voiceCommands.try.aria', { title: command.title })}>
           <IconPlayerPlay />
-          Try
+          {t('voiceCommands.try')}
         </GlassButton>
       )}
     </div>

@@ -4,6 +4,7 @@ import type { TreeEntry } from '../../../shared/ipc.ts'
 import { folderPart } from '../../../shared/path-names.ts'
 import { cn } from '../../lib/cn.ts'
 import type { StudioFile } from '../../lib/studio-model.ts'
+import { useT } from '../../lib/i18n.ts'
 
 interface Node {
   name: string
@@ -52,6 +53,8 @@ const MARK: Partial<Record<StudioFile['status'], { label: string; className: str
 
 /** The project folder, with what Hermes just created or changed marked beside each file. */
 export function FileTree({ root, files, activeFile, revision, onOpen }: { root: string; files: Record<string, StudioFile>; activeFile: string | null; revision: number; onOpen: (path: string) => void }) {
+  const { t } = useT()
+
   const [entries, setEntries] = useState<TreeEntry[]>([])
   const [error, setError] = useState<string | null>(null)
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set())
@@ -83,7 +86,7 @@ export function FileTree({ root, files, activeFile, revision, onOpen }: { root: 
   }
 
   if (tree.length === 0) {
-    return <div className="p-3 text-[12px] text-fg-3">The folder is empty. Files appear here as Hermes creates them.</div>
+    return <div className="p-3 text-[12px] text-fg-3">{t('studio.emptyFolder')}</div>
   }
 
   const toggle = (path: string) => {

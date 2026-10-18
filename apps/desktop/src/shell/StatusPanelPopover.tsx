@@ -2,9 +2,12 @@ import { useStore } from '@nanostores/react'
 import { useEffect } from 'react'
 import { StatusPanel } from '../features/status/StatusPanel.tsx'
 import { $statusPanel } from '../store/status-panel.ts'
+import { useT } from '../lib/i18n.ts'
 
 /** Desktop mode: the quick panel hangs under the menu bar on the right, like the notifications panel. */
 export function StatusPanelPopover() {
+  const { t } = useT()
+
   const panel = useStore($statusPanel)
 
   useEffect(() => {
@@ -30,7 +33,7 @@ export function StatusPanelPopover() {
 
   return (
     <>
-      <button type="button" aria-label="Close panel" className="absolute inset-0 z-(--z-panel)" onClick={close} />
+      <button type="button" aria-label={t('statusPanel.closePanel')} className="absolute inset-0 z-(--z-panel)" onClick={close} />
       <div className="absolute top-10 right-3 z-(--z-overlay) w-[360px]">
         <StatusPanel key={panel} panel={panel} onClose={close} />
       </div>

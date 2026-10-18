@@ -7,6 +7,7 @@ import { formatBytes, formatRelative } from '../../lib/format.ts'
 import { revealLabel } from '../../lib/platform-labels.ts'
 import { DRAG_MIME, type FileItem, extBadge, fileMeta, useDirCount, useInView, useThumbnail } from './files-store.ts'
 import { Menu, type MenuItemDef } from './Menu.tsx'
+import { useT } from '../../lib/i18n.ts'
 
 export type CardAction = 'open' | 'reveal' | 'rename' | 'copy-path' | 'trash' | 'ask'
 
@@ -40,6 +41,8 @@ function startDrag(event: React.DragEvent, item: FileItem): void {
 
 /** Inline rename field: Enter commits, Escape cancels, blur commits (unless `commitOnBlur` is off). */
 export function RenameField({ name, onCommit, onCancel, className, commitOnBlur = true }: { name: string; onCommit: (name: string) => void; onCancel: () => void; className?: string; commitOnBlur?: boolean }) {
+  const { t } = useT()
+
   const [value, setValue] = useState(name)
   const ref = useRef<HTMLInputElement>(null)
   const done = useRef(false)
@@ -74,7 +77,7 @@ export function RenameField({ name, onCommit, onCancel, className, commitOnBlur 
     <input
       ref={ref}
       value={value}
-      aria-label="New name"
+      aria-label={t('fileCard.newName')}
       onChange={event => setValue(event.target.value)}
       onClick={event => event.stopPropagation()}
       onDoubleClick={event => event.stopPropagation()}

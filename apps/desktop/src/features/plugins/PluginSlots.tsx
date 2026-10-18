@@ -2,6 +2,7 @@ import { useStore } from '@nanostores/react'
 import { IconPuzzle, IconX } from '@tabler/icons-react'
 import { $plugins, pluginsAt } from '../../store/plugins.ts'
 import { PluginFrame } from './PluginFrame.tsx'
+import { useT } from '../../lib/i18n.ts'
 
 /** Menu-bar widgets: 24 px tall, as wide as they ask (up to 240). */
 export function MenuBarWidgets() {
@@ -12,6 +13,8 @@ export function MenuBarWidgets() {
 
 /** Overview cards, one per widget that sits there. */
 export function OverviewWidgets() {
+  const { t } = useT()
+
   const plugins = pluginsAt(useStore($plugins), 'overview')
 
   if (plugins.length === 0) {
@@ -19,7 +22,7 @@ export function OverviewWidgets() {
   }
 
   return (
-    <div className="flex flex-col gap-2" aria-label="Widgets">
+    <div className="flex flex-col gap-2" aria-label={t('pluginSlots.label')}>
       {plugins.map(plugin => (
         <div key={plugin.manifest.id} className="glass overflow-hidden rounded-xl">
           <div className="flex h-7 items-center gap-1.5 px-3 text-[11px] font-medium text-fg-4">
@@ -35,6 +38,8 @@ export function OverviewWidgets() {
 
 /** A widget in its own floating window (the `panel` placement). */
 export function WidgetWindow({ pluginId, onClose }: { pluginId?: string; onClose?: () => void }) {
+  const { t } = useT()
+
   const plugin = useStore($plugins).find(item => item.manifest.id === pluginId)
 
   if (!plugin?.enabled) {
@@ -44,7 +49,7 @@ export function WidgetWindow({ pluginId, onClose }: { pluginId?: string; onClose
         {plugin ? `${plugin.manifest.name} is turned off. Turn it on in Settings > Plugins.` : 'This widget is not installed.'}
         {onClose && (
           <button type="button" onClick={onClose} className="mt-2 flex items-center gap-1 text-fg-4 hover:text-fg">
-            <IconX size={13} /> Close
+            <IconX size={13} /> {t('pluginSlots.close')}
           </button>
         )}
       </div>

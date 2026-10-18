@@ -1,6 +1,7 @@
 import { IconAlertTriangle, IconRefresh } from '@tabler/icons-react'
 import { Component, type ErrorInfo, type ReactNode } from 'react'
 import { GlassButton } from './ui/glass.tsx'
+import { t } from '../lib/i18n.ts'
 
 interface Props {
   /** Shown in the fallback so the user knows which surface broke. */
@@ -41,7 +42,7 @@ export class SurfaceErrorBoundary extends Component<Props, State> {
           <div className="max-w-sm text-[12.5px] leading-relaxed text-fg-3 break-words">{error.message}</div>
           <GlassButton onClick={() => this.setState({ error: null })}>
             <IconRefresh size={14} />
-            Try again
+            {t('errorBoundary.tryAgain')}
           </GlassButton>
         </div>
       </div>

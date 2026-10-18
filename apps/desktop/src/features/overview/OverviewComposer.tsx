@@ -168,7 +168,7 @@ export function OverviewComposer({ disabled, placeholder, onSubmit, className, d
           <MicButton size={17} className="size-9" disabled={disabled} />
           <button
             type="button"
-            aria-label="Send"
+            aria-label={t('chat.send')}
             disabled={disabled || !value.trim()}
             onClick={() => void submit()}
             className="ml-1 flex size-9 items-center justify-center rounded-full bg-accent text-accent-fg shadow-[0_4px_16px_rgba(47,125,255,.45)] transition-colors duration-120 hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"

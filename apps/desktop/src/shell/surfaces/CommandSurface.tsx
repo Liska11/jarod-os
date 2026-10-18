@@ -13,6 +13,7 @@ import { ClipboardPanel } from './ClipboardPanel.tsx'
 import { ControlMenu, PowerCard } from './ControlMenu.tsx'
 import { useShellCommands, windowLabel } from './shell-utils.ts'
 import { baseName } from '../../../shared/path-names.ts'
+import { useT } from '../../lib/i18n.ts'
 
 type Mode = 'ask' | 'command' | 'applications' | 'menu' | 'power' | 'clipboard' | 'emoji'
 
@@ -123,6 +124,8 @@ export function CommandSurface() {
 
 /** "Ask Hermes about this window": a prompt with the focused window as context, relayed to the Hermes window. */
 export function AskPanel({ state, onClose }: { state: AskState; onClose: () => void }) {
+  const { t } = useT()
+
   const [text, setText] = useState(state.text)
   const textarea = useRef<HTMLTextAreaElement>(null)
 
@@ -155,7 +158,7 @@ export function AskPanel({ state, onClose }: { state: AskState; onClose: () => v
     <div className="float flex flex-col overflow-hidden rounded-2xl animate-pop">
       <div className="flex items-center gap-3 px-4 pt-4 pb-2">
         <HermesAvatar size={22} rounded={6} />
-        <span className="text-[14px] font-semibold">Ask Hermes</span>
+        <span className="text-[14px] font-semibold">{t('commandSurface.title')}</span>
         <span className="flex-1" />
         <Kbd>esc</Kbd>
       </div>
@@ -190,8 +193,8 @@ export function AskPanel({ state, onClose }: { state: AskState; onClose: () => v
               submit()
             }
           }}
-          placeholder={state.context ? `Ask about ${windowLabel(state.context)}` : state.attachments.length > 0 ? 'What would you like to know about it?' : 'Ask Hermes anything'}
-          aria-label="Ask Hermes"
+          placeholder={state.context ? t('commandSurface.askAbout', { name: windowLabel(state.context) }) : state.attachments.length > 0 ? t('commandSurface.aboutAttachment') : t('commandSurface.placeholder')}
+          aria-label={t('commandSurface.title')}
           className="glass-input w-full resize-none rounded-lg px-3 py-2.5 text-[14px] leading-relaxed outline-none placeholder:text-fg-4"
         />
       </div>
@@ -201,7 +204,7 @@ export function AskPanel({ state, onClose }: { state: AskState; onClose: () => v
           <Kbd>↵</Kbd> send · <Kbd>⇧↵</Kbd> new line
         </span>
         <GlassButton variant="primary" size="sm" onClick={submit} disabled={!canSend}>
-          Send to Hermes
+          {t('commandSurface.send')}
         </GlassButton>
       </div>
     </div>

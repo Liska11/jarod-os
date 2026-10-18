@@ -1,5 +1,6 @@
 import type React from 'react'
 import { cn } from '../../lib/cn.ts'
+import { useT } from '../../lib/i18n.ts'
 
 /** Common page frame: quiet title row, optional actions, scrollable body. */
 export function SurfaceFrame({ title, subtitle, actions, children, className, bodyClassName }: { title: string; subtitle?: React.ReactNode; actions?: React.ReactNode; children: React.ReactNode; className?: string; bodyClassName?: string }) {
@@ -18,12 +19,14 @@ export function SurfaceFrame({ title, subtitle, actions, children, className, bo
 }
 
 export function ErrorNote({ message, onRetry }: { message: string; onRetry?: () => void }) {
+  const { t } = useT()
+
   return (
     <div className="flex items-center justify-between gap-3 rounded-md bg-danger/10 px-3 py-2 text-[12.5px] text-danger">
       <span className="selectable min-w-0 truncate">{message}</span>
       {onRetry && (
         <button type="button" onClick={onRetry} className="shrink-0 underline decoration-danger/40 hover:decoration-danger">
-          Retry
+          {t('surface.retry')}
         </button>
       )}
     </div>

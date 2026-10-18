@@ -187,7 +187,7 @@ export function VoiceSection() {
                 <RadioCard icon={<IconWaveSine />} label={t('settings.voice.free')} description={t('settings.voice.free.hint')} selected={voice.engine === 'chained'} onSelect={() => void setEngine('chained')} />
                 <RadioCard
                   icon={<IconBolt />}
-                  label="Live"
+                  label={t('settings.voice.live')}
                   description={liveStatus?.available ? t('settings.voice.live.rate', { price: LIVE_RATE_PER_MINUTE.toFixed(2) }) : t('settings.voice.live.needs')}
                   selected={voice.engine === 'live'}
                   onSelect={() => void setEngine('live')}

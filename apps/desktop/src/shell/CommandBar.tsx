@@ -167,7 +167,7 @@ export function CommandPalette({ onClose, standalone = false, onApplications, cl
 
   return (
     <Command
-      label="Hermes command bar"
+      label={t('commandBar.label')}
       shouldFilter={false}
       className={cn('float overflow-hidden rounded-2xl', className)}
       onMouseDown={event => event.stopPropagation()}
@@ -179,7 +179,7 @@ export function CommandPalette({ onClose, standalone = false, onApplications, cl
     >
       <div className="flex items-center gap-3 px-4 py-3">
         <HermesAvatar size={22} rounded={6} />
-        <Command.Input autoFocus value={query} onValueChange={setQuery} placeholder="Ask Hermes anything, or type / for commands" className="h-7 flex-1 bg-transparent text-[15px] text-fg placeholder:text-fg-4 outline-none" />
+        <Command.Input autoFocus value={query} onValueChange={setQuery} placeholder={t('commandBar.placeholder')} className="h-7 flex-1 bg-transparent text-[15px] text-fg placeholder:text-fg-4 outline-none" />
         <Kbd>esc</Kbd>
       </div>
       <div className="h-px bg-line" />

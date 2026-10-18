@@ -3,6 +3,7 @@ import type React from 'react'
 import { cn } from '../../lib/cn.ts'
 import type { AppIconId } from '../../shell/apps.ts'
 import { AppTile } from '../app-icon.tsx'
+import { useT } from '../../lib/i18n.ts'
 
 /*
  * The glass page vocabulary shared by every page inside the main window. One primitive per concern:
@@ -207,8 +208,10 @@ export function GlassButton({ children, variant = 'secondary', size = 'md', clas
 }
 
 export function MoreButton(props: React.ComponentProps<'button'>) {
+  const { t } = useT()
+
   return (
-    <button type="button" aria-label="More" className="flex size-8 items-center justify-center rounded-lg text-fg-3 hover:bg-white/8 hover:text-fg" {...props}>
+    <button type="button" aria-label={t('glass.more')} className="flex size-8 items-center justify-center rounded-lg text-fg-3 hover:bg-white/8 hover:text-fg" {...props}>
       <IconDots size={16} />
     </button>
   )

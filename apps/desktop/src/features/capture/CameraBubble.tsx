@@ -1,9 +1,12 @@
 import { IconCameraOff } from '@tabler/icons-react'
 import { useEffect, useRef, useState } from 'react'
 import { privacySettingsPath } from '../../lib/platform-labels.ts'
+import { useT } from '../../lib/i18n.ts'
 
 /** Your camera in a round bubble, mirrored like a mirror, for screen recordings and demos. */
 export function CameraBubble() {
+  const { t } = useT()
+
   const video = useRef<HTMLVideoElement>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -48,7 +51,7 @@ export function CameraBubble() {
             {error}
           </div>
         ) : (
-          <video ref={video} autoPlay muted playsInline className="h-full w-full -scale-x-100 object-cover" aria-label="Camera" />
+          <video ref={video} autoPlay muted playsInline className="h-full w-full -scale-x-100 object-cover" aria-label={t('app.camera')} />
         )}
       </div>
     </div>

@@ -41,7 +41,7 @@ export function ChatSurface() {
           <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-6 px-6">
             <HermesMark size={36} />
             <div className="text-center">
-              <div className="text-[18px] font-medium tracking-tight">Hermes</div>
+              <div className="text-[18px] font-medium tracking-tight">{t('app.hermes')}</div>
               <div className="mt-1 text-[13px] text-fg-3">{t('chat.hero')}</div>
             </div>
             <div className="grid w-full max-w-xl grid-cols-2 gap-2">

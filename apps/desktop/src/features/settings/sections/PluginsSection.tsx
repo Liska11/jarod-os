@@ -178,7 +178,7 @@ function PluginRow({ plugin }: { plugin: PluginView }) {
       {busy && <Spinner />}
       {plugin.enabled && manifest.placement.includes('panel') && (
         <GlassButton size="sm" variant="ghost" onClick={() => openApp('widget', { payload: { plugin: manifest.id }, title: manifest.name, singleton: false })}>
-          Open
+          {t('plugins.open')}
         </GlassButton>
       )}
       {plugin.git && (

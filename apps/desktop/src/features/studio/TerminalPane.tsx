@@ -5,11 +5,14 @@ import { useEffect, useRef, useState } from 'react'
 import { Spinner } from '../../components/ui/primitives.tsx'
 import { cn } from '../../lib/cn.ts'
 import { stripAnsi, type StudioCommand, type StudioProcess } from '../../lib/studio-model.ts'
+import { useT } from '../../lib/i18n.ts'
 
 const THEME = { background: '#0a1230', foreground: '#e9eefb', cursor: '#0a1230', selectionBackground: 'rgba(82, 150, 255, 0.3)' }
 const TAIL_LINES = 40
 
 function CommandLog({ commands }: { commands: StudioCommand[] }) {
+  const { t } = useT()
+
   const end = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -17,7 +20,7 @@ function CommandLog({ commands }: { commands: StudioCommand[] }) {
   }, [commands])
 
   if (commands.length === 0) {
-    return <div className="p-3 text-[12px] text-fg-3">Commands Hermes runs (installs, builds, servers) appear here with their output.</div>
+    return <div className="p-3 text-[12px] text-fg-3">{t('studio.noCommands')}</div>
   }
 
   return (

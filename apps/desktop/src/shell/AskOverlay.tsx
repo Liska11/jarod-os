@@ -2,9 +2,12 @@ import { useStore } from '@nanostores/react'
 import { useEffect } from 'react'
 import { $askDraft } from '../store/surface.ts'
 import { AskPanel } from './surfaces/CommandSurface.tsx'
+import { useT } from '../lib/i18n.ts'
 
 /** Desktop mode: "Ask Hermes" about a screen region (or any attached files), centred over the desktop. */
 export function AskOverlay() {
+  const { t } = useT()
+
   const draft = useStore($askDraft)
 
   useEffect(() => {
@@ -30,7 +33,7 @@ export function AskOverlay() {
 
   return (
     <>
-      <button type="button" aria-label="Close" className="absolute inset-0 z-(--z-command) bg-black/20" onClick={close} />
+      <button type="button" aria-label={t('askOverlay.close')} className="absolute inset-0 z-(--z-command) bg-black/20" onClick={close} />
       <div className="absolute top-[18%] left-1/2 z-(--z-command) w-[min(680px,92vw)] -translate-x-1/2">
         <AskPanel state={{ text: draft.text, context: null, attachments: draft.attachments }} onClose={close} />
       </div>

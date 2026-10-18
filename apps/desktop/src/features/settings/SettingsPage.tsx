@@ -195,6 +195,8 @@ function Footer() {
 }
 
 function PauseAllAgents() {
+  const { t, tn } = useT()
+
   const chats = useStore($chats)
   const [confirming, setConfirming] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -214,21 +216,21 @@ function PauseAllAgents() {
   if (confirming) {
     return (
       <div className="animate-pop flex items-center gap-2 text-[12px] text-fg-2">
-        <span>Interrupt {streaming.length} running {streaming.length === 1 ? 'session' : 'sessions'} and pause every scheduled task?</span>
+        <span>{tn('settings.pauseAll.confirm', streaming.length)}</span>
         <GlassButton size="sm" variant="ghost" onClick={() => setConfirming(false)}>
-          Cancel
+          {t('request.cancel')}
         </GlassButton>
-        <GlassButton size="sm" variant="danger" onClick={() => void pauseAll()} aria-label="Confirm pause all agents">
-          Pause everything
+        <GlassButton size="sm" variant="danger" onClick={() => void pauseAll()} aria-label={t('settings.pauseAll.confirmAria')}>
+          {t('settings.pauseAll.everything')}
         </GlassButton>
       </div>
     )
   }
 
   return (
-    <GlassButton size="sm" onClick={() => setConfirming(true)} disabled={busy} aria-label="Pause all agents">
+    <GlassButton size="sm" onClick={() => setConfirming(true)} disabled={busy} aria-label={t('settings.pauseAll')}>
       <IconPlayerPause />
-      {busy ? 'Pausing…' : 'Pause all agents'}
+      {busy ? t('settings.pauseAll.busy') : t('settings.pauseAll')}
     </GlassButton>
   )
 }
