@@ -99,7 +99,7 @@ export function parseProfile(text: string): Sections {
 
 const profileItems = (sections: Sections): (Item & { section: string })[] => {
   const out: (Item & { section: string })[] = [];
-  for (const [section, lines] of sections) lines.forEach((text, i) => out.push({ id: `${section}\u0000${i}`, section, text }));
+  for (const [section, lines] of sections) lines.forEach((text, i) => { out.push({ id: `${section}\u0000${i}`, section, text }); });
   return out;
 };
 

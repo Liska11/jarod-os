@@ -201,7 +201,7 @@ async function main(): Promise<void> {
     for (let i = 0; i < lq.length; i += 16) {
       const batch = lq.slice(i, i + 16);
       const v = await a.embeddings.embed(batch);
-      batch.forEach((t, j) => vecs.set(t, v[j]!));
+      batch.forEach((t, j) => { vecs.set(t, v[j]!); });
     }
     let current = "";
     real.setEmbedder(async () => [vecs.get(current)!]);

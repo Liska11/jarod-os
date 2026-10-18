@@ -187,11 +187,11 @@ function samples(): void {
   );
   md.push("## Partie 1 — 40 résultats d'outils tirés au hasard", "", "Pour chacun : la règle R1 a-t-elle raison ? Répondre `ok` ou la classe correcte (échec / succès / indéterminé).", "");
   md.push("| n | outil | verdict R1 | signal | contenu (tronqué, expurgé) |", "|---|---|---|---|---|");
-  sample.forEach((r, i) => md.push(`| ${i + 1} | ${r.tool ?? "?"} | **${r.outcome.kind}** | ${r.outcome.reason} | ${show(r.content)} |`));
+  sample.forEach((r, i) => { md.push(`| ${i + 1} | ${r.tool ?? "?"} | **${r.outcome.kind}** | ${r.outcome.reason} | ${show(r.content)} |`); });
   md.push("", "## Partie 2 — 40 paires de signatures (20 « même » et 20 « différente » choisies parmi les plus proches, mélangées)", "", "Pour chacune : même CAUSE d'échec (oui/non) ? La règle de signature a-t-elle raison ? Répondre `ok` ou `faux`.", "");
   md.push("| n | outil | verdict signature | texte A (normalisé) | texte B (normalisé) |", "|---|---|---|---|---|");
   const shownText = (r: ToolResult) => show(normalizeText(r.outcome.text) || `(vide, exit ${String(r.outcome.exit)})`, 90);
-  pairs.forEach((p, i) => md.push(`| ${i + 1} | ${p.a.tool ?? "?"} | **${p.kind === "meme-signature" ? "même" : "différente"}** | ${shownText(p.a)} | ${shownText(p.b)} |`));
+  pairs.forEach((p, i) => { md.push(`| ${i + 1} | ${p.a.tool ?? "?"} | **${p.kind === "meme-signature" ? "même" : "différente"}** | ${shownText(p.a)} | ${shownText(p.b)} |`); });
   md.push("", "## Annexe — répartition par outil (apprentissage, 12 premiers)", "", "| outil | résultats | échecs | succès | indéterminés |", "|---|---|---|---|---|");
   for (const [k, s] of [...stats.entries()].sort((a, b) => b[1].n - a[1].n).slice(0, 12)) md.push(`| ${k} | ${s.n} | ${s.echec} | ${s.succes} | ${s.indet} |`);
   writeFileSync(join(WORK_DIR, "validation-40-40.md"), `${md.join("\n")}\n`);

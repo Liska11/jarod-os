@@ -264,7 +264,7 @@ export function normalise(input: { servers: McpServerRow[]; catalog: McpCatalogE
 
   for (const platform of input.messaging) {
     const owned = input.toolsets.filter(ts => ts.name === platform.id || ts.name.startsWith(`${platform.id}_`))
-    owned.forEach(ts => claimedToolsets.add(ts.name))
+    owned.forEach(ts => { claimedToolsets.add(ts.name) })
     const connection = messagingConnection(platform, owned)
 
     if (platform.enabled || platform.configured || owned.some(ts => ts.enabled)) {

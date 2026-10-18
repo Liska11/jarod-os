@@ -89,8 +89,8 @@ export function digestOf(value: unknown): string {
 function refsOf(value: unknown, into: string[]): void {
   if (typeof value === "string") {
     for (const n of referencedVars(value)) into.push(n);
-  } else if (Array.isArray(value)) value.forEach((v) => refsOf(v, into));
-  else if (isObject(value)) Object.values(value).forEach((v) => refsOf(v, into));
+  } else if (Array.isArray(value)) value.forEach((v) => { refsOf(v, into); });
+  else if (isObject(value)) Object.values(value).forEach((v) => { refsOf(v, into); });
 }
 
 function compileSteps(list: unknown, scope: string, declared: Set<string>, problems: string[], ids: Set<string>): PlanStep[] {

@@ -261,7 +261,7 @@ export function createHuggingFaceHandlers(ctx: HandlerContext) {
         await new Promise<void>((r) => waiting.push(r));
       }
     };
-    const wake = () => waiting.splice(0).forEach((r) => r());
+    const wake = () => waiting.splice(0).forEach((r) => { r(); });
 
     const worker = async (): Promise<void> => {
       while (queue.length > 0 && !st.stopped) {

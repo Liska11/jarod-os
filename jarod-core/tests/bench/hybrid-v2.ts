@@ -117,7 +117,7 @@ async function main(): Promise<void> {
       for (let i = 0; i < need.length; i += 16) {
         const part = need.slice(i, i + 16);
         const v = await a.embeddings.embed(part);
-        part.forEach((t, j) => qvCache.set(t, v[j]!));
+        part.forEach((t, j) => { qvCache.set(t, v[j]!); });
       }
     };
     const capped = (ids: string[]) => {
@@ -153,7 +153,7 @@ async function main(): Promise<void> {
     const fuse = (dense: string[], lex: string[]): string[] => {
       const score = new Map<string, number>();
       const lr = new Map<string, number>();
-      dense.slice(0, DEPTH).forEach((id, r) => score.set(id, 1 / (RRF_K + r + 1)));
+      dense.slice(0, DEPTH).forEach((id, r) => { score.set(id, 1 / (RRF_K + r + 1)); });
       lex.forEach((id, r) => { score.set(id, (score.get(id) ?? 0) + 1 / (RRF_K + r + 1)); lr.set(id, r); });
       const order = [...score.keys()];
       const sorted = order.sort((x, y) => score.get(y)! - score.get(x)! || (lr.get(x) ?? Infinity) - (lr.get(y) ?? Infinity));
