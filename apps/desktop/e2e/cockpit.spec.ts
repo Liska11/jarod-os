@@ -93,6 +93,25 @@ test('in a short window the sidebar scrolls, and its fold button stays reachable
   await page.getByRole('button', { name: 'Déplier la barre latérale' }).click()
 })
 
+test('Connexions › Machines distantes shows Tailscale’s real state and the separate checks', async () => {
+  await page.getByRole('navigation').first().getByRole('button', { name: 'Connexions', exact: true }).click()
+  await page.getByRole('tab', { name: 'Machines distantes' }).or(page.getByRole('button', { name: 'Machines distantes' })).first().click()
+  const state = await page.evaluate(() => window.heraldOS.remote.tailscale())
+  await expect(page.getByText('Tailscale', { exact: true })).toBeVisible()
+
+  if (!state.installed) {
+    await expect(page.getByText('Tailscale n’est pas installé sur cet ordinateur.')).toBeVisible()
+  } else if (state.backend === 'Running') {
+    await expect(page.getByText(/^Connecté :/)).toBeVisible()
+  } else {
+    await expect(page.getByText(/Tailscale (n’est pas connecté|attend une connexion)/)).toBeVisible()
+  }
+
+  await expect(page.getByRole('button', { name: 'Ajouter une machine' })).toBeVisible()
+  await expect(page.getByText(/L’agent ne lance pas de commandes sur ces machines/)).toBeVisible()
+  await page.screenshot({ path: path.join(process.env.AUDIT_SHOTS ?? shell.root, 'remote-machines.png') }).catch(() => undefined)
+})
+
 test('the switch stays off after a restart: nothing turns the Internet back on by itself', async () => {
   const root = shell.root
   await shell.app.close()

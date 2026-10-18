@@ -41,6 +41,7 @@ import { NetworkPolicyService, setActiveNetworkPolicy } from './network.ts'
 import { cutDisallowed, installSocketGuard } from './net-guard.ts'
 import { electronNetworkSessions, registerNetworkIpc } from './ipc/network.ts'
 import { ExternalBackupService } from './ipc/external-backup.ts'
+import { registerRemoteMachinesIpc } from './ipc/remote-machines.ts'
 import { MEDIA_SCHEME_PRIVILEGES, registerMediaIpc } from './ipc/media.ts'
 import { registerNativeAppsIpc } from './ipc/native-apps.ts'
 import { registerWindowEmbeds } from './platform/window-embed.ts'
@@ -659,6 +660,7 @@ function registerCoreIpc(): void {
   registerEnvironmentsIpc()
   registerVmsIpc()
   registerNetworkIpc(network)
+  registerRemoteMachinesIpc(network)
   externalBackups.register()
   registerDataDiskIpc({ state: dataRoot, configDir: shellConfigDir(), stopBackend: () => backend.stop(), startBackend: () => void backend.start(), relaunch: () => relaunch(false) })
   registerNativeAppsIpc()

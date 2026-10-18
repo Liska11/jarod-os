@@ -379,6 +379,8 @@ export interface TerminalCreateOptions {
   environment?: string
   /** A WSL machine (its name): the tab runs `wsl -d <name>` instead of the Windows shell. */
   vm?: string
+  /** A remote machine (docs/REMOTE-SSH.md): the tab runs `ssh` to it, host keys checked strictly (an unknown key fails). */
+  ssh?: { host: string; port: number; user: string; identity?: string }
 }
 
 /** One entry of the install catalog (linux/catalog/*.json), with its state on this machine. */
@@ -1032,6 +1034,12 @@ export const IPC = {
   networkGet: 'herald-os:network:get',
   networkSet: 'herald-os:network:set',
   networkChanged: 'herald-os:network:changed',
+  // Remote machines (electron/remote-machines.ts, electron/ipc/remote-machines.ts).
+  remoteTailscale: 'herald-os:remote:tailscale',
+  remoteProbe: 'herald-os:remote:probe',
+  remoteScanKeys: 'herald-os:remote:scan-keys',
+  remoteTrustKeys: 'herald-os:remote:trust-keys',
+  remoteSyncHosts: 'herald-os:remote:sync-hosts',
   // External backups (electron/external-backup.ts, electron/ipc/external-backup.ts).
   externalBackupState: 'herald-os:external-backup:state',
   externalBackupEstimate: 'herald-os:external-backup:estimate',

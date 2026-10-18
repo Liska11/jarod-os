@@ -396,6 +396,18 @@ const api = {
     restore: (folder: string): Promise<ExternalResult> => ipcRenderer.invoke(IPC.externalBackupRestore, folder),
     onProgress: (listener: (progress: ExternalProgress) => void): Unsubscribe => subscribe(IPC.externalBackupProgress, listener)
   },
+  remote: {
+    /** Tailscale's state and peers, read from the local Tailscale service. */
+    tailscale: (): Promise<{ installed: boolean; backend: string | null; self: { name: string; ips: string[] } | null; peers: Array<{ name: string; dnsName: string; ips: string[]; os: string; online: boolean; sshHostKeys: boolean }>; error?: string }> =>
+      ipcRenderer.invoke(IPC.remoteTailscale),
+    /** Network test: a TCP connection to host:port, nothing sent. */
+    probe: (host: string, port: number): Promise<{ ok: boolean; ms: number; error?: string }> => ipcRenderer.invoke(IPC.remoteProbe, host, port),
+    /** Reads the host keys and compares them with known_hosts; `token` confirms them with trustKeys. */
+    scanKeys: (host: string, port: number): Promise<{ token: string; verdict: 'unknown' | 'match' | 'changed' | 'unreachable'; keys: Array<{ type: string; fingerprint: string }>; known: string[] } | { error: string }> =>
+      ipcRenderer.invoke(IPC.remoteScanKeys, host, port),
+    trustKeys: (token: string): Promise<{ ok: boolean; error?: string }> => ipcRenderer.invoke(IPC.remoteTrustKeys, token),
+    syncHosts: (hosts: string[]): Promise<NetworkPolicy> => ipcRenderer.invoke(IPC.remoteSyncHosts, hosts)
+  },
   network: {
     /** Jarod's Internet policy (the switch in the top bar). */
     get: (): Promise<NetworkPolicy> => ipcRenderer.invoke(IPC.networkGet),

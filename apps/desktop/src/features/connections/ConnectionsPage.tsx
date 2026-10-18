@@ -1,3 +1,4 @@
+import { RemoteMachines } from './RemoteMachines.tsx'
 import { useStore } from '@nanostores/react'
 import { IconLayoutGrid, IconPlugConnected, IconPlus, IconRefresh } from '@tabler/icons-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -15,7 +16,7 @@ import { type ConnectionActions, ConnectionCard, ConnectionCardSkeleton } from '
 import { ConnectionDetail, ConnectionDetailSkeleton, type ProbeState } from './ConnectionDetail.tsx'
 import { api, type BrowseItem, type Connection, type ConnectionTool, errorText, groupTools, loadConnections, type McpProbeResult } from './connections-model.ts'
 
-type TabId = 'connected' | 'browse'
+type TabId = 'connected' | 'browse' | 'remote'
 
 /** Probe results outlive the page's data reloads; a probe is a real connection to the server. */
 const probeCache = new Map<string, McpProbeResult>()
@@ -57,7 +58,8 @@ export function ConnectionsPage() {
 
   const tabs: readonly TabDef<TabId>[] = [
     { id: 'connected', label: t('conn.tabConnected'), count: connections.length },
-    { id: 'browse', label: t('conn.tabBrowse'), icon: <IconLayoutGrid size={14} /> }
+    { id: 'browse', label: t('conn.tabBrowse'), icon: <IconLayoutGrid size={14} /> },
+    { id: 'remote', label: t('remote.tab') }
   ]
 
   const runProbe = useCallback(async (connection: Connection, options: { force?: boolean; announce?: boolean } = {}) => {
@@ -352,7 +354,11 @@ export function ConnectionsPage() {
           {data?.warnings.length ? <span className="truncate text-[12px] text-warn" title={data.warnings.join('\n')}>{t('conn.someSourcesFailed')}</span> : null}
         </div>
 
-        {failed ? (
+        {tab === 'remote' ? (
+          <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+            <RemoteMachines />
+          </div>
+        ) : failed ? (
           <EmptyGlass
             icon={<IconPlugConnected />}
             title={t('conn.noAnswer')}

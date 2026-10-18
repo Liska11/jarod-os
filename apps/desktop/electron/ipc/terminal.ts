@@ -8,6 +8,8 @@ import path from 'node:path'
 import { IPC, type TerminalCreateOptions, type TerminalHandle } from '../../shared/ipc.ts'
 import { terminalBin } from '../catalog/catalog.ts'
 import { log } from '../log.ts'
+import { assertUrl } from '../network.ts'
+import { HOST, sshTool } from '../remote-machines.ts'
 import { loadCatalog } from './catalog.ts'
 import { normalizeUserPath } from './fs.ts'
 
@@ -158,8 +160,10 @@ export function registerTerminalIpc(getWindow: () => BrowserWindow | null): void
       throw new Error(`${options.vm} is not a WSL machine of this computer`)
     }
 
+    // A remote machine: `ssh` to it, the host key checked strictly (Settings confirms a new key's fingerprint first), within the Internet policy.
+    const ssh = options.ssh ? remoteCommand(options.ssh) : null
     const args = process.platform === 'win32' ? [] : resolved ? ['-l', '-c', `${JSON.stringify(resolved)}; exec ${JSON.stringify(shell)} -l`] : ['-l']
-    const child = pty.spawn(vm ? 'wsl.exe' : shell, vm ? ['-d', vm.name, '--cd', '~'] : args, {
+    const child = pty.spawn(ssh ? ssh.file : vm ? 'wsl.exe' : shell, ssh ? ssh.args : vm ? ['-d', vm.name, '--cd', '~'] : args, {
       name: 'xterm-256color',
       cols: Math.max(2, options.cols),
       rows: Math.max(1, options.rows),
@@ -195,3 +199,22 @@ export function registerTerminalIpc(getWindow: () => BrowserWindow | null): void
     kill(id)
   })
 }
+
+/** The `ssh` command of a remote tab, after checking every part (no option can slip in through a host or a user) and the Internet policy. */
+export function remoteCommand(target: { host: string; port: number; user: string; identity?: string }): { file: string; args: string[] } {
+  if (!HOST.test(String(target.host)) || !/^[A-Za-z0-9._][A-Za-z0-9._-]{0,63}$/.test(String(target.user)) || !Number.isInteger(target.port) || target.port < 1 || target.port > 65535) {
+    throw new Error('machine distante invalide')
+  }
+
+  if (target.identity !== undefined && (!path.isAbsolute(target.identity) || !fs.existsSync(target.identity) || !fs.statSync(target.identity).isFile())) {
+    throw new Error('clé SSH introuvable')
+  }
+
+  assertUrl(`ssh://${target.host.includes(':') ? `[${target.host}]` : target.host}`, `la connexion SSH à ${target.host}`)
+
+  return {
+    file: sshTool('ssh'),
+    args: ['-o', 'StrictHostKeyChecking=yes', '-p', String(target.port), ...(target.identity ? ['-i', target.identity, '-o', 'IdentitiesOnly=yes'] : []), '--', `${target.user}@${target.host}`]
+  }
+}
+

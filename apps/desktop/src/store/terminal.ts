@@ -3,7 +3,7 @@ import { isPanels } from './shell.ts'
 import { openApp } from './windows.ts'
 
 /** A coding agent to start in a new Terminal tab (desktop mode; panels mode sends a command instead). */
-export const $terminalRequest = atom<{ program?: string; environment?: string; vm?: string; label: string; at: number } | null>(null)
+export const $terminalRequest = atom<{ program?: string; environment?: string; vm?: string; ssh?: { host: string; port: number; user: string; identity?: string }; label: string; at: number } | null>(null)
 
 /** Open the Terminal with a new tab running a catalog coding agent (claude, codex, …). */
 export function openTerminalProgram(program: string, label: string): void {
