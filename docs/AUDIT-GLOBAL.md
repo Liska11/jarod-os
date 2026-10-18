@@ -99,11 +99,11 @@ Utilisateur
 | A-04 | moyenne | UI conversation | Capture `30-small-chat.png` : à 900×620, les suggestions de l'accueil chevauchent la zone de saisie, et l'avatar chevauche l'en-tête. `Conversation.tsx:104` : `Hero` centré sans défilement | Saisie masquée dans une petite fenêtre | Accueil défilant, centrage sûr | capture + e2e | **corrigé** (capture à 900×620 revue) |
 | A-05 | moyenne | UI fenêtre de conversation détachée | `ChatPopout.tsx:13` affiche l'ancien `chat/ChatSurface.tsx` : chaînes anglaises codées en dur (« Message Hermes », « Open Safari »), nom « Hermes », pas de sélecteur de modèle | Incohérence de marque et de langue, fonction différente de la page principale | Réutiliser `Conversation` | e2e : la fenêtre détachée montre le compositeur français | **corrigé** : `ChatPopout` rend `Conversation` ; l'ancien `chat/ChatSurface`, `chat/Composer` et `chat/Transcript` ne servaient plus qu'à lui et sont retirés |
 | A-06 | faible | IPC | 159 `ipcMain.handle` sans contrôle de l'expéditeur (`senderFrame`). Les vues web n'ont pas de preload, et la navigation des fenêtres à preload est verrouillée (`window.ts:69-76`, `panels.ts`) | Défense en profondeur seulement : pas d'exploitation trouvée | Différé : un contrôle commun de l'expéditeur dans un lot dédié | — | hypothèse, différé |
-| A-07 | faible | tests du noyau | `integrations/test/engines/browser.lifecycle.engine.test.ts:121` : « contrôle WebRTC : aucun datagramme STUN/TURN-UDP n'atteint le témoin sur cette machine, preuve non concluante » | Le contrôle de la preuve UDP dépend de la machine. Ce n'est pas une fuite : c'est le témoin qui ne voit rien sans durcissement. | Aucune correction de code. Documenté (E2-VALIDATION §6.1). | — | confirmé, préexistant, différé |
+| A-07 | faible | tests du noyau | `integrations/test/engines/browser.lifecycle.engine.test.ts:121` : « contrôle WebRTC : aucun datagramme STUN/TURN-UDP n'atteint le témoin sur cette machine, preuve non concluante » | Le contrôle de la preuve UDP dépend de la machine. Ce n'est pas une fuite : c'est le témoin qui ne voit rien sans durcissement. | Cause trouvée : le bac à sable du service réseau de Chrome sous Windows bloque tout UDP WebRTC sur cette machine, et Windows refuse d'écrire vers `127.0.0.1` depuis un socket lié à une interface. L'essai mesure sans ce bac à sable (option `networkServiceSandbox: false`, réservée à l'essai), avec un témoin sur l'adresse de la route par défaut, plus une mesure au lancement exact de l'application. Contrôle encore à zéro : essai ignoré avec la raison, jamais réussi (E2-VALIDATION §6.2). | essai réel : contrôle 10/6 datagrammes, pile complète et lancement de l'application à 0 ; branche « non concluante » vérifiée | **corrigé** : la preuve est concluante sur cette machine |
 | A-08 | moyenne | secrets | Sous Windows, le coffre du noyau écrit ses valeurs en `pl:` (base64) dans `jarod.db` (`storage/src/os-crypt.ts:102`). La base est chiffrée par SQLCipher, avec une clé DPAPI (`dbkey.ts:121`). Repli : un fichier de clé « faible » si DPAPI échoue. | Protégé par le chiffrement de la base. Si la clé tombe sur le fichier, protection faible (signalée `weak`). Les sauvegardes copient `jarod.db`, donc le coffre chiffré. | Afficher l'état de chiffrement dans Secrets, exclure le coffre des sauvegardes externes (volets 1 et 4) | test : manifeste de sauvegarde sans valeur de secret | **en partie corrigé** : la sauvegarde externe retire les valeurs du coffre (`snapshotWithoutSecrets`, testé en e2e). L'affichage de l'état du chiffrement reste au volet 4. |
 | A-09 | moyenne | SSH | `tools/ssh.ts:435` : un hôte inconnu échoue, et le message demande d'utiliser `ssh-keyscan` à la main. Il n'y a ni première confiance avec empreinte dans l'interface, ni test réseau séparé, ni Tailscale. | Le premier usage est bloqué hors terminal | Volet 2 : test TCP séparé, lecture de l'empreinte (`ssh-keyscan` + `ssh-keygen -lf`), confirmation, ajout au `known_hosts` de Jarod | tests unitaires avec transport simulé | **corrigé** (volet 2) : `docs/REMOTE-SSH.md` |
 | A-10 | faible | voix | `gateway/audio.ts:3` : le noyau Jarod ne sert pas `speak-stream`. La réponse est synthétisée d'un bloc, ce qui allonge la latence avant le premier son. | Duplex moins réactif avec le noyau Jarod qu'avec Hermes | Volet 7 : mesurer, puis découper la synthèse par phrase côté shell | test unitaire du découpage | **corrigé** (volet 7) : `SentenceSpeaker` parle phrase par phrase pendant que la réponse arrive ; le gain sur une vraie réponse de modèle n'est pas mesuré (`docs/VOICE.md`) |
-| A-11 | faible | qualité | 597 avertissements biome (surtout `noControlCharactersInRegex`, `noNonNullAssertion`) | Bruit | Différé : pas de nettoyage en masse | — | différé |
+| A-11 | faible | qualité | 597 avertissements biome au départ, 606 avant ce lot. Répartition réelle : `noExplicitAny` 128, `useExhaustiveDependencies` 85, `noAssignInExpressions` 73, `noControlCharactersInRegex` 71… (`noNonNullAssertion` est désactivée dans `biome.json`, elle ne compte pas) | Bruit | Nettoyage règle par règle, sans changement de comportement ni règle coupée globalement ; zones voix, mises à jour, machines distantes et coffre laissées aux autres sessions. Détail plus bas (« Lot A-11 »). | typecheck, tests du shell et des paquets touchés | **en partie corrigé** : 606 → 446 avertissements, 0 erreur ; le reste est différé avec sa raison |
 | A-12 | faible | sauvegardes locales | `electron/backups.ts` copie `data\` entier, coffre compris (chiffré), et vit sur le même disque que les données | Une panne du disque Jarod emporte données et sauvegardes | Volet 1 : sauvegarde externe distincte | — | **corrigé** (volet 1) : sauvegarde externe distincte, `docs/BACKUP-EXTERNE.md` |
 
 Aucun constat critique. A-01 est le préalable des volets 2, 3 et 7 (politique réseau avant tout nouvel accès externe).
@@ -149,7 +149,7 @@ Constats visuels : A-02, A-03, A-04. Le reste est cohérent : états vides expli
 | plugins/agent | 48 (+1 ignoré) | 344 |
 | plugins/gateways | 14 | 84 |
 | bridge | 37 | 440 |
-| plugins/integrations | 31 (+1 en échec) | 272 (+1 en échec, A-07) |
+| plugins/integrations | 31 (+1 en échec) ; après A-07 : 32 | 272 (+1 en échec, A-07) ; après A-07 : 274, tous réussis |
 | autres plugins (scheduler, vision, sandbox, mcp, automation, workflows) | tous réussis | — |
 
 ## Bilan de consolidation (lot 1)
@@ -161,8 +161,8 @@ Constats visuels : A-02, A-03, A-04. Le reste est cohérent : états vides expli
 - **Constat découvert pendant la correction et corrigé** : le menu des modèles, une fois déplacé dans l'en-tête, était coupé à gauche dans une fenêtre étroite. Il s'ancre désormais sur l'en-tête (capture revue).
 - **Différés, avec leur raison** :
   - A-06 : défense en profondeur, sans exploitation ;
-  - A-07 : dépend de la machine ;
-  - A-11 : bruit de lint.
+  - A-07 : dépend de la machine (corrigé ensuite, voir le tableau des constats) ;
+  - A-11 : bruit de lint (réduit ensuite, voir « Lot A-11 »).
 - **Pris en charge par leurs volets** : A-08, A-09, A-10 et A-12.
 
 ## Constats découverts pendant l'inspection finale (corrigés)
@@ -186,3 +186,43 @@ Constats visuels : A-02, A-03, A-04. Le reste est cohérent : états vides expli
 | e2e, Electron réel | 45 réussis : 40 lors de la passe complète, puis `jarod-disk` et `external-backup` relancés après A-14 |
 | Fichiers temporaires | aucun dossier `jarod-e2e-*` ni dossier de test laissé ; aucun processus de test restant |
 | Secrets dans le diff | recherche de motifs de clés (sk-, AKIA, clés privées, jetons Slack/GitHub/Google) : aucun |
+
+## Lot A-11 et A-07 (2026-10-18)
+
+### A-11 — avertissements biome, règle par règle
+
+Mesure : `npx biome lint` à la racine, avant (606 avertissements, 4 infos) et après (446 avertissements, 1 info), 0 erreur aux deux. Aucune règle coupée dans `biome.json`. Fichiers des zones voix, mises à jour (winget), machines distantes et coffre non touchés (d'autres sessions y travaillent) : ils portent une partie des restes.
+
+| Règle | Avant | Après | Ce qui a été fait | Ce qui reste, et pourquoi |
+|---|---|---|---|---|
+| `noUnusedImports` | 30 | 0 | imports retirés (16 fichiers), commentaires d'en-tête conservés ; deux retraits enlèvent le chargement d'un module sans effet de bord au chargement | — |
+| `noControlCharactersInRegex` | 71 | 9 | chaque filtre voulu (retirer ou refuser les caractères de contrôle, séquences ANSI) porte un `biome-ignore` motivé ; trois expressions contenaient des caractères de contrôle, de largeur nulle et bidi **littéraux**, invisibles dans le source (`llm/engine.ts`, `mcp/mcp.ts`, `integrations/documents.ts`) : réécrits en `\uXXXX`, mêmes classes | 9 dans le coffre, `speech.ts`, `winget.ts` (autres sessions) |
+| `useIterableCallbackReturn` | 40 | 10 | rappels de `forEach` en corps de bloc ; une ternaire-instruction devenue `if/else` | 8 en zone voix ; `session-continuation.ts` (un `default` changerait ce que donne un genre inconnu) ; `recipe.ts` (`return void …` voulus) |
+| `useOptionalChain` | 18 | 6 | chaînes optionnelles là où le résultat est identique pour toute valeur, falsy comprise | `windows-parse.ts` (avec `""` et une racine vide, plus de court-circuit) ; 3 journaux de `runner.cjs` (une erreur `null` afficherait « undefined ») ; 2 en zone voix |
+| `noImplicitAnyLet` | 6 | 0 | types posés (`Dirent[]`, `Dir`, `Stats`, forme lue de `ProviderDef`) | — |
+| `noUnusedVariables` | 13 | 5 | déclarations mortes sans effet de bord retirées (dont `MIN/MAX_TICK_MS` d'automation, doublons des bornes de `normalize.ts`) | prologues portés tels quels de `core.ts` (`skills-commands`, `pair-command`) ; `portabilityApply` ignore son argument `profile` : **constat**, pas du bruit, à examiner à part ; 1 en zone voix |
+| `noUnusedFunctionParameters` | 13 | 3 | préfixe `_` sur les paramètres imposés par une signature | 3 en zones exclues |
+| `noUselessFragments`, `noUselessEmptyExport`, `noAdjacentSpacesInRegex`, `useDefaultSwitchClauseLast` | 2, 1, 1, 1 | 0 | fragments à enfant unique retirés ; `export {}` inutile (le fichier importe déjà) ; `"  "` écrit ` {2}` ; `default` placé en dernier (il retourne, aucune chute) | — |
+| `noUselessSwitchCase` (info) | 1 | 1 | — | `case 'turn'` documente un genre connu |
+| `noExplicitAny` | 128 | 128 | — | typer demande de comprendre chaque frontière ; hors d'un lot mécanique |
+| `useExhaustiveDependencies` | 85 | 85 | — | changer les dépendances d'un hook React change le comportement |
+| `noAssignInExpressions` | 73 | 73 | — | idiomes voulus : doublures de test `void (x = v)`, caches `??=`, boucles `while ((m = re.exec(s)))` |
+| a11y (7 règles) | 85 | 85 | — | changent le balisage ou le clavier de l'interface : à faire avec revue visuelle |
+| `noVoidTypeReturn`, `noArrayIndexKey`, `noConfusingVoidType`, `noTemplateCurlyInString`, `noAccumulatingSpread`, `useConst` | 20, 15, 2, 3, 1, 1 | idem | — | types d'API publique (`string \| void`), clés React, `${prix}` voulus dans les locales de la voix, fichiers voix |
+
+Commits : `b707e86`, `d87d51a`, `6605899`, `694964a`, `22cf199`, `02976e9`.
+
+### A-07 — preuve WebRTC/UDP
+
+Voir E2-VALIDATION §6 et §6.2. Commit `2a7d50a`.
+
+### Validation du lot
+
+| Validation | Résultat |
+|---|---|
+| Lint (`biome lint`, dépôt entier) | 0 erreur ; 446 avertissements, 1 info (606 et 4 avant le lot) |
+| Types | shell (renderer et electron) et les 29 paquets du noyau (`tests` compris) : code 0 |
+| Tests unitaires du shell | 161 fichiers, 1268 réussis, 3 ignorés |
+| Noyau, paquets touchés | bridge, cli, llm, mcp, rag, scheduler, automation, skills, tools, workflows : tous réussis ; integrations : 32 fichiers, 274 réussis (preuve UDP comprise) |
+| Portes non relancées | `tests/gates/webhooks-live.test.ts` exige `GATE_WEBHOOKS_LIVE` (refus volontaire sans elle, comme sur le dépôt principal) ; couvert par le typecheck |
+| Lancement des paquets | `pnpm -r` refuse les `node_modules` en jonction de ce worktree : chaque script de paquet a été lancé directement |
