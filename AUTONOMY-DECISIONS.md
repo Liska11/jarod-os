@@ -90,3 +90,9 @@ Un sujet par commit local. Les arbitrages sont ici, un par section, pour revue �
 - **Vérifié avant push** : balayage des lignes ajoutées (8 483) à la recherche de formes de clés (OpenAI/Anthropic, GitHub, AWS, Slack, bloc de clé privée, affectation de jeton longue) : **0 résultat** ; aucun binaire/archive/clé parmi les fichiers modifiés (`.exe .zip .xpi .db .pem .key`). Le dossier `jarod-core/.work/` (rapports de gates générés, non suivi) n'est pas commité.
 - **Fait** : rien n'est poussé. Commande à lancer par vous : `git push origin feature/windows-port` (aucune réécriture d'historique, avance simple).
 - **Renommage** : non lancé ; plan intact dans `docs/RENAME-PLAN-JAROD-OS.md`.
+
+## 12. Étape de signature Firefox : contournement légitime par chargement temporaire
+- **Décision** : documenter (§9 de `docs/E2-FIREFOX-READER-PLAN.md`) le chargement temporaire via `about:debugging` comme voie d'essai sans signature ni changement d'option ; la signature (§8) reste nécessaire seulement pour une installation durable.
+- **Écarté** : `xpinstall.signatures.required=false` (inopérant sur Firefox de série, et affaiblirait le navigateur de l'utilisateur) ; tout chargement fait par moi dans le Firefox personnel (interdit sans accord distinct).
+- **Non vérifié** : le comportement dans le Firefox de l'utilisateur. Documentation seule, aucun code modifié.
+- **Annuler** : `git revert` du commit « docs(firefox) ».

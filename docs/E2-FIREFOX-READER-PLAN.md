@@ -110,3 +110,22 @@ Firefox n'installe durablement qu'une extension signée par Mozilla. La signatur
 5. **Avant toute connexion réelle**, nous confirmons ensemble : la cible (onglet, domaine, élément convenu), l'ajout éventuel du domaine à la liste blanche (votre réglage actuel est vide : sans cela la lecture est refusée), et la fenêtre d'essai (le canal n'est ouvert que pendant l'essai). Premier essai en lecture seule : titre et un élément non sensible.
 
 Rien n'est installé, signé ni soumis à ce jour.
+
+## 9. Passer l'étape de signature : chargement temporaire (décision du 2026-10-18 : « trouver une autre manière »)
+
+La signature n'est exigée que pour une installation **durable** dans un Firefox de série. Pour un essai, il existe une voie sans compte Mozilla, sans signature et **sans changer aucune option de Firefox** :
+
+**Voie A (recommandée) — module temporaire, par vous, dans votre Firefox**
+1. Dans la barre d'adresse : `about:debugging#/runtime/this-firefox`.
+2. « Charger un module complémentaire temporaire… » puis choisir `jarod-core/sidecars/firefox-reader/manifest.json`.
+3. Firefox affiche le module ; c'est le même code que celui de l'essai ci-dessous. Il **disparaît à la fermeture de Firefox** : rien de durable, aucun profil modifié, retrait immédiat par le bouton « Retirer ».
+4. Le reste est inchangé (§8 point 5) : on confirme ensemble la cible, le domaine autorisé et la fenêtre d'essai avant toute connexion.
+
+*Ce qui est prouvé :* le Firefox de test (ESR 153.5.0, séparé du vôtre) charge cette même extension de la même façon (installation temporaire), et les 15 essais de `firefox.reader.engine.test.ts` passent (§7). *Ce qui ne l'est pas :* le comportement dans VOTRE Firefox (version, politiques d'entreprise éventuelles, permission `storage`) ; c'est précisément ce que cet essai montrera.
+
+**Contraintes de cette voie :** il faut la refaire à chaque redémarrage de Firefox ; elle ne vaut pas installation permanente ; c'est vous qui cliquez (je n'ouvre pas votre Firefox).
+
+**Voie B — non retenue pour votre Firefox.** Désactiver l'exigence de signature (`xpinstall.signatures.required`) n'est honorée que par Firefox ESR, Developer Edition, Nightly et les builds non marqués, pas par la version de série ; et cela affaiblit la protection de ce navigateur (hors de ce qui a été permis : pas de changement d'options). Utilisable seulement dans le Firefox de test jetable.
+
+**Voie C — signature non listée** (§8) : reste la seule voie pour une installation durable dans un Firefox de série.
+
