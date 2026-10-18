@@ -9,7 +9,8 @@ import { bytesToBase64, concatInt16, encodeWav } from './pcm.ts'
 import { withProviderFallback } from './provider-fallback.ts'
 import { playDataUrl, SpeakStream, speakOnce, stopFallbackAudio, synthesize } from './speak-stream.ts'
 import { SentenceSpeaker } from './sentence-speaker.ts'
-import { recordFalseBargeIn, recordFirstAudio, recordStop } from '../../store/voice-metrics.ts'
+import { isDuplexActive, noteEmptyBargeIn, noteHeardBargeIn } from '../../store/voice-echo.ts'
+import { beginTurnTiming, recordFalseBargeIn, recordFirstAudio, recordFirstToken, recordStop, recordTranscript } from '../../store/voice-metrics.ts'
 import { t } from '../i18n.ts'
 import { isNoiseTranscript, isStopPhrase, sanitizeForSpeech } from './speech-text.ts'
 import { BARGE_IN_ENDPOINTER, DEFAULT_ENDPOINTER, Endpointer } from './vad.ts'
@@ -55,6 +56,8 @@ export class ChainedEngine implements ConversationEngine {
   private utteranceEndAt = 0
   /** The utterance being transcribed came from an interruption (to count interruptions that held no words). */
   private fromBargeIn = false
+  /** The current turn's first model text was measured. */
+  private firstTokenSeen = false
 
   constructor(private readonly host: VoiceHost) {}
 
@@ -100,9 +103,12 @@ export class ChainedEngine implements ConversationEngine {
     }
   }
 
-  /** Duplex listens while Jarod speaks; classic keeps the mic closed until it is done (the stop button still interrupts). */
+  /**
+   * Duplex listens while Jarod speaks; classic keeps the mic closed until it is done (the stop button still interrupts). Echo detection can
+   * switch this app run to classic (store/voice-echo.ts).
+   */
   private whileSpeaking(): Mode {
-    return this.host.prefs().duplex === false ? 'idle' : 'monitor'
+    return isDuplexActive(this.host.prefs()) ? 'monitor' : 'idle'
   }
 
   // ---- listening -------------------------------------------------------------------------------
@@ -236,10 +242,12 @@ export class ChainedEngine implements ConversationEngine {
   private async handleUtterance(pcm: Int16Array): Promise<void> {
     this.host.setState('transcribing')
     earcons.captured()
+    beginTurnTiming()
     let transcript = ''
 
     try {
       transcript = await this.transcribe(pcm)
+      recordTranscript(performance.now() - this.utteranceEndAt)
     } catch (error) {
       this.host.notify('Transcription failed', error instanceof Error ? error.message : String(error), 'warn')
       this.beginListening(true)
@@ -256,10 +264,18 @@ export class ChainedEngine implements ConversationEngine {
 
     if (!transcript || isNoiseTranscript(transcript)) {
       // An interruption that held no words: noise, or Jarod's own voice heard through the speakers.
-      if (fromBargeIn) recordFalseBargeIn()
+      if (fromBargeIn) {
+        recordFalseBargeIn()
+        noteEmptyBargeIn()
+      }
+
       this.beginListening(true)
 
       return
+    }
+
+    if (fromBargeIn) {
+      noteHeardBargeIn()
     }
 
     if (isStopPhrase(transcript)) {
@@ -340,6 +356,7 @@ export class ChainedEngine implements ConversationEngine {
     this.replyText = ''
     this.fallbackText = null
     this.speechEnded = false
+    this.firstTokenSeen = false
     const previous = this.exchanges[this.exchanges.length - 1]
     const interrupted = Boolean(previous && (previous.interrupted || !previous.hermes))
     this.exchanges.push({ user: text, hermes: '' })
@@ -398,6 +415,12 @@ export class ChainedEngine implements ConversationEngine {
     this.stopObserving = this.host.observeTurn(sessionId, {
       onDelta: (delta, full) => {
         this.clearThinkingTimer()
+
+        if (!this.firstTokenSeen && delta.trim() && this.speak === speak) {
+          this.firstTokenSeen = true
+          recordFirstToken(performance.now() - this.utteranceEndAt)
+        }
+
         this.replyText = full
         this.host.setCaptions({ assistant: sanitizeForSpeech(full).slice(-400) })
 

@@ -23,6 +23,8 @@ export interface LaunchOptions {
   root?: string
   /** Whether `close` removes the root. True for a fresh root; for an existing one, only the last launch on it should own it. */
   own?: boolean
+  /** Extra Chromium/Electron switches (the voice latency test's fake microphone). */
+  args?: string[]
 }
 
 /** Ids of the processes whose command line holds `needle` (this one excluded); the needle goes through the environment. */
@@ -102,7 +104,7 @@ export async function launchShell(extraEnv: Record<string, string> = {}, options
     ...extraEnv
   })
 
-  const app = await electron.launch({ args: ['.', `--user-data-dir=${user}`], cwd: path.resolve(import.meta.dirname, '..'), env })
+  const app = await electron.launch({ args: ['.', `--user-data-dir=${user}`, ...(options.args ?? [])], cwd: path.resolve(import.meta.dirname, '..'), env })
   const page = await app.firstWindow()
 
   await page.waitForLoadState('domcontentloaded')

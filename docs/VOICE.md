@@ -125,7 +125,7 @@ Command families: `page.open|back`, `window.focus|close|minimize|maximize|restor
 `overlay.*`, `sidebar.toggle`, `space.switch`, `help.commands`; `chat.new|open|stop|popout`; `mission.start|open|list|pause|markReviewed`;
 `memory.show|search|add|update|forget`; `file.open|openExternal`, `files.open|show|search|reveal|newFolder`; `automation.list|show|run|pause|resume|create|delete`;
 `connection.list|show|enable|disable`; `build.start`, `studio.open|preview|file|close`; `native.launch`, `web.open`; `settings.open`, `theme.set`, `accent.set`,
-`motion.reduce`, `dock.autoHide`, `voice.engine.set`, `voice.wake.set`; `agents.pauseAll`.
+`motion.reduce`, `dock.autoHide`, `voice.engine.set`, `voice.duplex.set`, `voice.wake.set`; `agents.pauseAll`.
 
 Tiers: `read` and `act` commands run immediately (audited when Hermes runs them); `mutate` (add a
 memory, pause an automation, change a setting) runs and is shown in the caption; `destructive`
@@ -213,6 +213,15 @@ The core does not serve `speak-stream`. Before, the whole answer was spoken once
 - With speakers, Jarod's voice can still trigger an interruption. These are counted: an interruption followed by no words counts as "sans parole".
 - **Headphones are the most reliable.** Without them, switch to classic mode if false interruptions happen.
 
+#### Automatic reaction (`src/lib/voice/echo-guard.ts`, `src/store/voice-echo.ts`)
+
+- **Threshold:** 3 interruptions with no words recognised within 60 s. A reply lasts 5–20 s and an echo cuts it within its first seconds, so a real echo reaches 3 well inside a minute; 2 would trip on one cough plus one stray noise.
+- **Reset:** an interruption that held real words starts the count over. A normal request does not: after an echo the person repeats the request, and counting that would hide every echo.
+- **Reaction:** Jarod switches to classic mode **for the rest of this Jarod-OS run** (the mic closes while it speaks; the stop button still interrupts) and shows one notification, "Écho détecté : mode classique", which explains why and suggests headphones. The orb shows "classique (écho)".
+- **Reversible:** the notification has "Revenir au duplex" and "Garder le mode classique" (saved). The Settings › Voice duplex toggle and the `voice.duplex.set` command ("turn on duplex mode", "use classic voice mode") do the same. The saved `voice.duplex` preference is never changed until the person chooses; restarting Jarod-OS also returns to the saved choice.
+- **Never loops:** the guard trips once per run. After it tripped, whatever the person chooses, no further prompt appears until Jarod-OS restarts.
+- Live engine: not concerned (OpenAI handles echo in its WebRTC session).
+
 ### Privacy
 
 No audio is recorded or kept. Transcripts live in the conversation like typed messages.
@@ -221,7 +230,7 @@ No audio is recorded or kept. Transcripts live in the conversation like typed me
 
 These are measured, not targets. They are kept in memory for the current run:
 
-- median time from the end of your speech to the first sound;
+- median time from the end of your speech to the transcript, to the model's first word, and to the first sound;
 - median time from an interruption to silence;
 - number of interruptions, and how many had no words.
 
@@ -231,15 +240,26 @@ Measured on 2026-10-18 on this machine:
 |---|---|
 | Synthesis by the Jarod core, Windows voice | One sentence 241–264 ms; a four-sentence answer 268–293 ms (`e2e/voice-latency.spec.ts`) |
 | Silencing on interruption | Synchronous in the code (stop + pause) |
+| One spoken turn, real model (LM Studio, `qwen3.5-9b…`, already loaded), Chromium fake mic, core speech | End of speech → first model token 90–2510 ms; → first sound 850–3258 ms (3 runs, `e2e/voice-turn-latency.spec.ts`). Transcription was stubbed (no speech-to-text provider in the throwaway root): add your own transcription time on top |
 
 **Not measured:**
 
-- end of speech to first sound with a real model;
-- interruptions with a real microphone;
-- echo transcription;
+- transcription with a real provider (the end-to-end test stubs it when the core cannot transcribe);
+- interruptions and echo with a real microphone and speakers (the echo reaction is covered by unit tests only);
 - behaviour under load.
 
-These need your microphone and a connected model.
+#### Measuring a real turn yourself
+
+`e2e/voice-turn-latency.spec.ts` drives one spoken turn through the real app: Chromium's fake capture device plays a question synthesized by Windows System.Speech, through the real mic graph, endpointer and free engine; the chosen model answers; the core speaks sentence by sentence. The engine records each stage per turn (`store/voice-metrics.ts`, `lastTurn`, exposed on the orb as `data-voice-turn`) and the test prints them. It is skipped unless a model is named:
+
+```
+cd apps/desktop
+npm run build
+$env:JAROD_E2E_VOICE_MODEL = 'lmstudio:<a model loaded in LM Studio>'   # <provider>:<model>, as the core names them
+npx playwright test e2e/voice-turn-latency.spec.ts
+```
+
+The model is set in the test's throwaway root only (`PUT /api/config`); the real profile and its keys are never read. A provider that needs a key cannot be used this way, because launches strip provider keys from the environment; a local server (LM Studio, Ollama) needs none. If the core of the throwaway root can transcribe, the transcript stage is real; otherwise main answers `/api/audio/transcribe` with the known text and the line says "stubbed, not a measure". Each run prints `VOICE-TURN … transcript … → first token … → first sound …`.
 
 ### Tests
 
@@ -247,4 +267,7 @@ These need your microphone and a connected model.
 |---|---|
 | `src/lib/voice/sentence-speaker.test.ts` | Fake audio: the first sentence plays while the answer streams; a stop silences at once and drops late syntheses; errors; empty answers |
 | `vad.test.ts`, `speech-text.test.ts` | Existing |
+| `src/lib/voice/echo-guard.test.ts` | Echo threshold (3), window (60 s), reset after a barge-in with words, trips once only |
+| `src/store/voice-echo.test.ts` | Classic for the run, one notification with both choices, saved preference untouched until chosen, no second prompt |
 | `e2e/voice-latency.spec.ts` | The core's real synthesis |
+| `e2e/voice-turn-latency.spec.ts` | One spoken turn with a real model (opt-in, see above) |
