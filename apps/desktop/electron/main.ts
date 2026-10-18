@@ -78,6 +78,11 @@ import { appIconPath, createMainWindow, loadShell, MAIN_WINDOW_MIN } from './win
 import { CrashPolicy, isSafeMode, recoveryAction, recoveryPage, relaunchArgs } from './recovery.ts'
 import { readWindowState, restoreBounds, roundingDrift, withoutDrift, writeWindowState } from './window-state.ts'
 import { ShellTray, trayLanguage } from './tray.ts'
+import { installIpcSenderGuard } from './ipc/sender-guard.ts'
+
+// Every IPC channel answers only the shell's own page (audit A-06): installed before the first
+// registration, so no channel is left out — none of the modules above registers at import time.
+installIpcSenderGuard(ipcMain)
 
 app.setName('Jarod-OS')
 // First, before anything touches data or opens a socket (the lock is keyed on the name set just above).
