@@ -1,3 +1,4 @@
+import { environmentVariables, listEnvironments } from '../environments.ts'
 import { type BrowserWindow, ipcMain, type WebContents } from 'electron'
 import fs from 'node:fs'
 import { createRequire } from 'node:module'
@@ -137,6 +138,16 @@ export function registerTerminalIpc(getWindow: () => BrowserWindow | null): void
       throw new Error(`${options.program} is not a terminal program from the install catalog`)
     }
 
+    // An environment of the Jarod disk: its tools come first in PATH, and the tab starts in its folder.
+    const jarodRoot = process.env.JAROD_OS_ROOT?.trim()
+    const environmentsDir = jarodRoot ? path.join(jarodRoot, 'environments') : null
+    const environment = options.environment && environmentsDir ? listEnvironments(environmentsDir).find(item => item.name === options.environment) : undefined
+
+    if (options.environment && !environment) {
+      throw new Error(`${options.environment} is not an environment of the Jarod disk`)
+    }
+
+    const baseEnv = environment && environmentsDir ? environmentVariables(environmentsDir, environment, process.env) : process.env
     const home = os.homedir()
     const resolved = program ? ([path.join(home, '.local', 'bin', program), path.join(home, '.local', 'share', 'mise', 'shims', program)].find(candidate => fs.existsSync(candidate)) ?? program) : null
     const args = process.platform === 'win32' ? [] : resolved ? ['-l', '-c', `${JSON.stringify(resolved)}; exec ${JSON.stringify(shell)} -l`] : ['-l']
@@ -144,8 +155,8 @@ export function registerTerminalIpc(getWindow: () => BrowserWindow | null): void
       name: 'xterm-256color',
       cols: Math.max(2, options.cols),
       rows: Math.max(1, options.rows),
-      cwd,
-      env: { ...process.env, TERM: 'xterm-256color', COLORTERM: 'truecolor', TERM_PROGRAM: 'HeraldOS', LANG: process.env.LANG || 'en_US.UTF-8' }
+      cwd: environment && environmentsDir && !options.cwd ? path.join(environmentsDir, environment.name) : cwd,
+      env: { ...baseEnv, TERM: 'xterm-256color', COLORTERM: 'truecolor', TERM_PROGRAM: 'HeraldOS', LANG: process.env.LANG || 'en_US.UTF-8' }
     })
     sessions.set(id, child)
     adopt(owner, id)

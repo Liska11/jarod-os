@@ -375,6 +375,8 @@ export interface TerminalCreateOptions {
   rows: number
   /** A coding agent from the install catalog (its id) to run in the tab instead of a bare shell. */
   program?: string
+  /** An environment of the Jarod disk (its name): the shell starts with its tools first in PATH. */
+  environment?: string
 }
 
 /** One entry of the install catalog (linux/catalog/*.json), with its state on this machine. */
@@ -1012,6 +1014,10 @@ export const IPC = {
   sandboxesCompare: 'herald-os:sandboxes:compare',
   sandboxesApply: 'herald-os:sandboxes:apply',
   sandboxesRemove: 'herald-os:sandboxes:remove',
+  // Environments on the Jarod disk (electron/environments.ts, electron/ipc/environments.ts).
+  environmentsState: 'herald-os:environments:state',
+  environmentsCreate: 'herald-os:environments:create',
+  environmentsRemove: 'herald-os:environments:remove',
 
   prefsGet: 'herald-os:prefs:get',
   prefsSet: 'herald-os:prefs:set',

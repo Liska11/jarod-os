@@ -1,5 +1,6 @@
 import type { BackupActionResult, BackupsState } from '../shared/backups.ts'
 import type { SandboxResult, SandboxesState } from '../shared/sandboxes.ts'
+import type { EnvironmentResult, EnvironmentsState } from '../shared/environments.ts'
 import type { DataDiskApplyResult, DataDiskState, DriveInfo } from '../shared/data-disk.ts'
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import {
@@ -362,6 +363,12 @@ const api = {
     /** Bring the sandbox's changes (or only `paths`) into its project; removed files go to the Recycle Bin. */
     apply: (name: string, paths?: string[]): Promise<SandboxResult> => ipcRenderer.invoke(IPC.sandboxesApply, name, paths),
     remove: (name: string): Promise<SandboxResult> => ipcRenderer.invoke(IPC.sandboxesRemove, name)
+  },
+  environments: {
+    state: (): Promise<EnvironmentsState> => ipcRenderer.invoke(IPC.environmentsState),
+    /** Build a Python (uv) or Node.js environment of `version` ("3.12", "22"…). */
+    create: (name: string, kind: 'python' | 'node', version: string): Promise<EnvironmentResult> => ipcRenderer.invoke(IPC.environmentsCreate, name, kind, version),
+    remove: (name: string): Promise<EnvironmentResult> => ipcRenderer.invoke(IPC.environmentsRemove, name)
   },
   systemAudit: {
     /** The system audit: the saved report, or the one running since startup. */

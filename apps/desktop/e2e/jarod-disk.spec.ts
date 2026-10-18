@@ -82,3 +82,33 @@ test('a sandbox of a project: compared and applied from Settings', async () => {
 
   expect(readFileSync(path.join(project, 'src', 'app.js'), 'utf8')).toBe('v2 from the sandbox')
 })
+
+test('a Python environment built with uv, and a terminal that runs its Python', async () => {
+  test.setTimeout(240_000)
+  const built = await page.evaluate(() => window.heraldOS.environments.create('py-test', 'python', '3.11'))
+  expect(built).toEqual({ ok: true, name: 'py-test' })
+  expect(existsSync(path.join(root, 'environments', 'py-test', 'Scripts', 'python.exe'))).toBe(true)
+
+  // A terminal in the environment: its python answers first, from the environment's folder.
+  const output = await page.evaluate(async () => {
+    const handle = await window.heraldOS.terminal.create({ cols: 120, rows: 30, environment: 'py-test' })
+    let text = ''
+    const off = window.heraldOS.terminal.onData((id, data) => {
+      if (id === handle.id) text += data
+    })
+    await new Promise(resolve => setTimeout(resolve, 2500))
+    window.heraldOS.terminal.write(handle.id, 'python -c "import sys; print(sys.prefix)"\r')
+    await new Promise(resolve => setTimeout(resolve, 4000))
+    off()
+    await window.heraldOS.terminal.dispose(handle.id)
+
+    return text
+  })
+
+  expect(output.replace(/\s+/g, '')).toContain(path.join(root, 'environments', 'py-test').replace(/\s+/g, ''))
+
+  await page.getByRole('button', { name: 'Général', exact: true }).click()
+  await page.getByRole('button', { name: 'Stockage', exact: true }).click()
+  await expect(page.getByText('py-test', { exact: true })).toBeVisible()
+  await expect(page.getByText(/^Python 3\.11\./)).toBeVisible()
+})
