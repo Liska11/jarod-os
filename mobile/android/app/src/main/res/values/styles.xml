@@ -16,7 +16,14 @@
     </style>
 
 
+    <!--
+      Launch: the Jarod core on night blue (scripts/brand.mjs). Before Android 12 the window shows
+      @drawable/splash; from 12 the system draws its own splash from the colour and icon below.
+    -->
     <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
         <item name="android:background">@drawable/splash</item>
+        <item name="windowSplashScreenBackground">@color/ic_launcher_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher_foreground</item>
+        <item name="postSplashScreenTheme">@style/AppTheme.NoActionBar</item>
     </style>
 </resources>

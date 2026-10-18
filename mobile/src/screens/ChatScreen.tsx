@@ -3,10 +3,12 @@ import type { Link } from '../App.tsx'
 import { Markdown } from '../components/Markdown.tsx'
 import type { JarodChannel, PushedEvent } from '../lib/channel.ts'
 import { applyEvent, type Conversation, describeArgs, fromHistory, type StoredMessage } from '../lib/chat-model.ts'
+import { ACCEPT, formatSize, prepare } from '../lib/files.ts'
 import { vault } from '../lib/native.ts'
 import { allowNotifications, notifyLocal } from '../lib/notify.ts'
 import type { PairedPc } from '../lib/pairing-store.ts'
 import { forget, setWatch } from '../lib/session.ts'
+import { readAloud, readAloudEnabled, setReadAloud, speechStatus, stopReading } from '../lib/speech.ts'
 import { type Recording, startRecording } from '../lib/voice.ts'
 
 interface SessionRow {
@@ -54,8 +56,16 @@ export function ChatScreen({ pc, channel, link, subscribe, onLock, onPcChanged, 
   const [heard, setHeard] = useState('')
   const [recording, setRecording] = useState<Recording | null>(null)
   const [deciding, setDeciding] = useState('')
+  const [speak, setSpeak] = useState(readAloudEnabled)
+  const [sending, setSending] = useState('')
   const bottom = useRef<HTMLDivElement>(null)
   const sessionRef = useRef<string>('')
+  const photoInput = useRef<HTMLInputElement>(null)
+  const fileInput = useRef<HTMLInputElement>(null)
+  /** The current conversation's last reply, read aloud once its run is done. */
+  const lastReply = useRef('')
+  const speakRef = useRef(speak)
+  speakRef.current = speak
 
   const call = async <T,>(method: string, params?: Record<string, unknown>): Promise<T | undefined> => {
     if (!channel) {
@@ -105,6 +115,14 @@ export function ChatScreen({ pc, channel, link, subscribe, onLock, onPcChanged, 
         const hidden = document.hidden
         if (e.event === 'agent') {
           setConv(c => (c ? applyEvent(c, e.data) : c))
+          if (e.data.sessionId === sessionRef.current) {
+            const m = e.data.message as { role?: string; content?: string } | undefined
+            if (e.data.type === 'message' && m?.role === 'assistant' && m.content?.trim()) lastReply.current = m.content
+            if (e.data.type === 'done' && lastReply.current && speakRef.current && !hidden) {
+              void readAloud(lastReply.current).catch(err => setError((err as Error).message))
+            }
+            if (e.data.type === 'done') lastReply.current = ''
+          }
           if (e.data.type === 'done' && hidden) void notifyLocal('Jarod a répondu', 'Ouvrez l’appli pour lire la réponse.')
         } else if (e.event === 'approval') {
           setApprovals(a => addApprovals(a, [e.data as unknown as Approval]))
@@ -149,6 +167,7 @@ export function ChatScreen({ pc, channel, link, subscribe, onLock, onPcChanged, 
     if (!id) return
     setText('')
     setHeard('')
+    void stopReading()
     setConv(c => (c ? { ...c, running: true } : c))
     const r = await call<{ kind: string; text?: string }>('chat.send', { sessionId: id, text: t })
     if (r?.kind === 'command' && r.text) setConv(c => (c ? { ...c, running: false, lines: [...c.lines, { id: `cmd:${Date.now()}`, role: 'assistant', text: r.text! }] } : c))
@@ -175,6 +194,46 @@ export function ChatScreen({ pc, channel, link, subscribe, onLock, onPcChanged, 
     } catch {
       setError('Micro indisponible : autorisez-le dans les réglages du téléphone.')
     }
+  }
+
+  /** A photo or file, with what is in the composer as its caption. */
+  const sendFile = async (file: File | undefined) => {
+    if (!file) return
+    setSending(file.name || 'photo')
+    try {
+      const out = await prepare(file)
+      const id = await ensureSession()
+      if (!id) return
+      const caption = text.trim()
+      setText('')
+      setHeard('')
+      void stopReading()
+      setConv(c => (c ? { ...c, running: true } : c))
+      const r = await call<{ kind: string }>('chat.file', { sessionId: id, name: out.name, mime: out.mime, data: out.data, text: caption })
+      if (r?.kind === 'busy') setError('Jarod est encore occupé : réessayez quand il aura fini.')
+      if (!r || r.kind === 'busy') setConv(c => (c ? { ...c, running: false } : c))
+      else setHeard(`Envoyé : ${out.name} (${formatSize(out.size)})`)
+    } catch (e) {
+      setError((e as Error).message)
+    } finally {
+      setSending('')
+    }
+  }
+
+  const renameSession = async (s: SessionRow) => {
+    const title = window.prompt('Nouveau titre de la conversation', s.title)?.trim()
+    if (!title || title === s.title) return
+    if (await call('sessions.rename', { sessionId: s.id, title })) await refreshSessions()
+  }
+
+  const deleteSession = async (s: SessionRow) => {
+    if (!window.confirm(`Supprimer « ${s.title || 'Sans titre'} » ? La conversation et ses pièces jointes seront effacées du PC.`)) return
+    if (!(await call('sessions.delete', { sessionId: s.id }))) return
+    if (sessionRef.current === s.id) {
+      sessionRef.current = ''
+      setConv(null)
+    }
+    await refreshSessions()
   }
 
   const decide = async (a: Approval, ok: boolean) => {
@@ -228,10 +287,18 @@ export function ChatScreen({ pc, channel, link, subscribe, onLock, onPcChanged, 
             Nouvelle conversation
           </button>
           {sessions.map(s => (
-            <button type="button" key={s.id} className={`row ${s.id === conv?.sessionId ? 'active' : ''}`} onClick={() => void openSession(s.id)}>
-              <span>{s.title || 'Sans titre'}</span>
-              <small>{s.running ? 'en cours' : new Date(s.updatedAt).toLocaleString()}</small>
-            </button>
+            <div key={s.id} className={`session ${s.id === conv?.sessionId ? 'active' : ''}`}>
+              <button type="button" className="row" onClick={() => void openSession(s.id)}>
+                <span>{s.title || 'Sans titre'}</span>
+                <small>{s.running ? 'en cours' : new Date(s.updatedAt).toLocaleString()}</small>
+              </button>
+              <button type="button" className="icon ghost" aria-label={`Renommer ${s.title}`} disabled={!channel} onClick={() => void renameSession(s)}>
+                ✎
+              </button>
+              <button type="button" className="icon ghost" aria-label={`Supprimer ${s.title}`} disabled={!channel} onClick={() => void deleteSession(s)}>
+                🗑
+              </button>
+            </div>
           ))}
         </nav>
       )}
@@ -252,6 +319,25 @@ export function ChatScreen({ pc, channel, link, subscribe, onLock, onPcChanged, 
             <span>
               Veille quand l’appli est fermée
               <small>Le téléphone demande au PC « du nouveau ? », sans jamais recevoir le contenu. Notification permanente « Jarod veille ».</small>
+            </span>
+          </label>
+          <label className="switch">
+            <input
+              type="checkbox"
+              checked={speak}
+              onChange={async e => {
+                const on = e.target.checked
+                if (on) {
+                  const st = await speechStatus()
+                  if (!st.available) return setError(st.reason ?? 'Lecture à voix haute indisponible sur ce téléphone.')
+                } else void stopReading()
+                setReadAloud(on)
+                setSpeak(on)
+              }}
+            />
+            <span>
+              Lire les réponses à voix haute
+              <small>Avec la synthèse vocale du téléphone et ses voix installées : rien ne part sur Internet.</small>
             </span>
           </label>
           <button type="button" className="ghost wide" onClick={onLock}>
@@ -275,7 +361,12 @@ export function ChatScreen({ pc, channel, link, subscribe, onLock, onPcChanged, 
         {!conv && <p className="muted center-text">Écrivez ou parlez à Jarod.</p>}
         {conv?.lines.map(l => (
           <div key={l.id} className={`line ${l.role}`}>
-            {l.role === 'assistant' ? <Markdown text={l.text || '…'} /> : l.role === 'tool' ? <span>⚙ {l.text}</span> : <span>{l.text}</span>}
+            {l.files?.map(f => (
+              <span key={`${f.name}:${f.size}`} className="file">
+                {f.mime.startsWith('image/') ? '🖼' : '📎'} {f.name} · {formatSize(f.size)}
+              </span>
+            ))}
+            {l.role === 'assistant' ? <Markdown text={l.text || '…'} /> : l.role === 'tool' ? <span>⚙ {l.text}</span> : l.text ? <span>{l.text}</span> : null}
           </div>
         ))}
         {approvals.map(a => (
@@ -302,10 +393,18 @@ export function ChatScreen({ pc, channel, link, subscribe, onLock, onPcChanged, 
       {(error || heard) && <p className={`note ${error ? 'danger' : ''} slim`}>{error || heard}</p>}
 
       <footer className="composer">
+        <input ref={photoInput} type="file" accept="image/*" capture="environment" hidden onChange={e => void sendFile(e.target.files?.[0]).finally(() => (e.target.value = ''))} />
+        <input ref={fileInput} type="file" accept={ACCEPT} hidden onChange={e => void sendFile(e.target.files?.[0]).finally(() => (e.target.value = ''))} />
+        <button type="button" className="icon ghost" aria-label="Prendre une photo" disabled={!channel || Boolean(sending || recording)} onClick={() => photoInput.current?.click()}>
+          📷
+        </button>
+        <button type="button" className="icon ghost" aria-label="Joindre un fichier" disabled={!channel || Boolean(sending || recording)} onClick={() => fileInput.current?.click()}>
+          📎
+        </button>
         <textarea
           rows={1}
           value={text}
-          placeholder={recording ? 'Enregistrement…' : 'Message à Jarod'}
+          placeholder={recording ? 'Enregistrement…' : sending ? `Envoi de ${sending}…` : 'Message à Jarod'}
           disabled={Boolean(recording)}
           onChange={e => setText(e.target.value)}
           onKeyDown={e => {

@@ -49,6 +49,31 @@ export const wake: WakePlugin = isNative
   ? NativeWake
   : { start: async () => {}, stop: async () => {}, status: async () => ({ running: false }) }
 
+/** Reading aloud with the phone's installed voices only (native, `JarodSpeechPlugin.java`). */
+export interface SpeechPlugin {
+  status(o: { lang: string }): Promise<{ available: boolean; reason?: string }>
+  /** One piece of a reply; `flush` for the first piece stops what was being said. */
+  speak(o: { text: string; lang: string; flush: boolean }): Promise<void>
+  stop(): Promise<void>
+}
+
+const NativeSpeech = registerPlugin<SpeechPlugin>('JarodSpeech')
+
+/** In a desktop browser (`npm run dev`), the browser's own synthesis stands in. */
+const devSpeech: SpeechPlugin = {
+  status: async () =>
+    'speechSynthesis' in window ? { available: true } : { available: false, reason: 'Pas de synthèse vocale dans ce navigateur.' },
+  speak: async ({ text, lang, flush }) => {
+    if (flush) speechSynthesis.cancel()
+    const u = new SpeechSynthesisUtterance(text)
+    u.lang = lang
+    speechSynthesis.speak(u)
+  },
+  stop: async () => speechSynthesis.cancel()
+}
+
+export const speech: SpeechPlugin = isNative ? NativeSpeech : devSpeech
+
 const NativeLaunch = registerPlugin<LaunchPlugin>('JarodLaunch')
 
 export const launch: LaunchPlugin = isNative

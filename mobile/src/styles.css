@@ -215,8 +215,34 @@ button.icon.rec {
   text-align: left;
   background: transparent;
 }
-.sheet .row.active {
+.sheet .row.active,
+.sheet .session.active {
   background: var(--accent-soft);
+}
+.sheet .session {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  border-radius: var(--radius);
+}
+.sheet .session .row {
+  flex: 1;
+  min-width: 0;
+  border-color: transparent;
+}
+.sheet .session .icon {
+  border-color: transparent;
+}
+.line .file {
+  display: block;
+  font-size: 13px;
+  opacity: 0.9;
+  margin-bottom: 4px;
+}
+.composer button.icon.ghost {
+  min-width: 36px;
+  padding: 8px 4px;
+  border-color: transparent;
 }
 .sheet small {
   color: var(--fg-3);

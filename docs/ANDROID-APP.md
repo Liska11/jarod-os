@@ -112,6 +112,9 @@ A companion app for the phone: talk to Jarod, prove who you are, approve what Ja
 - Text: `chat.send`; replies are **streamed** — `stream-start`, `delta`, `message`, `done` events arrive as the model writes.
 - Voice: the app records with `MediaRecorder` (Opus, max 2 minutes), sends `chat.voice { audio (base64), mime }`; the PC transcribes it with its configured speech-to-text and posts the text as the user's message. The app shows what was heard.
 - Stop: `chat.stop`.
+- Tidying: `sessions.rename { sessionId, title }` (one line, 120 characters at most) and `sessions.delete { sessionId }` from the conversation list (✎ and 🗑 beside each one). Deleting is confirmed on the phone first; the PC stops the run if there is one and deletes the conversation with its attachments, as the desktop does.
+- Photos and files: 📷 opens the camera, 📎 the file picker. What is in the composer goes with it as the caption. `chat.file { sessionId, name, mime, data (base64), text }` carries it over the encrypted channel; the PC accepts only PNG, JPEG, GIF, WebP, PDF, plain text, Markdown, CSV and JSON, checks that the bytes match the announced type (image and PDF signatures, UTF-8 without NUL for text), refuses anything over **4 MB** (the size that keeps a sealed frame under the bridge's 8 MB), stores it with the attachments service (encrypted like the desktop's) and sends it with the message. The phone checks type and size first to spare a useless upload, and re-encodes photos over 1 MB as a JPEG of 2048 px at most. `messages.list` gives each message's attachments as name, type and size only: files never travel from the PC to the phone.
+- Reading aloud: Réglages › «Lire les réponses à voix haute» (off by default, kept on the phone). When a run of the open conversation is done, its last reply is read with the phone's own speech engine (`JarodSpeechPlugin`, Android `TextToSpeech`): only voices installed on the phone, never one that needs the network, so nothing leaves the phone; if the language has no installed voice the switch says so and stays off. Markdown is read as words (code blocks announced, not read; links by their text), at most 6000 characters, cut at sentence ends. Sending a new message stops the reading.
 
 ## 7. Threat model
 
@@ -137,7 +140,7 @@ A companion app for the phone: talk to Jarod, prove who you are, approve what Ja
 ```bash
 cd mobile
 npm install
-npm test                 # protocol client, pairing link, conversation model (18 tests)
+npm test                 # protocol client, pairing link, conversation model, files, reading aloud (30 tests)
 npm run apk:debug        # web build, cap sync, Gradle → android/app/build/outputs/apk/debug/app-debug.apk
 ```
 
@@ -157,16 +160,16 @@ then, in another terminal, `JAROD_BRIDGE=http://127.0.0.1:10493 npm --prefix mob
 
 **Done in this version**
 
-- Core: direct channel (`/m1/open|up|down`), private-source filter, app pairing link (virtual adapters and link-local addresses left out), devices listed and revoked from the PC (app and browser), `chat.voice`, `device.leave`, `notifications.list`, `wake.register` + `/m1/wake`, live `notification` events. Unit tests: `gateways/test/mobile-direct.test.ts` (19), `bridge/test/phone.test.ts`.
+- Core: direct channel (`/m1/open|up|down`), private-source filter, app pairing link (virtual adapters and link-local addresses left out), devices listed and revoked from the PC (app and browser), `chat.voice`, `chat.file` (type, signature and size checked on the PC), `sessions.rename`, `sessions.delete`, `device.leave`, `notifications.list`, `wake.register` + `/m1/wake`, live `notification` events. Unit tests: `gateways/test/mobile-direct.test.ts` (26: unknown conversation, bad or lying type, empty and too large file among them), `bridge/test/phone.test.ts`.
 - Desktop: Réglages › Appareils shows the app's QR code (tab «Appli Jarod», the browser's stays available) and says for each phone whether it is the app or the browser page.
-- App: pairing by QR (decoded in the app) or link, `jarod://pair` links opened by the camera, device key wrapped by the Android Keystore with biometric unlock, auto-lock after 5 minutes away, chat with streamed replies, history, voice messages, approvals of phone-started runs (biometric to accept), local notifications while connected, WakeService for the closed app, no cloud backup, `FLAG_SECURE` (no screenshots).
+- App: pairing by QR (decoded in the app) or link, `jarod://pair` links opened by the camera, device key wrapped by the Android Keystore with biometric unlock, auto-lock after 5 minutes away, chat with streamed replies, history, voice messages, approvals of phone-started runs (biometric to accept), conversations renamed and deleted (confirmed), photos and files sent to Jarod (camera or picker, 4 MB), replies read aloud with the phone's installed voices (setting), the Jarod icon (adaptive, the desktop's core mark on night blue) and splash screen drawn by `scripts/brand.mjs`, local notifications while connected, WakeService for the closed app, no cloud backup, `FLAG_SECURE` (no screenshots).
 - Approvals from runs the phone did not start (§4): broker in the gateways hub, `runtime.backgroundApprover` for schedules and gateways, the desktop chat's broker (`bridge/src/main/handlers/approvals.ts`) racing the window against the phones, setting `phoneApprovals` (off by default) with its toggle in Réglages › Appareils, `approval-cancelled` and `approvals.pending` in the app. Tests: `gateways/test/phone-approvals.test.ts`, `gateways/test/mobile-direct.test.ts` (three phones over real channels), `bridge/test/approvals-phone.test.ts`, `bridge/test/jarod-settings.test.ts`. Not yet tried on the Note 8.
 - Verified end to end in a browser against a real local kernel (`dev-phone-pc.ts`): pairing, unlock, streamed reply, approval shown with its arguments and refused.
 - Debug APK built with `npm run apk:debug` (minSdk 30, targetSdk 36, ~9.5 MB, no Firebase / Play-services code inside). The extra permissions it lists (`RECEIVE_BOOT_COMPLETED`, `WAKE_LOCK`, `SCHEDULE_EXACT_ALARM`, `USE_FINGERPRINT`) come from `@capacitor/local-notifications` and `androidx.biometric`.
 
 **Left to do**
 
-0. Real phones: verified on a Galaxy Note 8 (Android 9, WebView 101, X25519 from `x25519-shim.ts`) through `adb reverse` — pairing with the fingerprint, unlock, streamed reply, an approval accepted with the fingerprint, WakeService waking the closed app with a content-free notification. Still to try there: camera scan, voice message, an Android 11+ phone (PIN as well as biometrics), and the LAN / Tailscale path instead of USB.
+0. Real phones: verified on a Galaxy Note 8 (Android 9, WebView 101, X25519 from `x25519-shim.ts`) through `adb reverse` — pairing with the fingerprint, unlock, streamed reply, an approval accepted with the fingerprint, WakeService waking the closed app with a content-free notification. Still to try there: camera scan, voice message, a photo from the camera, reading aloud with the phone's French voice, the new icon and splash, an Android 11+ phone (PIN as well as biometrics), and the LAN / Tailscale path instead of USB.
 1. Approvals from the PC and from background runs on a real phone: done in code and tests (§4), still to try on the Note 8. A background run stopped mid-request leaves its card on the phone until the delay (the agent hook has no stop signal).
 2. WakeService hardening: restart after reboot (`BOOT_COMPLETED`), back-off when the PC is unreachable, battery measurements, and the Android 14+ foreground-service type review for Play.
 3. A notification setting per kind (finished tasks, reminders, alerts) and a «what's new» list on the phone.

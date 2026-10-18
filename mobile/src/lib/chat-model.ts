@@ -5,6 +5,14 @@ export interface Line {
   text: string
   /** Still being written by the model. */
   streaming?: boolean
+  /** Photos and files sent with the message (names only: the files stay on the PC). */
+  files?: FileRef[]
+}
+
+export interface FileRef {
+  name: string
+  mime: string
+  size: number
 }
 
 export interface Conversation {
@@ -20,13 +28,22 @@ export interface StoredMessage {
   content: string
   toolName?: string
   isError?: boolean
+  attachments?: FileRef[]
+}
+
+/** A user or assistant message as a line, or null when it has nothing to show. */
+function textLine(m: StoredMessage & { role: 'user' | 'assistant' }): Line | null {
+  const files = m.attachments?.length ? m.attachments : undefined
+  if (!m.content.trim() && !files) return null
+  return files ? { id: m.id, role: m.role, text: m.content, files } : { id: m.id, role: m.role, text: m.content }
 }
 
 export function fromHistory(sessionId: string, messages: StoredMessage[]): Conversation {
   const lines: Line[] = []
   for (const m of messages) {
     if (m.role === 'user' || m.role === 'assistant') {
-      if (m.content.trim()) lines.push({ id: m.id, role: m.role, text: m.content })
+      const line = textLine(m as StoredMessage & { role: 'user' | 'assistant' })
+      if (line) lines.push(line)
     } else if (m.role === 'tool' && m.toolName) {
       lines.push({ id: m.id, role: m.isError ? 'error' : 'tool', text: m.isError ? `${m.toolName} : refusé ou en échec` : m.toolName })
     }
@@ -74,8 +91,8 @@ export function applyEvent(c: Conversation, raw: Record<string, unknown>): Conve
       // The finished message replaces what was streamed for it.
       let lines = streamId ? c.lines.filter(l => l.id !== stream(streamId)) : c.lines
       if (m.role === 'user' || m.role === 'assistant') {
-        if (!m.content.trim()) return { ...c, lines }
-        const line: Line = { id: m.id, role: m.role, text: m.content }
+        const line = textLine(m as StoredMessage & { role: 'user' | 'assistant' })
+        if (!line) return { ...c, lines }
         lines = lines.some(l => l.id === m.id) ? lines.map(l => (l.id === m.id ? line : l)) : [...lines, line]
       } else if (m.role === 'tool' && m.toolName && m.isError) {
         lines = [...lines, { id: m.id, role: 'error', text: `${m.toolName} : refusé ou en échec` }]

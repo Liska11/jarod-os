@@ -11,6 +11,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(DeviceVaultPlugin.class);
         registerPlugin(JarodWakePlugin.class);
         registerPlugin(JarodLaunchPlugin.class);
+        registerPlugin(JarodSpeechPlugin.class);
         super.onCreate(savedInstanceState);
         // Conversations and approvals stay out of screenshots and the recent-apps preview.
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE);
