@@ -179,7 +179,7 @@ test.beforeAll(async () => {
   page = shell.page
   await expect(page.getByRole('button', { name: 'Accueil' })).toBeVisible({ timeout: 60_000 })
 
-  for (let step = 0; step < 6; step++) {
+  for (let step = 0; step < 8; step++) {
     const next = page.getByRole('button', { name: /^(Plus tard|Suivant|Commencer)/ })
 
     if (!(await next.count())) {

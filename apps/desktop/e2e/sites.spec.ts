@@ -37,7 +37,7 @@ test.beforeAll(async () => {
   await expect(page.getByRole('button', { name: 'Accueil' })).toBeVisible({ timeout: 60_000 })
 
   // Through the first-run wizard, as shell.spec.ts does.
-  for (let step = 0; step < 6; step++) {
+  for (let step = 0; step < 8; step++) {
     const next = page.getByRole('button', { name: /^(Plus tard|Suivant|Commencer)/ })
 
     if (!(await next.count())) {

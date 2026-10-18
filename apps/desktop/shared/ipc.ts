@@ -994,6 +994,11 @@ export const IPC = {
   systemAuditRun: 'herald-os:system-audit:run',
   /** Install (or update) one missing prerequisite on Windows: a closed list of tools (electron/setup/install.ts). */
   systemAuditInstall: 'herald-os:system-audit:install',
+  // The Jarod disk (electron/data-root.ts, electron/data-disk.ts): where Jarod-OS keeps its data, and moving it.
+  dataDiskState: 'herald-os:data-disk:state',
+  dataDiskDrives: 'herald-os:data-disk:drives',
+  /** Make a folder the Jarod disk (copying the data in when asked), then restart. */
+  dataDiskApply: 'herald-os:data-disk:apply',
 
   prefsGet: 'herald-os:prefs:get',
   prefsSet: 'herald-os:prefs:set',

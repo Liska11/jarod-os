@@ -1,4 +1,4 @@
-import { IconAlertTriangle, IconCheck, IconCopy, IconCpu, IconDownload, IconInfoCircle, IconRefresh, IconSparkles, IconX } from '@tabler/icons-react'
+import { IconAlertTriangle, IconCheck, IconCopy, IconCpu, IconDeviceFloppy, IconDownload, IconInfoCircle, IconRefresh, IconSparkles, IconX } from '@tabler/icons-react'
 import { useEffect, useState } from 'react'
 import { type AuditReport, type Check, type CheckStatus, INSTALLABLE_PREREQUISITES, type SystemFacts } from '../../../shared/system-audit.ts'
 import { HeraldLogo } from '../../components/herald-logo.tsx'
@@ -7,16 +7,17 @@ import { Spinner } from '../../components/ui/primitives.tsx'
 import { cn } from '../../lib/cn.ts'
 import { $locale, type MessageKey, t, useT } from '../../lib/i18n.ts'
 import { Footer, Heading } from './parts.tsx'
+import { DataDiskPicker } from './DataDiskPicker.tsx'
 import { KeysStep } from './KeysStep.tsx'
 import { TelegramStep } from './TelegramStep.tsx'
 
-type Step = 'welcome' | 'audit' | 'telegram' | 'keys' | 'done'
-const STEPS: Step[] = ['welcome', 'audit', 'telegram', 'keys', 'done']
+type Step = 'welcome' | 'audit' | 'disk' | 'telegram' | 'keys' | 'done'
+const STEPS: Step[] = ['welcome', 'audit', 'disk', 'telegram', 'keys', 'done']
 
 /**
  * First-run setup of Jarod-OS on Windows (HANDOFF.md, section 7): welcome, the system audit (hardware, prerequisites
- * with the command that fixes each, blocked while a critical one is missing), the Telegram bot, the API keys import,
- * then done.
+ * with the command that fixes each, blocked while a critical one is missing), Jarod-OS's own disk, the Telegram bot,
+ * the API keys import, then done.
  */
 /** `onDemand`: opened again after first run (command `setup.open`); it can be closed, and finishing marks nothing. */
 export function DesktopSetup({ onFinished, onDemand = false }: { onFinished: () => void; onDemand?: boolean }) {
@@ -54,6 +55,17 @@ export function DesktopSetup({ onFinished, onDemand = false }: { onFinished: () 
           </div>
         )}
         {step === 'audit' && <AuditStep onDone={next} />}
+        {step === 'disk' && (
+          <div className="flex min-h-0 flex-col gap-4 overflow-y-auto">
+            <Heading icon={<IconDeviceFloppy size={18} />} title={t('disk.step.title')} text={t('disk.step.text')} />
+            <DataDiskPicker />
+            <div className="flex justify-start">
+              <GlassButton variant="ghost" onClick={next}>
+                {t('setup.later')}
+              </GlassButton>
+            </div>
+          </div>
+        )}
         {step === 'telegram' && <TelegramStep onDone={next} />}
         {step === 'keys' && <KeysStep onDone={next} />}
         {step === 'done' && (

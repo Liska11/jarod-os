@@ -1,3 +1,4 @@
+import type { DataDiskApplyResult, DataDiskState, DriveInfo } from '../shared/data-disk.ts'
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import {
   type AudioWsKind,
@@ -336,6 +337,12 @@ const api = {
     openHome: (): Promise<void> => ipcRenderer.invoke(IPC.pinokioOpenHome),
     /** Main asks for a page to be shown in a Jarod-OS window (an app's UI, a link out of Pinokio). */
     onOpenUrl: (listener: (url: string) => void): Unsubscribe => subscribe(IPC.pinokioOpenUrl, listener)
+  },
+  dataDisk: {
+    state: (): Promise<DataDiskState> => ipcRenderer.invoke(IPC.dataDiskState),
+    drives: (): Promise<DriveInfo[]> => ipcRenderer.invoke(IPC.dataDiskDrives),
+    /** Make `root` the Jarod disk (copying the data and workspace in with `move`); Jarod-OS restarts on success. */
+    apply: (root: string, move: boolean): Promise<DataDiskApplyResult> => ipcRenderer.invoke(IPC.dataDiskApply, root, move)
   },
   systemAudit: {
     /** The system audit: the saved report, or the one running since startup. */

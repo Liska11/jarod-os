@@ -31,6 +31,8 @@ import { registerWebIpc, type WebViews } from './ipc/web.ts'
 import { broadcastPinokioState, openElsewhere, registerPinokioIpc } from './ipc/pinokio.ts'
 import { locateRuntime, PINOKIO_URL, PinokioService } from './pinokio/service.ts'
 import { registerSystemAuditIpc } from './ipc/system-audit.ts'
+import { registerDataDiskIpc } from './ipc/data-disk.ts'
+import { applyDataRoot } from './data-root.ts'
 import { MEDIA_SCHEME_PRIVILEGES, registerMediaIpc } from './ipc/media.ts'
 import { registerNativeAppsIpc } from './ipc/native-apps.ts'
 import { registerWindowEmbeds } from './platform/window-embed.ts'
@@ -89,6 +91,9 @@ const tray = new ShellTray(appIconPath(), safeMode, {
 })
 const coreLocation = { packaged: app.isPackaged, resourcesPath: process.resourcesPath, appPath: app.getAppPath() }
 
+// Jarod-OS's own disk, when the person chose one (data-root.ts): applied before anything resolves the data paths.
+const dataRoot = applyDataRoot(shellConfigDir())
+
 // With the Jarod core as backend, the shell keeps its Hermes-style files (plugins, themes, audit, notes) in a home of its own, never in a Hermes install of this machine.
 // Left alone when the person set HERMES_HOME, or attached the shell to a backend they run themselves.
 if (!process.env.HERMES_HOME?.trim() && !process.env.HERALD_OS_BACKEND_URL?.trim() && selectBackend(process.env, resolveJarodCore({ ...coreLocation, env: process.env })) === 'jarod') {
@@ -104,6 +109,10 @@ protocol.registerSchemesAsPrivileged([{ scheme: 'herald-plugin', privileges: { s
 process.on('uncaughtException', error => log('main', `uncaught exception: ${error.stack ?? error.message}`))
 // The rest of what can go wrong reaches the same log: rejected promises here, every window's errors, failing IPC calls.
 installProblemLogging(app, ipcMain, log)
+
+if (dataRoot.kind !== 'default') {
+  log('disk', dataRoot.kind === 'root' ? `Jarod-OS lives on ${dataRoot.root}` : dataRoot.kind === 'missing' ? `the Jarod disk ${dataRoot.root} is not reachable: using the default folders` : 'data folders set by the environment')
+}
 
 for (const line of primary ? migrateLegacyData({ hermesHome: hermesHome(), appData: app.getPath('appData'), userData: app.getPath('userData') }) : []) {
   log('migrate', line)
@@ -612,6 +621,7 @@ function registerCoreIpc(): void {
   registerEditIpc(() => webViews)
   registerPinokioIpc(pinokio, () => webViews, () => (panels ? panels.mainWindow() : mainWindow))
   registerSystemAuditIpc(systemAudit)
+  registerDataDiskIpc({ state: dataRoot, configDir: shellConfigDir(), stopBackend: () => backend.stop(), startBackend: () => void backend.start(), relaunch: () => relaunch(false) })
   registerNativeAppsIpc()
   registerWindowEmbeds()
   registerMediaIpc()
