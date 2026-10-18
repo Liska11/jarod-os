@@ -66,7 +66,7 @@ describe("database encryption", () => {
     const dir = tempDir();
     const keys = memoryKeyStore();
     const app = await open(dir, { keyStores: [keys] });
-    expect(app.storage.dbEncryption).toEqual({ encrypted: true, keyStore: "Mémoire (tests)", weak: false });
+    expect(app.storage.dbEncryption).toEqual({ encrypted: true, keyStore: "Mémoire (tests)", keyStoreId: "memory", weak: false });
     const id = await seed(app);
 
     expect(isEncryptedDb(join(dir, "jarod.db"))).toBe(true);
@@ -208,6 +208,23 @@ describe("database encryption", () => {
     expect(store.id).toBe("file");
     expect(readFileSync(join(dir, "db.key"), "utf8")).toBe(key);
     expect(resolveDbKey(dir, [broken, fileKeyStore], true).key).toBe(key);
+  });
+
+  it("says which store really gave the key: the file fallback is reported weak, a clear database has none", async () => {
+    const broken: KeyStore = {
+      id: "dpapi",
+      label: "cassé",
+      load: () => null,
+      save: () => {
+        throw new Error("indisponible");
+      },
+    };
+    const weak = await open(tempDir(), { keyStores: [broken, fileKeyStore] });
+    expect(weak.storage.dbEncryption).toEqual({ encrypted: true, keyStore: fileKeyStore.label, keyStoreId: "file", weak: true });
+    await shutdown(weak);
+    const plain = await open(tempDir(), { encryptDb: false });
+    expect(plain.storage.dbEncryption).toEqual({ encrypted: false, keyStore: null, keyStoreId: null, weak: false });
+    await shutdown(plain);
   });
 
   it.runIf(process.platform === "win32")("protects the key with Windows DPAPI", { timeout: 30_000 }, () => {

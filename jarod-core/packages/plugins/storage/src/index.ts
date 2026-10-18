@@ -29,6 +29,8 @@ declare module "cordis" {
 export interface DbEncryption {
   encrypted: boolean;
   keyStore: string | null;
+  /** Le magasin qui a VRAIMENT rendu la clé à l'ouverture (null : base en clair). */
+  keyStoreId: KeyStore["id"] | null;
   /** Clé dans un simple fichier (aucun trousseau disponible). */
   weak: boolean;
 }
@@ -65,11 +67,11 @@ export class StorageService extends Service {
       // Attachments get their own key, derived from the database key.
       this.fileKey = Buffer.from(hkdfSync("sha256", Buffer.from(key, "utf8"), Buffer.alloc(0), "jarod-one attachments", 32));
       this.db = new Db(this.dbPath, { key, ...native });
-      this.dbEncryption = { encrypted: true, keyStore: store.label, weak: store.id === "file" };
+      this.dbEncryption = { encrypted: true, keyStore: store.label, keyStoreId: store.id, weak: store.id === "file" };
     } else {
       this.fileKey = null;
       this.db = new Db(this.dbPath, native);
-      this.dbEncryption = { encrypted: false, keyStore: null, weak: false };
+      this.dbEncryption = { encrypted: false, keyStore: null, keyStoreId: null, weak: false };
     }
     this.events = new EventStoreService(this.db, options.eventsKeep ? { keep: options.eventsKeep } : {});
     this.checkpoints = new CheckpointService(this.db);

@@ -20,10 +20,28 @@ export interface VaultEntry {
 export type VaultKind = 'api_key' | 'token' | 'password' | 'other'
 export const VAULT_KINDS: VaultKind[] = ['api_key', 'token', 'password', 'other']
 
-/** How the vault is kept on this disk (`vault-status`). */
+/** How the vault is kept on this disk (`vault-status`), as the engine's storage really opened the database. */
 export interface VaultStatus {
-  encrypted: boolean
-  keyStore: 'dpapi' | 'file' | 'other' | null
+  protection: 'os-key' | 'weak' | 'plain' | 'unknown'
+  encrypted: boolean | null
+  /** Store that gave the key back (`dpapi`, `file`…); null when clear or unknown. */
+  keyStore: string | null
+}
+
+export type VaultProtectionNote = { tone: 'info' | 'warn' | 'danger'; key: 'dpapi' | 'os' | 'weak' | 'plain' | 'unknown' }
+
+/**
+ * The protection line of the Secrets screen, read from the engine's answer only: an error, an older engine without `protection`,
+ * or anything not recognised reads as unknown — never guessed from other fields. Null while the first answer is awaited.
+ */
+export function protectionNote(status: unknown, error: string | null, loading: boolean): VaultProtectionNote | null {
+  if (error) return { tone: 'warn', key: 'unknown' }
+  if (!status || typeof status !== 'object') return loading ? null : { tone: 'warn', key: 'unknown' }
+  const { protection, keyStore } = status as Partial<VaultStatus>
+  if (protection === 'os-key') return { tone: 'info', key: keyStore === 'dpapi' ? 'dpapi' : 'os' }
+  if (protection === 'weak') return { tone: 'warn', key: 'weak' }
+  if (protection === 'plain') return { tone: 'danger', key: 'plain' }
+  return { tone: 'warn', key: 'unknown' }
 }
 
 export interface VaultDraft {

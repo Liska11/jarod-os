@@ -702,11 +702,6 @@ export class Db {
   /** Sauvegarde faite avant la migration de cette ouverture (null : aucune migration d'une base existante). */
   migrationBackup: string | null = null;
 
-  /** Le fichier de la base (Jarod-OS : l'état de protection du coffre regarde où est rangée sa clé). */
-  get file(): string {
-    return this.path;
-  }
-
   constructor(
     private readonly path: string,
     private readonly opts: DbOptions = {},
