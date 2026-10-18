@@ -10,7 +10,8 @@ export default defineConfig({
   resolve: { alias: { '@jarod-protocol': protocol } },
   // Relative paths: Capacitor serves the build from the app's own files.
   base: './',
-  build: { outDir: 'dist', target: 'es2023', sourcemap: false },
+  // chrome100: Android 9 phones keep WebViews around that version (X25519 comes from x25519-shim.ts).
+  build: { outDir: 'dist', target: 'chrome100', sourcemap: false },
   server: {
     fs: { allow: ['..'] },
     // Development in a desktop browser: `JAROD_BRIDGE=http://127.0.0.1:10492 npm run dev` forwards /m1
