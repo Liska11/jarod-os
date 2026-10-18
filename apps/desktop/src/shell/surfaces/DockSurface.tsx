@@ -102,7 +102,7 @@ export function DockSurface() {
     try {
       await window.heraldOS.apps.launch(app.path)
     } catch (error) {
-      notify({ title: `Could not open ${app.name}`, body: error instanceof Error ? error.message : String(error), level: 'error' })
+      notify({ title: t('dock.openFailed', { name: app.name }), body: error instanceof Error ? error.message : String(error), level: 'error' })
     }
   }
 
