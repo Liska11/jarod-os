@@ -2,6 +2,7 @@ import { ipcMain } from 'electron'
 import { IPC } from '../../shared/ipc.ts'
 import type { VmResult, VmsState } from '../../shared/vms.ts'
 import { log } from '../log.ts'
+import { internetAllowed } from '../network.ts'
 import { commands, isOnDisk, listVms, parseOnline, VM_NAME, vmFolder, wsl } from '../vms.ts'
 
 /*
@@ -38,12 +39,14 @@ export function registerVmsIpc(): void {
 
     return { available: process.platform === 'win32', root: disk, busy, list: list.map(vm => ({ ...vm, onDisk: isOnDisk(vm, disk) })) }
   })
-  ipcMain.handle(IPC.vmsOnline, async () => (process.platform === 'win32' ? parseOnline(await wsl(['--list', '--online'], 60_000).catch(() => '')) : []))
+  // `wsl --list --online` and `wsl --install` download from Microsoft: not while Jarod's Internet is off.
+  ipcMain.handle(IPC.vmsOnline, async () => (process.platform === 'win32' && internetAllowed() ? parseOnline(await wsl(['--list', '--online'], 60_000).catch(() => '')) : []))
   ipcMain.handle(IPC.vmsCreate, (_event, distro: unknown, name: unknown) =>
     guarded(`install ${String(name)}`, async () => {
       const disk = root()
 
       if (!disk) return { ok: false, error: 'no-disk' }
+      if (!internetAllowed()) return { ok: false, error: 'offline' }
       if (typeof distro !== 'string' || !/^[\w.-]+$/.test(distro) || typeof name !== 'string' || !VM_NAME.test(name)) return { ok: false, error: 'bad-name' }
       if ((await listVms()).some(vm => vm.name.toLowerCase() === name.toLowerCase())) return { ok: false, error: 'exists' }
 

@@ -37,6 +37,9 @@ import { registerSandboxesIpc } from './ipc/sandboxes.ts'
 import { registerEnvironmentsIpc } from './ipc/environments.ts'
 import { registerVmsIpc } from './ipc/vms.ts'
 import { applyDataRoot } from './data-root.ts'
+import { NetworkPolicyService, setActiveNetworkPolicy } from './network.ts'
+import { cutDisallowed, installSocketGuard } from './net-guard.ts'
+import { electronNetworkSessions, registerNetworkIpc } from './ipc/network.ts'
 import { MEDIA_SCHEME_PRIVILEGES, registerMediaIpc } from './ipc/media.ts'
 import { registerNativeAppsIpc } from './ipc/native-apps.ts'
 import { registerWindowEmbeds } from './platform/window-embed.ts'
@@ -97,6 +100,16 @@ const coreLocation = { packaged: app.isPackaged, resourcesPath: process.resource
 
 // Jarod-OS's own disk, when the person chose one (data-root.ts): applied before anything resolves the data paths.
 const dataRoot = applyDataRoot(shellConfigDir())
+
+// The Internet switch (docs/NETWORK-POLICY.md): read before any session, socket or backend exists. The core reads the same file
+// (JAROD_NETWORK_POLICY) on each of its connections; this process's own Node sockets go through the guard.
+const network = new NetworkPolicyService(shellConfigDir())
+network.load()
+setActiveNetworkPolicy(network)
+process.env.JAROD_NETWORK_POLICY = network.file
+installSocketGuard(host => network.allows(host))
+network.onChange(() => cutDisallowed(host => network.allows(host)))
+const networkSessions = electronNetworkSessions()
 
 // With the Jarod core as backend, the shell keeps its Hermes-style files (plugins, themes, audit, notes) in a home of its own, never in a Hermes install of this machine.
 // Left alone when the person set HERMES_HOME, or attached the shell to a backend they run themselves.
@@ -630,6 +643,7 @@ function registerCoreIpc(): void {
   registerSandboxesIpc()
   registerEnvironmentsIpc()
   registerVmsIpc()
+  registerNetworkIpc(network)
   registerDataDiskIpc({ state: dataRoot, configDir: shellConfigDir(), stopBackend: () => backend.stop(), startBackend: () => void backend.start(), relaunch: () => relaunch(false) })
   registerNativeAppsIpc()
   registerWindowEmbeds()
@@ -767,6 +781,8 @@ app.whenReady().then(async () => {
     app.setAppUserModelId(appUserModelId(app.isPackaged))
   }
 
+  // Every web session takes the Internet policy before the first window loads anything.
+  await network.attach(networkSessions)
   registerCoreIpc()
   events.registerIpc()
   crashes.start()

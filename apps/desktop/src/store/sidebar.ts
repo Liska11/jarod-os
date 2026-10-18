@@ -7,7 +7,10 @@ export interface SidebarState {
   collapsed: boolean
 }
 
-export const SIDEBAR_DEFAULT = 132
+/** Wide enough for the longest French page name (« Automatisations ») without an ellipsis. */
+export const SIDEBAR_DEFAULT = 184
+/** The default before 2026-10-18: a stored width equal to it was never chosen by hand, so it follows the new default. */
+const OLD_DEFAULT = 132
 export const SIDEBAR_MIN = 112
 export const SIDEBAR_MAX = 260
 /** Width of the icon-only rail. */
@@ -66,7 +69,7 @@ export function bindSidebarPrefs(): () => void {
 
     if (serialized !== lastPersisted) {
       lastPersisted = serialized
-      $sidebar.set({ width: clampWidth(stored.width), collapsed: Boolean(stored.collapsed) })
+      $sidebar.set({ width: clampWidth(stored.width === OLD_DEFAULT ? SIDEBAR_DEFAULT : stored.width), collapsed: Boolean(stored.collapsed) })
     }
   })
 }

@@ -7,6 +7,7 @@ import type { EnvironmentResult, EnvironmentsState } from '../../shared/environm
 import { IPC } from '../../shared/ipc.ts'
 import { type BuildTools, createEnvironment, isEnvironmentName, listEnvironments, run } from '../environments.ts'
 import { log } from '../log.ts'
+import { assertInternet, internetAllowed } from '../network.ts'
 
 /*
  * Environments of the Jarod disk (electron/environments.ts): built on request from Settings (Python with uv, Node.js
@@ -38,10 +39,30 @@ const tools: BuildTools = {
   }
 }
 
+/**
+ * Internet off: uv runs with `--offline` (a Python already on this machine still works, nothing is downloaded), and a Node.js build,
+ * which always downloads, is refused before it starts.
+ */
+const offlineTools = (base: BuildTools): BuildTools => ({
+  ...base,
+  run: (command, args, cwd) => base.run(command, command === base.uv ? ['--offline', ...args] : args, cwd),
+  nodeIndex: async () => {
+    assertInternet('le téléchargement de Node.js')
+
+    return base.nodeIndex()
+  },
+  download: async (url, file) => {
+    assertInternet(`le téléchargement de ${url}`)
+    await base.download(url, file)
+  }
+})
+
 const failure = (error: unknown): EnvironmentResult => {
   const message = error instanceof Error ? error.message : String(error)
 
   // uv itself is missing (it ships with Jarod's engines; the Software section installs it otherwise).
+  if ((error as { code?: string })?.code === 'JAROD_OFFLINE') return { ok: false, error: 'offline' }
+
   return { ok: false, error: message.startsWith('uv failed') && /ENOENT|not recognized/.test(message) ? 'no-uv' : message }
 }
 
@@ -65,7 +86,7 @@ export function registerEnvironmentsIpc(): void {
     const started = Date.now()
 
     try {
-      const info = await createEnvironment(dir, name, kind, String(version), tools)
+      const info = await createEnvironment(dir, name, kind, String(version), internetAllowed() ? tools : offlineTools(tools))
       log('environments', `built ${info.name}: ${info.kind} ${info.version} in ${Math.round((Date.now() - started) / 1000)} s`)
 
       return { ok: true, name: info.name }

@@ -15,8 +15,11 @@ import { createBridgeShell } from "./bridge-shell.js";
 import { removeSecretFile, writeSecretFile } from "./secret-file.js";
 import { createGateway } from "./server.js";
 import { boundedMessage, startupFailure } from "./startup.js";
+import { applyNetworkPolicyFromEnv } from "@jarod/kernel/network";
 
 const env = process.env;
+// L'interrupteur Internet du shell, AVANT que le cœur n'ouvre la moindre connexion (fournisseurs, passerelles, MCP).
+applyNetworkPolicyFromEnv(env);
 /** Refuse de démarrer en le disant clairement : la fenêtre n'affiche que ces lignes (voir `startup.ts`). */
 const fail = (e: unknown): never => {
   const failure = startupFailure(e);

@@ -1,6 +1,7 @@
 import { ipcMain } from 'electron'
 import { IPC } from '../../shared/ipc.ts'
 import { log } from '../log.ts'
+import { assertInternet } from '../network.ts'
 import { freshEnv } from '../setup/audit.ts'
 import { type InstallResult, installPrerequisite, isInstallable } from '../setup/install.ts'
 import type { AuditService } from '../setup/service.ts'
@@ -13,6 +14,8 @@ export function registerSystemAuditIpc(service: AuditService): void {
   let busy: Promise<InstallResult> | null = null
   ipcMain.handle(IPC.systemAuditInstall, async (_event, tool: unknown, upgrade: unknown): Promise<InstallResult> => {
     if (!isInstallable(tool)) throw new Error('this prerequisite cannot be installed from here')
+    // winget and the installers download: not while Jarod's Internet is off.
+    assertInternet(`l'installation de ${String(tool)}`)
     if (busy) await busy.catch(() => undefined)
     busy = (async () => installPrerequisite(tool, { upgrade: upgrade === true, env: await freshEnv(), log: message => log('setup', message) }))()
     try {

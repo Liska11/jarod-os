@@ -3,7 +3,7 @@ import { IconLayoutSidebarLeftCollapse, IconLayoutSidebarLeftExpand, IconPlus } 
 import { $paneTab } from '../features/hermes/artifact-store.ts'
 import { APPS_SECTION, MESSAGING_SECTION, openPaneApp, type PaneApp } from '../features/hermes/pane-apps.ts'
 import { PaneAppIcon, usePaneAppName } from '../features/hermes/PaneApps.tsx'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { AppGlyph, HermesAvatar } from '../components/app-icon.tsx'
 import { cn } from '../lib/cn.ts'
 import { appText, useT } from '../lib/i18n.ts'
@@ -24,6 +24,10 @@ export function Sidebar() {
   const [dragging, setDragging] = useState(false)
   const { t, assistant } = useT()
   const drag = useRef<{ startX: number; startWidth: number; wasCollapsed: boolean } | null>(null)
+  const scroller = useRef<HTMLDivElement>(null)
+  const origin = useRef<HTMLSpanElement>(null)
+
+  useFloatingTips(scroller, origin)
 
   const startResize = (event: React.PointerEvent<HTMLDivElement>) => {
     if (event.button !== 0) {
@@ -77,17 +81,33 @@ export function Sidebar() {
       style={{ width: collapsed ? SIDEBAR_COLLAPSED : width }}
       data-collapsed={collapsed || undefined}
     >
-      <div className={cn(collapsed ? 'flex justify-center' : 'px-1')}>
-        <HermesAvatar size={collapsed ? 36 : 44} rounded={collapsed ? 9 : 11} />
-        {!collapsed && (
-          <>
-            <div className="mt-2.5 text-[15px] font-semibold leading-tight text-fg">{assistant}</div>
-            <div className="mt-0.5 text-[11px] leading-snug text-fg-3 italic">{t('sidebar.tagline')}</div>
-          </>
-        )}
+      {/* Never scrolls: who this is, and the one control that folds the whole rail to icons (always reachable, even in a short window). */}
+      <span ref={origin} aria-hidden="true" className="pointer-events-none fixed top-0 left-0 size-0" />
+      <div className={cn('flex shrink-0', collapsed ? 'flex-col items-center gap-2' : 'items-start justify-between gap-2 px-1')}>
+        <div className={cn(collapsed && 'flex justify-center')}>
+          <HermesAvatar size={collapsed ? 36 : 44} rounded={collapsed ? 9 : 11} />
+          {!collapsed && (
+            <>
+              <div className="mt-2.5 text-[15px] font-semibold leading-tight text-fg">{assistant}</div>
+              <div className="mt-0.5 text-[11px] leading-snug text-fg-3 italic">{t('sidebar.tagline')}</div>
+            </>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={toggleSidebar}
+          aria-label={collapsed ? t('sidebar.expandSidebar') : t('sidebar.collapseSidebar')}
+          aria-expanded={!collapsed}
+          title={t('sidebar.toggleHint', { action: collapsed ? t('sidebar.expandSidebar') : t('sidebar.collapseSidebar'), shortcut: shortcutLabel('\\') })}
+          className="flex size-7 shrink-0 items-center justify-center rounded-lg text-fg-3 transition-colors duration-150 hover:bg-white/8 hover:text-fg"
+        >
+          {collapsed ? <IconLayoutSidebarLeftExpand size={16} stroke={1.9} /> : <IconLayoutSidebarLeftCollapse size={16} stroke={1.9} />}
+        </button>
       </div>
 
-      <nav className={cn('relative mt-5 flex flex-col gap-0.5', collapsed && 'w-full items-center')} aria-label={t('sidebar.pages')}>
+      {/* The rest scrolls when the window is short: pages, apps and spaces stay reachable. */}
+      <div ref={scroller} className={cn('side-scroll -mx-1 mt-5 flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto px-1', collapsed && 'w-full items-center')}>
+      <nav className={cn('relative flex shrink-0 flex-col gap-0.5', collapsed && 'w-full items-center')} aria-label={t('sidebar.pages')}>
         {PAGES.map(def => {
           const activePage = def.id === page
           const name = appText(def.id, def).name
@@ -202,16 +222,7 @@ export function Sidebar() {
         </>
       )}
 
-      <button
-        type="button"
-        onClick={toggleSidebar}
-        aria-label={collapsed ? t('sidebar.expandSidebar') : t('sidebar.collapseSidebar')}
-        title={t('sidebar.toggleHint', { action: collapsed ? t('sidebar.expandSidebar') : t('sidebar.collapseSidebar'), shortcut: shortcutLabel('\\') })}
-        className={cn('side-item group relative mt-auto flex h-8 items-center rounded-lg text-fg-3 transition-colors duration-150 hover:bg-white/8 hover:text-fg', collapsed ? 'w-9 justify-center' : 'gap-2.5 px-2.5 text-[12px]')}
-      >
-        {collapsed ? <IconLayoutSidebarLeftExpand size={16} stroke={1.9} /> : <IconLayoutSidebarLeftCollapse size={16} stroke={1.9} />}
-        {collapsed ? <span className="side-tip">{t('sidebar.expandSidebar')}</span> : <span>{t('sidebar.collapse')}</span>}
-      </button>
+      </div>
 
       {/* Resize handle: drag to resize, drag past the snap point to collapse, double-click to toggle. */}
       <div
@@ -230,6 +241,42 @@ export function Sidebar() {
       />
     </aside>
   )
+}
+
+/**
+ * The labels of a scrolling rail would be clipped by its own overflow: they are placed with `position: fixed`, measured from a zero-size
+ * probe so that an ancestor's backdrop filter (which makes it the containing block of fixed elements) does not shift them.
+ */
+function useFloatingTips(scroller: React.RefObject<HTMLDivElement | null>, origin: React.RefObject<HTMLSpanElement | null>): void {
+  useEffect(() => {
+    const root = scroller.current
+
+    if (!root) {
+      return
+    }
+
+    const place = (event: Event) => {
+      const item = (event.target as HTMLElement | null)?.closest?.('.side-item')
+      const tip = item?.querySelector<HTMLElement>(':scope > .side-tip')
+      const base = origin.current?.getBoundingClientRect()
+
+      if (!item || !tip || !base) {
+        return
+      }
+
+      const rect = item.getBoundingClientRect()
+      tip.style.left = `${rect.right + 10 - base.left}px`
+      tip.style.top = `${rect.top + rect.height / 2 - base.top}px`
+    }
+
+    root.addEventListener('pointerover', place)
+    root.addEventListener('focusin', place)
+
+    return () => {
+      root.removeEventListener('pointerover', place)
+      root.removeEventListener('focusin', place)
+    }
+  }, [scroller, origin])
 }
 
 /** A sidebar section of apps that open in the right pane, beside the chat (the Hermes page). */

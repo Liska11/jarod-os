@@ -1028,6 +1028,10 @@ export const IPC = {
   vmsStop: 'herald-os:vms:stop',
   /** Erase a machine (wsl --unregister): the exact name typed by the person is required. */
   vmsRemove: 'herald-os:vms:remove',
+  // The Internet switch (shared/network-policy.ts, electron/network.ts).
+  networkGet: 'herald-os:network:get',
+  networkSet: 'herald-os:network:set',
+  networkChanged: 'herald-os:network:changed',
 
   prefsGet: 'herald-os:prefs:get',
   prefsSet: 'herald-os:prefs:set',

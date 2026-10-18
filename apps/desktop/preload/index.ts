@@ -2,6 +2,7 @@ import type { BackupActionResult, BackupsState } from '../shared/backups.ts'
 import type { SandboxResult, SandboxesState } from '../shared/sandboxes.ts'
 import type { EnvironmentResult, EnvironmentsState } from '../shared/environments.ts'
 import type { VmResult, VmsState } from '../shared/vms.ts'
+import type { NetworkPolicy } from '../shared/network-policy.ts'
 import type { DataDiskApplyResult, DataDiskState, DriveInfo } from '../shared/data-disk.ts'
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import {
@@ -379,6 +380,12 @@ const api = {
     move: (name: string): Promise<VmResult> => ipcRenderer.invoke(IPC.vmsMove, name),
     stop: (name: string): Promise<VmResult> => ipcRenderer.invoke(IPC.vmsStop, name),
     remove: (name: string, typed: string): Promise<VmResult> => ipcRenderer.invoke(IPC.vmsRemove, name, typed)
+  },
+  network: {
+    /** Jarod's Internet policy (the switch in the top bar). */
+    get: (): Promise<NetworkPolicy> => ipcRenderer.invoke(IPC.networkGet),
+    set: (change: Partial<Omit<NetworkPolicy, 'version'>>): Promise<NetworkPolicy> => ipcRenderer.invoke(IPC.networkSet, change),
+    onChanged: (listener: (policy: NetworkPolicy) => void): Unsubscribe => subscribe(IPC.networkChanged, listener)
   },
   systemAudit: {
     /** The system audit: the saved report, or the one running since startup. */
