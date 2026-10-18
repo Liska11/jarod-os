@@ -1,6 +1,6 @@
 import type { GatewayEvent } from '@herald-os/client'
 import { describe, expect, it } from 'vitest'
-import { type AssistantMessage, appendUser, type ChatState, emptyChat, fromTranscript, reduceChatEvent, type ToolMessage } from './chat-model.ts'
+import { type AssistantMessage, appendSystem, appendUser, type ChatState, emptyChat, fromTranscript, lastTurnFailed, reduceChatEvent, type ToolMessage } from './chat-model.ts'
 
 const event = (type: string, payload?: unknown): GatewayEvent => ({ type, session_id: 's1', payload }) as unknown as GatewayEvent
 const run = (state: ChatState, ...events: GatewayEvent[]) => events.reduce(reduceChatEvent, state)
@@ -81,6 +81,18 @@ describe('errors and session events', () => {
     const state = run(emptyChat('s1', 's1'), event('message.complete', { status: 'error', error: 'rate limited' }))
 
     expect(state.messages.at(-1)).toMatchObject({ role: 'system', level: 'error', text: 'rate limited' })
+  })
+
+  it('tells a failed last turn (what keeps a failed mission out of « completed ») from a finished one', () => {
+    const asked = appendUser(emptyChat('s1', 's1'), 'hi')
+
+    expect(lastTurnFailed(run(asked, event('error', { message: 'no provider' })).messages)).toBe(true)
+    expect(lastTurnFailed(run(asked, event('message.complete', { status: 'error', error: 'rate limited' })).messages)).toBe(true)
+    expect(lastTurnFailed(run(asked, event('message.delta', { text: 'ok' }), event('message.complete', { status: 'complete' })).messages)).toBe(false)
+    // An info line after a good answer does not turn it into a failure; a new question resets it.
+    expect(lastTurnFailed(appendSystem(run(asked, event('message.delta', { text: 'ok' }), event('message.complete', {})), 'note').messages)).toBe(false)
+    expect(lastTurnFailed(appendUser(run(asked, event('error', { message: 'x' })), 'again').messages)).toBe(false)
+    expect(lastTurnFailed([])).toBe(false)
   })
 
   it('follows the title, live info and usage', () => {

@@ -125,8 +125,34 @@ Constats visuels : A-02, A-03, A-04. Le reste est cohérent : états vides expli
 
 - Parcours avec un vrai modèle (aucun fournisseur réel n'a été branché pendant l'audit).
 - Panneau droit avec des sites réels (sessions des réseaux sociaux) : non ouvert, pour ne pas toucher les comptes.
-- Missions, Kanban et Automatisations avec des données : seuls les états vides ont été vus.
+- ~~Missions, Kanban et Automatisations avec des données : seuls les états vides ont été vus.~~ Couvert depuis : voir 5.1.
 - Revue ligne à ligne de tout le noyau : seules les parties liées aux évolutions l'ont été (agent, coffre, ssh, voix, stockage).
+
+### 5.1 Missions, Kanban et Automatisations avec des données (`e2e/work-boards.spec.ts`)
+
+Application construite, noyau Jarod embarqué, profil jetable, aucun fournisseur de modèle : seuls les chemins qui n'en demandent pas sont utilisés. Tout est créé par l'interface ; l'état est relu dans le noyau (REST `/api/cron/jobs`, canal `kanban-list-tasks`).
+
+| Zone | Parcours vérifiés |
+|---|---|
+| Kanban | création de deux tâches par le formulaire (détails, priorité, « à préciser d'abord »), refus d'une priorité invalide ; commentaire ; déplacements prête → planifiée → prête → bloquée → prête → terminée (avec résultat) ; « Quelle est la suivante ? » à blanc ; archivage ; second tableau créé puis retour au premier |
+| Automatisations | création par le formulaire ; modification de la consigne et du planning, enregistrées par le noyau ; pause et reprise par l'interrupteur ; duplication, puis suppression après confirmation ; planning illisible refusé, rien de créé |
+| Missions | lancement par le compositeur : la conversation s'ouvre avec l'objectif, le tour échoue (aucun modèle) et la mission attend « À examiner » |
+| Relance sur la même racine | tâches (colonne « Terminée », archivée absente, sélecteur de tableaux), automatisation (consigne, planning, active) et mission toujours là |
+
+Restent hors e2e, car ils demandent un modèle : « Lancer la suivante » réel et « Demander à l'agent de préciser » (Kanban), « Lancer maintenant » (Automatisations), une mission qui avance avec son plan.
+
+| Id | Gravité | Composant | Preuve | Correction | Statut |
+|---|---|---|---|---|---|
+| A-17 | moyenne | Kanban | L'interface proposait des actions que le noyau refuse toujours (`refuseUnless` de `plugin-kanban`) : « Mark ready » sur une tâche à préciser, « Complete » sur une tâche en attente ou planifiée, « Schedule » sur une tâche déjà planifiée, « Unblock » sur une tâche à relire. Une tâche planifiée n'avait aucun moyen de revenir. | `verbsFor` ne propose que ce que le noyau accepte : retour d'une tâche planifiée par « Unblock », renvoi d'une tâche à relire par « Block ». Test unitaire qui confronte chaque action aux statuts acceptés par le noyau ; e2e. | corrigé |
+| A-18 | moyenne | Kanban | Une tâche créée sans profil restait « non assignée » : « Lancer la suivante » la sautait toujours (« 1 skipped »), alors que le champ annonce « Profil (par défaut : celui-ci) ». | Le formulaire envoie le profil servi (`list-profiles`, `isActive`) quand le champ est vide. Test unitaire de `taskInput` ; e2e : la tâche est assignée et « Quelle est la suivante ? » la nomme. | corrigé |
+| A-19 | moyenne | Missions | Une mission dont le tour échoue (aucun fournisseur, refus) apparaissait « Terminée » à 100 %. | `lastTurnFailed` (`chat-model.ts`) : une mission dont le dernier tour a échoué attend « À examiner ». Test unitaire ; e2e. | corrigé |
+| A-20 | faible | Automatisations | « Ce que Hermes doit faire », « Le décrire à Hermes », cible de livraison « Hermes (local) », et quatre autres libellés (comme A-16). | Le nom de l'assistant est utilisé (`{assistant}`), en français et en anglais. e2e : aucun « Hermes » dans le formulaire. | corrigé |
+| A-21 | moyenne | Kanban | Page en anglais dans l'interface française : noms de colonnes, actions, aides, phrases de « Quelle est la suivante ? », « just now », erreurs du formulaire (`kanban-model.ts` : `STATUS_LABEL`, `VERB_LABEL`, `NEEDS_TEXT`, `dispatchText`, `agoText`, `taskProblems`). La raison d'une tâche sautée n'est pas affichée (« 1 skipped. »). Dans Automatisations, les libellés « Planning / Déclencheur » sont figés au chargement du module (`TRIGGER_MODES`). | Passer ces textes au catalogue (une trentaine de clés), afficher les raisons. | ouvert |
+| A-22 | moyenne | Kanban | Une tâche « à préciser » ne sort de sa colonne que par « Demander à l'agent de préciser » (appel au modèle) ou par l'archivage : le noyau refuse `triage → ready` à la main. Le titre et les détails d'une tâche ne se modifient pas. | Décision produit : accepter `triage → ready` à la main dans `plugin-kanban`, ou une édition du titre et des détails. | ouvert |
+| A-23 | faible | Missions | Le statut d'une mission est déduit de la conversation chargée. Lecture du code : après une relance, une mission dont le tour a échoué redevient « Terminée » tant que sa conversation n'est pas rouverte (`buildMission` sans `chat` tombe sur `completed`). L'e2e vérifie seulement qu'elle reste listée. | Garder la fin du dernier tour dans la ligne de session, ou recharger les conversations récentes. | ouvert |
+| A-24 | faible | tests e2e | Le contrôle de fin de `global-setup.ts` compte tout dossier `jarod-e2e-*` apparu pendant le passage. Quand un autre worktree lance l'e2e en même temps, ses dossiers font échouer ce passage (vu ici : dossiers du worktree `kind-hamilton`, tenus par son propre noyau). | Marquer chaque racine avec l'identifiant du passage (fichier témoin ou préfixe par passage), et ne compter que les siennes. | ouvert |
+
+Validation de ce passage (2026-10-18) : tests unitaires du shell, 161 fichiers, 1271 réussis, 3 ignorés ; types du shell, code 0 ; e2e complet sur l'application construite, 59 réussis (dont les 14 de `work-boards.spec.ts`) ; aucun dossier `jarod-e2e-*` laissé.
 
 ## 6. Plan de correction par lots
 
