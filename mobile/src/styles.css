@@ -1,0 +1,336 @@
+/* The desktop's dark theme tokens (apps/desktop/src/styles.css), for a phone. */
+:root {
+  --bg: #050f33;
+  --glass: rgba(7, 22, 76, 0.74);
+  --surface: rgba(8, 24, 78, 0.6);
+  --surface-2: rgba(18, 46, 122, 0.42);
+  --line: rgba(140, 180, 255, 0.26);
+  --fg: #f3f7ff;
+  --fg-2: rgba(216, 228, 255, 0.84);
+  --fg-3: rgba(176, 196, 245, 0.68);
+  --accent: #2f7dff;
+  --accent-soft: rgba(47, 125, 255, 0.24);
+  --ok: #36e6a6;
+  --warn: #f2c25e;
+  --danger: #ff6d6d;
+  --radius: 14px;
+  color-scheme: dark;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-size: 16px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+  background: radial-gradient(120% 80% at 50% 0%, #0b2a7a 0%, var(--bg) 60%);
+  color: var(--fg);
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  min-height: 44px;
+}
+button:disabled {
+  opacity: 0.5;
+}
+button.primary {
+  background: var(--accent);
+  border-color: transparent;
+  color: #fff;
+}
+button.ghost {
+  background: transparent;
+}
+button.danger {
+  background: transparent;
+  border-color: var(--danger);
+  color: var(--danger);
+}
+button.wide {
+  width: 100%;
+}
+button.icon {
+  min-width: 44px;
+  padding: 8px;
+}
+button.icon.rec {
+  background: var(--danger);
+  color: #fff;
+}
+
+.screen {
+  min-height: 100%;
+  padding: max(24px, env(safe-area-inset-top)) 20px max(24px, env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-width: 520px;
+  margin: 0 auto;
+}
+.center {
+  justify-content: center;
+}
+.brand {
+  font-size: 34px;
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+.muted {
+  color: var(--fg-3);
+}
+.center-text {
+  text-align: center;
+  margin-top: 30vh;
+}
+.fine {
+  color: var(--fg-3);
+  font-size: 12.5px;
+}
+.note {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  margin: 0;
+  color: var(--fg-2);
+  font-size: 14px;
+}
+.note.warn {
+  border-color: var(--warn);
+}
+.note.danger {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+.note.slim {
+  margin: 0 12px 6px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 14px;
+  color: var(--fg-2);
+}
+.field input,
+.field textarea,
+.composer textarea {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 12px;
+  resize: none;
+  outline: none;
+}
+.field textarea {
+  font-family: ui-monospace, monospace;
+  font-size: 12.5px;
+}
+
+.scanner {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.scanner video {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: var(--radius);
+  border: 2px solid var(--accent);
+  background: #000;
+}
+
+.chat {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: max(8px, env(safe-area-inset-top)) 10px 8px;
+  background: var(--glass);
+  border-bottom: 1px solid var(--line);
+}
+.bar .title {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.bar .title b {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dot {
+  font-size: 12px;
+  color: var(--fg-3);
+}
+.dot::before {
+  content: '●';
+  margin-right: 4px;
+  color: var(--danger);
+}
+.dot.online::before {
+  color: var(--ok);
+}
+.dot.connecting::before {
+  color: var(--warn);
+}
+
+.sheet {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  background: var(--glass);
+  border-bottom: 1px solid var(--line);
+  max-height: 60vh;
+  overflow-y: auto;
+}
+.sheet .row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+  background: transparent;
+}
+.sheet .row.active {
+  background: var(--accent-soft);
+}
+.sheet small {
+  color: var(--fg-3);
+}
+.switch {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+.switch input {
+  width: 22px;
+  height: 22px;
+  margin-top: 2px;
+}
+.switch small {
+  display: block;
+  color: var(--fg-3);
+  font-size: 12.5px;
+}
+
+.lines {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.line {
+  max-width: 88%;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+.line.user {
+  align-self: flex-end;
+  background: var(--accent);
+  white-space: pre-wrap;
+}
+.line.assistant {
+  align-self: flex-start;
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+.line.tool {
+  align-self: flex-start;
+  font-size: 13px;
+  color: var(--fg-3);
+  padding: 2px 4px;
+}
+.line.error {
+  align-self: stretch;
+  border: 1px solid var(--danger);
+  color: var(--danger);
+  font-size: 14px;
+}
+
+.prose p {
+  margin: 0 0 8px;
+}
+.prose p:last-child {
+  margin-bottom: 0;
+}
+.prose pre,
+.approval pre {
+  background: rgba(0, 0, 0, 0.35);
+  padding: 8px;
+  border-radius: 8px;
+  overflow-x: auto;
+  font-size: 12.5px;
+  white-space: pre-wrap;
+}
+.prose code {
+  font-family: ui-monospace, monospace;
+  font-size: 0.92em;
+}
+.prose .link {
+  text-decoration: underline dotted;
+  color: #7cc4ff;
+}
+
+.approval {
+  border: 1px solid var(--warn);
+  border-radius: var(--radius);
+  background: var(--surface);
+  padding: 12px;
+}
+.approval h2 {
+  font-size: 16px;
+  margin: 0 0 6px;
+  color: var(--warn);
+}
+.approval p {
+  margin: 4px 0;
+}
+.approval .tool {
+  font-family: ui-monospace, monospace;
+}
+.approval .actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.composer {
+  display: flex;
+  gap: 8px;
+  padding: 8px 10px max(10px, env(safe-area-inset-bottom));
+  background: var(--glass);
+  border-top: 1px solid var(--line);
+  align-items: flex-end;
+}
+.composer textarea {
+  flex: 1;
+  max-height: 140px;
+}

@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Jarod</string>
+    <string name="title_activity_main">Jarod</string>
+    <string name="package_name">os.jarod.mobile</string>
+    <string name="custom_url_scheme">os.jarod.mobile</string>
+</resources>
