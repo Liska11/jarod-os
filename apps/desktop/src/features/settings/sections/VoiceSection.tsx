@@ -1,3 +1,4 @@
+import { $voiceMetrics, median } from '../../../store/voice-metrics.ts'
 import { useStore } from '@nanostores/react'
 import { IconBellRinging, IconBolt, IconClockPause, IconCoin, IconEar, IconEye, IconHourglass, IconKeyboard, IconLanguage, IconListDetails, IconMicrophone, IconPlayerPlay, IconSpeakerphone, IconVolume, IconWaveSine } from '@tabler/icons-react'
 import { useEffect, useState } from 'react'
@@ -234,6 +235,10 @@ export function VoiceSection() {
         <SettingsRow icon={<IconHourglass />} label={t('settings.voice.followUp')} description={t('settings.voice.followUp.hint')} keywords="continue listening">
           <Stepper value={voice.followUpSeconds} min={0} max={30} onChange={next => void save({ followUpSeconds: next })} label={t('settings.voice.followUp.aria')} />
         </SettingsRow>
+        <SettingsRow icon={<IconHourglass />} label={t('settings.voice.duplex')} description={t('settings.voice.duplex.hint')} keywords="duplex interrupt barge-in echo headphones">
+          <Toggle checked={voice.duplex !== false} onChange={next => void save({ duplex: next })} label={t('settings.voice.duplex')} />
+        </SettingsRow>
+        <VoiceMetricsRow />
         <SettingsRow icon={<IconEye />} label={t('settings.voice.follow')} description={t('settings.voice.follow.hint')} keywords="watch show work">
           <Toggle checked={voice.followHermes} onChange={next => void save({ followHermes: next })} label={t('settings.voice.follow')} />
         </SettingsRow>
@@ -271,3 +276,22 @@ export function VoiceSection() {
     </>
   )
 }
+
+/** What was measured on this run's voice conversations (src/store/voice-metrics.ts). */
+function VoiceMetricsRow() {
+  const metrics = useStore($voiceMetrics)
+  const first = median(metrics.firstAudioMs)
+  const stop = median(metrics.stopMs)
+  const ms = (value: number | null) => (value === null ? t('settings.voice.metrics.na') : t('settings.voice.metrics.ms', { ms: value }))
+  const empty = metrics.firstAudioMs.length === 0 && metrics.stopMs.length === 0
+
+  return (
+    <SettingsRow
+      icon={<IconHourglass />}
+      label={t('settings.voice.metrics')}
+      description={empty ? t('settings.voice.metrics.none') : `${t('settings.voice.metrics.values', { first: ms(first), stop: ms(stop), bargeIns: metrics.bargeIns, falseBargeIns: metrics.falseBargeIns })} — ${t('settings.voice.metrics.hint')}`}
+      keywords="latency measure echo"
+    />
+  )
+}
+

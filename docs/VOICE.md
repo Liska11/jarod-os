@@ -178,3 +178,73 @@ apps/desktop/electron/ipc/voice.ts        mic permission, audio WebSocket URL, g
 ```
 
 Decisions: `docs/DECISIONS.md` ADR-013 (and the ADR-007 amendment).
+
+## Duplex mode (Jarod-OS, 2026-10-18)
+
+Speak while Jarod is answering to interrupt it, and correct a request without losing the thread.
+
+### Modes
+
+- **Duplex** (default, Settings › Voice › "Mode duplex"): the mic stays open while Jarod speaks. A stricter detector (`BARGE_IN_ENDPOINTER`: confirmation over a longer stretch, a higher threshold) tells your voice apart from Jarod's.
+- **Classic**: the mic is closed while Jarod speaks. The stop button still interrupts.
+- **Always shown**: the orb displays "écoute continue" in duplex mode, "micro coupé" when muted, and the mute button cuts the mic at once.
+
+### What happens when you speak over Jarod
+
+1. The audio stops at once: streaming player, sentence player, fallback audio.
+2. The model's turn is interrupted (`host.interrupt()`).
+3. The syllables already heard are kept for the next utterance (pre-roll).
+4. The answer still being generated is invalidated: each playback is tied to its turn (`this.speak !== speak`, `this.sentences !== sentences`), and a synthesis that arrives after the stop is dropped (`SentenceSpeaker.stop`). An old answer can never start playing again.
+5. The context separates **what was said aloud** from **what was generated but not heard**. Only the sentences actually started are kept, marked `[interrupted here by the user: the rest was not heard]`. The caption shows "— interrompu".
+
+### Transcripts
+
+- Speech-to-text works on the **whole utterance**, after the end of speech: there is no partial transcript, so nothing is acted on from an incomplete transcript.
+- Destructive OS commands never run from the voice fast path (see "Tiers" above).
+- Confirmations for sensitive actions are unchanged.
+
+### With the Jarod core
+
+The core does not serve `speak-stream`. Before, the whole answer was spoken once the model had finished. Now `SentenceSpeaker` sends each sentence to `/api/audio/speak` as soon as it is complete in the stream, synthesizing the next sentence while the current one plays.
+
+### Echo
+
+- The mic is opened with Chromium's `echoCancellation`, `noiseSuppression` and `autoGainControl` (`audio-capture.ts`).
+- With speakers, Jarod's voice can still trigger an interruption. These are counted: an interruption followed by no words counts as "sans parole".
+- **Headphones are the most reliable.** Without them, switch to classic mode if false interruptions happen.
+
+### Privacy
+
+No audio is recorded or kept. Transcripts live in the conversation like typed messages.
+
+### Measurements (Settings › Voice › "Mesures de cette session")
+
+These are measured, not targets. They are kept in memory for the current run:
+
+- median time from the end of your speech to the first sound;
+- median time from an interruption to silence;
+- number of interruptions, and how many had no words.
+
+Measured on 2026-10-18 on this machine:
+
+| Measure | Result |
+|---|---|
+| Synthesis by the Jarod core, Windows voice | One sentence 241–264 ms; a four-sentence answer 268–293 ms (`e2e/voice-latency.spec.ts`) |
+| Silencing on interruption | Synchronous in the code (stop + pause) |
+
+**Not measured:**
+
+- end of speech to first sound with a real model;
+- interruptions with a real microphone;
+- echo transcription;
+- behaviour under load.
+
+These need your microphone and a connected model.
+
+### Tests
+
+| Test | What it covers |
+|---|---|
+| `src/lib/voice/sentence-speaker.test.ts` | Fake audio: the first sentence plays while the answer streams; a stop silences at once and drops late syntheses; errors; empty answers |
+| `vad.test.ts`, `speech-text.test.ts` | Existing |
+| `e2e/voice-latency.spec.ts` | The core's real synthesis |

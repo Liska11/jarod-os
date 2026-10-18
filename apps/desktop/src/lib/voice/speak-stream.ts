@@ -295,14 +295,30 @@ export async function speakOnce(text: string, signal?: { stopped: boolean }): Pr
     return
   }
 
-  const result = await rest.post<{ ok: boolean; data_url?: string }>('/api/audio/speak', { text: trimmed })
+  const url = await synthesize(trimmed)
 
-  if (!result?.data_url || signal?.stopped) {
+  if (!url || signal?.stopped) {
+    return
+  }
+
+  await playDataUrl(url)
+}
+
+/** One piece of speech from `POST /api/audio/speak`, as a playable data URL ('' when the backend gave none). */
+export async function synthesize(text: string): Promise<string> {
+  const result = await rest.post<{ ok: boolean; data_url?: string }>('/api/audio/speak', { text: text.trim() })
+
+  return result?.data_url ?? ''
+}
+
+/** Plays a data URL on the whole-utterance player; resolves when it ends or `stopFallbackAudio()` silences it. */
+export async function playDataUrl(url: string): Promise<void> {
+  if (!url) {
     return
   }
 
   stopFallbackAudio()
-  const audio = new Audio(result.data_url)
+  const audio = new Audio(url)
   fallbackAudio = audio
 
   await new Promise<void>((resolve, reject) => {

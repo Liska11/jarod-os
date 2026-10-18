@@ -486,6 +486,11 @@ export interface VoicePrefs {
   hotkey: string
   /** Seconds the mic keeps listening for a follow-up after Hermes finishes speaking. */
   followUpSeconds: number
+  /**
+   * Duplex: the mic keeps listening while Jarod speaks, and speaking over it interrupts (docs/VOICE.md). Off (classic): the mic is
+   * closed while Jarod speaks; the stop button still interrupts. Headphones make duplex reliable.
+   */
+  duplex: boolean
   /** Speak `notification.show` bodies (missions, reminders) aloud while voice is enabled. */
   announceNotifications: boolean
   /** Show Hermes's own tool results on screen (memory, automations, files) even outside a voice conversation. */

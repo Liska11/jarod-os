@@ -10,6 +10,7 @@ export const VOICE_DEFAULTS: VoicePrefs = {
   wakeWord: false,
   hotkey: DEFAULT_VOICE_HOTKEY,
   followUpSeconds: 8,
+  duplex: true,
   announceNotifications: false,
   followHermes: false,
   sttTuned: false,
@@ -29,6 +30,7 @@ export function normalizeVoicePrefs(raw: unknown): VoicePrefs {
     engine: source.engine === 'live' ? 'live' : 'chained',
     hotkey: typeof source.hotkey === 'string' ? source.hotkey : VOICE_DEFAULTS.hotkey,
     followUpSeconds: clampNumber(source.followUpSeconds, 0, 120, VOICE_DEFAULTS.followUpSeconds),
+    duplex: source.duplex !== false,
     liveIdleSeconds: clampNumber(source.liveIdleSeconds, 10, 600, VOICE_DEFAULTS.liveIdleSeconds),
     liveDailyCapMinutes: clampNumber(source.liveDailyCapMinutes, 0, 24 * 60, VOICE_DEFAULTS.liveDailyCapMinutes),
     liveUsage: { day: typeof usage.day === 'string' ? usage.day : '', seconds: clampNumber(usage.seconds, 0, Number.MAX_SAFE_INTEGER, 0) }

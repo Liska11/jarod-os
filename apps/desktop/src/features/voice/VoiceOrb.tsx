@@ -63,6 +63,7 @@ export function VoiceOrb({ offsetClass = 'bottom-24' }: { offsetClass?: string }
   const voice = useStore($voice)
   const active = useStore($voiceActive)
   const level = useStore($voiceLevel)
+  const prefs = useStore($prefs)
 
   const label = LABEL[voice.state]
 
@@ -82,7 +83,16 @@ export function VoiceOrb({ offsetClass = 'bottom-24' }: { offsetClass?: string }
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 text-[11.5px] text-fg-3">
             <span className="font-medium text-fg-2">{label && t(label)}</span>
-            {voice.muted && <span className="rounded-full bg-warn/20 px-1.5 text-warn">muted</span>}
+            {voice.muted ? (
+              <span className="rounded-full bg-warn/20 px-1.5 text-warn">{t('voiceOrb.muted')}</span>
+            ) : (
+              voice.engine !== 'live' &&
+              prefs.voice.duplex !== false && (
+                <span className="rounded-full bg-accent-soft px-1.5 text-accent-strong" title={t('voiceOrb.duplex.title')}>
+                  {t('voiceOrb.duplex')}
+                </span>
+              )
+            )}
             {voice.engine === 'live' ? (
               <span className="ml-auto flex items-center gap-1.5 tabular-nums" title={t('voiceOrb.costTitle')}>
                 <span className="rounded-full bg-accent-soft px-1.5 text-accent-strong">{t('voiceOrb.live')}</span>
@@ -91,7 +101,7 @@ export function VoiceOrb({ offsetClass = 'bottom-24' }: { offsetClass?: string }
                 <span>≈ ${estimate.toFixed(2)} today</span>
               </span>
             ) : (
-              <span className="ml-auto rounded-full bg-white/6 px-1.5 text-fg-4">free</span>
+              <span className="ml-auto rounded-full bg-white/6 px-1.5 text-fg-4">{t('voiceOrb.free')}</span>
             )}
           </div>
           {voice.captions.user && <div className="mt-0.5 truncate text-[12.5px] text-fg-2">“{voice.captions.user}”</div>}

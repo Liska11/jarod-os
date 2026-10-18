@@ -7,7 +7,10 @@ import { earcons } from './earcons.ts'
 import { type ConversationEngine, describeTurnError, type VoiceHost } from './engine.ts'
 import { bytesToBase64, concatInt16, encodeWav } from './pcm.ts'
 import { withProviderFallback } from './provider-fallback.ts'
-import { SpeakStream, speakOnce, stopFallbackAudio } from './speak-stream.ts'
+import { playDataUrl, SpeakStream, speakOnce, stopFallbackAudio, synthesize } from './speak-stream.ts'
+import { SentenceSpeaker } from './sentence-speaker.ts'
+import { recordFalseBargeIn, recordFirstAudio, recordStop } from '../../store/voice-metrics.ts'
+import { t } from '../i18n.ts'
 import { isNoiseTranscript, isStopPhrase, sanitizeForSpeech } from './speech-text.ts'
 import { BARGE_IN_ENDPOINTER, DEFAULT_ENDPOINTER, Endpointer } from './vad.ts'
 
@@ -44,7 +47,14 @@ export class ChainedEngine implements ConversationEngine {
   private fallbackText: string | null = null
   private speechEnded = false
   private thinkingTimer: ReturnType<typeof setTimeout> | null = null
-  private readonly exchanges: Array<{ user: string; hermes: string }> = []
+  /** `hermes`: what was said aloud (all of it, or up to an interruption); `interrupted`: the person cut it short. */
+  private readonly exchanges: Array<{ user: string; hermes: string; interrupted?: boolean }> = []
+  /** Sentence-by-sentence speech when the backend has no streaming voice (the Jarod core). */
+  private sentences: SentenceSpeaker | null = null
+  /** When the person stopped speaking (for the first-audio measure). */
+  private utteranceEndAt = 0
+  /** The utterance being transcribed came from an interruption (to count interruptions that held no words). */
+  private fromBargeIn = false
 
   constructor(private readonly host: VoiceHost) {}
 
@@ -85,9 +95,14 @@ export class ChainedEngine implements ConversationEngine {
   }
 
   interrupt(): void {
-    if (this.mode === 'monitor') {
+    if (this.mode === 'monitor' || this.speak || this.sentences) {
       this.bargeIn(false)
     }
+  }
+
+  /** Duplex listens while Jarod speaks; classic keeps the mic closed until it is done (the stop button still interrupts). */
+  private whileSpeaking(): Mode {
+    return this.host.prefs().duplex === false ? 'idle' : 'monitor'
   }
 
   // ---- listening -------------------------------------------------------------------------------
@@ -144,6 +159,7 @@ export class ChainedEngine implements ConversationEngine {
       this.preRoll = []
       this.preRollMs = 0
     } else if (event === 'speech-end') {
+      this.utteranceEndAt = performance.now()
       const pcm = concatInt16(this.utterance)
       this.utterance = []
       this.mode = 'idle'
@@ -175,10 +191,26 @@ export class ChainedEngine implements ConversationEngine {
 
   /** The user spoke over Hermes (or pressed stop): cut speech, interrupt the turn, listen. */
   private bargeIn(fromSpeech: boolean): void {
+    const at = performance.now()
     this.clearThinkingTimer()
     this.speak?.stop()
     this.speak = null
+    const heard = this.sentences?.heard() ?? ''
+    this.sentences?.stop()
+    this.sentences = null
     stopFallbackAudio()
+    recordStop(performance.now() - at, fromSpeech)
+    // What the person actually heard stays in the context, marked as cut short; what was generated but not said is dropped.
+    const last = this.exchanges[this.exchanges.length - 1]
+
+    if (last && !this.turnDone) {
+      last.hermes = sanitizeForSpeech(heard).slice(0, 800)
+      last.interrupted = true
+      // Visible: the caption keeps what was said, marked as cut short.
+      this.host.setCaptions({ assistant: `${last.hermes ? `${last.hermes.slice(-300)} ` : ''}— ${t('voiceOrb.interrupted')}` })
+    }
+
+    this.fromBargeIn = fromSpeech
     this.stopObserving?.()
     this.stopObserving = null
 
@@ -219,7 +251,12 @@ export class ChainedEngine implements ConversationEngine {
       return
     }
 
+    const fromBargeIn = this.fromBargeIn
+    this.fromBargeIn = false
+
     if (!transcript || isNoiseTranscript(transcript)) {
+      // An interruption that held no words: noise, or Jarod's own voice heard through the speakers.
+      if (fromBargeIn) recordFalseBargeIn()
       this.beginListening(true)
 
       return
@@ -246,13 +283,13 @@ export class ChainedEngine implements ConversationEngine {
       this.exchanges.push({ user: transcript, hermes: intent.spoken })
       this.host.setCaptions({ assistant: intent.spoken })
       this.host.setState('speaking')
-      this.mode = 'monitor'
+      this.mode = this.whileSpeaking()
       this.endpointer = new Endpointer(BARGE_IN_ENDPOINTER)
       const signal = { stopped: false }
       this.speakWithFallback(intent.spoken, signal)
         .catch(() => undefined)
         .finally(() => {
-          if (!this.stopped && this.mode === 'monitor') {
+          if (!this.stopped && (this.mode === 'monitor' || this.mode === 'idle')) {
             this.beginListening(true)
           }
         })
@@ -291,7 +328,7 @@ export class ChainedEngine implements ConversationEngine {
 
     return this.exchanges
       .slice(-MAX_CONTEXT_EXCHANGES)
-      .flatMap(({ user, hermes }) => [`User: ${user}`, hermes ? `Hermes: ${hermes}` : null])
+      .flatMap(({ user, hermes, interrupted }) => [`User: ${user}`, hermes ? `Hermes: ${hermes}${interrupted ? ' [interrupted here by the user: the rest was not heard]' : ''}` : interrupted ? 'Hermes: [interrupted by the user before saying anything]' : null])
       .filter((line): line is string => Boolean(line))
       .join('\n')
       .slice(-5000)
@@ -303,8 +340,10 @@ export class ChainedEngine implements ConversationEngine {
     this.replyText = ''
     this.fallbackText = null
     this.speechEnded = false
-    const interrupted = this.exchanges.length > 0 && !this.exchanges[this.exchanges.length - 1].hermes
+    const previous = this.exchanges[this.exchanges.length - 1]
+    const interrupted = Boolean(previous && (previous.interrupted || !previous.hermes))
     this.exchanges.push({ user: text, hermes: '' })
+    this.sentences = null
 
     // Open the speech socket before the model answers so the first sentence plays immediately.
     const speak = new SpeakStream({
@@ -312,6 +351,7 @@ export class ChainedEngine implements ConversationEngine {
         this.clearThinkingTimer()
 
         if (!this.stopped && this.speak === speak) {
+          recordFirstAudio(performance.now() - this.utteranceEndAt)
           this.host.setState('speaking')
         }
       },
@@ -323,9 +363,9 @@ export class ChainedEngine implements ConversationEngine {
         this.speechEnded = true
 
         if (reason === 'fallback') {
-          // Provider has no chunked API: speak the whole reply once the turn completes.
-          this.fallbackText = ''
-          this.maybeFinishTurn()
+          // No streaming voice here (the Jarod core): speak sentence by sentence as the reply streams, instead of waiting for all of it.
+          this.speechEnded = false
+          this.startSentences(speak)
 
           return
         }
@@ -338,7 +378,7 @@ export class ChainedEngine implements ConversationEngine {
       }
     })
     this.speak = speak
-    this.mode = 'monitor'
+    this.mode = this.whileSpeaking()
     this.endpointer = new Endpointer(BARGE_IN_ENDPOINTER)
     this.armThinkingTimer()
 
@@ -361,7 +401,9 @@ export class ChainedEngine implements ConversationEngine {
         this.replyText = full
         this.host.setCaptions({ assistant: sanitizeForSpeech(full).slice(-400) })
 
-        if (this.fallbackText === null) {
+        if (this.sentences) {
+          this.sentences.feed(delta)
+        } else if (this.fallbackText === null) {
           speak.feed(delta)
         }
       },
@@ -383,6 +425,8 @@ export class ChainedEngine implements ConversationEngine {
         if (status === 'error' || (!full.trim() && error) || /^Error:/i.test(this.replyText.trim())) {
           const described = describeTurnError(error || this.replyText)
           speak.stop()
+          this.sentences?.stop()
+          this.sentences = null
 
           // Sign-in problems surface as the OS sign-in card (opened by the auth store); no second toast.
           if (described.kind !== 'auth') {
@@ -410,9 +454,53 @@ export class ChainedEngine implements ConversationEngine {
         }
 
         speak.done()
+        this.sentences?.done()
         this.maybeFinishTurn()
       }
     })
+  }
+
+  /** Sentence-by-sentence speech for this reply (the turn's SpeakStream said the backend has no streaming voice). */
+  private startSentences(speak: SpeakStream): void {
+    const sentences = new SentenceSpeaker(
+      { synth: synthesize, play: playDataUrl, silence: stopFallbackAudio },
+      {
+        onStart: () => {
+          this.clearThinkingTimer()
+
+          if (!this.stopped && this.sentences === sentences) {
+            recordFirstAudio(performance.now() - this.utteranceEndAt)
+            this.host.setState('speaking')
+          }
+        },
+        onEnd: (reason, error) => {
+          if (this.sentences !== sentences || reason === 'stopped') {
+            return
+          }
+
+          if (reason === 'error' && error) {
+            this.host.notify('Speech unavailable', error, 'warn')
+          }
+
+          this.speechEnded = true
+          this.maybeFinishTurn()
+        }
+      }
+    )
+    this.sentences = sentences
+
+    if (this.speak !== speak) {
+      return
+    }
+
+    // What streamed before the fallback was known.
+    if (this.replyText) {
+      sentences.feed(this.replyText)
+    }
+
+    if (this.turnDone) {
+      sentences.done()
+    }
   }
 
   /** Once the turn is complete and speech has drained (or fell back), listen for a follow-up. */
@@ -422,6 +510,7 @@ export class ChainedEngine implements ConversationEngine {
     }
 
     this.speak = null
+    this.sentences = null
     this.stopObserving?.()
     this.stopObserving = null
 
