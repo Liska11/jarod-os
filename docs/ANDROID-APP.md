@@ -10,6 +10,7 @@ A companion app for the phone: talk to Jarod, prove who you are, approve what Ja
 | The encrypted protocol (shared, byte for byte, by both ends) | `jarod-core/packages/plugins/gateways/src/remote-protocol.ts` |
 | Pairing code and the list of phones on the PC | Réglages › Appareils (`DevicesSection.tsx`), canals `phone-*` (`bridge/src/main/handlers/phone.ts`) |
 | Tests | `gateways/test/mobile-direct.test.ts` (core), `mobile/src/**/*.test.ts` (app) |
+| X25519 for WebViews older than Chrome 133 (Android 9) | `mobile/src/lib/x25519-shim.ts` (@noble/curves) |
 | A throwaway PC for development | `jarod-core/packages/plugins/gateways/scripts/dev-phone-pc.ts` |
 
 ## 1. Architecture
@@ -159,10 +160,10 @@ then, in another terminal, `JAROD_BRIDGE=http://127.0.0.1:10493 npm --prefix mob
 
 **Left to do**
 
-0. Run the APK on a real phone: Keystore + BiometricPrompt, camera scan, microphone, WakeService and the notification permission are native and only checked by compilation so far.
+0. Real phones: verified on a Galaxy Note 8 (Android 9, WebView 101, X25519 from `x25519-shim.ts`) through `adb reverse` — pairing with the fingerprint, unlock, streamed reply, WakeService waking the closed app with a content-free notification. Still to try there: camera scan, voice message, approval with the fingerprint, an Android 11+ phone (PIN as well as biometrics), and the LAN / Tailscale path instead of USB.
 1. Approvals from runs started on the PC and from scheduled tasks mirrored to the phone (first answer wins, PC or phone), behind an explicit setting — today `backgroundHooks.approve` refuses, and the desktop's approvals stay on the desktop.
 2. WakeService hardening: restart after reboot (`BOOT_COMPLETED`), back-off when the PC is unreachable, battery measurements, and the Android 14+ foreground-service type review for Play.
 3. A notification setting per kind (finished tasks, reminders, alerts) and a «what's new» list on the phone.
 4. Turning the old browser page off by default once the app is installed.
 5. Release build: signing key kept outside the repository, `minifyEnabled`, Play-integrity review if ever published.
-6. Test on more devices (WebView must support X25519 in WebCrypto: Android System WebView / Chrome 133 or later).
+6. Android 9-10: the device key opens with biometrics only (a per-use Keystore key accepts the PIN from Android 11). WebViews older than Chrome 100 are refused with an explanation (`public/check.js`).
