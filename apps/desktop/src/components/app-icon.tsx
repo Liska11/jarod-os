@@ -3,6 +3,7 @@ import type { AppIconId } from '../shell/apps.ts'
 // paths resolve to the filesystem root under the packaged `file://` renderer.
 import hermesAvatarUrl from '../assets/brand/hermes-avatar.jpg'
 import { cn } from '../lib/cn.ts'
+import { useT } from '../lib/i18n.ts'
 
 const PATHS: Record<AppIconId, React.ReactNode> = {
   // Pinokio: a cube (an app in a box) with a spark.
@@ -102,10 +103,12 @@ const PATHS: Record<AppIconId, React.ReactNode> = {
 
 /** The Hermes avatar: the same mark the mockups use, on a white tile. */
 export function HermesAvatar({ size = 40, className, rounded = 10 }: { size?: number; className?: string; rounded?: number }) {
+  const { assistant } = useT()
+
   return (
     <img
       src={hermesAvatarUrl}
-      alt="Hermes"
+      alt={assistant}
       width={size}
       height={size}
       draggable={false}
