@@ -138,6 +138,7 @@ function PhoneBlock() {
   const status = useBackendData(() => jarod<PhoneStatus>('phone-status'))
   const [busy, setBusy] = useState(false)
   const [pairing, setPairing] = useState<PairingInfo | null>(null)
+  const [door, setDoor] = useState<'app' | 'browser'>('app')
   const [now, setNow] = useState(Date.now())
 
   useEffect(() => {
@@ -172,6 +173,9 @@ function PhoneBlock() {
   }
 
   const left = pairing ? secondsLeft(pairing.expiresAt, now) : 0
+  // The app's link by default: it pins this computer's key and works over Tailscale too.
+  const showApp = door === 'app' && Boolean(pairing?.appLink)
+  const qrValue = pairing ? (showApp ? pairing.appLink! : pairing.url) : ''
 
   return (
     <SettingsGroup title={t('settings.devices.phone')}>
@@ -186,11 +190,17 @@ function PhoneBlock() {
           keywords={t('settings.devices.pairKw')}
           below={pairing && (
             <div className="flex flex-col gap-2">
-              {left > 0 && pairing.url && (
-                // The address carries the one-time code after `#`: scanning it pairs the phone without typing anything.
+              {left > 0 && pairing.appLink && (
+                <div className="flex gap-1.5" role="group" aria-label={t('settings.devices.pair.doorAria')}>
+                  <GlassButton size="sm" variant={door === 'app' ? 'primary' : 'ghost'} aria-pressed={door === 'app'} onClick={() => setDoor('app')}>{t('settings.devices.pair.forApp')}</GlassButton>
+                  <GlassButton size="sm" variant={door === 'browser' ? 'primary' : 'ghost'} aria-pressed={door === 'browser'} onClick={() => setDoor('browser')}>{t('settings.devices.pair.forBrowser')}</GlassButton>
+                </div>
+              )}
+              {left > 0 && qrValue && (
+                // Both links carry the one-time code after `#`: scanning pairs the phone without typing anything.
                 <div className="flex items-center gap-4">
-                  <QrCode value={pairing.url} label={t('settings.devices.pair.qrAria')} />
-                  <p className="text-[12.5px] text-fg-2">{t('settings.devices.pair.qr')}</p>
+                  <QrCode value={qrValue} label={t('settings.devices.pair.qrAria')} />
+                  <p className="text-[12.5px] text-fg-2">{showApp ? t('settings.devices.pair.qrApp') : t('settings.devices.pair.qr')}</p>
                 </div>
               )}
               <InlineNote tone={left > 0 ? 'info' : 'warn'}>
@@ -205,7 +215,7 @@ function PhoneBlock() {
         </SettingsRow>
       )}
       {mobile.devices.map(device => (
-        <SettingsRow key={device.deviceId} icon={<IconDeviceMobile />} label={device.name || t('settings.devices.phone')} description={t('settings.devices.paired', { date: new Date(device.pairedAt).toLocaleDateString(), seen: device.lastSeen ? new Date(device.lastSeen).toLocaleString() : t('settings.devices.never') })} keywords={t('settings.devices.pairedKw', { name: device.name })}>
+        <SettingsRow key={device.deviceId} icon={<IconDeviceMobile />} label={device.name || t('settings.devices.phone')} description={`${device.kind === 'app' ? t('settings.devices.kind.app') : t('settings.devices.kind.browser')} · ${t('settings.devices.paired', { date: new Date(device.pairedAt).toLocaleDateString(), seen: device.lastSeen ? new Date(device.lastSeen).toLocaleString() : t('settings.devices.never') })}`} keywords={t('settings.devices.pairedKw', { name: device.name })}>
           <GlassButton size="sm" variant="ghost" disabled={busy} onClick={() => void run(t('settings.devices.phone.removed'), () => jarod('phone-revoke', device.deviceId))} aria-label={t('settings.devices.revoke.aria', { name: device.name || t('settings.devices.phone') })}>
             {t('settings.devices.revoke')}
           </GlassButton>

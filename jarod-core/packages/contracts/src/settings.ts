@@ -14,6 +14,8 @@ export interface RemoteDevice {
   publicKey: string;
   pairedAt: number;
   lastSeen: number;
+  /** SHA-256 of the phone app's current wake token (`/m1/wake`, content-free). Absent until it asks. */
+  wakeHash?: string;
 }
 
 // remote/host.ts:33-40

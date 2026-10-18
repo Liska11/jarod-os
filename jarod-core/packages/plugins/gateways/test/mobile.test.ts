@@ -93,7 +93,13 @@ describe("mobile bridge — pairing", () => {
       expect(device.tokenHash).not.toBe(token);
       expect(device.tokenHash).toBe(createHash("sha256").update(token).digest("hex"));
       expect(r.bridge.status().devices).toEqual([
-        { deviceId: device.deviceId, name: "Téléphone de test", pairedAt: device.pairedAt, lastSeen: device.lastSeen },
+        {
+          deviceId: device.deviceId,
+          name: "Téléphone de test",
+          pairedAt: device.pairedAt,
+          lastSeen: device.lastSeen,
+          kind: "browser",
+        },
       ]);
     } finally {
       await r.stop();

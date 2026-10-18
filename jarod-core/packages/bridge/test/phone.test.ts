@@ -46,9 +46,14 @@ describe("pont téléphone", () => {
     const { call, app } = await phone([true]);
     await rejects(() => call("phone-pairing"), /éteint/);
     await call("phone-bridge-set", true);
-    const a = (await call("phone-pairing")) as { url: string; secret: string; expiresAt: number };
+    const a = (await call("phone-pairing")) as { url: string; appLink: string; secret: string; expiresAt: number };
     const b = (await call("phone-pairing")) as { secret: string };
     expect(a.secret).toMatch(/\S{6,}/);
+    // The app link carries the same one-time code, in the fragment, with the host key.
+    expect(a.appLink.startsWith("jarod://pair#")).toBe(true);
+    const fragment = new URLSearchParams(a.appLink.slice(a.appLink.indexOf("#") + 1));
+    expect(fragment.get("p")).toBe(a.secret);
+    expect(fragment.get("k")).toMatch(/^[\w-]{43}$/);
     expect(a.secret).not.toBe(b.secret);
     expect(a.expiresAt).toBeGreaterThan(Date.now());
     await rejects(() => call("phone-bridge-set", "oui"), /booléen attendu/);

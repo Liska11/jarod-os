@@ -1,5 +1,5 @@
 // Portage de packages/core/src/remote/host.ts (rév. 2e180305).
-import { timingSafeEqual } from "node:crypto";
+import { createHash, timingSafeEqual } from "node:crypto";
 import type { AgentEvent, AgentHooks } from "@jarod/plugin-agent";
 import type { GatewayHub } from "./hub.js";
 import { type RemoteConfig, type RemoteDevice } from "@jarod/contracts";
@@ -27,6 +27,23 @@ export const RELAY_TOKEN_KEY = "remote:relay-token";
 const HOST_KEY_SECRET = "remote:host-key";
 const PAIRING_TTL_MS = 10 * 60_000;
 const APPROVAL_TIMEOUT_MS = 10 * 60_000;
+/** A voice message, decoded: about two minutes of Opus, with room to spare. */
+export const MAX_VOICE_BYTES = 3 * 1024 * 1024;
+/** How long a direct channel may stay open without completing its handshake. */
+const HANDSHAKE_MS = 15_000;
+const TOUCH_MS = 60_000;
+/** Speech-to-text answers in this many characters at most, like a typed message. */
+const MAX_TEXT = 100_000;
+
+function sha256Hex(text: string): string {
+  return createHash("sha256").update(text).digest("hex");
+}
+
+function safeEqualHex(a: string, b: string): boolean {
+  const left = Buffer.from(a, "utf8");
+  const right = Buffer.from(b, "utf8");
+  return left.length === right.length && timingSafeEqual(left, right);
+}
 
 // RemoteDevice, RemoteConfig (host.ts:25-40) : déplacés dans @jarod/contracts (ré-exportés).
 
@@ -43,8 +60,28 @@ interface RelayFrame {
   data?: string;
 }
 
+/**
+ * How frames reach one client. Through the relay (`kick` asks the relay to cut it), or directly: the
+ * phone app on the LAN or over Tailscale, carried by the mobile bridge's `/m1/*` routes.
+ */
+export interface ClientTransport {
+  send(data: string): void;
+  close(): void;
+}
+
+/** What the mobile bridge holds for one direct channel. */
+export interface DirectClient {
+  cid: string;
+  /** One frame from the phone, in order. */
+  receive(data: string): void;
+  /** The carrier went away: pending approvals are refused, nothing else is sent. */
+  detach(): void;
+}
+
 interface Client {
   cid: string;
+  direct: boolean;
+  transport: ClientTransport;
   channel: SecureChannel | null;
   device: RemoteDevice | null;
   approvals: Map<string, (ok: boolean) => void>;
@@ -78,10 +115,64 @@ export class RemoteHost extends Emitter<{ status: RemoteStatus }> {
   private keys: CryptoKeyPair | null = null;
   private clients = new Map<string, Client>();
   private pairings: { secret: Uint8Array; expiresAt: number }[] = [];
+  /**
+   * Grows each time a paired phone has something to learn (a notification, an approval waiting). Its
+   * value says nothing else: it is what the content-free wake channel hands out. Starts from the clock
+   * so a restart never makes it go back.
+   */
+  private wakeSeq = Date.now();
+  private wakeWaiters = new Set<() => void>();
   status: RemoteStatus = { state: "stopped", clients: 0 };
 
   constructor(private readonly core: JarodCore) {
     super();
+    // Notifications reach the phones that are connected; the others are only told that there is news.
+    core.notifications.on("added", (n) => {
+      for (const c of this.clients.values()) {
+        if (!c.device) continue;
+        void this.push(c, {
+          event: "notification",
+          data: { id: n.id, kind: n.kind, title: n.title, body: n.body, createdAt: n.createdAt },
+        });
+      }
+      this.bumpWake();
+    });
+  }
+
+  /** The wake counter, for the long-poll of `/m1/wake`. */
+  wakeState(): number {
+    return this.wakeSeq;
+  }
+
+  /** Resolves with the counter once it moves past `since`, or after `timeoutMs` with what it is then. */
+  waitForWake(since: number, timeoutMs: number): Promise<number> {
+    if (this.wakeSeq > since) return Promise.resolve(this.wakeSeq);
+    return new Promise((done) => {
+      const finish = () => {
+        clearTimeout(timer);
+        this.wakeWaiters.delete(finish);
+        done(this.wakeSeq);
+      };
+      const timer = setTimeout(finish, timeoutMs);
+      this.wakeWaiters.add(finish);
+    });
+  }
+
+  private bumpWake(): void {
+    this.wakeSeq = Math.max(this.wakeSeq + 1, Date.now());
+    for (const wake of [...this.wakeWaiters]) wake();
+  }
+
+  /** The paired device a wake token belongs to, or null. Only its hash is kept here. */
+  wakeDevice(token: string): RemoteDevice | null {
+    if (!token) return null;
+    const hash = sha256Hex(token);
+    return this.config().devices.find((d) => d.wakeHash && safeEqualHex(d.wakeHash, hash)) ?? null;
+  }
+
+  /** Every paired device (relay or direct: the protocol is the same, so is the list). */
+  devices(): RemoteDevice[] {
+    return this.config().devices;
   }
 
   private config(): RemoteConfig {
@@ -122,10 +213,10 @@ export class RemoteHost extends Emitter<{ status: RemoteStatus }> {
     this.connect(token);
   }
 
+  /** Stops the relay. Direct channels belong to the mobile bridge and stay open. */
   stop(): void {
     this.stopped = true;
-    for (const c of this.clients.values()) for (const deny of c.approvals.values()) deny(false);
-    this.clients.clear();
+    this.dropRelayClients();
     this.ws?.close();
     this.ws = null;
     this.setStatus({ state: "stopped" });
@@ -155,8 +246,7 @@ export class RemoteHost extends Emitter<{ status: RemoteStatus }> {
     ws.addEventListener("close", (ev) => {
       if (this.ws !== ws) return;
       this.ws = null;
-      for (const c of this.clients.values()) for (const deny of c.approvals.values()) deny(false);
-      this.clients.clear();
+      this.dropRelayClients();
       if (this.stopped) return;
       if (ev.code === 4401)
         return this.setStatus({ state: "error", error: "Jeton du relais refusé : vérifiez RELAY_TOKEN." });
@@ -166,12 +256,66 @@ export class RemoteHost extends Emitter<{ status: RemoteStatus }> {
     });
   }
 
+  private dropRelayClients(): void {
+    for (const c of [...this.clients.values()]) {
+      if (c.direct) continue;
+      for (const deny of c.approvals.values()) deny(false);
+      this.clients.delete(c.cid);
+    }
+  }
+
+  private relayTransport(cid: string): ClientTransport {
+    return {
+      send: (data) => this.ws?.send(JSON.stringify({ type: "send", to: cid, data })),
+      close: () => this.ws?.send(JSON.stringify({ type: "kick", to: cid })),
+    };
+  }
+
+  private newClient(cid: string, transport: ClientTransport, direct: boolean): Client {
+    const c: Client = {
+      cid,
+      direct,
+      transport,
+      channel: null,
+      device: null,
+      approvals: new Map(),
+      queue: Promise.resolve(),
+    };
+    this.clients.set(cid, c);
+    return c;
+  }
+
+  /**
+   * A phone that reached this computer directly (LAN or Tailscale) through the mobile bridge. Same
+   * handshake, same devices, same RPC as through the relay; only the carrier differs. A channel that
+   * has not proven a paired device within a few seconds is closed.
+   */
+  attachDirect(transport: ClientTransport): DirectClient {
+    const cid = `d-${b64uEncode(randomBytes(16))}`;
+    const c = this.newClient(cid, transport, true);
+    const deadline = setTimeout(() => {
+      if (!c.channel) this.kick(cid);
+    }, HANDSHAKE_MS);
+    deadline.unref?.();
+    return {
+      cid,
+      receive: (data) => {
+        if (!this.clients.has(cid)) return;
+        c.queue = c.queue.then(() => this.onClientData(c, data)).catch(() => this.kick(cid));
+      },
+      detach: () => {
+        clearTimeout(deadline);
+        this.drop(cid);
+      },
+    };
+  }
+
   private send(cid: string, data: string): void {
-    this.ws?.send(JSON.stringify({ type: "send", to: cid, data }));
+    this.clients.get(cid)?.transport.send(data);
   }
 
   private kick(cid: string): void {
-    this.ws?.send(JSON.stringify({ type: "kick", to: cid }));
+    this.clients.get(cid)?.transport.close();
     this.drop(cid);
   }
 
@@ -188,18 +332,15 @@ export class RemoteHost extends Emitter<{ status: RemoteStatus }> {
       this.retries = 0;
       this.setStatus({ state: "online" });
     } else if (f.type === "open" && f.cid) {
-      this.clients.set(f.cid, {
-        cid: f.cid,
-        channel: null,
-        device: null,
-        approvals: new Map(),
-        queue: Promise.resolve(),
-      });
+      // A relay id must never stand for a direct channel (those start with "d-").
+      if (f.cid.startsWith("d-")) return;
+      this.newClient(f.cid, this.relayTransport(f.cid), false);
     } else if (f.type === "close" && f.cid) {
+      if (this.clients.get(f.cid)?.direct) return;
       this.drop(f.cid);
     } else if (f.type === "message" && f.cid && typeof f.data === "string") {
       const c = this.clients.get(f.cid);
-      if (!c) return;
+      if (!c || c.direct) return;
       const data = f.data;
       c.queue = c.queue.then(() => this.onClientData(c, data)).catch(() => this.kick(c.cid));
     }
@@ -267,6 +408,9 @@ export class RemoteHost extends Emitter<{ status: RemoteStatus }> {
 
   private touch(id: string): void {
     const cfg = this.config();
+    // Every streamed frame would rewrite the settings: "last seen" to the minute is enough.
+    const seen = cfg.devices.find((d) => d.id === id)?.lastSeen ?? 0;
+    if (Date.now() - seen < TOUCH_MS) return;
     this.core.settings.set("remote", {
       ...cfg,
       devices: cfg.devices.map((d) => (d.id === id ? { ...d, lastSeen: Date.now() } : d)),
@@ -316,19 +460,57 @@ export class RemoteHost extends Emitter<{ status: RemoteStatus }> {
           }));
       case "chat.send": {
         const s = session(p.sessionId);
-        const text = String(p.text ?? "").slice(0, 100_000);
+        const text = String(p.text ?? "").slice(0, MAX_TEXT);
         const r = await core.submit(s.id, text, this.hooksFor(c));
         if (r.kind === "command") return { kind: "command", text: r.result.text ?? "" };
         return { kind: r.kind };
+      }
+      case "chat.voice": {
+        // A voice message: transcribed here, with this computer's speech-to-text (and its network
+        // policy), then sent as the person's own words. The phone is told what was heard.
+        const s = session(p.sessionId);
+        const mime = String(p.mime ?? "");
+        if (!/^audio\/[a-z0-9.+-]+(;\s*codecs=[a-z0-9.,+-]+)?$/i.test(mime)) throw new Error("Format audio non pris en charge");
+        const audio = Buffer.from(String(p.audio ?? ""), "base64");
+        if (audio.length === 0) throw new Error("Message vocal vide");
+        if (audio.length > MAX_VOICE_BYTES) throw new Error("Message vocal trop long");
+        const heard = (await core.transcribe(audio, mime)).trim().slice(0, MAX_TEXT);
+        if (!heard) return { kind: "empty", text: "" };
+        const r = await core.submit(s.id, heard, this.hooksFor(c));
+        if (r.kind === "command") return { kind: "command", heard, text: r.result.text ?? "" };
+        return { kind: r.kind, heard };
       }
       case "chat.stop":
         core.stop(session(p.sessionId).id);
         return true;
       case "approval.resolve": {
+        // One decision for one request: a boolean, and nothing else is read ("always" does not exist).
         const resolve = c.approvals.get(String(p.id));
         c.approvals.delete(String(p.id));
         resolve?.(p.ok === true);
         return Boolean(resolve);
+      }
+      case "notifications.list":
+        return core.notifications
+          .list(50)
+          .map((n) => ({ id: n.id, kind: n.kind, title: n.title, body: n.body, createdAt: n.createdAt }));
+      case "wake.register": {
+        // A fresh wake token for this device, replacing the last one. It only ever opens `/m1/wake`,
+        // which answers with a counter: no content. Only its hash is written down.
+        const token = b64uEncode(randomBytes(32));
+        const id = c.device!.id;
+        const cfg = this.config();
+        this.core.settings.set("remote", {
+          ...cfg,
+          devices: cfg.devices.map((d) => (d.id === id ? { ...d, wakeHash: sha256Hex(token) } : d)),
+        });
+        return { token, seq: this.wakeSeq };
+      }
+      case "device.leave": {
+        // The phone forgets this computer: its key is no longer accepted, from now on.
+        const id = c.device!.id;
+        setTimeout(() => this.revoke(id), 0);
+        return true;
       }
       default:
         throw new Error(`Méthode inconnue : ${method}`);
@@ -356,8 +538,15 @@ export class RemoteHost extends Emitter<{ status: RemoteStatus }> {
           c.approvals.set(id, finish);
           void this.push(c, {
             event: "approval",
-            data: { id, sessionId, call: { id: call.id, name: call.name, args: call.args }, description },
+            data: {
+              id,
+              sessionId,
+              call: { id: call.id, name: call.name, args: call.args },
+              description,
+              expiresAt: Date.now() + APPROVAL_TIMEOUT_MS,
+            },
           });
+          this.bumpWake();
         }),
     };
   }
@@ -400,6 +589,24 @@ export class RemoteHost extends Emitter<{ status: RemoteStatus }> {
     if (!hit) return false;
     this.pairings = this.pairings.filter((p) => p !== hit);
     return true;
+  }
+
+  /**
+   * The phone app's pairing link, to show as a QR code: this computer's key (so the phone can tell it
+   * from an impostor), the one-time code (from `newPairingSecret`, so the browser page and the app
+   * share it), and the addresses it can be reached on. All in the fragment.
+   */
+  async appPairingFor(secret: string, addresses: string[], name: string): Promise<{ link: string }> {
+    const { hostId, keys } = await this.identity();
+    const p = new URLSearchParams({
+      v: "2",
+      h: hostId,
+      k: b64uEncode(await rawPublicKey(keys.publicKey)),
+      p: secret,
+      u: addresses.join(","),
+      n: name.slice(0, 60),
+    });
+    return { link: `jarod://pair#${p.toString()}` };
   }
 
   revoke(deviceIdToRevoke: string): void {

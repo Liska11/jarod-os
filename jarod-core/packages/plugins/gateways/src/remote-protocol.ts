@@ -302,3 +302,28 @@ export function parsePairingFragment(fragment: string): PairingInfo | null {
   if (p.get("v") !== "1" || !hostId || !hostKey || !secret) return null;
   return { hostId, hostKey, secret };
 }
+
+// ---------- Addresses ----------
+
+/**
+ * Who may talk to the bridge: this computer, the local networks, link-local, Tailscale's range
+ * (100.64.0.0/10, fd7a:115c:a1e0::/48 inside fc00::/7). A port forwarded on a router by mistake still
+ * opens nothing to the Internet.
+ */
+export function isPrivateAddress(raw: string): boolean {
+  let a = raw.trim().toLowerCase();
+  if (a.startsWith("::ffff:")) a = a.slice(7);
+  const v4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(a);
+  if (v4) {
+    const [x, y] = [Number(v4[1]), Number(v4[2])];
+    if (x === 127 || x === 10) return true;
+    if (x === 172 && y >= 16 && y <= 31) return true;
+    if (x === 192 && y === 168) return true;
+    if (x === 169 && y === 254) return true;
+    if (x === 100 && y >= 64 && y <= 127) return true;
+    return false;
+  }
+  if (a === "::1") return true;
+  // fc00::/7 (unique local, Tailscale) and fe80::/10 (link-local).
+  return /^f[cd][0-9a-f]{0,2}:/.test(a) || /^fe[89ab][0-9a-f]?:/.test(a);
+}

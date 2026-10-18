@@ -1,10 +1,14 @@
 // Portage de packages/core/src/services/mobile.ts (rév. 2e180305).
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
-import { networkInterfaces } from "node:os";
+import { hostname, networkInterfaces } from "node:os";
 import type { AgentEvent, AgentHooks } from "@jarod/plugin-agent";
 import type { GatewayHub } from "./hub.js";
 import { MOBILE_APP, MOBILE_PAGE } from "./mobile-page.js";
+import type { DirectClient } from "./remote-host.js";
+import { isPrivateAddress } from "./remote-protocol.js";
+
+export { isPrivateAddress };
 
 /** `JarodCore` → les membres publics du hub (`hub.ts`), qui reprend ceux du cœur. */
 type JarodCore = Omit<GatewayHub, never>;
@@ -15,13 +19,48 @@ const PAIR_ATTEMPTS = 5;
 const PAIR_WINDOW_MS = 10 * 60_000;
 /** How often a device's "last seen" is written: every request would rewrite the settings. */
 const TOUCH_MS = 60_000;
+/** One frame from the phone app: a voice message, base64 inside base64, fits with room to spare. */
+const MAX_FRAME = 8 * 1024 * 1024;
+/** Direct channels open at once, in all and from one address (a phone needs one). */
+const MAX_DIRECT = 32;
+const MAX_DIRECT_PER_ADDRESS = 4;
+/** Frames kept for a channel whose stream is not attached yet (the handshake answer, mostly). */
+const MAX_PENDING_FRAMES = 64;
+/** A wake long-poll answers within this time even when nothing happened (proxies cut idle requests). */
+export const WAKE_POLL_MS = 25_000;
+/** Where the Android app's page comes from (Capacitor, `server.androidScheme: "http"`). */
+export const APP_ORIGIN = "http://localhost";
+
+export interface MobileDeviceInfo {
+  deviceId: string;
+  name: string;
+  pairedAt: number;
+  lastSeen: number;
+  /** "browser": the page served here (bearer token); "app": the Android app (device key, end-to-end). */
+  kind: "browser" | "app";
+}
 
 export interface MobileStatus {
   running: boolean;
   port: number;
   /** What to type on the phone, or "" when this computer has no network address to offer. */
   url: string;
-  devices: { deviceId: string; name: string; pairedAt: number; lastSeen: number }[];
+  devices: MobileDeviceInfo[];
+}
+
+const VIRTUAL_ADAPTER = /vEthernet|VirtualBox|VMware|Hyper-V|WSL|docker|vboxnet|vmnet|br-/i;
+
+/** Tailscale's IPv4 range: listed after the LAN, which is shorter when the phone is home. */
+function isTailscale(address: string): boolean {
+  const m = /^100\.(\d{1,3})\./.exec(address);
+  return Boolean(m && Number(m[1]) >= 64 && Number(m[1]) <= 127);
+}
+
+interface DirectChannel {
+  client: DirectClient;
+  address: string;
+  stream: ServerResponse | null;
+  pending: string[];
 }
 
 /**
@@ -34,18 +73,62 @@ export class MobileBridge {
   private server: Server | null = null;
   private streams = new Set<{ res: ServerResponse; sessionId: string | null; deviceId: string }>();
   private attempts = new Map<string, { count: number; until: number }>();
+  private direct = new Map<string, DirectChannel>();
+  /** One wake long-poll per device: a new one replaces the old. */
+  private wakePolls = new Map<string, ServerResponse>();
 
   constructor(private readonly core: JarodCore) {}
 
   status(): MobileStatus {
-    const cfg = this.core.settings.getAll().mobile;
+    const all = this.core.settings.getAll();
     const port = this.port();
+    const browsers = all.mobile.devices.map(({ deviceId, name, pairedAt, lastSeen }) => ({
+      deviceId,
+      name,
+      pairedAt,
+      lastSeen,
+      kind: "browser" as const,
+    }));
+    const apps = all.remote.devices.map(({ id, name, pairedAt, lastSeen }) => ({
+      deviceId: id,
+      name,
+      pairedAt,
+      lastSeen,
+      kind: "app" as const,
+    }));
     return {
       running: this.server !== null,
       port,
       url: this.server ? this.url(port) : "",
-      devices: cfg.devices.map(({ deviceId, name, pairedAt, lastSeen }) => ({ deviceId, name, pairedAt, lastSeen })),
+      devices: [...apps, ...browsers],
     };
+  }
+
+  /** Every address of this computer a phone may use, LAN first, then Tailscale. */
+  addresses(port = this.port()): string[] {
+    const lan: string[] = [];
+    const tailnet: string[] = [];
+    for (const [name, list] of Object.entries(networkInterfaces())) {
+      // Virtual adapters (Hyper-V, WSL, VirtualBox, VMware, Docker) lead nowhere a phone can be.
+      if (VIRTUAL_ADAPTER.test(name)) continue;
+      for (const net of list ?? []) {
+        if (net.family !== "IPv4" || net.internal || !isPrivateAddress(net.address)) continue;
+        // Link-local: what a computer gives itself when there is no network.
+        if (net.address.startsWith("169.254.")) continue;
+        (isTailscale(net.address) ? tailnet : lan).push(`http://${net.address}:${port}`);
+      }
+    }
+    return [...new Set([...lan, ...tailnet])];
+  }
+
+  /**
+   * The Android app's pairing link (and the browser's, from the same one-time code): the app link
+   * carries this computer's key and every address it can be reached on.
+   */
+  async appPairing(): Promise<{ url: string; appLink: string; secret: string; expiresAt: number }> {
+    const browser = this.pairing();
+    const { link } = await this.core.remoteHost().appPairingFor(browser.secret, this.addresses(), hostname());
+    return { ...browser, appLink: link };
   }
 
   /** The port in use, or the one that would be. */
@@ -106,6 +189,7 @@ export class MobileBridge {
     const server = this.server;
     for (const stream of [...this.streams]) stream.res.end();
     this.streams.clear();
+    this.closeDirect();
     if (server) {
       await new Promise<void>((done) => server.close(() => done()));
       this.server = null;
@@ -124,14 +208,34 @@ export class MobileBridge {
     const server = this.server;
     for (const stream of [...this.streams]) stream.res.end();
     this.streams.clear();
+    this.closeDirect();
     if (server) {
       await new Promise<void>((done) => server.close(() => done()));
       this.server = null;
     }
   }
 
-  /** Drops a device, from either side of the app. Its token stops working immediately. */
+  private closeDirect(): void {
+    for (const ch of [...this.direct.values()]) {
+      ch.client.detach();
+      ch.stream?.end();
+    }
+    this.direct.clear();
+    for (const res of this.wakePolls.values()) res.end();
+    this.wakePolls.clear();
+  }
+
+  /**
+   * Drops a device, from either side of the app. Its token (browser) or its key (app) stops working
+   * immediately, and its open streams are cut.
+   */
   revoke(deviceId: string): MobileStatus {
+    if (this.core.settings.getAll().remote.devices.some((d) => d.id === deviceId)) {
+      this.core.remoteHost().revoke(deviceId);
+      this.wakePolls.get(deviceId)?.end();
+      this.wakePolls.delete(deviceId);
+      return this.status();
+    }
     this.dropDevice(deviceId);
     // Only that device's streams: revoking one phone must not cut the others off.
     for (const stream of [...this.streams]) {
@@ -149,6 +253,14 @@ export class MobileBridge {
     res.setHeader("cache-control", "no-store");
     res.setHeader("x-content-type-options", "nosniff");
     // No cross-origin header at all: a page elsewhere on the web cannot read an answer from here.
+
+    if (!isPrivateAddress(req.socket.remoteAddress ?? "")) {
+      // Not this computer, not a local network, not the tailnet: nothing here, not even the page.
+      req.resume();
+      return this.json(res, 403, { error: "adresse non autorisée" });
+    }
+
+    if (url.pathname.startsWith("/m1/")) return this.routeDirect(req, res, url);
 
     if (req.method === "GET" && url.pathname === "/") {
       return this.html(res, MOBILE_PAGE);
@@ -216,6 +328,119 @@ export class MobileBridge {
       return this.json(res, 200, { ok: true });
     }
     return this.json(res, 404, { error: "inconnu" });
+  }
+
+  // ---------- The Android app: the end-to-end channel, carried directly ----------
+
+  /**
+   * `/m1/open` → a channel id; `/m1/down` → the PC's frames (Server-Sent Events); `/m1/up` → one frame
+   * from the phone. What travels is the `jarod-relay/1` protocol, sealed end to end: HTTP carries no
+   * secret, and nothing is answered to anyone before the handshake has proven a paired device.
+   * `/m1/wake` is the closed app's long-poll: a counter, never content.
+   */
+  private async routeDirect(req: IncomingMessage, res: ServerResponse, url: URL): Promise<void> {
+    // The app's own origin (Capacitor serves it from http://localhost). Opening this door to a page
+    // gives it nothing: every frame needs the device key, the wake answer needs the wake token.
+    res.setHeader("access-control-allow-origin", APP_ORIGIN);
+    res.setHeader("vary", "origin");
+    if (req.method === "OPTIONS") {
+      res.writeHead(204, {
+        "access-control-allow-methods": "GET, POST",
+        "access-control-allow-headers": "authorization, content-type",
+        "access-control-max-age": "600",
+      });
+      res.end();
+      return;
+    }
+    const address = req.socket.remoteAddress ?? "";
+    if (req.method === "POST" && url.pathname === "/m1/open") {
+      req.resume();
+      const fromHere = [...this.direct.values()].filter((c) => c.address === address).length;
+      if (this.direct.size >= MAX_DIRECT || fromHere >= MAX_DIRECT_PER_ADDRESS) {
+        return this.json(res, 429, { error: "trop de canaux ouverts" });
+      }
+      const holder: { ch?: DirectChannel } = {};
+      const client = this.core.remoteHost().attachDirect({
+        send: (data) => {
+          const ch = holder.ch;
+          if (!ch) return;
+          if (ch.stream && !ch.stream.writableEnded) ch.stream.write(`data: ${data}\n\n`);
+          else if (ch.pending.length < MAX_PENDING_FRAMES) ch.pending.push(data);
+        },
+        close: () => {
+          const ch = holder.ch;
+          if (!ch) return;
+          this.direct.delete(client.cid);
+          ch.stream?.end();
+        },
+      });
+      holder.ch = { client, address, stream: null, pending: [] };
+      this.direct.set(client.cid, holder.ch);
+      return this.json(res, 200, { cid: client.cid, v: "jarod-relay/1" });
+    }
+    if (req.method === "GET" && url.pathname === "/m1/down") {
+      const ch = this.direct.get(url.searchParams.get("cid") ?? "");
+      // The channel is bound to the address that opened it, and to one stream.
+      if (!ch || ch.address !== address || ch.stream) return this.json(res, 404, { error: "canal inconnu" });
+      res.writeHead(200, { "content-type": "text/event-stream", "cache-control": "no-store", connection: "keep-alive" });
+      res.write(": canal direct\n\n");
+      ch.stream = res;
+      for (const data of ch.pending.splice(0)) res.write(`data: ${data}\n\n`);
+      const keepAlive = setInterval(() => res.write(": .\n\n"), 20_000);
+      req.on("close", () => {
+        clearInterval(keepAlive);
+        // The stream is the channel's life: when it goes, so does the channel (the app reconnects).
+        if (this.direct.get(ch.client.cid) === ch) this.direct.delete(ch.client.cid);
+        ch.client.detach();
+      });
+      return;
+    }
+    if (req.method === "POST" && url.pathname === "/m1/up") {
+      const ch = this.direct.get(url.searchParams.get("cid") ?? "");
+      if (!ch || ch.address !== address) {
+        req.resume();
+        return this.json(res, 404, { error: "canal inconnu" });
+      }
+      const frame = await this.text(req, MAX_FRAME);
+      ch.client.receive(frame);
+      res.writeHead(204);
+      res.end();
+      return;
+    }
+    if (req.method === "GET" && url.pathname === "/m1/wake") {
+      const header = req.headers.authorization ?? "";
+      const device = this.core.remoteHost().wakeDevice(header.startsWith("Bearer ") ? header.slice(7) : "");
+      if (!device) return this.json(res, 401, { error: "jeton de réveil inconnu" });
+      const since = Number(url.searchParams.get("since") ?? 0) || 0;
+      this.wakePolls.get(device.id)?.end();
+      this.wakePolls.set(device.id, res);
+      let open = true;
+      req.on("close", () => {
+        open = false;
+        if (this.wakePolls.get(device.id) === res) this.wakePolls.delete(device.id);
+      });
+      // The phone may ask for a shorter wait (a quick check when it comes back on the network).
+      const asked = Number(url.searchParams.get("wait") ?? WAKE_POLL_MS);
+      const wait = Number.isFinite(asked) ? Math.min(WAKE_POLL_MS, Math.max(0, asked)) : WAKE_POLL_MS;
+      const seq = await this.core.remoteHost().waitForWake(since, wait);
+      if (this.wakePolls.get(device.id) === res) this.wakePolls.delete(device.id);
+      // Only a counter: whether something happened, never what.
+      if (open) this.json(res, 200, { seq, news: seq > since });
+      return;
+    }
+    req.resume();
+    return this.json(res, 404, { error: "inconnu" });
+  }
+
+  private async text(req: IncomingMessage, limit: number): Promise<string> {
+    const chunks: Buffer[] = [];
+    let size = 0;
+    for await (const chunk of req) {
+      size += (chunk as Buffer).length;
+      if (size > limit) throw new Error("corps trop volumineux");
+      chunks.push(chunk as Buffer);
+    }
+    return Buffer.concat(chunks).toString("utf8");
   }
 
   private async pair(req: IncomingMessage, res: ServerResponse): Promise<void> {

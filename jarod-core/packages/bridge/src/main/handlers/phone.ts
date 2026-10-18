@@ -13,7 +13,8 @@ import { realpathSync } from "node:fs";
 import type { HandlerContext } from "./context.js";
 
 export interface PhoneStatus {
-  mobile: { running: boolean; port: number; url: string; devices: { deviceId: string; name: string; pairedAt: number; lastSeen: number }[] };
+  /** `devices`: every paired phone — `kind` "app" (Android app, device key) or "browser" (the page served by the bridge). */
+  mobile: { running: boolean; port: number; url: string; devices: { deviceId: string; name: string; pairedAt: number; lastSeen: number; kind: "app" | "browser" }[] };
   android: { adb: string | null; configured: string; state: "ready" | "unconfigured" | "missing"; devices: { serial: string; state: string; model: string; product: string }[] };
 }
 
@@ -68,9 +69,10 @@ export function createPhoneHandlers(ctx: HandlerContext) {
     },
 
     /** Un code d'appairage neuf (court, à usage unique) et l'adresse à ouvrir sur le téléphone. */
-    "phone-pairing": (): { url: string; secret: string; expiresAt: number } => {
+    "phone-pairing": async (): Promise<{ url: string; appLink: string; secret: string; expiresAt: number }> => {
       if (!hub().mobile.status().running) throw new Error("[oneai] pont téléphone éteint : allumez-le d'abord");
-      return hub().mobile.pairing();
+      // One one-time code for both doors: `appLink` (Android app, end to end, host key pinned) and `url` (browser page).
+      return hub().mobile.appPairing();
     },
 
     "phone-revoke": async (deviceId: unknown): Promise<PhoneStatus> => {
