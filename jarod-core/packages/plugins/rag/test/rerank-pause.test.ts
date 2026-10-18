@@ -36,7 +36,7 @@ class FakeReranker implements RerankerProvider {
 /** Voix pilotable : `busy()` l'ouvre, `free()` la ferme et réveille les `whenIdle` en attente. */
 function fakeVoice() {
   let active = false;
-  let waiters: (() => void)[] = [];
+  const waiters: (() => void)[] = [];
   const api: VoicePriority = {
     get active() {
       return active;

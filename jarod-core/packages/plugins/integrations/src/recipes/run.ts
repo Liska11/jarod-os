@@ -37,7 +37,7 @@ export interface RunResult {
 }
 
 /** Ce qui peut être inséré dans une ligne de commande : pas de métacaractère shell, pas de saut de ligne, pas d'accolade. */
-const SHELL_SAFE = /^[A-Za-z0-9_@%+=:,.\/\\ -]*$/;
+const SHELL_SAFE = /^[A-Za-z0-9_@%+=:,./\\ -]*$/;
 const MAX_SAVED = 64_000;
 const PATH_TOOLS = new Set(["read_file", "write_file", "list_dir"]);
 

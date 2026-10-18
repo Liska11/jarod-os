@@ -21,7 +21,7 @@ export interface ParserSpec {
 export const DOCLING: ParserSpec = { id: "B3", tool: "docling", extensions: [".pdf", ".docx", ".pptx", ".xlsx", ".html"], maxBytes: 50_000_000, maxOutputChars: 400_000, launcher: 'python "jarod-core/sidecars/docling-md/docling_md.py"' };
 export const MARKITDOWN: ParserSpec = { id: "B5", tool: "markitdown", extensions: [".pdf", ".docx", ".pptx", ".xlsx", ".html", ".csv", ".json", ".xml", ".txt"], maxBytes: 50_000_000, maxOutputChars: 400_000, launcher: "markitdown" };
 
-const SAFE_PATH = /^[A-Za-z0-9_@%+=,.\-\/ ]+$/;
+const SAFE_PATH = /^[A-Za-z0-9_@%+=,.\-/ ]+$/;
 
 export interface ParseRequest {
   /** Chemin relatif à la zone. */

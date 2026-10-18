@@ -157,7 +157,7 @@ function stringList(key: string, v: unknown, max: number, itemMax: number, ok: (
 }
 
 /** Un programme : un nom (`git`, `node.exe`) ou un chemin absolu ; ni espace, ni guillemet, ni métacaractère de shell. */
-const programOk = (s: string): string | null => (/^[^\s"'`;&|<>*?$%(){}\[\]^!]+$/.test(s) ? null : "nom de programme ou chemin absolu, sans espace ni caractère de shell");
+const programOk = (s: string): string | null => (/^[^\s"'`;&|<>*?$%(){}[\]^!]+$/.test(s) ? null : "nom de programme ou chemin absolu, sans espace ni caractère de shell");
 /**
  * Un dossier de lecture (outils : node, git…) : chemin ABSOLU, sans « .. », sans joker ni caractère interdit d'un chemin. La vérification de fond (existe, est un dossier, n'est ni
  * une racine de lecteur ni le dossier personnel ni un dossier de clés) est faite par le garde à chaque commande, sur le chemin réel : un dossier refusé là refuse la commande.

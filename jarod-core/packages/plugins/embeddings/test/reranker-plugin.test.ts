@@ -107,7 +107,7 @@ describe("plugin embeddings : service reranker", () => {
 // SPECS-P5-RERANKER-PAUSE.md : la priorité de la voix (ctx.root.voice.priority, lue paresseusement) vaut pour le service ET pour la relance du worker.
 describe("plugin embeddings : le reranker cède la place à la voix", () => {
   function voice(active: boolean) {
-    let waiters: (() => void)[] = [];
+    const waiters: (() => void)[] = [];
     const priority = {
       active,
       whenIdle: () => (priority.active ? new Promise<void>((r) => waiters.push(r)) : Promise.resolve()),

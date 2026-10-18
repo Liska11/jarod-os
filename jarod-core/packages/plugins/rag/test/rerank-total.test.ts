@@ -36,7 +36,7 @@ class FakeReranker implements RerankerProvider {
 
 function fakeVoice() {
   let active = false;
-  let waiters: (() => void)[] = [];
+  const waiters: (() => void)[] = [];
   const api: VoicePriority = {
     get active() {
       return active;

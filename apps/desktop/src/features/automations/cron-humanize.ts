@@ -302,7 +302,7 @@ export function humanizeSchedule(job: Pick<CronJob, 'schedule' | 'schedule_displ
   }
 
   if (kind === 'cron' && schedule.expr) {
-    return humanizeCronExpr(schedule.expr) ?? (fallback && !/^[\d*\/,\-\s]+$/.test(fallback) ? capitalize(fallback) : schedule.expr)
+    return humanizeCronExpr(schedule.expr) ?? (fallback && !/^[\d*/,\-\s]+$/.test(fallback) ? capitalize(fallback) : schedule.expr)
   }
 
   return capitalize(fallback)

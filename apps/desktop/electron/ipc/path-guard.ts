@@ -6,7 +6,7 @@ import path from 'node:path'
 export function isBelow(root: string, file: string, platform: NodeJS.Platform = process.platform, orEqual = false): boolean {
   const lib = platform === 'win32' ? path.win32 : path.posix
   const fold = (value: string) => (platform === 'win32' ? lib.normalize(value).toLowerCase() : lib.normalize(value))
-  const base = fold(root).replace(/[\/]+$/, '')
+  const base = fold(root).replace(/[/]+$/, '')
   const target = fold(file)
 
   return (orEqual && target === base) || target.startsWith(base + lib.sep)

@@ -97,10 +97,10 @@ export function normalizeText(s: string): string {
     .toLowerCase()
     .replace(/https?:\/\/\S+/g, "<url>")
     // Fragment entre guillemets, collé à un début de mot (l'apostrophe de « can't » n'ouvre pas un guillemet), sans espace : chemin ou glob → <chemin>.
-    .replace(/(^|[\s(\[:=,])(['"`‘“])([^\s'"`’”]{1,200})(['"`’”])/g, (m, pre: string, q1: string, body: string, q2: string) => (looksLikePath(body) ? `${pre}${q1}<chemin>${q2}` : m))
+    .replace(/(^|[\s([:=,])(['"`‘“])([^\s'"`’”]{1,200})(['"`’”])/g, (m, pre: string, q1: string, body: string, q2: string) => (looksLikePath(body) ? `${pre}${q1}<chemin>${q2}` : m))
     .replace(/\b[a-z]:[\\/][^\s'"<>|]*/g, "<chemin>")
     .replace(/\.{1,2}\\[^\s'"<>|]*/g, "<chemin>")
-    .replace(/\/[\w.\-]+(?:\/[\w.\-]+)+/g, "<chemin>")
+    .replace(/\/[\w.-]+(?:\/[\w.-]+)+/g, "<chemin>")
     // Chemin relatif nu : au moins deux segments, une barre finale, un joker ou une extension (« and/or » n'en est pas un).
     .replace(/(?<![\w<>@#:.\-/\\])[\w.\-~*?]+(?:\/[\w.\-*?]*)+/g, (m) => (m.split("/").length > 2 || m.endsWith("/") || /[*?]|\.\w{1,6}$/.test(m) ? "<chemin>" : m))
     .replace(/\.{1,2}<chemin>/g, "<chemin>")
