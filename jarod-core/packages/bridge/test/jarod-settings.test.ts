@@ -15,7 +15,7 @@ describe("réglages Agent", () => {
     const v = (await call("get-jarod-settings")) as Record<string, unknown>;
     // La liste blanche exacte : une clé de plus (ou de moins) doit se voir ici.
     expect(Object.keys(v).sort()).toEqual(
-      ["alwaysAllowTools", "android", "apiServer", "anthropicFallbacks", "autoApproveTools", "agentMode", "autoTitle", "browserPersistent", "browserVisible", "compactThreshold", "connectedBrowser", "desktop", "disabledSkills", "ecosystem", "fallbacks", "imageDescription", "learning", "maxAgentSteps", "memoryInject", "mobile", "permissionsRules", "rag", "sessionBudget", "shellGuard", "terminalShell", "toolSearch", "voice"].sort(),
+      ["alwaysAllowTools", "android", "apiServer", "anthropicFallbacks", "autoApproveTools", "agentMode", "autoTitle", "browserPersistent", "browserVisible", "compactThreshold", "connectedBrowser", "desktop", "disabledSkills", "ecosystem", "fallbacks", "imageDescription", "learning", "maxAgentSteps", "memoryInject", "mobile", "permissionsRules", "phoneApprovals", "rag", "sessionBudget", "shellGuard", "terminalShell", "toolSearch", "voice"].sort(),
     );
     expect(v).toMatchObject({
       autoApproveTools: false,
@@ -23,6 +23,7 @@ describe("réglages Agent", () => {
       terminalShell: "",
       browserVisible: true,
       browserPersistent: false,
+      phoneApprovals: false,
       agentMode: "build",
       maxAgentSteps: 25,
       compactThreshold: 240_000,
@@ -285,6 +286,22 @@ describe("alwaysAllowTools : l'écran ne fait que retirer", () => {
     expect(app.agent.settings.get("alwaysAllowTools")).toEqual(["edit_file"]);
     await call("set-jarod-settings", { alwaysAllowTools: [] });
     expect(app.agent.settings.get("alwaysAllowTools")).toEqual([]);
+  });
+});
+
+describe("accords sur le téléphone", () => {
+  it("off by default; turning it on asks natively (refused = nothing written); turning it off asks nothing", async () => {
+    const { call, app, confirms } = await setupKernel(undefined, [false, true]);
+    expect(app.agent.settings.get("phoneApprovals")).toBe(false);
+    await expect(Promise.resolve().then(() => call("set-jarod-settings", { phoneApprovals: true }))).rejects.toThrow(/refusé par l'utilisateur/);
+    expect(confirms[0]!.message).toMatch(/téléphone/);
+    expect(app.agent.settings.get("phoneApprovals")).toBe(false);
+    await call("set-jarod-settings", { phoneApprovals: true });
+    expect(app.agent.settings.get("phoneApprovals")).toBe(true);
+    await call("set-jarod-settings", { phoneApprovals: false });
+    expect(app.agent.settings.get("phoneApprovals")).toBe(false);
+    expect(confirms).toHaveLength(2);
+    await expect(Promise.resolve().then(() => call("set-jarod-settings", { phoneApprovals: "oui" }))).rejects.toThrow(/booléen/);
   });
 });
 

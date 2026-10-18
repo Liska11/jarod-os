@@ -53,6 +53,8 @@ export interface JarodSettings {
   connectedBrowser: ConnectedBrowserSettings
   rag: { enabled: boolean; embeddingsUrl: string; embeddingsModel: string; chunkSize: number; chunkOverlap: number; maxChunksPerDoc: number; topK: number }
   mobile: { port: number }
+  /** Approval requests also offered to the paired phone app; the first answer wins. */
+  phoneApprovals: boolean
   android: { timeoutMs: number }
   apiServer: { port: number; host: '127.0.0.1' | '0.0.0.0' }
   fallbacks: FallbackEntry[]

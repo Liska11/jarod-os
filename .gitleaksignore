@@ -19,3 +19,4 @@
 95cc707bb417a3a4a3329cf6d86e2340b3e44ea4:jarod-core/packages/plugins/integrations/test/engines/mxc.engine.test.ts:generic-api-key:39
 a7e172938f4b270397feabc664c266823d99d25f:jarod-core/packages/plugins/integrations/test/integrations.test.ts:generic-api-key:143
 b076342b76e7472541daa5079693e013ecbbd420:jarod-core/packages/plugins/tools/test/remote-exec.test.ts:generic-api-key:288
+39411481c57e186a5f12985533332e34f425481a:mobile/src/lib/news.ts:generic-api-key:23

@@ -14,7 +14,7 @@ export interface ApiServerStatus {
 }
 
 export interface PhoneStatus {
-  mobile: { running: boolean; port: number; url: string; devices: { deviceId: string; name: string; pairedAt: number; lastSeen: number }[] }
+  mobile: { running: boolean; port: number; url: string; devices: { deviceId: string; name: string; pairedAt: number; lastSeen: number; kind?: 'app' | 'browser' }[] }
   android: { adb: string | null; configured: string; state: 'ready' | 'unconfigured' | 'missing'; devices: { serial: string; state: string; model: string; product: string }[] }
 }
 
@@ -38,6 +38,8 @@ export interface SshTest {
 
 export interface PairingInfo {
   url: string
+  /** `jarod://pair#…`: the Android app's link (host key, one-time code, addresses). */
+  appLink?: string
   secret: string
   expiresAt: number
 }
