@@ -2,25 +2,63 @@ import { atom } from 'nanostores'
 
 /*
  * Measured, not promised (docs/VOICE.md): timings of the current app run's voice conversations, kept in memory only (no audio, no text).
- * - firstAudio: end of the person's speech → first sound of Jarod's answer;
+ * Every turn timing starts at the end of the person's speech (the endpointer's speech-end):
+ * - transcriptMs: → transcript back from speech to text;
+ * - firstTokenMs: → first text of the model's answer;
+ * - firstAudioMs: → first sound of Jarod's answer;
  * - stop: a detected interruption → Jarod's audio silenced;
  * - bargeIns / falseBargeIns: interruptions, and those followed by no words (noise, or Jarod's own voice through the speakers).
+ * `lastTurn` is the breakdown of the latest turn (the end-to-end test reads it from the orb).
  */
+export interface VoiceTurnTiming {
+  transcriptMs: number | null
+  firstTokenMs: number | null
+  firstAudioMs: number | null
+}
+
 export interface VoiceMetrics {
+  transcriptMs: number[]
+  firstTokenMs: number[]
   firstAudioMs: number[]
   stopMs: number[]
   bargeIns: number
   falseBargeIns: number
+  lastTurn: VoiceTurnTiming | null
 }
 
 const KEEP = 20
+const MAX_MS = 120_000
 
-export const $voiceMetrics = atom<VoiceMetrics>({ firstAudioMs: [], stopMs: [], bargeIns: 0, falseBargeIns: 0 })
+const EMPTY: VoiceMetrics = { transcriptMs: [], firstTokenMs: [], firstAudioMs: [], stopMs: [], bargeIns: 0, falseBargeIns: 0, lastTurn: null }
+
+export const $voiceMetrics = atom<VoiceMetrics>(EMPTY)
 
 const push = (list: number[], value: number) => [...list, Math.round(value)].slice(-KEEP)
+const valid = (ms: number) => ms >= 0 && ms < MAX_MS
+
+/** A new turn: its breakdown starts empty (a turn that never reaches the model keeps nulls). */
+export function beginTurnTiming(): void {
+  $voiceMetrics.set({ ...$voiceMetrics.get(), lastTurn: { transcriptMs: null, firstTokenMs: null, firstAudioMs: null } })
+}
+
+function recordStage(stage: keyof VoiceTurnTiming, ms: number): void {
+  if (!valid(ms)) return
+
+  const current = $voiceMetrics.get()
+  const lastTurn = current.lastTurn ?? { transcriptMs: null, firstTokenMs: null, firstAudioMs: null }
+  $voiceMetrics.set({ ...current, [stage]: push(current[stage], ms), lastTurn: { ...lastTurn, [stage]: Math.round(ms) } })
+}
+
+export function recordTranscript(ms: number): void {
+  recordStage('transcriptMs', ms)
+}
+
+export function recordFirstToken(ms: number): void {
+  recordStage('firstTokenMs', ms)
+}
 
 export function recordFirstAudio(ms: number): void {
-  if (ms >= 0 && ms < 120_000) $voiceMetrics.set({ ...$voiceMetrics.get(), firstAudioMs: push($voiceMetrics.get().firstAudioMs, ms) })
+  recordStage('firstAudioMs', ms)
 }
 
 export function recordStop(ms: number, fromSpeech: boolean): void {
