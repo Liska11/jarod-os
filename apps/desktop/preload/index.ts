@@ -3,6 +3,7 @@ import type { SandboxResult, SandboxesState } from '../shared/sandboxes.ts'
 import type { EnvironmentResult, EnvironmentsState } from '../shared/environments.ts'
 import type { VmResult, VmsState } from '../shared/vms.ts'
 import type { NetworkPolicy } from '../shared/network-policy.ts'
+import type { DestinationCheck, ExternalEstimate, ExternalPart, ExternalProgress, ExternalResult, ExternalState } from '../shared/external-backup.ts'
 import type { DataDiskApplyResult, DataDiskState, DriveInfo } from '../shared/data-disk.ts'
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import {
@@ -380,6 +381,20 @@ const api = {
     move: (name: string): Promise<VmResult> => ipcRenderer.invoke(IPC.vmsMove, name),
     stop: (name: string): Promise<VmResult> => ipcRenderer.invoke(IPC.vmsStop, name),
     remove: (name: string, typed: string): Promise<VmResult> => ipcRenderer.invoke(IPC.vmsRemove, name, typed)
+  },
+  externalBackup: {
+    state: (): Promise<ExternalState> => ipcRenderer.invoke(IPC.externalBackupState),
+    estimate: (parts: ExternalPart[]): Promise<ExternalEstimate> => ipcRenderer.invoke(IPC.externalBackupEstimate, parts),
+    check: (dest: string): Promise<DestinationCheck> => ipcRenderer.invoke(IPC.externalBackupCheck, dest),
+    /** The native folder picker; null when cancelled. */
+    choose: (): Promise<string | null> => ipcRenderer.invoke(IPC.externalBackupChoose),
+    setDestination: (dest: string | null): Promise<ExternalResult> => ipcRenderer.invoke(IPC.externalBackupSetDestination, dest),
+    setOptions: (parts: ExternalPart[], auto: { enabled: boolean; everyHours: number }): Promise<ExternalState> => ipcRenderer.invoke(IPC.externalBackupSetOptions, parts, auto),
+    run: (): Promise<ExternalResult> => ipcRenderer.invoke(IPC.externalBackupRun),
+    cancel: (): Promise<boolean> => ipcRenderer.invoke(IPC.externalBackupCancel),
+    /** Restore the backup in `folder` (Jarod-OS restarts once it is in place). */
+    restore: (folder: string): Promise<ExternalResult> => ipcRenderer.invoke(IPC.externalBackupRestore, folder),
+    onProgress: (listener: (progress: ExternalProgress) => void): Unsubscribe => subscribe(IPC.externalBackupProgress, listener)
   },
   network: {
     /** Jarod's Internet policy (the switch in the top bar). */

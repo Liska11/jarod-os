@@ -1,3 +1,4 @@
+import { execFile } from 'node:child_process'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
@@ -149,4 +150,37 @@ export function jarodSpawnPlan(core: JarodCore, options: { token: string; dataDi
     env,
     cwd: core.dir
   }
+}
+
+/**
+ * The core's maintenance mode (external backups): `gateway.mjs --db-snapshot <source> <copy>` copies a database, same key, without the
+ * vault's values. Run while the core is stopped; nothing else starts (no network, no profile lock). Resolves with how many values were
+ * left out; rejects with the core's one-line reason.
+ */
+export function runDbSnapshot(core: JarodCore, src: string, dest: string, env: NodeJS.ProcessEnv = process.env): Promise<number> {
+  const childEnv: NodeJS.ProcessEnv = { ...env }
+
+  if (core.runAsNode) {
+    childEnv.ELECTRON_RUN_AS_NODE = '1'
+  } else {
+    delete childEnv.ELECTRON_RUN_AS_NODE
+  }
+
+  delete childEnv.JAROD_GATEWAY_TOKEN
+
+  return new Promise((resolve, reject) => {
+    execFile(core.node, [core.gateway, '--db-snapshot', src, dest], { cwd: core.dir, env: childEnv, windowsHide: true, timeout: 30 * 60_000, maxBuffer: 1024 * 1024 }, (error, stdout) => {
+      const line = String(stdout).trim().split(/\r?\n/).at(-1) ?? ''
+      let answer: { ok?: boolean; removed?: number; error?: string } = {}
+
+      try {
+        answer = JSON.parse(line) as typeof answer
+      } catch {
+        // No answer: the error below says why.
+      }
+
+      if (answer.ok && typeof answer.removed === 'number') resolve(answer.removed)
+      else reject(new Error(`copie de la base refusée par le moteur : ${answer.error ?? (error ? error.message : 'réponse illisible')}`))
+    })
+  })
 }

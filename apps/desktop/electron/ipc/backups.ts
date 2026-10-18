@@ -5,6 +5,7 @@ import { IPC } from '../../shared/ipc.ts'
 import { jarodDataDir, jarodWorkspace } from '../backend/jarod-core.ts'
 import { type BackupReason, createBackup, dailyDue, listBackups, readSettings, removeBackup, restoreBackup, toPrune, writeSettings } from '../backups.ts'
 import { log } from '../log.ts'
+import { acquireOperation } from '../operation-lock.ts'
 
 /*
  * Backups of the Jarod disk (electron/backups.ts): made by hand from Settings, or daily at startup; restored with the
@@ -40,7 +41,9 @@ export class BackupService {
       throw new Error('no-disk')
     }
 
-    if (this.running) {
+    const release = this.running ? null : acquireOperation('local-backup')
+
+    if (!release) {
       throw new Error('busy')
     }
 
@@ -79,6 +82,7 @@ export class BackupService {
       throw error
     } finally {
       this.running = false
+      release()
     }
   }
 
@@ -150,6 +154,12 @@ export class BackupService {
         return { ok: false, error: this.running ? 'busy' : 'no-disk' }
       }
 
+      const release = acquireOperation('local-restore')
+
+      if (!release) {
+        return { ok: false, error: 'busy' }
+      }
+
       this.running = true
 
       try {
@@ -166,6 +176,7 @@ export class BackupService {
         return { ok: false, error: error instanceof Error ? error.message : String(error) }
       } finally {
         this.running = false
+        release()
       }
     })
   }

@@ -1032,6 +1032,17 @@ export const IPC = {
   networkGet: 'herald-os:network:get',
   networkSet: 'herald-os:network:set',
   networkChanged: 'herald-os:network:changed',
+  // External backups (electron/external-backup.ts, electron/ipc/external-backup.ts).
+  externalBackupState: 'herald-os:external-backup:state',
+  externalBackupEstimate: 'herald-os:external-backup:estimate',
+  externalBackupCheck: 'herald-os:external-backup:check',
+  externalBackupChoose: 'herald-os:external-backup:choose',
+  externalBackupSetDestination: 'herald-os:external-backup:set-destination',
+  externalBackupSetOptions: 'herald-os:external-backup:set-options',
+  externalBackupRun: 'herald-os:external-backup:run',
+  externalBackupCancel: 'herald-os:external-backup:cancel',
+  externalBackupRestore: 'herald-os:external-backup:restore',
+  externalBackupProgress: 'herald-os:external-backup:progress',
 
   prefsGet: 'herald-os:prefs:get',
   prefsSet: 'herald-os:prefs:set',

@@ -11,6 +11,7 @@ import { useSystemStats } from '../../../store/system.ts'
 import { showPage } from '../../../store/windows.ts'
 import { DataDiskPicker } from '../../setup/DataDiskPicker.tsx'
 import { BackupsBlock } from './BackupsBlock.tsx'
+import { ExternalBackupBlock } from './ExternalBackupBlock.tsx'
 import { SandboxesBlock } from './SandboxesBlock.tsx'
 import { EnvironmentsBlock } from './EnvironmentsBlock.tsx'
 import { VmsBlock } from './VmsBlock.tsx'
@@ -40,6 +41,7 @@ export function StorageSection() {
       </SettingsBlock>
 
       <BackupsBlock />
+      <ExternalBackupBlock />
 
       <SandboxesBlock />
 

@@ -16,8 +16,11 @@ import { removeSecretFile, writeSecretFile } from "./secret-file.js";
 import { createGateway } from "./server.js";
 import { boundedMessage, startupFailure } from "./startup.js";
 import { applyNetworkPolicyFromEnv } from "@jarod/kernel/network";
+import { maintenanceRequested, runMaintenance } from "./maintenance.js";
 
 const env = process.env;
+// Mode maintenance (sauvegarde externe) : une copie de base, puis sortie ; rien d'autre ne démarre.
+if (maintenanceRequested(process.argv)) process.exit(runMaintenance(process.argv));
 // L'interrupteur Internet du shell, AVANT que le cœur n'ouvre la moindre connexion (fournisseurs, passerelles, MCP).
 applyNetworkPolicyFromEnv(env);
 /** Refuse de démarrer en le disant clairement : la fenêtre n'affiche que ces lignes (voir `startup.ts`). */

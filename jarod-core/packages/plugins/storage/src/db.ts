@@ -603,6 +603,34 @@ export function rekeyFile(path: string, from: string | null, to: string, nativeB
 }
 
 /**
+ * Sauvegarde externe de Jarod-OS (docs/BACKUP-EXTERNE.md du dépôt) : copie cohérente de `src` (journal WAL compris) dans `dest`,
+ * MÊME clé, puis effacement de la table `secrets` de la copie (valeurs du coffre, jetons des fournisseurs) et `VACUUM` pour que les
+ * pages libérées ne gardent rien. Les noms et domaines du coffre restent (réglages, sans valeur). La source n'est jamais modifiée :
+ * elle est ouverte en lecture seule ; le moteur doit être arrêté pendant l'appel. Rend le nombre de valeurs retirées.
+ */
+export function snapshotWithoutSecrets(src: string, dest: string, key: string | null, nativeBinding?: string): { removed: number } {
+  if (existsSync(dest)) throw new Error(`destination déjà présente : ${dest}`);
+  const source = openRaw(src, key, nativeBinding, true);
+  try {
+    source.prepare("VACUUM INTO ?").run(dest);
+  } finally {
+    source.close();
+  }
+  // Selon la version du chiffrement, VACUUM INTO écrit la copie chiffrée avec la même clé, ou en clair : elle est remise à la clé de la source.
+  if (key !== null && isPlainDb(dest)) encryptInPlace(dest, key, nativeBinding);
+  const copy = openRaw(dest, key, nativeBinding);
+  try {
+    copy.pragma("journal_mode = DELETE");
+    const removed = Number((copy.prepare("SELECT count(*) AS n FROM secrets").get() as { n: number }).n);
+    copy.prepare("DELETE FROM secrets").run();
+    copy.exec("VACUUM");
+    return { removed };
+  } finally {
+    copy.close();
+  }
+}
+
+/**
  * Jarod-cordis (Q14, restauration) : ouvre un fichier de base isolé avec cette clé (null = en clair), vérifie
  * `quick_check` et rend sa version. Clé fausse → `DbKeyError` ; base abîmée → erreur. Aucune écriture.
  */

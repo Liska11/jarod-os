@@ -5,7 +5,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { type ControlRunResult, type EnvInfo, type HeraldOSPrefs, IPC, type RestRequest, type ShellCommand, type WindowState } from '../shared/ipc.ts'
 import { BackendManager } from './backend/manager.ts'
-import { jarodDataDir, resolveJarodCore, selectBackend } from './backend/jarod-core.ts'
+import { jarodDataDir, resolveJarodCore, runDbSnapshot, selectBackend } from './backend/jarod-core.ts'
 import { CrashWatcher } from './crash/watch.ts'
 import { fireEventAutomations } from './events/automations.ts'
 import { events } from './events/bus.ts'
@@ -40,6 +40,7 @@ import { applyDataRoot } from './data-root.ts'
 import { NetworkPolicyService, setActiveNetworkPolicy } from './network.ts'
 import { cutDisallowed, installSocketGuard } from './net-guard.ts'
 import { electronNetworkSessions, registerNetworkIpc } from './ipc/network.ts'
+import { ExternalBackupService } from './ipc/external-backup.ts'
 import { MEDIA_SCHEME_PRIVILEGES, registerMediaIpc } from './ipc/media.ts'
 import { registerNativeAppsIpc } from './ipc/native-apps.ts'
 import { registerWindowEmbeds } from './platform/window-embed.ts'
@@ -141,6 +142,20 @@ for (const line of primary && !osEnv('CONFIG_DIR') ? migrateShellConfig(process.
 }
 
 const backend = new BackendManager(coreLocation)
+const externalBackups = new ExternalBackupService({
+  configDir: shellConfigDir(),
+  isCoreRunning: () => ['ready', 'starting', 'resolving', 'restarting'].includes(backend.getState().phase),
+  stopCore: () => backend.stop(),
+  startCore: () => void backend.start(),
+  snapshotDb: (src, dest) => {
+    const core = resolveJarodCore({ ...coreLocation, env: process.env })
+
+    if (!core) return Promise.reject(new Error('aucun moteur Jarod dans cette version : la base ne peut pas être copiée'))
+
+    return runDbSnapshot(core, src, dest)
+  },
+  relaunch: () => relaunch(false)
+})
 const backups = new BackupService({ stopBackend: () => backend.stop(), startBackend: () => void backend.start(), relaunch: () => relaunch(false) })
 // The Pinokio engine (ADR-022): started on demand by its window or the agent's tools, stopped on quit.
 // The system audit runs in the background once main is ready, then is reused from its JSON (electron/setup).
@@ -644,6 +659,7 @@ function registerCoreIpc(): void {
   registerEnvironmentsIpc()
   registerVmsIpc()
   registerNetworkIpc(network)
+  externalBackups.register()
   registerDataDiskIpc({ state: dataRoot, configDir: shellConfigDir(), stopBackend: () => backend.stop(), startBackend: () => void backend.start(), relaunch: () => relaunch(false) })
   registerNativeAppsIpc()
   registerWindowEmbeds()
@@ -811,6 +827,7 @@ app.whenReady().then(async () => {
   await Promise.race([osControl?.ready, new Promise(resolve => setTimeout(resolve, 3000))])
   // The daily backup of the Jarod disk, when due, copies the data before the core starts.
   void backups.dailyBeforeStart(() => void backend.start())
+  externalBackups.startAutomatic()
 })
 
 // GPU, utility and other helper processes: Chromium recovers by itself (a GPU that keeps crashing falls back to software); keep a trace.
@@ -854,6 +871,8 @@ app.on('before-quit', event => {
   event.preventDefault()
   globalShortcut.unregisterAll()
   crashes.stop()
+  // A backup in progress is cancelled (its unfinished folder removed): quitting is never held up by it.
+  externalBackups.stop()
   tray.stop()
   plugins.stop()
   emojiPanel?.stop()
