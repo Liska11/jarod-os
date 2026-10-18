@@ -443,6 +443,96 @@ describe("mobile bridge — approvals reach the phone", () => {
   });
 });
 
+describe("mobile bridge — approvals of runs the phone did not start", () => {
+  const call = { id: "t1", name: "write_file", args: { path: "note.txt" } };
+
+  it("setting off (the default): a background request is refused at once and no phone hears of it", async () => {
+    const r = await started();
+    try {
+      const session = r.core.sessions.create("Arrière-plan");
+      const { phone } = await pairPhone(r);
+      expect(r.core.settings.get("phoneApprovals")).toBe(false);
+      expect(await r.core.backgroundHooks.approve(session.id, call as never, "Écrire")).toBe(false);
+      expect((await phone.rpc("approvals.pending")).result).toEqual([]);
+      expect(phone.events.filter((e) => e.event.startsWith("approval"))).toEqual([]);
+      phone.hangUp();
+    } finally {
+      await r.stop();
+    }
+  });
+
+  it("offers it to every phone, the first answer wins, the others drop the card, a late phone can pull it", async () => {
+    const r = await started();
+    try {
+      r.core.settings.set("phoneApprovals", true);
+      const session = r.core.sessions.create("Arrière-plan");
+      const a = await pairPhone(r, "A");
+      const b = await pairPhone(r, "B");
+      const { token, seq } = (await a.phone.rpc("wake.register")).result as { token: string; seq: number };
+
+      const decision = r.core.backgroundHooks.approve(session.id, call as never, "Écrire un fichier");
+      await a.phone.waitFor((e) => e.event === "approval");
+      await b.phone.waitFor((e) => e.event === "approval");
+      const asked = a.phone.events.find((e) => e.event === "approval")!.data as { id: string; origin: string };
+      expect(asked.origin).toBe("background");
+      expect(b.phone.events.find((e) => e.event === "approval")!.data.id).toBe(asked.id);
+      // A closed app is told something waits, and nothing more.
+      const woke = (await (await fetch(`${r.base}/m1/wake?since=${seq}&wait=0`, { headers: { authorization: `Bearer ${token}` } })).json()) as {
+        news: boolean;
+      };
+      expect(woke.news).toBe(true);
+
+      // A third phone that connects later finds the request waiting.
+      const c = await pairPhone(r, "C");
+      const waiting = (await c.phone.rpc("approvals.pending")).result as { id: string }[];
+      expect(waiting.map((w) => w.id)).toEqual([asked.id]);
+
+      expect((await b.phone.rpc("approval.resolve", { id: asked.id, ok: true })).result).toBe(true);
+      expect(await decision).toBe(true);
+      await a.phone.waitFor((e) => e.event === "approval-cancelled" && e.data.id === asked.id);
+      await c.phone.waitFor((e) => e.event === "approval-cancelled" && e.data.id === asked.id);
+      expect(b.phone.events.some((e) => e.event === "approval-cancelled")).toBe(false);
+      // Spent: the others' answers decide nothing.
+      expect((await a.phone.rpc("approval.resolve", { id: asked.id, ok: false })).result).toBe(false);
+      expect((await c.phone.rpc("approvals.pending")).result).toEqual([]);
+
+      // A phone going away does not refuse for the others.
+      const next = r.core.backgroundHooks.approve(session.id, call as never, "Encore");
+      await a.phone.waitFor((e) => e.event === "approval" && e.data.id !== asked.id);
+      const id2 = (a.phone.events.filter((e) => e.event === "approval").at(-1)!.data as { id: string }).id;
+      c.phone.hangUp();
+      await c.phone.closed;
+      expect((await a.phone.rpc("approval.resolve", { id: id2, ok: false })).result).toBe(true);
+      expect(await next).toBe(false);
+      a.phone.hangUp();
+      b.phone.hangUp();
+    } finally {
+      await r.stop();
+    }
+  });
+
+  it("a phone that was never shown a request cannot answer it", async () => {
+    const r = await started();
+    try {
+      r.core.settings.set("phoneApprovals", true);
+      const session = r.core.sessions.create("Arrière-plan");
+      const a = await pairPhone(r, "A");
+      const decision = r.core.backgroundHooks.approve(session.id, call as never, "Écrire");
+      await a.phone.waitFor((e) => e.event === "approval");
+      const id = a.phone.events.find((e) => e.event === "approval")!.data.id as string;
+      const late = await pairPhone(r, "Retardataire");
+      // It has not asked for the waiting requests: the id alone opens nothing.
+      expect((await late.phone.rpc("approval.resolve", { id, ok: true })).result).toBe(false);
+      expect((await a.phone.rpc("approval.resolve", { id, ok: true })).result).toBe(true);
+      expect(await decision).toBe(true);
+      a.phone.hangUp();
+      late.phone.hangUp();
+    } finally {
+      await r.stop();
+    }
+  });
+});
+
 describe("mobile bridge — notifications without content", () => {
   it("pushes notifications to a connected phone and lists them", async () => {
     const r = await started();

@@ -21,6 +21,7 @@
  */
 import { randomUUID } from "node:crypto";
 import { APPROVAL_TIMEOUT_MS, NEVER_ALWAYS, NEVER_ALWAYS_REASONS } from "@jarod/plugin-agent";
+import type { PhoneApprovalHandle } from "@jarod/plugin-gateways";
 import type { HandlerContext } from "./context.js";
 
 /** Longueur maximale des arguments montrés (au-delà : coupés, avec la marque « … »). */
@@ -47,12 +48,12 @@ interface Pending {
   request: ToolApprovalRequest;
   /** Jeton du TOUR (propre à chaque `send-message`) : une relance sous le même `runId` n'annule pas la demande du nouveau tour. */
   owner: string;
-  settle(allow: boolean, reason: "answered" | "stopped" | "timeout" | "unavailable"): void;
+  settle(allow: boolean, reason: "answered" | "phone" | "stopped" | "timeout" | "unavailable"): void;
 }
 
 export interface ApprovalBroker {
   /** Pose une demande et attend la décision ; `false` si arrêtée, périmée ou sans réponse. */
-  request(owner: string, runId: string, sessionId: string, call: { name: string; args?: unknown }, description: string): Promise<boolean>;
+  request(owner: string, runId: string, sessionId: string, call: { id?: string; name: string; args?: unknown }, description: string): Promise<boolean>;
   /** Refuse (et retire) les demandes en attente d'un tour (`owner`) — son arrêt, sa fin. */
   cancel(owner: string): void;
   list(): ToolApprovalRequest[];
@@ -99,6 +100,17 @@ export function createApprovalBroker(ctx: HandlerContext, timeoutMs: number = AP
       return { session: false, always: false }; // lecture des permissions en échec : la fenêtre s'affiche sans aucune dispense (fail-closed, FC5)
     }
   };
+  /**
+   * The same request offered to the paired phones (setting `phoneApprovals`, off by default): the first answer, window or
+   * phone, wins. Any error, or the setting off: null, and the window alone decides, as before.
+   */
+  const offerToPhones = (sessionId: string, call: { id?: string; name: string; args?: unknown }, description: string): PhoneApprovalHandle | null => {
+    try {
+      return ctx.kernel().gateways.phoneApprovals.offer(sessionId, { id: call.id ?? "", name: call.name, args: call.args }, description, "pc");
+    } catch {
+      return null;
+    }
+  };
   /** Un canal mort (fenêtre détruite) ne doit jamais empêcher une demande de se régler, ni lever. */
   const emit = (channel: string, payload: unknown): boolean => {
     try {
@@ -132,17 +144,24 @@ export function createApprovalBroker(ctx: HandlerContext, timeoutMs: number = AP
       };
       return new Promise<boolean>((resolve) => {
         let timer: ReturnType<typeof setTimeout> | undefined;
+        let phone: PhoneApprovalHandle | null = null;
         const settle: Pending["settle"] = (allow, reason) => {
           if (!pending.delete(id)) return;
           if (timer) clearTimeout(timer);
+          phone?.cancel(); // decided here (or stopped): the phones drop the card
           emit("tool-approval-resolved", { id, runId, allowed: allow, reason }); // le canal peut être mort : la décision est rendue quand même
           resolve(allow);
         };
         pending.set(id, { request, owner, settle });
         timer = setTimeout(() => settle(false, "timeout"), timeoutMs);
         timer.unref?.();
-        // Canal IPC mort (fenêtre détruite) : personne ne peut répondre ⇒ refus IMMÉDIAT (FC2), pas une attente jusqu'au délai.
-        if (!emit("tool-approval-request", request)) settle(false, "unavailable");
+        phone = offerToPhones(sessionId, call, description);
+        const offered = phone;
+        void offered?.decision.then((ok) => {
+          if (offered.answered()) settle(ok, "phone");
+        });
+        // Canal IPC mort (fenêtre détruite) : sans téléphone, personne ne peut répondre ⇒ refus IMMÉDIAT (FC2), pas une attente jusqu'au délai.
+        if (!emit("tool-approval-request", request) && !phone) settle(false, "unavailable");
       });
     },
     cancel(owner) {

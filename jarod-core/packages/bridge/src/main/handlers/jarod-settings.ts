@@ -529,6 +529,21 @@ const ENTRIES: Record<string, Entry> = {
       return { mobile: { ...current.mobile, ...(o.port === undefined ? {} : { port: integer("mobile.port", o.port, 1024, 65535) }) } };
     },
   },
+  // Approvals on the phone too: what a tool would do (its name and arguments) reaches the paired app, end-to-end encrypted. Turning it on asks first.
+  phoneApprovals: {
+    read: (s) => s.phoneApprovals === true,
+    write: (v) => (typeof v === "boolean" ? { phoneApprovals: v } : bad("phoneApprovals", "booléen attendu")),
+    confirm: (patch, current) =>
+      patch.phoneApprovals === true && current.phoneApprovals !== true
+        ? {
+            message: "Envoyer aussi les demandes d'accord au téléphone ?",
+            detail:
+              "Quand Jarod demande votre accord (conversation sur ce PC, tâche planifiée, messagerie), la demande — l'outil et ses arguments — part aussi vers les téléphones appairés, chiffrée de bout en bout. " +
+              "La première réponse, ici ou sur le téléphone, l'emporte ; autoriser sur le téléphone demande l'empreinte. Une décision vaut pour une seule demande. Sans réponse, c'est refusé.",
+            action: "Envoyer au téléphone",
+          }
+        : null,
+  },
   // Android : SEUL le délai se règle ici ; le programme adb se choisit dans la boîte native (`android-set-adb`).
   android: {
     read: (s) => ({ timeoutMs: s.android.timeoutMs }),

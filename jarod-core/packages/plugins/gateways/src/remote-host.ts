@@ -19,6 +19,7 @@ import {
   rawPublicKey,
   type SecureChannel,
 } from "./remote-protocol.js";
+import type { ApprovalDevices, PhoneApproval } from "./phone-approvals.js";
 
 /** `JarodCore` → les membres publics du hub (`hub.ts`), qui reprend ceux du cœur. */
 type JarodCore = Omit<GatewayHub, never>;
@@ -85,6 +86,8 @@ interface Client {
   channel: SecureChannel | null;
   device: RemoteDevice | null;
   approvals: Map<string, (ok: boolean) => void>;
+  /** Broker requests (runs started elsewhere) this device was shown: only those it may answer. */
+  offered: Set<string>;
   /** Serializes incoming frames: counters must be checked in order. */
   queue: Promise<void>;
 }
@@ -108,7 +111,7 @@ export function hostEndpoint(relayUrl: string): string {
  * The desktop side of remote access: keeps an outgoing connection to the relay, authenticates
  * paired devices end to end and serves them conversations. The relay only sees ciphertext.
  */
-export class RemoteHost extends Emitter<{ status: RemoteStatus }> {
+export class RemoteHost extends Emitter<{ status: RemoteStatus }> implements ApprovalDevices {
   private ws: WebSocket | null = null;
   private stopped = true;
   private retries = 0;
@@ -122,6 +125,8 @@ export class RemoteHost extends Emitter<{ status: RemoteStatus }> {
    */
   private wakeSeq = Date.now();
   private wakeWaiters = new Set<() => void>();
+  /** Requests from the approval broker (`phone-approvals.ts`), offered to every app device. */
+  private offers = new Map<string, { request: PhoneApproval; answer(ok: boolean): void }>();
   status: RemoteStatus = { state: "stopped", clients: 0 };
 
   constructor(private readonly core: JarodCore) {
@@ -279,6 +284,7 @@ export class RemoteHost extends Emitter<{ status: RemoteStatus }> {
       channel: null,
       device: null,
       approvals: new Map(),
+      offered: new Set(),
       queue: Promise.resolve(),
     };
     this.clients.set(cid, c);
@@ -485,11 +491,25 @@ export class RemoteHost extends Emitter<{ status: RemoteStatus }> {
         return true;
       case "approval.resolve": {
         // One decision for one request: a boolean, and nothing else is read ("always" does not exist).
-        const resolve = c.approvals.get(String(p.id));
-        c.approvals.delete(String(p.id));
-        resolve?.(p.ok === true);
-        return Boolean(resolve);
+        const id = String(p.id);
+        const resolve = c.approvals.get(id);
+        if (resolve) {
+          c.approvals.delete(id);
+          resolve(p.ok === true);
+          return true;
+        }
+        // A broker request: only a device that was shown it may answer; the first answer wins.
+        const offer = c.offered.has(id) ? this.offers.get(id) : undefined;
+        c.offered.delete(id);
+        offer?.answer(p.ok === true);
+        return Boolean(offer);
       }
+      case "approvals.pending":
+        // Broker requests still waiting, for an app that was closed when they were offered.
+        return [...this.offers.values()].map((o) => {
+          c.offered.add(o.request.id);
+          return o.request;
+        });
       case "notifications.list":
         return core.notifications
           .list(50)
@@ -549,6 +569,31 @@ export class RemoteHost extends Emitter<{ status: RemoteStatus }> {
           this.bumpWake();
         }),
     };
+  }
+
+  /** Whether any app device is paired (`ApprovalDevices`). */
+  paired(): boolean {
+    return this.config().devices.length > 0;
+  }
+
+  /** Shows a broker request to every connected app device; the others learn of it from the wake counter. */
+  offer(request: PhoneApproval, answer: (ok: boolean) => void): void {
+    this.offers.set(request.id, { request, answer });
+    for (const c of this.clients.values()) {
+      if (!c.device) continue;
+      c.offered.add(request.id);
+      void this.push(c, { event: "approval", data: request });
+    }
+    this.bumpWake();
+  }
+
+  /** Takes a broker request back: decided elsewhere, timed out or stopped. */
+  withdraw(id: string): void {
+    this.offers.delete(id);
+    for (const c of this.clients.values()) {
+      if (!c.offered.delete(id)) continue;
+      void this.push(c, { event: "approval-cancelled", data: { id } });
+    }
   }
 
   /** One-time pairing link (valid 10 minutes) to show as a QR code. */

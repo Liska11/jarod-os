@@ -117,8 +117,17 @@ export class AgentRuntime {
   curator!: CuratorService;
   hub!: SkillsHubService;
   learning!: LearningService;
+  /**
+   * Who may approve a tool call for runs nobody is watching directly. Null: refused. plugin-gateways
+   * sets it to offer the request to the paired phones when the `phoneApprovals` setting is on.
+   */
+  backgroundApprover: AgentHooks["approve"] | null = null;
   /** Hooks for runs nobody is watching directly (schedules, Telegram). The desktop app replaces them. */
-  backgroundHooks: AgentHooks = { emit: () => {}, approve: async () => false };
+  backgroundHooks: AgentHooks = {
+    emit: () => {},
+    approve: (sessionId, call, description) =>
+      this.backgroundApprover ? this.backgroundApprover(sessionId, call, description) : Promise.resolve(false),
+  };
   private running = new Map<string, AbortController>();
   private readonly emitKernel: (name: string, ...args: unknown[]) => void;
 

@@ -1,4 +1,4 @@
-import { IconBrandAndroid, IconDeviceMobile, IconKey, IconServer2, IconTerminal2 } from '@tabler/icons-react'
+import { IconBrandAndroid, IconDeviceMobile, IconKey, IconServer2, IconShieldCheck, IconTerminal2 } from '@tabler/icons-react'
 import { useEffect, useState } from 'react'
 import { QrCode } from '../../../components/qr-code.tsx'
 import { GlassButton, Pill, Toggle } from '../../../components/ui/glass.tsx'
@@ -136,6 +136,7 @@ function PortButton({ value, onSave, disabled, label }: { value: number; onSave:
 function PhoneBlock() {
   useT()
   const status = useBackendData(() => jarod<PhoneStatus>('phone-status'))
+  const jarodSettings = useJarodSettings()
   const [busy, setBusy] = useState(false)
   const [pairing, setPairing] = useState<PairingInfo | null>(null)
   const [door, setDoor] = useState<'app' | 'browser'>('app')
@@ -212,6 +213,16 @@ function PhoneBlock() {
           <GlassButton size="sm" variant="primary" disabled={busy} onClick={() => void run(t('settings.devices.pair.ready'), async () => setPairing(await jarod<PairingInfo>('phone-pairing')))}>
             {t('settings.devices.pair.show')}
           </GlassButton>
+        </SettingsRow>
+      )}
+      {jarodSettings.settings && (
+        <SettingsRow icon={<IconShieldCheck />} label={t('settings.devices.approvals')} description={t('settings.devices.approvals.hint')} keywords={t('settings.devices.approvalsKw')}>
+          <Toggle
+            checked={jarodSettings.settings.phoneApprovals === true}
+            label={t('settings.devices.approvals.toggle')}
+            disabled={busy || jarodSettings.saving}
+            onChange={value => void jarodSettings.save({ phoneApprovals: value }, value ? t('settings.devices.approvals.on') : t('settings.devices.approvals.off'))}
+          />
         </SettingsRow>
       )}
       {mobile.devices.map(device => (

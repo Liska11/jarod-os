@@ -1,9 +1,9 @@
 import { clientHandshake, type CryptoKeyPair, type HostAccept, type SecureChannel } from '@jarod-protocol'
 import { sseData } from './sse.ts'
 
-/** A pushed message from the PC: an agent event, an approval request, a notification. */
+/** A pushed message from the PC: an agent event, an approval request (or its withdrawal), a notification. */
 export interface PushedEvent {
-  event: 'agent' | 'approval' | 'notification' | string
+  event: 'agent' | 'approval' | 'approval-cancelled' | 'notification' | string
   data: Record<string, unknown>
 }
 

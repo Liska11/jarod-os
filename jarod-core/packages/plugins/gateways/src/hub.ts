@@ -30,6 +30,7 @@ import { DiscordGateway } from "./discord.js";
 import { EmailGateway } from "./email.js";
 import { MobileBridge } from "./mobile.js";
 import { PairingService } from "./pairing.js";
+import { PhoneApprovalBroker } from "./phone-approvals.js";
 import { RemoteHost, type RemoteStatus } from "./remote-host.js";
 import { SlackGateway } from "./slack.js";
 import { type IncomingFile, TelegramGateway } from "./telegram.js";
@@ -58,6 +59,8 @@ export class GatewayHub extends Emitter<{ gateway: GatewayStatus; remote: Remote
   // core.ts:247-248,318 (pont téléphone, W9)
   readonly mobile: MobileBridge;
   readonly android: AndroidService;
+  /** Approvals from runs the phone did not start, offered to the app too (setting `phoneApprovals`). */
+  readonly phoneApprovals: PhoneApprovalBroker;
   remote: RemoteHost | null = null;
   readonly options: GatewaysConfig;
   private readonly live: Live = { telegram: null, discord: null, slack: null, email: null, whatsapp: null };
@@ -83,6 +86,10 @@ export class GatewayHub extends Emitter<{ gateway: GatewayStatus; remote: Remote
       timeoutMs: () => this.settings.getAll().android.timeoutMs,
     });
     this.mobile = new MobileBridge(this);
+    this.phoneApprovals = new PhoneApprovalBroker({
+      enabled: () => this.settings.get("phoneApprovals") === true,
+      devices: () => this.remoteHost(),
+    });
   }
 
   // Ce que les corps portés lisent sur `this` (membres de `JarodCore`).
@@ -217,6 +224,7 @@ export class GatewayHub extends Emitter<{ gateway: GatewayStatus; remote: Remote
       this[id] = null;
     }
     this.remote?.stop();
+    this.phoneApprovals.cancelAll();
   }
 
   // ---------- Gateways ----------

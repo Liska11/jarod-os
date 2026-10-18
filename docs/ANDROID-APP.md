@@ -85,8 +85,13 @@ A companion app for the phone: talk to Jarod, prove who you are, approve what Ja
 - A run started from the phone sends its approval requests to the phone (`approval` event: tool, arguments, description, deadline). The app shows exactly what will run, on which machine.
 - **Accepting asks for the biometrics again**, for that decision only. Refusing does not.
 - The answer is `approval.resolve { id, ok }`: one decision for one request. The protocol has no «always», «this conversation» or «auto»: anything other than a boolean is ignored. Tools that the core only offers «once / deny» for (`remote_exec`) stay that way.
-- No answer within 10 minutes = refused. A channel that drops refuses everything it had pending.
-- Not yet: requests from runs started **on the PC** or by scheduled tasks are not mirrored to the phone (see §8).
+- Phone-started runs: no answer within 10 minutes = refused. A channel that drops refuses everything it had pending.
+- **Runs the phone did not start** (the PC's own chat, scheduled tasks, messaging gateways, kanban workers) reach the phone only when **Réglages › Appareils › Accords sur le téléphone** is on (setting `phoneApprovals`, **off by default**; turning it on asks for a native confirmation). Then:
+  - the approval broker (`gateways/src/phone-approvals.ts`) offers the request to **every connected app device** (`approval` event with `origin: "pc" | "background"`) and bumps the content-free wake counter, so a closed app is told something waits;
+  - an app that connects later pulls what is still waiting with `approvals.pending`; only a device that was shown a request (pushed or pulled) may answer it;
+  - **the first boolean answer wins**, PC window or phone. The other phones get `approval-cancelled { id }` and drop the card; the window's card closes with reason `phone`. A late answer returns `false` and decides nothing;
+  - no answer within the agent's approval delay (15 minutes) = refused, and the card is withdrawn. A phone that disconnects does not refuse for the others;
+  - setting off: nothing changes — the desktop's requests stay in its window, and background runs are refused at once, as before.
 
 ## 5. Notifications
 
@@ -155,13 +160,14 @@ then, in another terminal, `JAROD_BRIDGE=http://127.0.0.1:10493 npm --prefix mob
 - Core: direct channel (`/m1/open|up|down`), private-source filter, app pairing link (virtual adapters and link-local addresses left out), devices listed and revoked from the PC (app and browser), `chat.voice`, `device.leave`, `notifications.list`, `wake.register` + `/m1/wake`, live `notification` events. Unit tests: `gateways/test/mobile-direct.test.ts` (19), `bridge/test/phone.test.ts`.
 - Desktop: Réglages › Appareils shows the app's QR code (tab «Appli Jarod», the browser's stays available) and says for each phone whether it is the app or the browser page.
 - App: pairing by QR (decoded in the app) or link, `jarod://pair` links opened by the camera, device key wrapped by the Android Keystore with biometric unlock, auto-lock after 5 minutes away, chat with streamed replies, history, voice messages, approvals of phone-started runs (biometric to accept), local notifications while connected, WakeService for the closed app, no cloud backup, `FLAG_SECURE` (no screenshots).
+- Approvals from runs the phone did not start (§4): broker in the gateways hub, `runtime.backgroundApprover` for schedules and gateways, the desktop chat's broker (`bridge/src/main/handlers/approvals.ts`) racing the window against the phones, setting `phoneApprovals` (off by default) with its toggle in Réglages › Appareils, `approval-cancelled` and `approvals.pending` in the app. Tests: `gateways/test/phone-approvals.test.ts`, `gateways/test/mobile-direct.test.ts` (three phones over real channels), `bridge/test/approvals-phone.test.ts`, `bridge/test/jarod-settings.test.ts`. Not yet tried on the Note 8.
 - Verified end to end in a browser against a real local kernel (`dev-phone-pc.ts`): pairing, unlock, streamed reply, approval shown with its arguments and refused.
 - Debug APK built with `npm run apk:debug` (minSdk 30, targetSdk 36, ~9.5 MB, no Firebase / Play-services code inside). The extra permissions it lists (`RECEIVE_BOOT_COMPLETED`, `WAKE_LOCK`, `SCHEDULE_EXACT_ALARM`, `USE_FINGERPRINT`) come from `@capacitor/local-notifications` and `androidx.biometric`.
 
 **Left to do**
 
 0. Real phones: verified on a Galaxy Note 8 (Android 9, WebView 101, X25519 from `x25519-shim.ts`) through `adb reverse` — pairing with the fingerprint, unlock, streamed reply, an approval accepted with the fingerprint, WakeService waking the closed app with a content-free notification. Still to try there: camera scan, voice message, an Android 11+ phone (PIN as well as biometrics), and the LAN / Tailscale path instead of USB.
-1. Approvals from runs started on the PC and from scheduled tasks mirrored to the phone (first answer wins, PC or phone), behind an explicit setting — today `backgroundHooks.approve` refuses, and the desktop's approvals stay on the desktop.
+1. Approvals from the PC and from background runs on a real phone: done in code and tests (§4), still to try on the Note 8. A background run stopped mid-request leaves its card on the phone until the delay (the agent hook has no stop signal).
 2. WakeService hardening: restart after reboot (`BOOT_COMPLETED`), back-off when the PC is unreachable, battery measurements, and the Android 14+ foreground-service type review for Play.
 3. A notification setting per kind (finished tasks, reminders, alerts) and a «what's new» list on the phone.
 4. Turning the old browser page off by default once the app is installed.

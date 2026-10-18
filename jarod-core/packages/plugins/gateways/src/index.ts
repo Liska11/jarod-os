@@ -25,6 +25,7 @@ export * from "./pair-command.js";
 export * from "./mobile.js";
 export * from "./mobile-page.js";
 export * from "./pairing.js";
+export * from "./phone-approvals.js";
 export * from "./remote-host.js";
 export * from "./remote-protocol.js";
 export * from "./slack.js";
@@ -58,6 +59,9 @@ export function apply(ctx: Context, input: GatewaysConfig): void {
   const unregisterAndroid = androidTools(hub.android).map((t) => runtime.tools.register(t));
   ctx.provide("gateways", hub);
   ctx.effect(() => {
+    // Schedules, gateways, kanban workers: their approvals may reach the phone (setting `phoneApprovals`; off = refused, as before).
+    runtime.backgroundApprover = (sessionId, call, description) =>
+      hub.phoneApprovals.offer(sessionId, call, description, "background")?.decision ?? Promise.resolve(false);
     if (config.autoStart) {
       hub.syncAll();
       // core.ts:510-515 — a bridge the user switched on comes back with the app; a fresh install listens to nothing.
@@ -71,6 +75,7 @@ export function apply(ctx: Context, input: GatewaysConfig): void {
       hub.stopAll();
       await hub.mobile.close();
       for (const off of unregisterAndroid) off();
+      runtime.backgroundApprover = null;
       runtime.commands.unregisterWhere((c) => c.name === "pair" && c.source === "builtin");
     };
   }, "gateways:live");

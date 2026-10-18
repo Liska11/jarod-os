@@ -22,7 +22,14 @@ interface Approval {
   call: { name: string; args: unknown }
   description: string
   expiresAt: number
+  /** Where the run started when it was not this phone: the PC's own chat, or a background task. */
+  origin?: 'pc' | 'background'
 }
+
+const ORIGIN_LABEL: Record<string, string> = { pc: 'Demandé depuis le PC', background: 'Demandé par une tâche en arrière-plan' }
+
+/** Adds requests not already shown (a request can arrive both pushed and from `approvals.pending`). */
+const addApprovals = (list: Approval[], more: Approval[]): Approval[] => [...list, ...more.filter(m => !list.some(a => a.id === m.id))]
 
 interface Props {
   pc: PairedPc
@@ -84,6 +91,9 @@ export function ChatScreen({ pc, channel, link, subscribe, onLock, onPcChanged, 
       const list = await refreshSessions()
       const id = sessionRef.current || list[0]?.id
       if (id) await openSession(id)
+      // Requests offered while the app was closed (the wake told us something waits). An older PC does not know the method.
+      const waiting = await channel.rpc<Approval[]>('approvals.pending').catch(() => [] as Approval[])
+      if (waiting.length) setApprovals(a => addApprovals(a, waiting))
       if (pc.watch && (await allowNotifications())) await setWatch(pc, channel, true).catch(() => {})
     })()
     // biome-ignore lint/correctness/useExhaustiveDependencies: on each new channel
@@ -97,8 +107,12 @@ export function ChatScreen({ pc, channel, link, subscribe, onLock, onPcChanged, 
           setConv(c => (c ? applyEvent(c, e.data) : c))
           if (e.data.type === 'done' && hidden) void notifyLocal('Jarod a répondu', 'Ouvrez l’appli pour lire la réponse.')
         } else if (e.event === 'approval') {
-          setApprovals(a => [...a, e.data as unknown as Approval])
+          setApprovals(a => addApprovals(a, [e.data as unknown as Approval]))
           if (hidden) void notifyLocal('Jarod demande votre accord', String((e.data.call as { name?: string })?.name ?? 'Une action'))
+        } else if (e.event === 'approval-cancelled') {
+          // Answered elsewhere (the PC or another phone), timed out or stopped: the card goes.
+          const gone = String(e.data.id ?? '')
+          setApprovals(a => a.filter(x => x.id !== gone))
         } else if (e.event === 'notification') {
           if (hidden) void notifyLocal(String(e.data.title ?? 'Jarod'), String(e.data.body ?? ''))
         }
@@ -171,8 +185,9 @@ export function ChatScreen({ pc, channel, link, subscribe, onLock, onPcChanged, 
         const { ok: present } = await vault.confirm({ title: 'Autoriser cette action ?', subtitle: a.call.name })
         if (!present) return
       }
-      await call('approval.resolve', { id: a.id, ok })
+      const taken = await call<boolean>('approval.resolve', { id: a.id, ok })
       setApprovals(list => list.filter(x => x.id !== a.id))
+      if (taken === false) setError('Cette demande a déjà été tranchée ailleurs, ou elle a expiré.')
     } catch (e) {
       setError((e as Error).message)
     } finally {
@@ -266,6 +281,7 @@ export function ChatScreen({ pc, channel, link, subscribe, onLock, onPcChanged, 
         {approvals.map(a => (
           <article key={a.id} className="approval">
             <h2>Jarod demande votre accord</h2>
+            {a.origin && <p className="fine">{ORIGIN_LABEL[a.origin] ?? ''}</p>}
             <p>{a.description}</p>
             <p className="tool">{a.call.name}</p>
             <pre>{describeArgs(a.call.args)}</pre>

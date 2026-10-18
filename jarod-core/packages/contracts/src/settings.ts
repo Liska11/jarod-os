@@ -527,6 +527,12 @@ export interface Settings {
   mobile: MobileConfig;
   android: AndroidConfig;
   /**
+   * Approval requests from runs the phone did not start (desktop chat, schedules, gateways) are also
+   * offered to the paired Android app; the first answer, PC or phone, wins. Off by default: until the
+   * user turns it on, nothing about an approval leaves the PC.
+   */
+  phoneApprovals: boolean;
+  /**
    * Les déclencheurs entrants signés. Optionnel, mais **présent dans `DEFAULT_SETTINGS`** — et c'est
    * ce qui fait la différence : `SettingsService.patch` n'écrit que les clés qu'il connaît, donc une
    * clé absente des défauts est jetée EN SILENCE et l'interrupteur ne s'allume jamais depuis l'écran.
@@ -704,6 +710,8 @@ export const DEFAULT_SETTINGS: Settings = {
   remote: { enabled: false, relayUrl: "", hostId: "", devices: [] },
   mobile: { enabled: false, port: 10492, devices: [] },
   android: { adbPath: "", timeoutMs: 15000 },
+  // Off by default: approvals stay on the PC until the user sends them to the phone too.
+  phoneApprovals: false,
   // Éteint par défaut : rien n'écoute, donc une installation existante ne change pas d'un octet.
   webhooks: { enabled: false, port: DEFAULT_HOOK_PORT },
   voice: { sttProvider: "openai", sttModel: "whisper-1", autoSpeak: false, ttsVoice: "", ttsRate: 1 },
