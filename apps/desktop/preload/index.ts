@@ -1,4 +1,5 @@
 import type { BackupActionResult, BackupsState } from '../shared/backups.ts'
+import type { SandboxResult, SandboxesState } from '../shared/sandboxes.ts'
 import type { DataDiskApplyResult, DataDiskState, DriveInfo } from '../shared/data-disk.ts'
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import {
@@ -352,6 +353,15 @@ const api = {
     remove: (id: string): Promise<BackupActionResult> => ipcRenderer.invoke(IPC.backupsRemove, id),
     /** Put a backup back (with the workspace too when asked); Jarod-OS restarts on success. */
     restore: (id: string, withWorkspace: boolean): Promise<BackupActionResult> => ipcRenderer.invoke(IPC.backupsRestore, id, withWorkspace)
+  },
+  sandboxes: {
+    state: (): Promise<SandboxesState> => ipcRenderer.invoke(IPC.sandboxesState),
+    /** Copy a project into a new sandbox (`full`: with node_modules and the other rebuildable folders). */
+    create: (source: string, label: string, full: boolean): Promise<SandboxResult> => ipcRenderer.invoke(IPC.sandboxesCreate, source, label, full),
+    compare: (name: string): Promise<SandboxResult> => ipcRenderer.invoke(IPC.sandboxesCompare, name),
+    /** Bring the sandbox's changes (or only `paths`) into its project; removed files go to the Recycle Bin. */
+    apply: (name: string, paths?: string[]): Promise<SandboxResult> => ipcRenderer.invoke(IPC.sandboxesApply, name, paths),
+    remove: (name: string): Promise<SandboxResult> => ipcRenderer.invoke(IPC.sandboxesRemove, name)
   },
   systemAudit: {
     /** The system audit: the saved report, or the one running since startup. */

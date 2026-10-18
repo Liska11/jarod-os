@@ -134,57 +134,60 @@ export function prepareRoot(root: string, now = new Date()): void {
   fs.writeFileSync(path.join(root, MARKER), `${JSON.stringify(marker, null, 2)}\n`, 'utf8')
 }
 
+const fsp = fs.promises
+
 /** Files and bytes under a folder (links are not followed). */
-export function measure(folder: string): { files: number; bytes: number } {
+export async function measure(folder: string): Promise<{ files: number; bytes: number }> {
   let files = 0
   let bytes = 0
-  const walk = (dir: string) => {
-    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+  const walk = async (dir: string) => {
+    for (const entry of await fsp.readdir(dir, { withFileTypes: true }).catch(() => [])) {
       const full = path.join(dir, entry.name)
 
       if (entry.isDirectory()) {
-        walk(full)
+        await walk(full)
       } else if (entry.isFile()) {
         files++
-        bytes += fs.statSync(full).size
+        bytes += (await fsp.stat(full)).size
       }
     }
   }
 
-  if (fs.existsSync(folder)) {
-    walk(folder)
-  }
+  await walk(folder)
 
   return { files, bytes }
 }
 
-/** Copy `from` into `to` (merged, nothing overwritten) and check that every file arrived with its size. */
-export function copyChecked(from: string, to: string): { files: number; bytes: number } {
+/**
+ * Copy `from` into `to` (merged, nothing overwritten) and check that every file arrived with its size. Asynchronous: a
+ * large workspace copies while the window stays alive.
+ */
+export async function copyChecked(from: string, to: string): Promise<{ files: number; bytes: number }> {
   if (!fs.existsSync(from)) {
     return { files: 0, bytes: 0 }
   }
 
-  const before = measure(from)
-  fs.cpSync(from, to, { recursive: true, force: false, errorOnExist: false, preserveTimestamps: true, verbatimSymlinks: true })
+  const before = await measure(from)
+  await fsp.cp(from, to, { recursive: true, force: false, errorOnExist: false, preserveTimestamps: true, verbatimSymlinks: true })
   const missing: string[] = []
-  const check = (dir: string) => {
-    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+  const check = async (dir: string) => {
+    for (const entry of await fsp.readdir(dir, { withFileTypes: true })) {
       const source = path.join(dir, entry.name)
       const target = path.join(to, path.relative(from, source))
 
       if (entry.isDirectory()) {
-        check(source)
+        await check(source)
       } else if (entry.isFile()) {
-        const copied = fs.statSync(target, { throwIfNoEntry: false })
+        const copied = await fsp.stat(target).catch(() => null)
 
-        if (!copied || copied.size !== fs.statSync(source).size) {
+        if (!copied || copied.size !== (await fsp.stat(source)).size) {
           missing.push(path.relative(from, source))
         }
       }
     }
   }
 
-  check(from)
+  await check(from)
 
   if (missing.length > 0) {
     throw new Error(`${missing.length} file(s) did not copy, starting with ${missing[0]}`)
@@ -219,7 +222,7 @@ export interface MoveResult {
  * the workspace in. The backend must be stopped first (its database is open). The location is written last, so a failed
  * copy changes nothing at the next start.
  */
-export function moveToRoot(options: { root: string; move: boolean; dataDir: string; workspace: string; configDir: string; current: string[] }): MoveResult {
+export async function moveToRoot(options: { root: string; move: boolean; dataDir: string; workspace: string; configDir: string; current: string[] }): Promise<MoveResult> {
   const root = win.normalize(options.root)
   const problem = rootProblem(root, options.current)
 
@@ -249,7 +252,7 @@ export function moveToRoot(options: { root: string; move: boolean; dataDir: stri
       [options.dataDir, paths.data],
       [options.workspace, paths.workspace]
     ] as const) {
-      const done = copyChecked(from, to)
+      const done = await copyChecked(from, to)
       copied.files += done.files
       copied.bytes += done.bytes
 

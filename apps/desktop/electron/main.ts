@@ -33,6 +33,7 @@ import { locateRuntime, PINOKIO_URL, PinokioService } from './pinokio/service.ts
 import { registerSystemAuditIpc } from './ipc/system-audit.ts'
 import { registerDataDiskIpc } from './ipc/data-disk.ts'
 import { BackupService } from './ipc/backups.ts'
+import { registerSandboxesIpc } from './ipc/sandboxes.ts'
 import { applyDataRoot } from './data-root.ts'
 import { MEDIA_SCHEME_PRIVILEGES, registerMediaIpc } from './ipc/media.ts'
 import { registerNativeAppsIpc } from './ipc/native-apps.ts'
@@ -624,6 +625,7 @@ function registerCoreIpc(): void {
   registerPinokioIpc(pinokio, () => webViews, () => (panels ? panels.mainWindow() : mainWindow))
   registerSystemAuditIpc(systemAudit)
   backups.register()
+  registerSandboxesIpc()
   registerDataDiskIpc({ state: dataRoot, configDir: shellConfigDir(), stopBackend: () => backend.stop(), startBackend: () => void backend.start(), relaunch: () => relaunch(false) })
   registerNativeAppsIpc()
   registerWindowEmbeds()

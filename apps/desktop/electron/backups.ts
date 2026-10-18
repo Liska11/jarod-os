@@ -103,22 +103,29 @@ interface CopyStats {
   linked: number
 }
 
-/** Copy `from` into `to`, hard-linking files unchanged since `previous` (the same part of the last backup). */
-export function snapshot(from: string, to: string, previous: string | null, stats: CopyStats = { files: 0, bytes: 0, linked: 0 }): CopyStats {
-  if (!fs.existsSync(from)) {
+const fsp = fs.promises
+
+/**
+ * Copy `from` into `to`, hard-linking files unchanged since `previous` (the same part of the last backup). Asynchronous:
+ * it runs in the main process, which must keep the windows alive while a large workspace copies.
+ */
+export async function snapshot(from: string, to: string, previous: string | null, stats: CopyStats = { files: 0, bytes: 0, linked: 0 }): Promise<CopyStats> {
+  const entries = await fsp.readdir(from, { withFileTypes: true }).catch(() => null)
+
+  if (!entries) {
     return stats
   }
 
-  fs.mkdirSync(to, { recursive: true })
+  await fsp.mkdir(to, { recursive: true })
 
-  for (const entry of fs.readdirSync(from, { withFileTypes: true })) {
+  for (const entry of entries) {
     const source = path.join(from, entry.name)
     const target = path.join(to, entry.name)
     const before = previous ? path.join(previous, entry.name) : null
 
     if (entry.isDirectory()) {
       if (!SKIPPED.has(entry.name)) {
-        snapshot(source, target, before, stats)
+        await snapshot(source, target, before, stats)
       }
 
       continue
@@ -128,14 +135,14 @@ export function snapshot(from: string, to: string, previous: string | null, stat
       continue
     }
 
-    const stat = fs.statSync(source)
-    const old = before ? fs.statSync(before, { throwIfNoEntry: false }) : undefined
+    const stat = await fsp.stat(source)
+    const old = before ? await fsp.stat(before).catch(() => null) : null
     stats.files++
     stats.bytes += stat.size
 
     if (old?.isFile() && old.size === stat.size && Math.abs(old.mtimeMs - stat.mtimeMs) < 2) {
       try {
-        fs.linkSync(before as string, target)
+        await fsp.link(before as string, target)
         stats.linked++
 
         continue
@@ -144,8 +151,8 @@ export function snapshot(from: string, to: string, previous: string | null, stat
       }
     }
 
-    fs.copyFileSync(source, target)
-    fs.utimesSync(target, stat.atime, stat.mtime)
+    await fsp.copyFile(source, target)
+    await fsp.utimes(target, stat.atime, stat.mtime)
   }
 
   return stats
@@ -176,7 +183,7 @@ export async function createBackup(
     const source = parts[part]
 
     if (source && fs.existsSync(source)) {
-      snapshot(source, path.join(folder, part), previous?.parts.includes(part) ? path.join(backupsDir, previous.id, part) : null, stats)
+      await snapshot(source, path.join(folder, part), previous?.parts.includes(part) ? path.join(backupsDir, previous.id, part) : null, stats)
       done.push(part)
     }
 
@@ -196,19 +203,19 @@ export function toPrune(backups: readonly BackupManifest[], keep: number, protec
   return backups.filter(backup => backup.id !== protect).slice(Math.max(0, keep - (protect ? 1 : 0)))
 }
 
-export function removeBackup(backupsDir: string, id: string): void {
+export async function removeBackup(backupsDir: string, id: string): Promise<void> {
   if (!/^[\w-]+$/.test(id)) {
     throw new Error('not a backup')
   }
 
-  fs.rmSync(path.join(backupsDir, id), { recursive: true, force: true })
+  await fsp.rm(path.join(backupsDir, id), { recursive: true, force: true })
 }
 
 /**
  * Put a backup back: the current folders move aside into a "before-restore" backup (a rename, nothing is deleted),
  * then the backup's parts are copied in place. The core must be stopped, and Jarod-OS restarted afterwards.
  */
-export function restoreBackup(backupsDir: string, id: string, targets: Partial<Record<'data' | 'workspace', string>>, now = new Date()): { aside: string } {
+export async function restoreBackup(backupsDir: string, id: string, targets: Partial<Record<'data' | 'workspace', string>>, now = new Date()): Promise<{ aside: string }> {
   const backup = listBackups(backupsDir).find(item => item.id === id)
 
   if (!backup) {
@@ -227,14 +234,14 @@ export function restoreBackup(backupsDir: string, id: string, targets: Partial<R
     if (fs.existsSync(target)) {
       // Same volume (both on the Jarod disk): a rename, instant and lossless; across volumes, a copy.
       try {
-        fs.renameSync(target, path.join(aside, part))
+        await fsp.rename(target, path.join(aside, part))
       } catch {
-        snapshot(target, path.join(aside, part), null, stats)
-        fs.rmSync(target, { recursive: true, force: true })
+        await snapshot(target, path.join(aside, part), null, stats)
+        await fsp.rm(target, { recursive: true, force: true })
       }
     }
 
-    fs.cpSync(path.join(backupsDir, id, part), target, { recursive: true, preserveTimestamps: true })
+    await fsp.cp(path.join(backupsDir, id, part), target, { recursive: true, preserveTimestamps: true })
   }
 
   const manifest: BackupManifest = { id: asideId, created: now.toISOString(), reason: 'before-restore', parts, ...stats }

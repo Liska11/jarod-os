@@ -1006,6 +1006,12 @@ export const IPC = {
   backupsRemove: 'herald-os:backups:remove',
   /** Put a backup back (the current state is kept aside), then restart. */
   backupsRestore: 'herald-os:backups:restore',
+  // Sandboxes on the Jarod disk (electron/sandboxes.ts, electron/ipc/sandboxes.ts).
+  sandboxesState: 'herald-os:sandboxes:state',
+  sandboxesCreate: 'herald-os:sandboxes:create',
+  sandboxesCompare: 'herald-os:sandboxes:compare',
+  sandboxesApply: 'herald-os:sandboxes:apply',
+  sandboxesRemove: 'herald-os:sandboxes:remove',
 
   prefsGet: 'herald-os:prefs:get',
   prefsSet: 'herald-os:prefs:set',

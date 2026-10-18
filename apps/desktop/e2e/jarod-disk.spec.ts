@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { existsSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { type Launched, launchShell, ROOT_PREFIX } from './launch'
@@ -59,4 +59,26 @@ test('the core starts again after the backup (it stops only for the data copy)',
   await expect
     .poll(async () => (await page.evaluate(() => window.heraldOS.backend.getState())).phase, { timeout: 60_000 })
     .not.toBe('stopped')
+})
+
+test('a sandbox of a project: compared and applied from Settings', async () => {
+  const project = path.join(root, 'workspace', 'projet')
+  mkdirSync(path.join(project, 'src'), { recursive: true })
+  writeFileSync(path.join(project, 'src', 'app.js'), 'v1')
+
+  // The folder picker is a native dialog: the sandbox is created through the same call the button makes.
+  const created = await page.evaluate(source => window.heraldOS.sandboxes.create(source, 'essai', false), project)
+  expect(created).toMatchObject({ ok: true, name: 'essai' })
+  writeFileSync(path.join(root, 'sandboxes', 'essai', 'src', 'app.js'), 'v2 from the sandbox')
+
+  // The list is read when the section opens.
+  await page.getByRole('button', { name: 'Général', exact: true }).click()
+  await page.getByRole('button', { name: 'Stockage', exact: true }).click()
+  await expect(page.getByText('essai', { exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Comparer' }).click()
+  await expect(page.getByText('modifié', { exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Appliquer 1 changement(s)' }).click()
+  await expect(page.getByText('1 changement(s) appliqué(s) au projet.')).toBeVisible()
+
+  expect(readFileSync(path.join(project, 'src', 'app.js'), 'utf8')).toBe('v2 from the sandbox')
 })

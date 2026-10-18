@@ -62,7 +62,7 @@ export class BackupService {
       const settings = readSettings(folder)
 
       for (const old of toPrune(listBackups(folder), settings.keep, manifest.id)) {
-        removeBackup(folder, old.id)
+        await removeBackup(folder, old.id)
         log('backups', `removed ${old.id} (keeping ${settings.keep})`)
       }
 
@@ -127,7 +127,7 @@ export class BackupService {
 
       return this.state()
     })
-    ipcMain.handle(IPC.backupsRemove, (_event, id: unknown): BackupActionResult => {
+    ipcMain.handle(IPC.backupsRemove, async (_event, id: unknown): Promise<BackupActionResult> => {
       const folder = this.folder
 
       if (!folder || typeof id !== 'string' || this.running) {
@@ -135,7 +135,7 @@ export class BackupService {
       }
 
       try {
-        removeBackup(folder, id)
+        await removeBackup(folder, id)
         log('backups', `removed ${id} (asked)`)
 
         return { ok: true }
@@ -154,7 +154,7 @@ export class BackupService {
 
       try {
         await this.options.stopBackend()
-        const { aside } = restoreBackup(folder, id, { data: jarodDataDir(), ...(withWorkspace === true ? { workspace: jarodWorkspace() } : {}) })
+        const { aside } = await restoreBackup(folder, id, { data: jarodDataDir(), ...(withWorkspace === true ? { workspace: jarodWorkspace() } : {}) })
         log('backups', `restored ${id}${withWorkspace === true ? ' with the workspace' : ''}; the previous state is in ${aside}`)
         setTimeout(this.options.relaunch, 1200)
 

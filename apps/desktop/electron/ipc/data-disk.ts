@@ -35,7 +35,7 @@ export function registerDataDiskIpc(options: { state: DataRootState; configDir: 
         await options.stopBackend()
       }
 
-      const result = moveToRoot({ root: root.trim(), move: Boolean(move), dataDir, workspace, configDir: options.configDir, current: [dataDir, workspace] })
+      const result = await moveToRoot({ root: root.trim(), move: Boolean(move), dataDir, workspace, configDir: options.configDir, current: [dataDir, workspace] })
       log('disk', `${result.adopted ? 'adopted' : 'prepared'} ${result.root}: ${result.copied.files} file(s), ${result.copied.bytes} bytes copied; old copies kept: ${result.oldCopies.join(', ') || 'none'}`)
       // The new place takes effect from the next start.
       setTimeout(options.relaunch, 1500)

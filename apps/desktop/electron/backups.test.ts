@@ -51,7 +51,7 @@ describe('createBackup', () => {
     expect(fs.readFileSync(path.join(backups, first.id, 'data', 'profile', 'jarod.db'), 'utf8')).toBe('v1')
     expect(fs.readFileSync(path.join(backups, second.id, 'data', 'profile', 'jarod.db'), 'utf8')).toBe('v2-longer')
     // A linked file survives the removal of the backup it came from.
-    removeBackup(backups, first.id)
+    await removeBackup(backups, first.id)
     expect(fs.readFileSync(path.join(backups, second.id, 'workspace', 'site', 'index.html'), 'utf8')).toBe('<h1>hi</h1>')
   })
 
@@ -87,7 +87,7 @@ describe('keeping backups', () => {
   })
 
   it('refuses ids that are not backup names', async () => {
-    expect(() => removeBackup(backups, '..\\..\\Windows')).toThrow('not a backup')
+    await expect(removeBackup(backups, '..\\..\\Windows')).rejects.toThrow('not a backup')
   })
 })
 
@@ -97,7 +97,7 @@ describe('restoreBackup', () => {
     fs.writeFileSync(path.join(data, 'profile', 'jarod.db'), 'broken')
     fs.writeFileSync(path.join(workspace, 'new.txt'), 'made after')
 
-    const { aside } = restoreBackup(backups, backup.id, { data, workspace }, at('2026-10-18T09:00:00Z'))
+    const { aside } = await restoreBackup(backups, backup.id, { data, workspace }, at('2026-10-18T09:00:00Z'))
 
     expect(fs.readFileSync(path.join(data, 'profile', 'jarod.db'), 'utf8')).toBe('v1')
     expect(fs.existsSync(path.join(workspace, 'new.txt'))).toBe(false)

@@ -17,7 +17,7 @@ describe('parseDrives', () => {
     { DeviceID: 'G:', DriveType: 2, FreeSpace: null, Size: null, VolumeName: null, FileSystem: null }
   ])
 
-  it('keeps the drives data can live on, the best first, with what to warn about', () => {
+  it('keeps the drives data can live on, the best first, with what to warn about', async () => {
     const drives = parseDrives(rows, 'C:')
 
     expect(drives.map(d => d.letter)).toEqual(['D:', 'Z:', 'E:', 'C:'])
@@ -27,7 +27,7 @@ describe('parseDrives', () => {
     expect(drives.find(d => d.letter === 'Z:')?.warnings).toEqual(['network'])
   })
 
-  it('reads a single drive (ConvertTo-Json gives an object) and survives garbage', () => {
+  it('reads a single drive (ConvertTo-Json gives an object) and survives garbage', async () => {
     expect(parseDrives(JSON.stringify({ DeviceID: 'D:', DriveType: 3, FreeSpace: LOW_SPACE - 1, Size: 100 * GB, FileSystem: 'ReFS' }))).toMatchObject([{ letter: 'D:', warnings: ['lowSpace'] }])
     expect(parseDrives('not json')).toEqual([])
   })
@@ -36,11 +36,11 @@ describe('parseDrives', () => {
 describe('rootProblem', () => {
   const env = { SystemRoot: 'C:\\Windows', ProgramFiles: 'C:\\Program Files', 'ProgramFiles(x86)': 'C:\\Program Files (x86)', ProgramData: 'C:\\ProgramData' }
 
-  it('accepts a folder on another drive', () => {
+  it('accepts a folder on another drive', async () => {
     expect(rootProblem('D:\\Jarod-OS', ['C:\\Users\\me\\AppData\\Local\\Jarod-OS'], env)).toBeNull()
   })
 
-  it('refuses relative paths, system folders and the folders in use', () => {
+  it('refuses relative paths, system folders and the folders in use', async () => {
     expect(rootProblem('Jarod-OS', [], env)).toBe('not-absolute')
     expect(rootProblem('\\\\nas\\share', [], env)).toBe('not-absolute')
     expect(rootProblem('C:\\Program Files\\Jarod', [], env)).toBe('system-folder')
@@ -73,9 +73,9 @@ describe('moving to a Jarod disk', () => {
 
   const current = () => [dataDir, workspace]
 
-  it('prepares the root, copies the data and workspace, keeps the old copies and records the choice', () => {
+  it('prepares the root, copies the data and workspace, keeps the old copies and records the choice', async () => {
     const root = path.join(base, 'disk', 'Jarod-OS')
-    const result = moveToRoot({ root, move: true, dataDir, workspace, configDir, current: current() })
+    const result = await moveToRoot({ root, move: true, dataDir, workspace, configDir, current: current() })
 
     expect(result).toMatchObject({ adopted: false, copied: { files: 2 }, oldCopies: [dataDir, workspace] })
     expect(fs.readFileSync(path.join(root, 'data', 'profile', 'jarod.db'), 'utf8')).toBe('database')
@@ -87,16 +87,16 @@ describe('moving to a Jarod disk', () => {
     expect(readLocation(configDir)).toBe(root)
   })
 
-  it('applies the recorded root at startup through the environment', () => {
+  it('applies the recorded root at startup through the environment', async () => {
     const root = path.join(base, 'disk', 'Jarod-OS')
-    moveToRoot({ root, move: false, dataDir, workspace, configDir, current: current() })
+    await moveToRoot({ root, move: false, dataDir, workspace, configDir, current: current() })
     const env: NodeJS.ProcessEnv = {}
 
     expect(applyDataRoot(configDir, env)).toEqual({ kind: 'root', root })
     expect(env).toMatchObject({ JAROD_OS_ROOT: root, JAROD_OS_DATA: path.join(root, 'data'), JAROD_WORKSPACE: path.join(root, 'workspace') })
   })
 
-  it('lets the environment win, and reports a root that is not there', () => {
+  it('lets the environment win, and reports a root that is not there', async () => {
     fs.mkdirSync(configDir, { recursive: true })
     fs.writeFileSync(path.join(configDir, LOCATION_FILE), JSON.stringify({ root: 'Q:\\Jarod-OS' }))
 
@@ -107,25 +107,25 @@ describe('moving to a Jarod disk', () => {
     expect(applyDataRoot(path.join(base, 'nowhere'), {})).toEqual({ kind: 'default' })
   })
 
-  it('adopts a folder that already is a Jarod root, refuses one that holds something else', () => {
+  it('adopts a folder that already is a Jarod root, refuses one that holds something else', async () => {
     const existing = path.join(base, 'reinstall')
     fs.mkdirSync(existing)
     fs.writeFileSync(path.join(existing, MARKER), JSON.stringify({ kind: 'jarod-os-root', version: 1, created: 'x' }))
     expect(inspectTarget(existing)).toBe('adopt')
-    expect(moveToRoot({ root: existing, move: true, dataDir, workspace, configDir, current: current() })).toMatchObject({ adopted: true, copied: { files: 0 } })
+    expect(await moveToRoot({ root: existing, move: true, dataDir, workspace, configDir, current: current() })).toMatchObject({ adopted: true, copied: { files: 0 } })
 
     const other = path.join(base, 'photos')
     fs.mkdirSync(other)
     fs.writeFileSync(path.join(other, 'cat.jpg'), 'x')
-    expect(() => moveToRoot({ root: other, move: true, dataDir, workspace, configDir, current: current() })).toThrow('occupied')
+    await expect(moveToRoot({ root: other, move: true, dataDir, workspace, configDir, current: current() })).rejects.toThrow('occupied')
   })
 
-  it('never overwrites a file already at the destination, and says when a copy is incomplete', () => {
+  it('never overwrites a file already at the destination, and says when a copy is incomplete', async () => {
     const to = path.join(base, 'to')
     fs.mkdirSync(path.join(to, 'profile'), { recursive: true })
     fs.writeFileSync(path.join(to, 'profile', 'jarod.db'), 'other')
 
-    expect(() => copyChecked(dataDir, to)).toThrow(/did not copy.*jarod\.db/)
+    await expect(copyChecked(dataDir, to)).rejects.toThrow(/did not copy.*jarod\.db/)
     expect(fs.readFileSync(path.join(to, 'profile', 'jarod.db'), 'utf8')).toBe('other')
   })
 })
