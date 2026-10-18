@@ -1,5 +1,6 @@
 import { useStore } from '@nanostores/react'
 import { computed } from 'nanostores'
+import { useMemo } from 'react'
 import type { BackendRuntime, HeraldOSPrefs } from '../../shared/ipc.ts'
 import { en, type MessageKey } from '../locales/en.ts'
 import { fr } from '../locales/fr.ts'
@@ -76,17 +77,23 @@ export function tn(base: string, count: number, vars: Vars = {}): string {
   return translate(locale, `${base}.${pluralKey(locale, count)}` as MessageKey, { count, ...vars }, $assistantName.get())
 }
 
-/** `t` and `tn` bound to the current language and name; the component redraws when either changes. */
+/**
+ * `t` and `tn` bound to the current language and name; the component redraws when either changes. The functions keep
+ * their identity until then, so listing `t` in hook dependencies does not rerun the hook on every render.
+ */
 export function useT(): { t: typeof t; tn: typeof tn; locale: Locale; assistant: string } {
   const locale = useStore($locale)
   const assistant = useStore($assistantName)
 
-  return {
-    t: (key, vars) => translate(locale, key, vars, assistant),
-    tn: (base, count, vars = {}) => translate(locale, `${base}.${pluralKey(locale, count)}` as MessageKey, { count, ...vars }, assistant),
-    locale,
-    assistant
-  }
+  return useMemo(
+    () => ({
+      t: (key, vars) => translate(locale, key, vars, assistant),
+      tn: (base, count, vars = {}) => translate(locale, `${base}.${pluralKey(locale, count)}` as MessageKey, { count, ...vars }, assistant),
+      locale,
+      assistant
+    }),
+    [locale, assistant]
+  )
 }
 
 /** The display name and tagline of an app (sidebar, dock, command bar), in the current language. */
