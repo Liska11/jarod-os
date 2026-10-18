@@ -93,3 +93,14 @@ Commits : `16c22a9` (`useT` rend un `t` stable entre deux rendus, avec son test 
 - **Courses entre fichiers d'essai** (dossiers et démons comptés sur toute la machine) : les essais ne comptent plus que ce qui appartient à leur propre session.
 - Lint : corrections sûres appliquées (échappements inutiles, `const`), 616 → 595 avertissements.
 - Restent : la preuve WebRTC/UDP (côté machine), et deux points notés au backlog (démon du moteur pas encore enregistré, ~880 dossiers `jarod-e2e-*` laissés par les e2e).
+
+## Mise à jour du 2026-10-18 (fin) — ce qui pouvait se faire seul
+
+- **Marque Jarod-OS** : le H ailé est remplacé par le cœur de `Pictures\jarod_core.png`, plus grand, aux bords fondus et avec un halo (`0d7270a`, `51ce5b9`). Vérifié sur l'écran d'accueil de l'application reconstruite.
+- **Démon du moteur introuvable à la fermeture** : corrigé (`6105169`) ; le démon porte maintenant le profil dans sa ligne de commande et s'arrête avec le navigateur.
+- **Nettoyage e2e** : chaque passe efface ses dossiers et échoue si elle en laisse un (`2f16af8`) ; 876 anciens dossiers supprimés à votre demande.
+- **18 tests du shell ignorés sous Windows** : ils tournent (faux shell sur un vrai tube nommé), 445/445 (`2381b26`).
+- **Dépendances de hooks React** : les cas relus sont volontaires, aucun bug de valeur périmée ; une notification encore en anglais traduite.
+- **Une passe e2e à 17/19** (1,8 min) n'a pas pu être expliquée, faute de journal ; les quatre passes suivantes : 19/19.
+- **Vérifications finales** : 1133 tests desktop, 19/19 e2e, noyau sans autre échec que la preuve WebRTC/UDP, pont 445/445, Rust 201/201 ; 0 profil, 0 dossier e2e, 0 processus restant.
+- Restent à vous : pousser, la preuve UDP (réglages réseau), la signature Firefox, le renommage global.
