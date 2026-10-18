@@ -364,10 +364,6 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
       }
       break;
     }
-    default:
-      console.error(`Commande inconnue : ${args.command}\n\n${HELP}`);
-      await core.dispose();
-      return 2;
     case "portability": {
       const bundleDir = args.positional[1];
       if (args.positional[0] !== "apply" || !bundleDir) {
@@ -384,6 +380,10 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
       await core.dispose();
       return code;
     }
+    default:
+      console.error(`Commande inconnue : ${args.command}\n\n${HELP}`);
+      await core.dispose();
+      return 2;
   }
   await core.dispose();
   return 0;

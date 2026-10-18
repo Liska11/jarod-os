@@ -24,7 +24,7 @@
  *
  *     pnpm --filter @jarod/gates bench:q15-corpus
  */
-import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, type Stats, statSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -79,7 +79,7 @@ function walk(dir: string, keep: (name: string) => boolean, out: string[]): void
   }
   for (const name of entries) {
     const p = join(dir, name);
-    let st;
+    let st: Stats;
     try {
       st = statSync(p);
     } catch {

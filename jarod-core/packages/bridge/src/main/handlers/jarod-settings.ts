@@ -689,7 +689,7 @@ export function createJarodSettingsHandlers(ctx: HandlerContext) {
   const settings = () => ctx.kernel().agent.settings;
   const env = (): Env => ({
     provider(id) {
-      let def;
+      let def: { name: string; local?: boolean; baseUrl: string };
       try {
         def = ctx.kernel().agent.providers.def(id);
       } catch {

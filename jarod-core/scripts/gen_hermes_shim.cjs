@@ -310,7 +310,7 @@ export type HermesAPI = ReturnType<typeof createHermesAPI>;
 const DTS = "src/preload/index.d.ts";
 if (execFileSync("git", ["-C", SANK, "status", "--porcelain", "--", DTS]).toString().trim()) fail(`${DTS} modifié dans l'arbre SANK-UI : copie refusée`);
 const dts = fs.readFileSync(path.join(SANK, DTS), "utf8").replace(/\r\n?/g, "\n");
-if (!/declare global \{\n  interface Window \{\n    electron: ElectronAPI;\n    hermesAPI: HermesAPI;\n  \}\n\}\n*$/.test(dts)) fail(`${DTS} : forme inattendue (déclaration globale window.electron/hermesAPI)`);
+if (!/declare global \{\n {2}interface Window \{\n {4}electron: ElectronAPI;\n {4}hermesAPI: HermesAPI;\n {2}\}\n\}\n*$/.test(dts)) fail(`${DTS} : forme inattendue (déclaration globale window.electron/hermesAPI)`);
 fs.mkdirSync(path.join(ROOT, "packages/desktop/src/sank/src/preload"), { recursive: true });
 fs.writeFileSync(path.join(ROOT, "packages/desktop/src/sank/src/preload/index.d.ts"), dts, { encoding: "utf8" });
 
