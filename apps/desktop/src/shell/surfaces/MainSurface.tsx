@@ -97,7 +97,7 @@ export function MainSurface() {
 
   return (
     <div className="h-full w-full bg-bg text-fg">
-      <div className="relative h-full w-full overflow-hidden bg-bg">
+      <div className="relative h-full w-full overflow-clip bg-bg">
         <StillWallpaper />
         <div className="absolute inset-0 z-(--z-windows)">
           <MainWindow />

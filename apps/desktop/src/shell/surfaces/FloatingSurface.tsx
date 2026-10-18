@@ -63,7 +63,7 @@ export function FloatingSurface({ appId }: { appId: string }) {
   const def = appById(appId)
 
   return (
-    <div className="relative h-full w-full overflow-hidden bg-bg text-fg">
+    <div className="relative h-full w-full overflow-clip bg-bg text-fg">
       <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, var(--color-glass-2), var(--color-glass))' }} />
       <div className="absolute inset-0">
         <SurfaceErrorBoundary label={def.name}>

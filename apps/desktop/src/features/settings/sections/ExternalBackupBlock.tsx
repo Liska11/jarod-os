@@ -164,7 +164,10 @@ export function ExternalBackupBlock() {
             </div>
 
             <div className="flex flex-wrap items-center gap-3">
-              <Toggle checked={state.settings.auto.enabled} disabled={!destination} onChange={enabled => options(state.settings.parts, { ...state.settings.auto, enabled })} label={t('externalBackup.auto')} />
+              <span className="flex items-center gap-2 text-[12.5px] text-fg-2">
+                <Toggle checked={state.settings.auto.enabled} disabled={!destination} onChange={enabled => options(state.settings.parts, { ...state.settings.auto, enabled })} label={t('externalBackup.auto')} />
+                {t('externalBackup.auto')}
+              </span>
               <label className="flex items-center gap-2 text-[12.5px] text-fg-2">
                 {t('externalBackup.every')}
                 <select

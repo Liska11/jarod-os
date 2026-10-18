@@ -101,8 +101,8 @@ Utilisateur
 | A-06 | faible | IPC | 159 `ipcMain.handle` sans contrôle de l'expéditeur (`senderFrame`). Les vues web n'ont pas de preload, et la navigation des fenêtres à preload est verrouillée (`window.ts:69-76`, `panels.ts`) | Défense en profondeur seulement : pas d'exploitation trouvée | Différé : un contrôle commun de l'expéditeur dans un lot dédié | — | hypothèse, différé |
 | A-07 | faible | tests du noyau | `integrations/test/engines/browser.lifecycle.engine.test.ts:121` : « contrôle WebRTC : aucun datagramme STUN/TURN-UDP n'atteint le témoin sur cette machine, preuve non concluante » | Le contrôle de la preuve UDP dépend de la machine. Ce n'est pas une fuite : c'est le témoin qui ne voit rien sans durcissement. | Aucune correction de code. Documenté (E2-VALIDATION §6.1). | — | confirmé, préexistant, différé |
 | A-08 | moyenne | secrets | Sous Windows, le coffre du noyau écrit ses valeurs en `pl:` (base64) dans `jarod.db` (`storage/src/os-crypt.ts:102`). La base est chiffrée par SQLCipher, avec une clé DPAPI (`dbkey.ts:121`). Repli : un fichier de clé « faible » si DPAPI échoue. | Protégé par le chiffrement de la base. Si la clé tombe sur le fichier, protection faible (signalée `weak`). Les sauvegardes copient `jarod.db`, donc le coffre chiffré. | Afficher l'état de chiffrement dans Secrets, exclure le coffre des sauvegardes externes (volets 1 et 4) | test : manifeste de sauvegarde sans valeur de secret | **en partie corrigé** : la sauvegarde externe retire les valeurs du coffre (`snapshotWithoutSecrets`, testé en e2e). L'affichage de l'état du chiffrement reste au volet 4. |
-| A-09 | moyenne | SSH | `tools/ssh.ts:435` : un hôte inconnu échoue, et le message demande d'utiliser `ssh-keyscan` à la main. Il n'y a ni première confiance avec empreinte dans l'interface, ni test réseau séparé, ni Tailscale. | Le premier usage est bloqué hors terminal | Volet 2 : test TCP séparé, lecture de l'empreinte (`ssh-keyscan` + `ssh-keygen -lf`), confirmation, ajout au `known_hosts` de Jarod | tests unitaires avec transport simulé | à traiter (volet 2) |
-| A-10 | faible | voix | `gateway/audio.ts:3` : le noyau Jarod ne sert pas `speak-stream`. La réponse est synthétisée d'un bloc, ce qui allonge la latence avant le premier son. | Duplex moins réactif avec le noyau Jarod qu'avec Hermes | Volet 7 : mesurer, puis découper la synthèse par phrase côté shell | test unitaire du découpage | à traiter (volet 7) |
+| A-09 | moyenne | SSH | `tools/ssh.ts:435` : un hôte inconnu échoue, et le message demande d'utiliser `ssh-keyscan` à la main. Il n'y a ni première confiance avec empreinte dans l'interface, ni test réseau séparé, ni Tailscale. | Le premier usage est bloqué hors terminal | Volet 2 : test TCP séparé, lecture de l'empreinte (`ssh-keyscan` + `ssh-keygen -lf`), confirmation, ajout au `known_hosts` de Jarod | tests unitaires avec transport simulé | **corrigé** (volet 2) : `docs/REMOTE-SSH.md` |
+| A-10 | faible | voix | `gateway/audio.ts:3` : le noyau Jarod ne sert pas `speak-stream`. La réponse est synthétisée d'un bloc, ce qui allonge la latence avant le premier son. | Duplex moins réactif avec le noyau Jarod qu'avec Hermes | Volet 7 : mesurer, puis découper la synthèse par phrase côté shell | test unitaire du découpage | **corrigé** (volet 7) : `SentenceSpeaker` parle phrase par phrase pendant que la réponse arrive ; le gain sur une vraie réponse de modèle n'est pas mesuré (`docs/VOICE.md`) |
 | A-11 | faible | qualité | 597 avertissements biome (surtout `noControlCharactersInRegex`, `noNonNullAssertion`) | Bruit | Différé : pas de nettoyage en masse | — | différé |
 | A-12 | faible | sauvegardes locales | `electron/backups.ts` copie `data\` entier, coffre compris (chiffré), et vit sur le même disque que les données | Une panne du disque Jarod emporte données et sauvegardes | Volet 1 : sauvegarde externe distincte | — | **corrigé** (volet 1) : sauvegarde externe distincte, `docs/BACKUP-EXTERNE.md` |
 
@@ -164,3 +164,25 @@ Constats visuels : A-02, A-03, A-04. Le reste est cohérent : états vides expli
   - A-07 : dépend de la machine ;
   - A-11 : bruit de lint.
 - **Pris en charge par leurs volets** : A-08, A-09, A-10 et A-12.
+
+## Constats découverts pendant l'inspection finale (corrigés)
+
+| Id | Gravité | Composant | Preuve | Correction | Statut |
+|---|---|---|---|---|---|
+| A-13 | moyenne | coque | Captures : après le défilement d'un élément vers la vue (clavier, « faire défiler jusqu'à »), toute l'interface remontait d'environ 76 px. Barre du haut masquée, bande noire en bas. La racine `relative h-full w-full overflow-hidden` (`Desktop.tsx`, `MainSurface.tsx`, `FloatingSurface.tsx`) avait `scrollTop` à 76. | `overflow-clip` : un conteneur « clip » n'est pas une zone défilante. Mesure après correction : aucun conteneur défilé. | corrigé |
+| A-14 | faible | Stockage | Deux boutons « Sauvegarder maintenant » : sauvegarde locale et sauvegarde externe. Ambigu, et cassait `e2e/jarod-disk.spec.ts`. | Le bouton externe s'appelle « Sauvegarder sur ce disque ». | corrigé |
+| A-15 | faible | Stockage | L'interrupteur de sauvegarde automatique n'avait pas de libellé visible, seulement le libellé ARIA. | Libellé visible ajouté. | corrigé |
+| A-16 | faible | Système | « Demander à Hermes », « Runtime Hermes ». | Le nom de l'assistant est utilisé. | corrigé |
+
+## Validation finale (2026-10-18)
+
+| Validation | Résultat |
+|---|---|
+| Types (shell, client, noyau) | code 0 |
+| Lint (`biome lint`, dépôt entier) | 0 erreur ; 606 avertissements (597 au départ) |
+| Build du shell et paquet du noyau (`bundle:gateway`) | code 0 |
+| Tests unitaires du shell | 161 fichiers, 1268 réussis, 3 ignorés |
+| Noyau, paquets touchés | kernel 33, agent 346, bridge 443, storage 57, rag 164, tools 224, cli 461 (+1 échec attendu), intégration 226 : tous réussis |
+| e2e, Electron réel | 45 réussis : 40 lors de la passe complète, puis `jarod-disk` et `external-backup` relancés après A-14 |
+| Fichiers temporaires | aucun dossier `jarod-e2e-*` ni dossier de test laissé ; aucun processus de test restant |
+| Secrets dans le diff | recherche de motifs de clés (sk-, AKIA, clés privées, jetons Slack/GitHub/Google) : aucun |

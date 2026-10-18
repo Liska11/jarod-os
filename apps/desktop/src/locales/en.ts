@@ -2595,7 +2595,7 @@ export const en = {
   'externalBackup.auto': 'Automatic backup',
   'externalBackup.every': 'every',
   'externalBackup.hours': '{hours} h',
-  'externalBackup.now': 'Back up now',
+  'externalBackup.now': 'Back up to this disk',
   'externalBackup.cancel': 'Cancel',
   'externalBackup.phase.idle': 'Waiting',
   'externalBackup.phase.measuring': 'Measuring the content…',
@@ -2811,7 +2811,7 @@ export const en = {
   'providers.addressNoLogin': 'Do not put a login in the address; save the key separately.',
   // System surface (Overview > System)
   'system.title': 'System',
-  'system.askHermes': 'Ask Hermes',
+  'system.askHermes': 'Ask {assistant}',
   'system.askHermesPrompt': "What's using the most CPU and memory right now, and is anything worth stopping?",
   'system.cpu': 'CPU',
   'system.memory': 'Memory',
@@ -2827,7 +2827,7 @@ export const en = {
   'system.user': 'User',
   'system.askHermesCell': 'Ask Hermes',
   'system.askHermesPromptCell': 'Tell me about the process "{name}" (pid {pid}) that is using {cpu}% CPU. Should I stop it? If I confirm, stop it.',
-  'system.hermesRuntime': 'Hermes runtime',
+  'system.hermesRuntime': 'Engine ({assistant})',
   'system.refresh': 'Refresh',
   // Controls shared by the settings sections, and the engine model's own wording
   'controls.notChanged': 'Not changed',

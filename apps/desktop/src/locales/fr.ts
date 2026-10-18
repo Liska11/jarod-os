@@ -2593,7 +2593,7 @@ export const fr: Record<MessageKey, string> = {
   'externalBackup.auto': 'Sauvegarde automatique',
   'externalBackup.every': 'toutes les',
   'externalBackup.hours': '{hours} h',
-  'externalBackup.now': 'Sauvegarder maintenant',
+  'externalBackup.now': 'Sauvegarder sur ce disque',
   'externalBackup.cancel': 'Annuler',
   'externalBackup.phase.idle': 'En attente',
   'externalBackup.phase.measuring': 'Mesure du contenu…',
@@ -2809,7 +2809,7 @@ export const fr: Record<MessageKey, string> = {
   'providers.addressNoLogin': 'Ne mettez pas d\u2019identifiant dans l\u2019adresse ; enregistrez la cl\u00e9 s\u00e9par\u00e9ment.',
   // System surface (Overview > System)
   'system.title': 'Système',
-  'system.askHermes': 'Demander à Hermes',
+  'system.askHermes': 'Demander à {assistant}',
   'system.askHermesPrompt': "Qu'est-ce qui utilise le plus de CPU et de mémoire en ce moment, et y a-t-il quelque chose qui mérite d'être arrêté ?",
   'system.cpu': 'CPU',
   'system.memory': 'Mémoire',
@@ -2825,7 +2825,7 @@ export const fr: Record<MessageKey, string> = {
   'system.user': 'Utilisateur',
   'system.askHermesCell': 'Demander à Hermes',
   'system.askHermesPromptCell': 'Dis-moi ce que fait le processus "{name}" (pid {pid}) qui utilise {cpu}% CPU. Dois-je l\u2019arrêter ? Si je confirme, arrête-le.',
-  'system.hermesRuntime': 'Runtime Hermes',
+  'system.hermesRuntime': 'Moteur ({assistant})',
   'system.refresh': 'Actualiser',
   // Controls shared by the settings sections, and the engine model's own wording
   'controls.notChanged': 'Rien n\u2019a chang\u00e9',
