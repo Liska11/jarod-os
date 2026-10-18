@@ -1,5 +1,5 @@
 /**
- * Q19 — carte des chemins d'effet (BESOINS Q19, PHASE-4 « Q19 ») : classement des 63 outils du registre (77 sous Windows) et des
+ * Q19 — carte des chemins d'effet (BESOINS Q19, PHASE-4 « Q19 ») : classement des 64 outils du registre (78 sous Windows) et des
  * 31 commandes `/` tels que le kernel les charge. Le test `effect-paths.test.ts` échoue si un outil ou une
  * commande apparaît (ou disparaît) sans être classé ICI : ajouter un chemin d'effet exige de dire ce qu'il fait.
  *
@@ -71,6 +71,7 @@ export const TOOLS: Readonly<Record<string, ToolClass>> = {
   refine: ask("persistant"),
   refine_history: ro,
   refine_rollback: ask("persistant"),
+  remote_exec: free("exécution", "demande lui-même l'accord pour CHAQUE commande (« une fois » ou « refuser » seulement), hôte activé et clé connue exigés, journal de contrôle obligatoire"),
   run_shell: ask("exécution"),
   search_files: ro,
   session_read: ro,

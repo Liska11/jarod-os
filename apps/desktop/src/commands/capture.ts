@@ -189,7 +189,7 @@ export const captureCommands: readonly OsCommand[] = [
         } else {
           Object.values($windows.get())
             .filter(win => win.appId === 'camera')
-            .forEach(win => closeWindow(win.id))
+            .forEach(win => { closeWindow(win.id) })
         }
 
         return ok('Camera hidden')

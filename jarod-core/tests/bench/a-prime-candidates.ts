@@ -50,7 +50,7 @@ async function main(): Promise<void> {
     const fts = new Database(":memory:");
     fts.exec("CREATE VIRTUAL TABLE fts USING fts5(text, content='', tokenize='unicode61 remove_diacritics 2')");
     const ins = fts.prepare("INSERT INTO fts(rowid, text) VALUES (?, ?)");
-    rows.forEach((r, i) => ins.run(i + 1, r.text));
+    rows.forEach((r, i) => { ins.run(i + 1, r.text); });
     const stmt = fts.prepare(`SELECT rowid FROM fts WHERE fts MATCH ? ORDER BY bm25(fts) LIMIT ${PER_METHOD}`);
     const out = questions.map((q, qi) => {
       const v = qv[qi]!;

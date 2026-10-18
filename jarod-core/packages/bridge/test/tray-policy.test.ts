@@ -2,11 +2,8 @@
  * SPECS-P5-TRAY.md § 5 — la LOGIQUE de la zone de notification, sur des ports doublés (aucun Electron) : fermer la fenêtre, le conseil d'une seule fois, le démarrage avec la
  * session (jamais hors version empaquetée), le démarrage caché, le menu, l'icône. Barres figées dans la spec AVANT le code.
  */
-import { existsSync, readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
-import { handleWindowClose, launchAtLoginView, setLaunchAtLogin, startsHidden, trayIconPath, trayMenuItems } from "../src/main/tray-policy.js";
+import { handleWindowClose, launchAtLoginView, setLaunchAtLogin, startsHidden, trayMenuItems } from "../src/main/tray-policy.js";
 
 function rig(o: { closeToTray?: boolean; quitting?: boolean; hintShown?: boolean; platform?: NodeJS.Platform } = {}) {
   const calls: string[] = [];

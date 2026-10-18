@@ -13,7 +13,7 @@
  * plugin-rag n'est pas une dépendance du desktop, l'ajouter = `pnpm install` + série vocale) ; le réglage
  * `workspace` d'un paquet est ignoré (Q12 : une racine ne vient jamais du contenu d'un fichier).
  */
-import { copyFileSync, cpSync, existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { copyFileSync, cpSync, existsSync, mkdtempSync, readFileSync, rmSync, statSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 import { ProfileManager } from "@jarod/plugin-persona";
 import { type FileGate, GateDenied } from "../file-gate.js";

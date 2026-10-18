@@ -682,6 +682,10 @@ textarea {
 .side-item:focus-visible .side-tip.side-tip-left {
   transform: translate(0, -50%);
 }
+/* In the scrolling part of the rail the label would be clipped: it is fixed, and placed by Sidebar's useFloatingTips. */
+.side-scroll .side-tip {
+  position: fixed;
+}
 .side-handle::after {
   content: '';
   position: absolute;

@@ -32,6 +32,8 @@ describe("lanceur MXC de run_shell — même requête que toMxcRequest", () => {
   });
 
   it("les dossiers personnels sensibles sont interdits par défaut", () => {
-    expect(runner.defaultDenied("C:\\Users\\x")).toEqual(expect.arrayContaining(["C:\\Users\\x\\.ssh", "C:\\Users\\x\\.aws", "C:\\Users\\x\\.gnupg"]));
+    // Un dossier personnel de la machine qui exécute les tests : le lanceur assemble les chemins avec son séparateur.
+    const home = resolve("x");
+    expect(runner.defaultDenied(home)).toEqual(expect.arrayContaining([join(home, ".ssh"), join(home, ".aws"), join(home, ".gnupg")]));
   });
 });

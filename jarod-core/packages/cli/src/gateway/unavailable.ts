@@ -17,7 +17,7 @@ export const UNAVAILABLE_RPC: ReadonlySet<string> = new Set([
 ]);
 
 /** Les routes REST connues et non portées : GPT-Live, OAuth des serveurs MCP, OAuth des fournisseurs (le catalogue MCP est servi, vide, et son installation dit quoi faire à la place). */
-export function isUnavailableRest(method: string, path: string): boolean {
+export function isUnavailableRest(_method: string, path: string): boolean {
   if (path.startsWith("/api/audio/voice-live/")) return true;
   if (/^\/api\/mcp\/servers\/[^/]+\/auth$/.test(path)) return true;
   // `GET /api/providers/oauth` (la liste vide) est servie ; démarrer, interroger ou couper un flux ne l'est pas.

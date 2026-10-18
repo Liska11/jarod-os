@@ -23,6 +23,7 @@ import { toggleCommandBar } from '../store/surface.ts'
 import { $systemStats, useNetworkStatus, useSystemStats } from '../store/system.ts'
 import { $focusedTitle } from '../store/windows.ts'
 import { VoiceIndicator } from '../features/voice/VoiceIndicator.tsx'
+import { InternetSwitch } from './InternetSwitch.tsx'
 import { quietly } from '../lib/native.ts'
 import { type MessageKey, t, useT } from '../lib/i18n.ts'
 
@@ -108,6 +109,8 @@ export function MenuBarStatus({ onSearch, onBell, bellActive }: { onSearch: () =
 
   return (
     <div className="no-drag flex items-center gap-3">
+      {/* Always shown, whatever the layout: whether Jarod may reach the Internet must never be hidden. */}
+      <InternetSwitch />
       {visibleMenuBarItems(layout).map(item => (
         <Fragment key={item}>{items[item]}</Fragment>
       ))}

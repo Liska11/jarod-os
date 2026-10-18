@@ -387,8 +387,8 @@ export interface McpPreviewTool {
   dangerous: true;
 }
 
-// eslint-disable-next-line no-control-regex
-const stripControl = (s: string): string => s.replace(/[ --​-‏‪-‮⁦-⁩]/g, "");
+// biome-ignore lint/suspicious/noControlCharactersInRegex: intended, strips control characters from untrusted text
+const stripControl = (s: string): string => s.replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f\u200b-\u200f\u202a-\u202e\u2066-\u2069]/g, "");
 
 /** Starts configured MCP servers and exposes their tools to the agent as `mcp_<server>_<tool>`. */
 export class McpManager extends Emitter<{ changed: McpServerStatus[] }> {

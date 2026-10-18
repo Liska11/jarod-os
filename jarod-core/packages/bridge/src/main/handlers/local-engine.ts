@@ -245,6 +245,7 @@ export function createLocalEngineHandlers(ctx: HandlerContext) {
       const extra = Object.keys(o).filter((k) => !PRESET_KEYS.has(k));
       if (extra.length) return bad(`champ(s) non accepté(s) : ${extra.join(", ")}`);
       const current = stored(o.id);
+      // biome-ignore lint/suspicious/noControlCharactersInRegex: intended, rejects input that contains control characters
       if (typeof o.name !== "string" || !o.name.trim() || o.name.length > 60 || /[\u0000-\u001f]/.test(o.name)) return bad("nom : 1 à 60 caractères, sans caractère de contrôle");
       if (o.model !== current.model) return bad("le modèle ne se change que par la boîte « Ouvrir » (« Choisir le modèle… »)");
       if (o.draftModel !== current.draftModel && o.draftModel !== "") return bad("le brouillon ne se change que par la boîte « Ouvrir » ; le vider est permis");

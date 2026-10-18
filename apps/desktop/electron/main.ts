@@ -5,7 +5,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { type ControlRunResult, type EnvInfo, type HeraldOSPrefs, IPC, type RestRequest, type ShellCommand, type WindowState } from '../shared/ipc.ts'
 import { BackendManager } from './backend/manager.ts'
-import { jarodDataDir, resolveJarodCore, selectBackend } from './backend/jarod-core.ts'
+import { jarodDataDir, resolveJarodCore, runDbSnapshot, selectBackend } from './backend/jarod-core.ts'
 import { CrashWatcher } from './crash/watch.ts'
 import { fireEventAutomations } from './events/automations.ts'
 import { events } from './events/bus.ts'
@@ -31,6 +31,21 @@ import { registerWebIpc, type WebViews } from './ipc/web.ts'
 import { broadcastPinokioState, openElsewhere, registerPinokioIpc } from './ipc/pinokio.ts'
 import { locateRuntime, PINOKIO_URL, PinokioService } from './pinokio/service.ts'
 import { registerSystemAuditIpc } from './ipc/system-audit.ts'
+import { registerDataDiskIpc } from './ipc/data-disk.ts'
+import { BackupService } from './ipc/backups.ts'
+import { registerSandboxesIpc } from './ipc/sandboxes.ts'
+import { registerEnvironmentsIpc } from './ipc/environments.ts'
+import { registerVmsIpc } from './ipc/vms.ts'
+import { applyDataRoot } from './data-root.ts'
+import { NetworkPolicyService, setActiveNetworkPolicy } from './network.ts'
+import { cutDisallowed, installSocketGuard } from './net-guard.ts'
+import { electronNetworkSessions, registerNetworkIpc } from './ipc/network.ts'
+import { ExternalBackupService } from './ipc/external-backup.ts'
+import { registerRemoteMachinesIpc } from './ipc/remote-machines.ts'
+import { registerUpdatesCheckIpc } from './ipc/updates-check.ts'
+import { MEDIA_SCHEME_PRIVILEGES, registerMediaIpc } from './ipc/media.ts'
+import { registerNativeAppsIpc } from './ipc/native-apps.ts'
+import { registerWindowEmbeds } from './platform/window-embed.ts'
 import { AuditService } from './setup/service.ts'
 import { log, logTail } from './log.ts'
 import { installProblemLogging } from './problem-log.ts'
@@ -39,7 +54,7 @@ import { registerNotificationHistoryIpc } from './notifications-history.ts'
 import { osEnv } from './env.ts'
 import { claimSingleInstance } from './single-instance.ts'
 import { SwitchService } from './switches.ts'
-import { hermesHome, heraldOsDataDir, isDev, legacyShellConfigDir, shellConfigDir } from './paths.ts'
+import { appUserModelId, hermesHome, heraldOsDataDir, isDev, legacyShellConfigDir, shellConfigDir } from './paths.ts'
 import { readPrefs, writePrefs } from './prefs.ts'
 import { isOmarchy, readOmarchyTheme } from './theme/omarchy.ts'
 import { prefsForTheme } from './theme/themes.ts'
@@ -63,6 +78,11 @@ import { appIconPath, createMainWindow, loadShell, MAIN_WINDOW_MIN } from './win
 import { CrashPolicy, isSafeMode, recoveryAction, recoveryPage, relaunchArgs } from './recovery.ts'
 import { readWindowState, restoreBounds, roundingDrift, withoutDrift, writeWindowState } from './window-state.ts'
 import { ShellTray, trayLanguage } from './tray.ts'
+import { installIpcSenderGuard } from './ipc/sender-guard.ts'
+
+// Every IPC channel answers only the shell's own page (audit A-06): installed before the first
+// registration, so no channel is left out — none of the modules above registers at import time.
+installIpcSenderGuard(ipcMain)
 
 app.setName('Jarod-OS')
 // First, before anything touches data or opens a socket (the lock is keyed on the name set just above).
@@ -86,20 +106,38 @@ const tray = new ShellTray(appIconPath(), safeMode, {
 })
 const coreLocation = { packaged: app.isPackaged, resourcesPath: process.resourcesPath, appPath: app.getAppPath() }
 
+// Jarod-OS's own disk, when the person chose one (data-root.ts): applied before anything resolves the data paths.
+const dataRoot = applyDataRoot(shellConfigDir())
+
+// The Internet switch (docs/NETWORK-POLICY.md): read before any session, socket or backend exists. The core reads the same file
+// (JAROD_NETWORK_POLICY) on each of its connections; this process's own Node sockets go through the guard.
+const network = new NetworkPolicyService(shellConfigDir())
+network.load()
+setActiveNetworkPolicy(network)
+process.env.JAROD_NETWORK_POLICY = network.file
+installSocketGuard(host => network.allows(host))
+network.onChange(() => cutDisallowed(host => network.allows(host)))
+const networkSessions = electronNetworkSessions()
+
 // With the Jarod core as backend, the shell keeps its Hermes-style files (plugins, themes, audit, notes) in a home of its own, never in a Hermes install of this machine.
 // Left alone when the person set HERMES_HOME, or attached the shell to a backend they run themselves.
 if (!process.env.HERMES_HOME?.trim() && !process.env.HERALD_OS_BACKEND_URL?.trim() && selectBackend(process.env, resolveJarodCore({ ...coreLocation, env: process.env })) === 'jarod') {
   process.env.HERMES_HOME = path.join(jarodDataDir(), 'herald-home')
 }
 
-// Widget plugins load from herald-plugin://<id>/ (registered before the app is ready, as Electron requires).
-protocol.registerSchemesAsPrivileged([{ scheme: 'herald-plugin', privileges: { standard: true, secure: true, supportFetchAPI: true } }])
+// Widget plugins load from herald-plugin://<id>/, the Player streams jarod-media:// (registered before the app is
+// ready, in one call, as Electron requires).
+protocol.registerSchemesAsPrivileged([{ scheme: 'herald-plugin', privileges: { standard: true, secure: true, supportFetchAPI: true } }, MEDIA_SCHEME_PRIVILEGES])
 
 // Electron shows a modal dialog for an uncaught main-process error and waits on it: the whole
 // shell, the Linux session included, would freeze behind a box nobody may see. Log it and go on.
 process.on('uncaughtException', error => log('main', `uncaught exception: ${error.stack ?? error.message}`))
 // The rest of what can go wrong reaches the same log: rejected promises here, every window's errors, failing IPC calls.
 installProblemLogging(app, ipcMain, log)
+
+if (dataRoot.kind !== 'default') {
+  log('disk', dataRoot.kind === 'root' ? `Jarod-OS lives on ${dataRoot.root}` : dataRoot.kind === 'missing' ? `the Jarod disk ${dataRoot.root} is not reachable: using the default folders` : 'data folders set by the environment')
+}
 
 for (const line of primary ? migrateLegacyData({ hermesHome: hermesHome(), appData: app.getPath('appData'), userData: app.getPath('userData') }) : []) {
   log('migrate', line)
@@ -111,6 +149,21 @@ for (const line of primary && !osEnv('CONFIG_DIR') ? migrateShellConfig(process.
 }
 
 const backend = new BackendManager(coreLocation)
+const externalBackups = new ExternalBackupService({
+  configDir: shellConfigDir(),
+  isCoreRunning: () => ['ready', 'starting', 'resolving', 'restarting'].includes(backend.getState().phase),
+  stopCore: () => backend.stop(),
+  startCore: () => void backend.start(),
+  snapshotDb: (src, dest) => {
+    const core = resolveJarodCore({ ...coreLocation, env: process.env })
+
+    if (!core) return Promise.reject(new Error('aucun moteur Jarod dans cette version : la base ne peut pas être copiée'))
+
+    return runDbSnapshot(core, src, dest)
+  },
+  relaunch: () => relaunch(false)
+})
+const backups = new BackupService({ stopBackend: () => backend.stop(), startBackend: () => void backend.start(), relaunch: () => relaunch(false) })
 // The Pinokio engine (ADR-022): started on demand by its window or the agent's tools, stopped on quit.
 // The system audit runs in the background once main is ready, then is reused from its JSON (electron/setup).
 const systemAudit = new AuditService({ configDir: shellConfigDir(), log: message => log('audit', message) })
@@ -178,7 +231,11 @@ const shellHost: ShellHost | null = panels ?? appHost
 // by a one-shot capability (shell/host-control.ts).
 const { backend: backendToken, cli: cliToken } = controlTokens()
 const surfaceTokens = { backend: backendToken, cli: cliToken }
-const journalControl = controlAuditSink(path.join(heraldOsDataDir(), 'control-audit.jsonl'))
+const controlJournalFile = path.join(heraldOsDataDir(), 'control-audit.jsonl')
+const journalControl = controlAuditSink(controlJournalFile)
+// The core appends its remote commands (remote_exec: attempt, decision, exit code) to this same journal, in the same line shape;
+// without this variable it offers no remote commands at all (docs/REMOTE-SSH.md).
+process.env.JAROD_CONTROL_JOURNAL = controlJournalFile
 const auditControl = (entry: ControlAuditEntry) => {
   log('control', `${entry.allowed ? 'allowed' : 'refused'} ${entry.cmd}${entry.command ? ` ${entry.command}` : ''} from ${entry.client}: ${entry.reason}`)
   journalControl(entry)
@@ -608,6 +665,18 @@ function registerCoreIpc(): void {
   registerEditIpc(() => webViews)
   registerPinokioIpc(pinokio, () => webViews, () => (panels ? panels.mainWindow() : mainWindow))
   registerSystemAuditIpc(systemAudit)
+  backups.register()
+  registerSandboxesIpc()
+  registerEnvironmentsIpc()
+  registerVmsIpc()
+  registerNetworkIpc(network)
+  registerRemoteMachinesIpc(network)
+  registerUpdatesCheckIpc(shellConfigDir(), backendGate)
+  externalBackups.register()
+  registerDataDiskIpc({ state: dataRoot, configDir: shellConfigDir(), stopBackend: () => backend.stop(), startBackend: () => void backend.start(), relaunch: () => relaunch(false) })
+  registerNativeAppsIpc()
+  registerWindowEmbeds()
+  registerMediaIpc()
 }
 
 /** Quit and start again (the backend is stopped on the way out, as for any quit), in safe mode or not. */
@@ -735,12 +804,14 @@ app.whenReady().then(async () => {
     app.dock?.setIcon(icon)
   }
 
-  // Windows groups the taskbar button, jump list and toast notifications under this id. A dev run (`electron .`) gets its own: it leaves a
-  // Start Menu shortcut to electron.exe under its id, and sharing the installed app's id made the taskbar show Electron's atom for Jarod-OS.
+  // Windows groups the taskbar button, jump list and toast notifications under this id. Only the packaged app takes the installed
+  // app's id: a run from the checkout (dev or e2e, both on electron.exe) leaves a Start Menu shortcut under its id (see paths.ts).
   if (process.platform === 'win32') {
-    app.setAppUserModelId(isDev ? 'one.jarod.os.dev' : 'one.jarod.os')
+    app.setAppUserModelId(appUserModelId(app.isPackaged))
   }
 
+  // Every web session takes the Internet policy before the first window loads anything.
+  await network.attach(networkSessions)
   registerCoreIpc()
   events.registerIpc()
   crashes.start()
@@ -767,7 +838,9 @@ app.whenReady().then(async () => {
   applyVoiceHotkey(voicePrefs.enabled ? voicePrefs.hotkey : '', () => BrowserWindow.getAllWindows())
   // The backend is told where the control server listens, so wait for it (a port on Windows).
   await Promise.race([osControl?.ready, new Promise(resolve => setTimeout(resolve, 3000))])
-  void backend.start()
+  // The daily backup of the Jarod disk, when due, copies the data before the core starts.
+  void backups.dailyBeforeStart(() => void backend.start())
+  externalBackups.startAutomatic()
 })
 
 // GPU, utility and other helper processes: Chromium recovers by itself (a GPU that keeps crashing falls back to software); keep a trace.
@@ -811,6 +884,8 @@ app.on('before-quit', event => {
   event.preventDefault()
   globalShortcut.unregisterAll()
   crashes.stop()
+  // A backup in progress is cancelled (its unfinished folder removed): quitting is never held up by it.
+  externalBackups.stop()
   tray.stop()
   plugins.stop()
   emojiPanel?.stop()

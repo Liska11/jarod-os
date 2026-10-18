@@ -23,16 +23,24 @@ async function openSettings(section: string) {
 }
 
 test.describe('onboarding', () => {
-  test('first run walks through five steps and ends on « Commencer »', async () => {
+  test('first run walks through six steps, the Jarod disk among them, and ends on « Commencer »', async () => {
     await expect(page.getByText('Bienvenue dans Jarod-OS')).toBeVisible({ timeout: 30_000 })
 
     const seen: string[] = []
+    let diskStep = false
 
-    for (let step = 0; step < 6; step++) {
+    for (let step = 0; step < 8; step++) {
       const next = page.getByRole('button', { name: /^(Plus tard|Suivant|Commencer)/ })
 
       if (!(await next.count())) {
         break
+      }
+
+      // The disk step: the drives are listed (or the folder can be typed), and it can be left for later.
+      if (await page.getByText('Le disque de Jarod-OS').count()) {
+        diskStep = true
+        await expect(page.getByRole('button', { name: 'Utiliser ce disque' })).toBeVisible()
+        await expect(page.getByRole('textbox', { name: 'Dossier de Jarod-OS' })).toBeVisible()
       }
 
       seen.push((await next.first().innerText()).trim())
@@ -40,7 +48,8 @@ test.describe('onboarding', () => {
       await page.waitForTimeout(800)
     }
 
-    expect(seen).toEqual(['Suivant', 'Suivant', 'Plus tard', 'Plus tard', 'Commencer'])
+    expect(seen).toEqual(['Suivant', 'Suivant', 'Plus tard', 'Plus tard', 'Plus tard', 'Commencer'])
+    expect(diskStep).toBe(true)
     await expect(page.getByText('Bienvenue dans Jarod-OS')).toHaveCount(0)
   })
 

@@ -30,7 +30,7 @@ function save(key: string, state: SplitState): void {
  * pulled away entirely to give the left one the whole row; a tab at the right edge brings it back. The layout is
  * remembered on this device. While the divider is held, native web views are hidden: they would swallow the pointer.
  */
-export function SplitRow({ storageKey, limits, left, right, rightLabel }: { storageKey: string; limits: SplitLimits; left: ReactNode; right: ReactNode; rightLabel: string }) {
+export function SplitRow({ storageKey, limits, left, right, rightLabel, reveal = 0 }: { storageKey: string; limits: SplitLimits; left: ReactNode; right: ReactNode; rightLabel: string; reveal?: number }) {
   const row = useRef<HTMLDivElement>(null)
   const [width, setWidth] = useState(0)
   const [state, setState] = useState<SplitState>(() => load(storageKey))
@@ -54,6 +54,14 @@ export function SplitRow({ storageKey, limits, left, right, rightLabel }: { stor
   }, [])
 
   useEffect(() => () => $webViewsPaused.set(false), [])
+
+  // Something asked for the right pane (an app opened from the sidebar): bring it back if it was pulled away.
+  useEffect(() => {
+    if (reveal > 0 && latest.current.collapsed) {
+      setState(DEFAULT_SPLIT)
+      save(storageKey, DEFAULT_SPLIT)
+    }
+  }, [reveal, storageKey])
 
   // The room for the panes: the row without the divider (nothing is shown between them when the right pane is hidden).
   const showDivider = !state.collapsed || dragging

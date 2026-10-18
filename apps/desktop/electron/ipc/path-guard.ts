@@ -137,13 +137,22 @@ export function assertNotProtected(file: string, home: string = os.homedir(), pl
   return file
 }
 
-/** Throws unless `file` may be edited directly: inside home or a scratch folder, and not protected. */
+/**
+ * The person's own space: home, the scratch folders, and Jarod-OS's own disk (JAROD_OS_ROOT, data-root.ts) when it has
+ * one. Its `data` folder stays protected (protectedRoots), the rest (workspace, environments, backups…) is theirs.
+ */
+export function ownRoots(home: string, platform: NodeJS.Platform = process.platform, env: NodeJS.ProcessEnv = process.env): string[] {
+  const jarodRoot = env.JAROD_OS_ROOT?.trim()
+
+  return [home, ...scratchRoots(platform), ...(jarodRoot ? [jarodRoot] : [])]
+}
+
+/** Throws unless `file` may be edited directly: inside home, a scratch folder or the Jarod disk, and not protected. */
 export function assertWritablePath(file: string, home: string = os.homedir(), platform: NodeJS.Platform = process.platform, env: NodeJS.ProcessEnv = process.env): string {
   const real = resolveRealPath(file, platform)
-  const realHome = resolveRealPath(home, platform)
 
-  if (!isBelow(realHome, real, platform) && !scratchRoots(platform).some(root => isBelow(resolveRealPath(root, platform), real, platform))) {
-    throw new Error('Jarod-OS only edits files inside your home folder')
+  if (!ownRoots(home, platform, env).some(root => isBelow(resolveRealPath(root, platform), real, platform))) {
+    throw new Error('Jarod-OS only edits files inside your home folder or its own disk')
   }
 
   return assertNotProtected(file, home, platform, env)
@@ -172,9 +181,9 @@ export function assertOpenablePath(file: string, home: string = os.homedir(), pl
   return checked
 }
 
-/** Project folders must be inside the home folder (or a scratch folder). */
-export function isProjectLocation(root: string, home: string = os.homedir(), platform: NodeJS.Platform = process.platform): boolean {
+/** Project folders must be inside the home folder, a scratch folder or the Jarod disk. */
+export function isProjectLocation(root: string, home: string = os.homedir(), platform: NodeJS.Platform = process.platform, env: NodeJS.ProcessEnv = process.env): boolean {
   const real = resolveRealPath(root, platform)
 
-  return isBelow(resolveRealPath(home, platform), real, platform) || scratchRoots(platform).some(scratch => isBelow(resolveRealPath(scratch, platform), real, platform))
+  return ownRoots(home, platform, env).some(own => isBelow(resolveRealPath(own, platform), real, platform))
 }

@@ -1,7 +1,7 @@
 import { pathToFileURL } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import path from 'node:path'
-import { isShellPage, shellConfigDir } from './paths.ts'
+import { appUserModelId, isShellPage, shellConfigDir } from './paths.ts'
 
 const index = '/Applications/Jarod-OS.app/Contents/Resources/app.asar/dist/renderer/index.html'
 const page = pathToFileURL(index).href
@@ -37,5 +37,15 @@ describe('shellConfigDir', () => {
 
   it('follows HERALD_OS_CONFIG_DIR when set', () => {
     expect(shellConfigDir('win32', { HERALD_OS_CONFIG_DIR: 'D:\\Portable\\config' }, 'C:\\Users\\San')).toBe('D:\\Portable\\config')
+  })
+})
+
+describe('appUserModelId', () => {
+  // Windows takes the taskbar icon from the shortcut that carries the window's id. A run from the checkout (electron.exe,
+  // e2e included) under the installed app's id left a Start Menu "Electron.lnk" with that id, and the installed app then
+  // showed Electron's atom in the taskbar.
+  it('is the installed app’s id only for the packaged app', () => {
+    expect(appUserModelId(true)).toBe('one.jarod.os')
+    expect(appUserModelId(false)).toBe('one.jarod.os.dev')
   })
 })

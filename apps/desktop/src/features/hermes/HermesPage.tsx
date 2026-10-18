@@ -10,6 +10,7 @@ import { deleteSession } from '../../store/sessions.ts'
 import { openApp } from '../../store/windows.ts'
 import { SessionList } from '../chat/SessionList.tsx'
 import { ArtifactPane } from './ArtifactPane.tsx'
+import { $paneReveal } from './pane-apps.ts'
 import { Conversation } from './Conversation.tsx'
 import { MenuDivider, MenuItem, PopMenu } from './Menu.tsx'
 import { t, useT } from '../../lib/i18n.ts'
@@ -28,6 +29,7 @@ export function HermesPage() {
   const activeId = useStore($activeChatId)
   const connection = useStore($connection)
   const online = connection === 'open'
+  const reveal = useStore($paneReveal)
   const [menuOpen, setMenuOpen] = useState(false)
   const [renaming, setRenaming] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -162,6 +164,7 @@ export function HermesPage() {
         storageKey="jarod.hermes.split"
         limits={SPLIT_LIMITS}
         rightLabel="preview"
+        reveal={reveal}
         left={
           <GlassCard className="flex min-h-0 flex-1 flex-col overflow-hidden">
             <Conversation chat={chat} online={online} />

@@ -31,6 +31,8 @@ export function KanbanPage() {
   const [busy, setBusy] = useState(false)
   const [note, setNote] = useState<string | null>(null)
   const [newBoard, setNewBoard] = useState<string | null>(null)
+  // The profile Jarod serves: a task created without an assignee goes to it, so that « Run next » can pick it up.
+  const [served, setServed] = useState<string | null>(null)
   const current = boards.find(board => board.is_current)
 
   const load = useCallback(async () => {
@@ -51,6 +53,10 @@ export function KanbanPage() {
 
   useEffect(() => {
     void load()
+    jarod<{ id: string; isActive: boolean }[]>('list-profiles').then(
+      profiles => setServed(profiles.find(profile => profile.isActive)?.id ?? null),
+      () => setServed(null)
+    )
   }, [load])
 
   const columns = useMemo(() => byColumn(tasks), [tasks])
@@ -145,7 +151,7 @@ export function KanbanPage() {
             </GlassButton>
           </form>
         )}
-        {creating && <NewTask onCancel={() => setCreating(false)} onCreate={draft => run(t('kanban.newTask'), () => call('kanban-create-task', taskInput(draft))).then(ok => ok && setCreating(false))} busy={busy} />}
+        {creating && <NewTask onCancel={() => setCreating(false)} onCreate={draft => run(t('kanban.newTask'), () => call('kanban-create-task', taskInput(draft, served))).then(ok => ok && setCreating(false))} busy={busy} />}
         {!error && tasks.length === 0 && !loading && <EmptyGlass title={t('kanban.empty')} description={t('kanban.empty.hint')} action={<GlassButton size="sm" variant="primary" onClick={() => setCreating(true)}>{t('kanban.newTask')}</GlassButton>} />}
         {tasks.length > 0 && (
           <div className="grid min-h-0 flex-1 auto-cols-[minmax(210px,1fr)] grid-flow-col gap-3 overflow-x-auto pb-1">

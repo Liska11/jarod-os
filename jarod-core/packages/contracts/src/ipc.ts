@@ -50,12 +50,16 @@ export const JAROD_INVOKE_CHANNELS = [
   "vault-list",
   "vault-save",
   "vault-remove",
+  // Jarod-OS (Sécurité › Secrets) : état de protection du coffre, et retrait de toute portée sans effacer la valeur.
+  "vault-status",
+  "vault-revoke",
   // Hôtes SSH déclarés : la clé se choisit dans la boîte native, jamais tapée.
   "ssh-hosts-list",
   "ssh-pick-key",
   "ssh-host-add",
   "ssh-host-remove",
   "ssh-host-test",
+  "ssh-host-exec-set",
   // Téléphone (pont local, appairage) et Android (adb) : l'allumage et le programme adb passent par des boîtes natives.
   "phone-status",
   "phone-bridge-set",

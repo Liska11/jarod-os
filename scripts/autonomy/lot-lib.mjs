@@ -89,7 +89,7 @@ export function check(root, id, runner = shellRunner) {
   const state = readJson(p.state, {});
   const lot = state[id];
 
-  if (!lot || lot.status !== "open") {
+  if (lot?.status !== "open") {
     return { ok: false, verdict: "refused", message: `lot ${id} is not open (run start first)` };
   }
 

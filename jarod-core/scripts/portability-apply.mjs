@@ -1,8 +1,7 @@
 // Standalone portability apply script - bypasses CLI issues
-import { discoverPlugins, JarodApp, start, stop } from "@jarod/kernel";
+import { JarodApp, start, stop } from "@jarod/kernel";
 import { ProfileManager } from "@jarod/plugin-persona";
 import { electronSecretsCipher, electronUserDataDir } from "@jarod/plugin-storage";
-import { portabilityApply as portabilityApplyFn } from "../packages/cli/src/portability.ts";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { existsSync } from "node:fs";

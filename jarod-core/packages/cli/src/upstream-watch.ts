@@ -121,6 +121,7 @@ const BRANCH_RE = /^[A-Za-z0-9_./-]{1,100}$/;
 const SHA_RE = /^[0-9a-f]{40}$/;
 
 function validPath(p: unknown): p is string {
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: intended, rejects input that contains control characters
   return typeof p === "string" && p.length > 0 && p.length <= 200 && !/[\u0000-\u001f\\]/.test(p) && !p.startsWith("/") && !p.split("/").includes("..");
 }
 
@@ -521,6 +522,7 @@ async function compareRange(client: GithubClient, repo: string, base: string, he
 /** Nettoie un texte amont : caractères de contrôle et de direction retirés, longueur bornée. */
 export function clean(s: string, max: number, keepNewlines = false): string {
   const stripped = (keepNewlines ? s.replace(/\r\n?/g, "\n") : s)
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: intended, strips control characters from untrusted text
     .replace(keepNewlines ? /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g : /[\u0000-\u001f\u007f]/g, " ")
     .replace(/[\u200b-\u200f\u202a-\u202e\u2066-\u2069\ufeff]/g, "");
   return stripped.length > max ? `${stripped.slice(0, max - 1)}…` : stripped;

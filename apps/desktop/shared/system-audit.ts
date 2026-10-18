@@ -50,3 +50,6 @@ export interface AuditReport {
   checks: Check[]
   blocked: boolean
 }
+
+/** The prerequisites the first-run screen can install on Windows (electron/setup/install.ts holds the command for each). */
+export const INSTALLABLE_PREREQUISITES = ['node', 'python', 'git', 'ollama', 'docker', 'pnpm', 'wsl'] as const

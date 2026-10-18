@@ -45,6 +45,21 @@ describe('isProjectLocation', () => {
   })
 })
 
+describe('the Jarod disk', () => {
+  const diskEnv = { ...winEnv, JAROD_OS_ROOT: 'D:\\Jarod-OS', JAROD_OS_DATA: 'D:\\Jarod-OS\\data' }
+
+  it('is the person’s own space, except the data folder', () => {
+    expect(assertWritablePath('D:\\Jarod-OS\\workspace\\notes.md', winHome, 'win32', diskEnv)).toBe('D:\\Jarod-OS\\workspace\\notes.md')
+    expect(isProjectLocation('D:\\Jarod-OS\\sandboxes\\site', winHome, 'win32', diskEnv)).toBe(true)
+    expect(() => assertWritablePath('D:\\Jarod-OS\\data\\profile\\jarod.db', winHome, 'win32', diskEnv)).toThrow('protected location')
+    expect(() => assertWritablePath('D:\\Other\\x.txt', winHome, 'win32', diskEnv)).toThrow('inside your home folder')
+  })
+
+  it('is not writable when Jarod-OS has no disk of its own', () => {
+    expect(() => assertWritablePath('D:\\Jarod-OS\\workspace\\notes.md', winHome, 'win32', winEnv)).toThrow('inside your home folder')
+  })
+})
+
 describe('protectedRoots', () => {
   it('lists the Windows credential stores', () => {
     const roots = protectedRoots(winHome, 'win32', winEnv)

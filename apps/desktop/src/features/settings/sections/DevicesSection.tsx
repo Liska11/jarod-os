@@ -1,5 +1,6 @@
 import { IconBrandAndroid, IconDeviceMobile, IconKey, IconServer2, IconTerminal2 } from '@tabler/icons-react'
 import { useEffect, useState } from 'react'
+import { QrCode } from '../../../components/qr-code.tsx'
 import { GlassButton, Pill, Toggle } from '../../../components/ui/glass.tsx'
 import { jarod } from '../../../lib/jarod.ts'
 import { useBackendData } from '../../../lib/use-async.ts'
@@ -184,9 +185,18 @@ function PhoneBlock() {
           description={t('settings.devices.pair.hint')}
           keywords={t('settings.devices.pairKw')}
           below={pairing && (
-            <InlineNote tone={left > 0 ? 'info' : 'warn'}>
-              {t('settings.devices.pair.address')} <span className="font-mono select-all">{pairing.url}</span> · {t('settings.devices.pair.code')} <span className="font-mono select-all">{pairing.secret}</span> · {timeLeftText(left)}
-            </InlineNote>
+            <div className="flex flex-col gap-2">
+              {left > 0 && pairing.url && (
+                // The address carries the one-time code after `#`: scanning it pairs the phone without typing anything.
+                <div className="flex items-center gap-4">
+                  <QrCode value={pairing.url} label={t('settings.devices.pair.qrAria')} />
+                  <p className="text-[12.5px] text-fg-2">{t('settings.devices.pair.qr')}</p>
+                </div>
+              )}
+              <InlineNote tone={left > 0 ? 'info' : 'warn'}>
+                {t('settings.devices.pair.address')} <span className="font-mono select-all">{pairing.url}</span> · {t('settings.devices.pair.code')} <span className="font-mono select-all">{pairing.secret}</span> · {timeLeftText(left)}
+              </InlineNote>
+            </div>
           )}
         >
           <GlassButton size="sm" variant="primary" disabled={busy} onClick={() => void run(t('settings.devices.pair.ready'), async () => setPairing(await jarod<PairingInfo>('phone-pairing')))}>
@@ -275,7 +285,13 @@ function SshBlock() {
     <SettingsGroup title={t('settings.devices.ssh')}>
       {hosts.data?.length === 0 && <SettingsRow icon={<IconTerminal2 />} label={t('settings.devices.ssh.none')} description={t('settings.devices.ssh.none.hint')} keywords={t('settings.devices.sshNoneKw')} />}
       {hosts.data?.map(host => (
-        <SettingsRow key={host.id} icon={<IconTerminal2 />} label={host.name} description={`${sshLine(host)} · ${t('settings.devices.ssh.key', { file: baseName(host.keyPath) })}${tests[host.id] ? ` · ${tests[host.id]}` : ''}`} keywords={t('settings.devices.sshHostKw', { name: host.name, address: host.host })}>
+        <SettingsRow key={host.id} icon={<IconTerminal2 />} label={host.name} description={`${sshLine(host)} · ${t('settings.devices.ssh.key', { file: baseName(host.keyPath) })} · ${host.agentExec ? t('settings.devices.ssh.agent.enabled') : t('settings.devices.ssh.agent.disabled')}${tests[host.id] ? ` · ${tests[host.id]}` : ''}`} keywords={t('settings.devices.sshHostKw', { name: host.name, address: host.host })}>
+          <Toggle
+            checked={host.agentExec === true}
+            label={t('settings.devices.ssh.agent.aria', { name: host.name })}
+            disabled={busy}
+            onChange={value => void run(value ? t('settings.devices.ssh.agent.on', { name: host.name }) : t('settings.devices.ssh.agent.off', { name: host.name }), () => jarod('ssh-host-exec-set', host.id, value))}
+          />
           <GlassButton size="sm" variant="ghost" disabled={busy} onClick={() => void test(host)} aria-label={t('settings.devices.ssh.test.aria', { name: host.name })}>
             {t('settings.devices.ssh.test')}
           </GlassButton>

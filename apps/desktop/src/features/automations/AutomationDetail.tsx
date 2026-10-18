@@ -9,7 +9,7 @@ import { formatRelative } from '../../lib/format.ts'
 import type { CronJob } from '../../lib/rest.ts'
 import { eventRuleFor, updateEventRule } from '../../store/automations.ts'
 import { $prefs } from '../../store/backend.ts'
-import { type CronJobEdits, type CronRun, type DeliveryTarget, isFailedStatus, isPaused } from './api.ts'
+import { type CronJobEdits, type CronRun, type DeliveryTarget, isFailedStatus, isPaused, LOCAL_TARGET } from './api.ts'
 import { SCHEDULE_FORMATS_HINT, formatRunDuration, humanizeSchedule, localTimezoneCity, scheduleToString, toMs } from './cron-humanize.ts'
 import { JobMenu, type JobMenuAction } from './JobMenu.tsx'
 import { FieldLabel, GlyphTile, Hint, JobTile, SelectInput, TextArea, TextInput, describeDeliver, describeGather, describeJob, eventLabel, isLocalDelivery, ruleText } from './presentation.tsx'
@@ -188,7 +188,7 @@ export function AutomationDetail({ job, targets, lastRun, saving, onSave, onActi
             <SelectInput id="automation-deliver" value={currentDeliver} onChange={e => setField('deliver', e.target.value)}>
               {selectableTargets.map(target => (
                 <option key={target.id} value={target.id} disabled={target.home_target_set === false}>
-                  {target.name}
+                  {target.id === LOCAL_TARGET.id ? t('automation.deliver.localTarget') : target.name}
                   {target.home_target_set === false ? t('automation.deliver.homeMissing') : ''}
                 </option>
               ))}

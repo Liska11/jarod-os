@@ -5,7 +5,6 @@
  * chaque plugin propriétaire les ré-exporte depuis ce module.
  */
 import { type AutoImprovementConfig, DEFAULT_AUTO_IMPROVEMENT } from "./auto-improvement-config.js";
-import type { Cipher } from "./domain.js";
 import { DEFAULT_ECOSYSTEM_FLAGS, type EcosystemFlags } from "./ecosystem.js";
 
 // remote/host.ts:25-31
@@ -258,7 +257,13 @@ export interface VaultEntry {
   /** May be given to shell commands as an environment variable. */
   allowShell: boolean;
   createdAt: number;
+  /** What it is, for the person (Jarod-OS, Sécurité › Secrets). Absent: `other`. */
+  kind?: VaultKind;
+  /** Held in memory only, for this run of the core: never written to disk, gone at the next start. */
+  temporary?: boolean;
 }
+
+export type VaultKind = "api_key" | "token" | "password" | "other";
 
 // services/vision.ts:17-23
 export interface ImageDescriptionConfig {
@@ -604,6 +609,11 @@ export interface Settings {
    * active : cette liste ne transporte aucune option ssh, et rien ici ne peut en ajouter une.
    */
   sshHosts?: SshHostRecord[];
+  /**
+   * Ids of the declared SSH hosts on which the agent may run commands (`remote_exec`), one confirmed command at a time. Absent or
+   * empty: off, and the tool is not offered to the model. Written only by the desktop's `ssh-host-exec-set` (native confirmation).
+   */
+  sshExecHosts?: string[];
   /**
    * La période du tick du plugin `automation`, en millisecondes — le seul réglage de cette famille
    * qui règle un TEMPS plutôt qu'une liste.

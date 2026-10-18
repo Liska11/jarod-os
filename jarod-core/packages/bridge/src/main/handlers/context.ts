@@ -81,8 +81,9 @@ export interface DesktopKernel {
   /**
    * plugin-storage (port STRUCTUREL) : clés de ce compte et contrôle d'un fichier de base, pour la restauration
    * d'une sauvegarde complète dans un profil neuf (Q14) ; absent = restauration refusée. Jamais vers le renderer.
+   * `dbEncryption` : comment la base a été ouverte (magasin qui a rendu la clé), pour l'état de protection du coffre.
    */
-  storage?: RestoreKeys;
+  storage?: RestoreKeys & { readonly dbEncryption?: { encrypted: boolean; keyStoreId?: string | null; weak: boolean } };
   /**
    * plugin-kanban (Q17, port STRUCTUREL) : tableaux et tâches de `jarod.db` (v17) ; absent = canaux Kanban en échec
    * (« plugin-kanban désactivé »).

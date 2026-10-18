@@ -1,3 +1,10 @@
+import type { BackupActionResult, BackupsState } from '../shared/backups.ts'
+import type { SandboxResult, SandboxesState } from '../shared/sandboxes.ts'
+import type { EnvironmentResult, EnvironmentsState } from '../shared/environments.ts'
+import type { VmResult, VmsState } from '../shared/vms.ts'
+import type { NetworkPolicy } from '../shared/network-policy.ts'
+import type { DestinationCheck, ExternalEstimate, ExternalPart, ExternalProgress, ExternalResult, ExternalState } from '../shared/external-backup.ts'
+import type { DataDiskApplyResult, DataDiskState, DriveInfo } from '../shared/data-disk.ts'
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import {
   type AudioWsKind,
@@ -320,6 +327,9 @@ const api = {
     openPreview: (target: string, options: WebOpenOptions = {}): Promise<string> => ipcRenderer.invoke(IPC.webOpenPreview, target, options),
     navigate: (id: string, target: string): Promise<void> => ipcRenderer.invoke(IPC.webNavigate, id, target),
     reload: (id: string): Promise<void> => ipcRenderer.invoke(IPC.webReload, id),
+    /** A site's page (the Browser, a Social app): one view per site, in the site's own partition; resolves with its id. */
+    openSite: (site: string): Promise<string> => ipcRenderer.invoke(IPC.webOpenSite, site),
+    history: (id: string, direction: 'back' | 'forward'): Promise<void> => ipcRenderer.invoke(IPC.webHistory, id, direction),
     onEvent: (listener: (event: WebViewEvent) => void): Unsubscribe => subscribe(IPC.webEvent, listener)
   },
   pinokio: {
@@ -334,11 +344,95 @@ const api = {
     /** Main asks for a page to be shown in a Jarod-OS window (an app's UI, a link out of Pinokio). */
     onOpenUrl: (listener: (url: string) => void): Unsubscribe => subscribe(IPC.pinokioOpenUrl, listener)
   },
+  dataDisk: {
+    state: (): Promise<DataDiskState> => ipcRenderer.invoke(IPC.dataDiskState),
+    drives: (): Promise<DriveInfo[]> => ipcRenderer.invoke(IPC.dataDiskDrives),
+    /** Make `root` the Jarod disk (copying the data and workspace in with `move`); Jarod-OS restarts on success. */
+    apply: (root: string, move: boolean): Promise<DataDiskApplyResult> => ipcRenderer.invoke(IPC.dataDiskApply, root, move)
+  },
+  backups: {
+    state: (): Promise<BackupsState> => ipcRenderer.invoke(IPC.backupsState),
+    create: (): Promise<BackupActionResult> => ipcRenderer.invoke(IPC.backupsCreate),
+    settings: (daily: boolean, keep: number): Promise<BackupsState> => ipcRenderer.invoke(IPC.backupsSettings, daily, keep),
+    remove: (id: string): Promise<BackupActionResult> => ipcRenderer.invoke(IPC.backupsRemove, id),
+    /** Put a backup back (with the workspace too when asked); Jarod-OS restarts on success. */
+    restore: (id: string, withWorkspace: boolean): Promise<BackupActionResult> => ipcRenderer.invoke(IPC.backupsRestore, id, withWorkspace)
+  },
+  sandboxes: {
+    state: (): Promise<SandboxesState> => ipcRenderer.invoke(IPC.sandboxesState),
+    /** Copy a project into a new sandbox (`full`: with node_modules and the other rebuildable folders). */
+    create: (source: string, label: string, full: boolean): Promise<SandboxResult> => ipcRenderer.invoke(IPC.sandboxesCreate, source, label, full),
+    compare: (name: string): Promise<SandboxResult> => ipcRenderer.invoke(IPC.sandboxesCompare, name),
+    /** Bring the sandbox's changes (or only `paths`) into its project; removed files go to the Recycle Bin. */
+    apply: (name: string, paths?: string[]): Promise<SandboxResult> => ipcRenderer.invoke(IPC.sandboxesApply, name, paths),
+    remove: (name: string): Promise<SandboxResult> => ipcRenderer.invoke(IPC.sandboxesRemove, name)
+  },
+  environments: {
+    state: (): Promise<EnvironmentsState> => ipcRenderer.invoke(IPC.environmentsState),
+    /** Build a Python (uv) or Node.js environment of `version` ("3.12", "22"…). */
+    create: (name: string, kind: 'python' | 'node', version: string): Promise<EnvironmentResult> => ipcRenderer.invoke(IPC.environmentsCreate, name, kind, version),
+    remove: (name: string): Promise<EnvironmentResult> => ipcRenderer.invoke(IPC.environmentsRemove, name)
+  },
+  vms: {
+    state: (): Promise<VmsState> => ipcRenderer.invoke(IPC.vmsState),
+    online: (): Promise<Array<{ id: string; label: string }>> => ipcRenderer.invoke(IPC.vmsOnline),
+    /** Install a distribution as `name` on the Jarod disk (not started: its first start in a terminal asks for a user). */
+    create: (distro: string, name: string): Promise<VmResult> => ipcRenderer.invoke(IPC.vmsCreate, distro, name),
+    move: (name: string): Promise<VmResult> => ipcRenderer.invoke(IPC.vmsMove, name),
+    stop: (name: string): Promise<VmResult> => ipcRenderer.invoke(IPC.vmsStop, name),
+    remove: (name: string, typed: string): Promise<VmResult> => ipcRenderer.invoke(IPC.vmsRemove, name, typed)
+  },
+  externalBackup: {
+    state: (): Promise<ExternalState> => ipcRenderer.invoke(IPC.externalBackupState),
+    estimate: (parts: ExternalPart[]): Promise<ExternalEstimate> => ipcRenderer.invoke(IPC.externalBackupEstimate, parts),
+    check: (dest: string): Promise<DestinationCheck> => ipcRenderer.invoke(IPC.externalBackupCheck, dest),
+    /** The native folder picker; null when cancelled. */
+    choose: (): Promise<string | null> => ipcRenderer.invoke(IPC.externalBackupChoose),
+    setDestination: (dest: string | null): Promise<ExternalResult> => ipcRenderer.invoke(IPC.externalBackupSetDestination, dest),
+    setOptions: (parts: ExternalPart[], auto: { enabled: boolean; everyHours: number }): Promise<ExternalState> => ipcRenderer.invoke(IPC.externalBackupSetOptions, parts, auto),
+    run: (): Promise<ExternalResult> => ipcRenderer.invoke(IPC.externalBackupRun),
+    cancel: (): Promise<boolean> => ipcRenderer.invoke(IPC.externalBackupCancel),
+    /** Restore the backup in `folder` (Jarod-OS restarts once it is in place). */
+    restore: (folder: string): Promise<ExternalResult> => ipcRenderer.invoke(IPC.externalBackupRestore, folder),
+    onProgress: (listener: (progress: ExternalProgress) => void): Unsubscribe => subscribe(IPC.externalBackupProgress, listener)
+  },
+  remote: {
+    /** Tailscale's state and peers, read from the local Tailscale service. */
+    tailscale: (): Promise<{ installed: boolean; backend: string | null; self: { name: string; ips: string[] } | null; peers: Array<{ name: string; dnsName: string; ips: string[]; os: string; online: boolean; sshHostKeys: boolean }>; error?: string }> =>
+      ipcRenderer.invoke(IPC.remoteTailscale),
+    /** Network test: a TCP connection to host:port, nothing sent. */
+    probe: (host: string, port: number): Promise<{ ok: boolean; ms: number; error?: string }> => ipcRenderer.invoke(IPC.remoteProbe, host, port),
+    /** Reads the host keys and compares them with known_hosts; `token` confirms them with trustKeys. */
+    scanKeys: (host: string, port: number): Promise<{ token: string; verdict: 'unknown' | 'match' | 'changed' | 'unreachable'; keys: Array<{ type: string; fingerprint: string }>; known: string[] } | { error: string }> =>
+      ipcRenderer.invoke(IPC.remoteScanKeys, host, port),
+    trustKeys: (token: string): Promise<{ ok: boolean; error?: string }> => ipcRenderer.invoke(IPC.remoteTrustKeys, token),
+    syncHosts: (hosts: string[]): Promise<NetworkPolicy> => ipcRenderer.invoke(IPC.remoteSyncHosts, hosts)
+  },
+  updates: {
+    state: (): Promise<import('../electron/ipc/updates-check.ts').UpdatesState> => ipcRenderer.invoke(IPC.updatesState),
+    /** Read-only check of Windows, drivers and winget software (only while Jarod's Internet is on). */
+    check: (): Promise<import('../electron/ipc/updates-check.ts').UpdatesState> => ipcRenderer.invoke(IPC.updatesCheck),
+    openWindowsUpdate: (): Promise<void> => ipcRenderer.invoke(IPC.updatesOpenWindowsUpdate),
+    /** Step 1 of upgrading one listed winget package: the exact id, version and source to confirm, and a one-shot token. */
+    prepareUpgrade: (target: import('../electron/winget-install.ts').WingetTarget): Promise<import('../electron/ipc/updates-check.ts').PrepareReply> =>
+      ipcRenderer.invoke(IPC.updatesPrepareUpgrade, target),
+    /** Step 2, after the person confirmed: runs that one upgrade through the control gate. */
+    upgrade: (token: string): Promise<import('../electron/ipc/updates-check.ts').UpgradeReply> => ipcRenderer.invoke(IPC.updatesUpgrade, token),
+    onProgress: (listener: (progress: import('../electron/winget-install.ts').WingetProgress) => void): Unsubscribe => subscribe(IPC.updatesProgress, listener)
+  },
+  network: {
+    /** Jarod's Internet policy (the switch in the top bar). */
+    get: (): Promise<NetworkPolicy> => ipcRenderer.invoke(IPC.networkGet),
+    set: (change: Partial<Omit<NetworkPolicy, 'version'>>): Promise<NetworkPolicy> => ipcRenderer.invoke(IPC.networkSet, change),
+    onChanged: (listener: (policy: NetworkPolicy) => void): Unsubscribe => subscribe(IPC.networkChanged, listener)
+  },
   systemAudit: {
     /** The system audit: the saved report, or the one running since startup. */
     get: (): Promise<AuditReport> => ipcRenderer.invoke(IPC.systemAuditGet),
     /** Audit the system again (after installing a missing prerequisite). */
-    run: (): Promise<AuditReport> => ipcRenderer.invoke(IPC.systemAuditRun)
+    run: (): Promise<AuditReport> => ipcRenderer.invoke(IPC.systemAuditRun),
+    /** Install (or, with `upgrade`, update) a prerequisite the audit found missing; Windows only. */
+    install: (tool: string, upgrade = false): Promise<{ ok: boolean; restart?: boolean; already?: boolean; error?: string }> => ipcRenderer.invoke(IPC.systemAuditInstall, tool, upgrade)
   },
   clipboard: {
     history: (limit = 50): Promise<ClipboardEntry[]> => ipcRenderer.invoke(IPC.clipboardHistory, limit),
@@ -385,6 +479,24 @@ const api = {
   jarod: {
     /** Perform a native gesture the Jarod engine asked for (see electron/ipc/jarod-shell-gestures.ts). */
     shell: (kind: string, params: Record<string, unknown> = {}): Promise<unknown> => ipcRenderer.invoke(IPC.jarodShell, kind, params)
+  },
+  nativeApps: {
+    /** Signal, VLC or Brave is installed on this computer. */
+    installed: (app: string): Promise<boolean> => ipcRenderer.invoke(IPC.nativeAppFind, app),
+    /** Start it, with a page (Brave) or a file (VLC). */
+    launch: (app: string, target?: string): Promise<void> => ipcRenderer.invoke(IPC.nativeAppLaunch, app, target),
+    install: (app: string): Promise<{ ok: boolean; already?: boolean; restart?: boolean; error?: string }> => ipcRenderer.invoke(IPC.nativeAppInstall, app),
+    /** Start (or find) the app and bring its window into the right pane, with a file for VLC. */
+    embed: (app: string, target?: string): Promise<void> => ipcRenderer.invoke(IPC.nativeEmbedOpen, app, target),
+    /** Place the embedded window over the tab (CSS px of this window), or hide it. */
+    place: (app: string, bounds: WebViewBounds, visible: boolean): void => ipcRenderer.send(IPC.nativeEmbedBounds, app, bounds, visible),
+    /** Give the window its frame back (the tab closed). */
+    release: (app: string): Promise<void> => ipcRenderer.invoke(IPC.nativeEmbedRelease, app),
+    onGone: (listener: (app: string) => void): Unsubscribe => subscribe(IPC.nativeEmbedGone, listener)
+  },
+  media: {
+    /** Let the Player stream these files; resolves with a jarod-media: URL for each one that exists. */
+    allow: (files: string[]): Promise<Array<{ file: string; url: string }>> => ipcRenderer.invoke(IPC.mediaAllow, files)
   },
   bridge: {
     readPolicy: (): Promise<string> => ipcRenderer.invoke(IPC.bridgePolicyRead),

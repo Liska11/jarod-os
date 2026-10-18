@@ -1,9 +1,6 @@
 // Chantier 5b de SPECS-P5-MODELS.md, barre (5b-I) : `JAROD_TEST_HF_BASE` et sa triple garde (JAROD_TEST_MODE=1 ET application non empaquetée ET origine de boucle locale),
 // calquée sur `JAROD_TEST_TELEGRAM_API`. Barres figées dans DECISIONS AVANT ce code. Hors mode test la variable est IGNORÉE : ni réglage, ni IPC, ni environnement ne peut
 // rediriger l'application vers un autre hôte en production.
-import { readFileSync, readdirSync, statSync } from "node:fs";
-import { dirname, join, relative, sep } from "node:path";
-import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { resolveTestHfBase } from "../src/main/hf-base.js";
 

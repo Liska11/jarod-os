@@ -11,6 +11,8 @@ import { forkEmbeddingsSpawner as forkSpawner } from "../src/isolated.js";
 import { IsolatedReranker, type RerankerWorkerEvent } from "../src/reranker-isolated.js";
 
 const FAKE = join(dirname(fileURLToPath(import.meta.url)), "fixtures", "fake-reranker-worker.mjs");
+// Le faux worker meurt avec 0xC0000005 ; hors Windows, un code de sortie ne garde que ses 8 bits de poids faible.
+const CRASH_CODE = process.platform === "win32" ? 3221225477 : 3221225477 & 0xff;
 const hosts: IsolatedReranker[] = [];
 const dirs: string[] = [];
 
@@ -109,7 +111,7 @@ describe("hôte du worker reranker isolé", () => {
     while ((events.length === 0 || !host.available) && Date.now() < end) await new Promise((r) => setTimeout(r, 20));
     expect(host.available).toBe(true);
     expect(await host.rerank("q", ["a", "bb"], 3_000)).toEqual([{ index: 1, score: 2 }, { index: 0, score: 1 }]);
-    expect(events).toMatchObject([{ code: 3221225477, outcome: "restarted", reason: "exit" }]);
+    expect(events).toMatchObject([{ code: CRASH_CODE, outcome: "restarted", reason: "exit" }]);
   });
 
   it("relances bornées : un worker qui meurt à chaque fois est abandonné (RERANKER_WORKER_GAVE_UP)", async () => {

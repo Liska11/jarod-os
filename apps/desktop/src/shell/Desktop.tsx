@@ -88,7 +88,7 @@ export function Desktop() {
   }, [])
 
   return (
-    <div className="relative h-full w-full overflow-hidden bg-bg">
+    <div className="relative h-full w-full overflow-clip bg-bg">
       <Wallpaper />
       <MenuBar />
       <SafeModeBadge />

@@ -181,7 +181,7 @@ export function assertPipeDacl(sddl: string, expected: string): void {
     throw new PipeSecurityError(`the requested DACL names nobody: ${expected}`)
   }
 
-  const aces = pipeAceSet(dacl)
+  const aces = withAccountAliasesResolved(pipeAceSet(dacl), wanted)
 
   for (const ace of wanted) {
     if (!aces.includes(ace)) {
@@ -194,6 +194,30 @@ export function assertPipeDacl(sddl: string, expected: string): void {
 
     throw new PipeSecurityError(`the pipe DACL has more than the requested principals (${extra.join(', ') || 'duplicates'}): ${sddl}`)
   }
+}
+
+/** The local accounts the platform writes back as an alias (`LA`, `LG`) instead of their SID, by relative id. */
+const ACCOUNT_ALIASES: Readonly<Record<string, string>> = { LA: '500', LG: '501' }
+
+/**
+ * Windows abbreviates this machine's built-in Administrator (`S-1-5-21-…-500`) as `LA` and its Guest
+ * (`…-501`) as `LG` when it prints a DACL, so a pipe granted to the built-in Administrator (a CI
+ * runner's account) reads back as `LA`. The alias only ever stands for the local account, which is
+ * the one the requested SID names when exactly one requested account SID has that relative id:
+ * only then is it read as that SID. Anything else stays as written and fails the comparison.
+ */
+function withAccountAliasesResolved(aces: string[], wanted: readonly string[]): string[] {
+  const wantedSids = wanted.map(ace => ace.split(';;;')[1] ?? '')
+
+  return aces
+    .map(ace => {
+      const [mask, sid] = ace.split(';;;')
+      const rid = ACCOUNT_ALIASES[sid]
+      const matches = rid ? wantedSids.filter(candidate => new RegExp(`^S-1-5-21-\\d+-\\d+-\\d+-${rid}$`).test(candidate)) : []
+
+      return matches.length === 1 ? `${mask};;;${matches[0]}` : ace
+    })
+    .sort()
 }
 
 /** The ACEs of a DACL, as `mask;;;sid`, sorted; named masks are replaced by their numeric value. */

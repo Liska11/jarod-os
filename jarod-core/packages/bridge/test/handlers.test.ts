@@ -1259,7 +1259,9 @@ describe("W8 handlers : carte et garde", () => {
     // + 4 canaux des modèles locaux (2026-10-06 : local-models-list, local-models-load, local-models-unload, local-models-configure — hotswap).
     // + 2 canaux de l'écran « Plateforme » (2026-10-17 : platform-status, mcp-approve-tool).
     // Jarod-OS : 273 = 279 moins les 6 canaux du terminal intégré (`terminal-*`, node-pty écarté).
-    expect(keys).toHaveLength(273);
+    // + 2 canaux du coffre (2026-10-18, Jarod-OS Sécurité › Secrets : vault-status, vault-revoke).
+    // + 1 canal des commandes de l'agent sur une machine distante (2026-10-18 : ssh-host-exec-set, confirmation native).
+    expect(keys).toHaveLength(276);
     const hermes = keys.filter((k) => (HERMES_INVOKE_CHANNELS as readonly string[]).includes(k));
     expect(hermes).toHaveLength(207);
     expect(keys.filter((k) => !hermes.includes(k)).sort()).toEqual([...JAROD_INVOKE_CHANNELS].filter((k) => !k.startsWith("terminal-")).sort());

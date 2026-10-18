@@ -143,3 +143,32 @@ export function isDescendantOf(pid: number, ancestor: number): boolean {
 
   return found
 }
+
+/**
+ * One call to the core over the test's own line to the gateway (`jarod.invoke`), opened for that call and closed at once: the gateway asks the most
+ * recent connection for native gestures, which must stay the window's. Used to read state back, never to approve anything.
+ */
+export async function invokeCore<T = unknown>(state: { wsUrl?: string; wsToken?: string }, channel: string, ...args: unknown[]): Promise<T> {
+  const ws = new WebSocket(`${state.wsUrl}?token=${state.wsToken}`)
+
+  try {
+    await new Promise<void>((ok, bad) => {
+      ws.addEventListener('open', () => ok())
+      ws.addEventListener('error', () => bad(new Error('control line refused')))
+    })
+
+    return await new Promise<T>((ok, bad) => {
+      ws.addEventListener('message', event => {
+        const frame = JSON.parse(String(event.data)) as { id?: number; result?: { result: T }; error?: { message?: string } }
+
+        if (frame.id === 1) {
+          frame.error ? bad(new Error(frame.error.message ?? 'error')) : ok(frame.result!.result)
+        }
+      })
+      ws.send(JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'jarod.invoke', params: { channel, args } }))
+    })
+  } finally {
+    ws.close()
+    await new Promise(resolve => setTimeout(resolve, 300))
+  }
+}

@@ -1,3 +1,5 @@
+import { environmentVariables, listEnvironments } from '../environments.ts'
+import { listVms, VM_NAME } from '../vms.ts'
 import { type BrowserWindow, ipcMain, type WebContents } from 'electron'
 import fs from 'node:fs'
 import { createRequire } from 'node:module'
@@ -6,6 +8,8 @@ import path from 'node:path'
 import { IPC, type TerminalCreateOptions, type TerminalHandle } from '../../shared/ipc.ts'
 import { terminalBin } from '../catalog/catalog.ts'
 import { log } from '../log.ts'
+import { assertUrl } from '../network.ts'
+import { HOST, sshTool } from '../remote-machines.ts'
 import { loadCatalog } from './catalog.ts'
 import { normalizeUserPath } from './fs.ts'
 
@@ -116,7 +120,7 @@ export function registerTerminalIpc(getWindow: () => BrowserWindow | null): void
     owned.get(owner)?.add(id)
   }
 
-  ipcMain.handle(IPC.terminalCreate, (event, options: TerminalCreateOptions): TerminalHandle => {
+  ipcMain.handle(IPC.terminalCreate, async (event, options: TerminalCreateOptions): Promise<TerminalHandle> => {
     const pty = loadPty()
     // Output goes back to the window that created the PTY (in panels mode each terminal is its own
     // window); the main window is only a fallback.
@@ -137,15 +141,34 @@ export function registerTerminalIpc(getWindow: () => BrowserWindow | null): void
       throw new Error(`${options.program} is not a terminal program from the install catalog`)
     }
 
+    // An environment of the Jarod disk: its tools come first in PATH, and the tab starts in its folder.
+    const jarodRoot = process.env.JAROD_OS_ROOT?.trim()
+    const environmentsDir = jarodRoot ? path.join(jarodRoot, 'environments') : null
+    const environment = options.environment && environmentsDir ? listEnvironments(environmentsDir).find(item => item.name === options.environment) : undefined
+
+    if (options.environment && !environment) {
+      throw new Error(`${options.environment} is not an environment of the Jarod disk`)
+    }
+
+    const baseEnv = environment && environmentsDir ? environmentVariables(environmentsDir, environment, process.env) : process.env
     const home = os.homedir()
     const resolved = program ? ([path.join(home, '.local', 'bin', program), path.join(home, '.local', 'share', 'mise', 'shims', program)].find(candidate => fs.existsSync(candidate)) ?? program) : null
+    // A WSL machine: the tab is that machine's shell (the name was checked against the list of machines).
+    const vm = options.vm && process.platform === 'win32' && VM_NAME.test(options.vm) ? (await listVms()).find(item => item.name === options.vm) : undefined
+
+    if (options.vm && !vm) {
+      throw new Error(`${options.vm} is not a WSL machine of this computer`)
+    }
+
+    // A remote machine: `ssh` to it, the host key checked strictly (Settings confirms a new key's fingerprint first), within the Internet policy.
+    const ssh = options.ssh ? remoteCommand(options.ssh) : null
     const args = process.platform === 'win32' ? [] : resolved ? ['-l', '-c', `${JSON.stringify(resolved)}; exec ${JSON.stringify(shell)} -l`] : ['-l']
-    const child = pty.spawn(shell, args, {
+    const child = pty.spawn(ssh ? ssh.file : vm ? 'wsl.exe' : shell, ssh ? ssh.args : vm ? ['-d', vm.name, '--cd', '~'] : args, {
       name: 'xterm-256color',
       cols: Math.max(2, options.cols),
       rows: Math.max(1, options.rows),
-      cwd,
-      env: { ...process.env, TERM: 'xterm-256color', COLORTERM: 'truecolor', TERM_PROGRAM: 'HeraldOS', LANG: process.env.LANG || 'en_US.UTF-8' }
+      cwd: environment && environmentsDir && !options.cwd ? path.join(environmentsDir, environment.name) : cwd,
+      env: { ...baseEnv, TERM: 'xterm-256color', COLORTERM: 'truecolor', TERM_PROGRAM: 'HeraldOS', LANG: process.env.LANG || 'en_US.UTF-8' }
     })
     sessions.set(id, child)
     adopt(owner, id)
@@ -176,3 +199,22 @@ export function registerTerminalIpc(getWindow: () => BrowserWindow | null): void
     kill(id)
   })
 }
+
+/** The `ssh` command of a remote tab, after checking every part (no option can slip in through a host or a user) and the Internet policy. */
+export function remoteCommand(target: { host: string; port: number; user: string; identity?: string }): { file: string; args: string[] } {
+  if (!HOST.test(String(target.host)) || !/^[A-Za-z0-9._][A-Za-z0-9._-]{0,63}$/.test(String(target.user)) || !Number.isInteger(target.port) || target.port < 1 || target.port > 65535) {
+    throw new Error('machine distante invalide')
+  }
+
+  if (target.identity !== undefined && (!path.isAbsolute(target.identity) || !fs.existsSync(target.identity) || !fs.statSync(target.identity).isFile())) {
+    throw new Error('clé SSH introuvable')
+  }
+
+  assertUrl(`ssh://${target.host.includes(':') ? `[${target.host}]` : target.host}`, `la connexion SSH à ${target.host}`)
+
+  return {
+    file: sshTool('ssh'),
+    args: ['-o', 'StrictHostKeyChecking=yes', '-p', String(target.port), ...(target.identity ? ['-i', target.identity, '-o', 'IdentitiesOnly=yes'] : []), '--', `${target.user}@${target.host}`]
+  }
+}
+

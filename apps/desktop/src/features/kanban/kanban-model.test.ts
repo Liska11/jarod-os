@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { agoText, byColumn, COLUMNS, dispatchText, emptyTask, KanbanFailure, NEEDS_TEXT, sortTasks, type Status, type Task, taskInput, taskProblems, unwrap, verbsFor } from './kanban-model.ts'
+import { agoText, byColumn, COLUMNS, dispatchText, emptyTask, KanbanFailure, NEEDS_TEXT, sortTasks, type Status, type Task, taskInput, taskProblems, unwrap, type Verb, verbsFor } from './kanban-model.ts'
 
 const task = (id: string, over: Partial<Task> = {}): Task => ({ id, title: id, body: null, assignee: null, status: 'ready', priority: 0, tenant: null, workspace_kind: 'scratch', workspace_path: null, created_by: null, created_at: 100, started_at: null, completed_at: null, result: null, skills: [], ...over })
 
@@ -35,9 +35,34 @@ describe('what can be done', () => {
 
     for (const status of all) expect(verbsFor(status)).toContain('comment')
     expect(verbsFor('running')).toEqual(['reclaim', 'comment'])
-    expect(verbsFor('triage')).toEqual(expect.arrayContaining(['specify', 'promote']))
+    expect(verbsFor('triage')).toContain('specify')
     expect(verbsFor('blocked')).toContain('unblock')
     expect(verbsFor('ready')).not.toContain('specify')
+  })
+
+  it('never offers a verb the engine refuses in that status (plugin-kanban `refuseUnless`), and a set-aside task can come back', () => {
+    // The statuses plugin-kanban accepts for each verb (jarod-core/packages/plugins/kanban/src/kanban.ts); assign and archive: all but running; comment: any.
+    const accepted: Partial<Record<Verb, readonly Status[]>> = {
+      promote: ['todo', 'blocked'],
+      complete: ['ready', 'blocked', 'review'],
+      block: ['todo', 'ready', 'scheduled', 'review'],
+      unblock: ['blocked', 'scheduled'],
+      schedule: ['todo', 'ready', 'blocked'],
+      specify: ['triage'],
+      reclaim: ['running']
+    }
+
+    for (const status of COLUMNS) {
+      for (const verb of verbsFor(status)) {
+        const allowed = accepted[verb]
+
+        expect(allowed ? allowed.includes(status) : verb === 'comment' || status !== 'running', `${verb} on ${status}`).toBe(true)
+      }
+    }
+
+    expect(verbsFor('triage')).not.toContain('promote')
+    expect(verbsFor('scheduled')).toContain('unblock')
+    expect(verbsFor('review')).toEqual(expect.arrayContaining(['complete', 'block']))
   })
 
   it('assign and comment need text; the others ask for an optional sentence or nothing', () => {
@@ -55,6 +80,13 @@ describe('task form', () => {
     expect(taskProblems({ ...emptyTask(), title: 't', priority: '-2' })).toEqual([])
     expect(taskInput({ ...emptyTask('san'), title: ' Write ', priority: '2' })).toEqual({ title: 'Write', assignee: 'san', priority: 2, workspace: 'scratch' })
     expect(taskInput({ ...emptyTask(), title: 't', body: ' b ', triage: true, folder: 'D:\\work' })).toEqual({ title: 't', body: 'b', priority: 0, triage: true, workspace: 'dir:D:\\work' })
+  })
+
+  it('an empty assignee goes to the served profile (else « Run next » skips the task as unassigned); a typed one wins', () => {
+    expect(taskInput({ ...emptyTask(), title: 't' }, 'default')).toMatchObject({ assignee: 'default' })
+    expect(taskInput({ ...emptyTask(' '), title: 't' }, 'default')).toMatchObject({ assignee: 'default' })
+    expect(taskInput({ ...emptyTask('san'), title: 't' }, 'default')).toMatchObject({ assignee: 'san' })
+    expect(taskInput({ ...emptyTask(), title: 't' }, null)).not.toHaveProperty('assignee')
   })
 })
 

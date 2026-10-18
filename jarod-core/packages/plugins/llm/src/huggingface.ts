@@ -406,7 +406,7 @@ export class HuggingFaceService {
     const { files, targets } = await this.preflight(opts);
 
     // 3. Dossiers (chemin réel vérifié), puis `.part` orphelins de CETTE opération — le seul cas où le service supprime quelque chose avant de transférer.
-    targets.forEach((t) => ensureDirUnder(opts.destDir, t));
+    targets.forEach((t) => { ensureDirUnder(opts.destDir, t); });
     const journal = this.d.journal ?? defaultJournal;
     const orphans = targets.map((t) => `${t}.part`).filter((p) => statOrNull(p) !== null);
     for (const p of orphans) {

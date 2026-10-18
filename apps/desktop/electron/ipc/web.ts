@@ -5,6 +5,7 @@ import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { IPC, type WebOpenOptions, type WebViewBounds, type WebViewEvent } from '../../shared/ipc.ts'
 import { isViewable } from '../../shared/viewer.ts'
+import { chromeUserAgent, isSiteId, PASSKEY_GUARD, type SiteDef, SITES, siteMayOpen, sitePartition } from '../../shared/web-sites.ts'
 import { log } from '../log.ts'
 import { isLoopbackOrigin } from '../pinokio/guard.ts'
 
@@ -142,6 +143,118 @@ function preparePinokioPartition(parent: BrowserWindow | null): void {
   })
 }
 
+const preparedSites = new Set<string>()
+/** Origins the user answered about camera/microphone this launch, per site (true: allowed). */
+const siteMedia = new Map<string, boolean>()
+
+/**
+ * A site's partition (shared/web-sites.ts): the Chrome user agent, and only the permissions its definition lists —
+ * notifications and clipboard writes as asked, camera/microphone once the user says yes, downloads through the save
+ * dialog. Everything else is refused, like the other guests.
+ */
+function prepareSitePartition(site: SiteDef, parent: BrowserWindow | null): void {
+  if (preparedSites.has(site.id)) {
+    return
+  }
+
+  preparedSites.add(site.id)
+  const guest = session.fromPartition(sitePartition(site.id))
+  guest.setUserAgent(chromeUserAgent(guest.getUserAgent()))
+  const grants = (permission: string): boolean =>
+    (permission === 'notifications' && site.permissions.includes('notifications')) || (permission === 'clipboard-sanitized-write' && site.permissions.includes('clipboard'))
+  const originOf = (url: string): string | null => {
+    try {
+      return new URL(url).origin
+    } catch {
+      return null
+    }
+  }
+
+  guest.setPermissionCheckHandler((_contents, permission, origin) => {
+    if (grants(permission)) {
+      return true
+    }
+
+    return permission === 'media' && site.permissions.includes('media') && siteMedia.get(`${site.id} ${originOf(origin)}`) === true
+  })
+  guest.setDevicePermissionHandler(() => false)
+  guest.setPermissionRequestHandler((_contents, permission, callback, details) => {
+    if (grants(permission)) {
+      callback(true)
+
+      return
+    }
+
+    const origin = originOf(details.requestingUrl)
+
+    if (permission !== 'media' || !site.permissions.includes('media') || !origin) {
+      callback(false)
+
+      return
+    }
+
+    const key = `${site.id} ${origin}`
+    const known = siteMedia.get(key)
+
+    if (known !== undefined) {
+      callback(known)
+
+      return
+    }
+
+    const options: Electron.MessageBoxOptions = {
+      type: 'question',
+      buttons: ['Allow', 'Deny'],
+      defaultId: 1,
+      cancelId: 1,
+      title: 'Camera and microphone',
+      message: `${site.name} (${origin}) wants to use your camera or microphone.`,
+      detail: 'Jarod-OS remembers your answer until it quits.'
+    }
+    const answer = parent && !parent.isDestroyed() ? dialog.showMessageBox(parent, options) : dialog.showMessageBox(options)
+    void answer.then(({ response }) => {
+      siteMedia.set(key, response === 0)
+      callback(response === 0)
+    })
+  })
+
+  if (!site.permissions.includes('downloads')) {
+    guest.on('will-download', event => event.preventDefault())
+  } else {
+    guest.on('will-download', (_event, item) => log('web', `${site.id}: download ${item.getFilename()}`))
+  }
+}
+
+/**
+ * PASSKEY_GUARD in every frame of a site's view, cross-site frames included (each is its own target: attached as it
+ * starts, held until the guard is in). Through the DevTools protocol, since no preload reaches a sandboxed page's own
+ * world before its scripts. Best effort: a view the guard could not reach still works, with Windows' dialog.
+ */
+async function guardPasskeys(contents: WebContents, site: string): Promise<void> {
+  const dbg = contents.debugger
+  const guardTarget = async (session?: string) => {
+    await dbg.sendCommand('Page.enable', {}, session).catch(() => undefined)
+    await dbg.sendCommand('Page.addScriptToEvaluateOnNewDocument', { source: PASSKEY_GUARD, runImmediately: true }, session).catch(() => undefined)
+    await dbg.sendCommand('Target.setAutoAttach', { autoAttach: true, waitForDebuggerOnStart: true, flatten: true }, session).catch(() => undefined)
+  }
+
+  try {
+    if (!dbg.isAttached()) {
+      dbg.attach('1.3')
+    }
+
+    dbg.on('message', (_event, method, params: { sessionId?: string }) => {
+      if (method === 'Target.attachedToTarget' && params.sessionId) {
+        const session = params.sessionId
+        void guardTarget(session).then(() => dbg.sendCommand('Runtime.runIfWaitingForDebugger', {}, session).catch(() => undefined))
+      }
+    })
+    await guardTarget()
+  } catch (error) {
+    log('web', `${site}: passkey guard unavailable: ${error instanceof Error ? error.message : String(error)}`)
+  }
+}
+
 /** A preview may show http(s) pages and local files inside the project folder, nothing else. */
 function previewAllows(url: string, root: string | null): boolean {
   if (isHttp(url)) {
@@ -194,6 +307,126 @@ export class WebViews {
       const contents = this.contentsFor(id, event.sender)
       contents?.reloadIgnoringCache()
     })
+    ipcMain.handle(IPC.webOpenSite, (event, siteId: unknown) => this.openSite(event.sender, siteId))
+    ipcMain.handle(IPC.webHistory, (event, id: string, direction: unknown) => {
+      const history = this.contentsFor(id, event.sender)?.navigationHistory
+
+      if (direction === 'back' && history?.canGoBack()) {
+        history.goBack()
+      } else if (direction === 'forward' && history?.canGoForward()) {
+        history.goForward()
+      }
+    })
+  }
+
+  /** Site views by id (the Browser, the Social apps), and each owner's one view per site. */
+  private readonly siteViews = new Map<string, SiteDef>()
+  private readonly siteOwners = new Map<string, string>()
+
+  /**
+   * A site's page (shared/web-sites.ts): one view per site and window, in the site's own partition so its sign-in
+   * stays. It shows the site's own pages and its sign-in pages; a link elsewhere goes to the Browser page (`external`).
+   * Asked again for the same site, it answers with the view already open.
+   */
+  openSite(owner: WebContents, siteId: unknown): string {
+    if (!isSiteId(siteId)) {
+      throw new Error('unknown site')
+    }
+
+    const site = SITES[siteId]
+    const key = `${owner.id} ${site.id}`
+    const existing = this.siteOwners.get(key)
+
+    if (existing && this.entries.has(existing)) {
+      return existing
+    }
+
+    const host = BrowserWindow.fromWebContents(owner)
+    prepareSitePartition(site, host)
+    this.hookOwner(owner)
+    const id = `web-${++this.counter}`
+    const preferences: Electron.WebPreferences = { ...GUEST_PREFERENCES, partition: sitePartition(site.id) }
+    const entry: Entry = this.embed && host && !host.isDestroyed() ? this.createEmbedded(id, host, owner, preferences) : this.createDetached(id, owner, site.name, preferences)
+    this.entries.set(id, entry)
+    this.siteViews.set(id, site)
+    this.siteOwners.set(key, id)
+    const contents = entry.kind === 'view' ? entry.view.webContents : entry.win.webContents
+    this.guardSite(id, contents, site, preferences)
+    // A blank document first: the DevTools protocol answers only once the view has one.
+    void contents
+      .loadURL('about:blank')
+      .then(() => Promise.race([guardPasskeys(contents, site.id), new Promise(resolve => setTimeout(resolve, 3000))]))
+      .then(() => contents.loadURL(site.home))
+      .catch(error => log('web', `${id}: load failed: ${error instanceof Error ? error.message : String(error)}`))
+    log('web', `opened site ${site.id} ${id} (${entry.kind})`)
+
+    return id
+  }
+
+  private guardSite(id: string, contents: WebContents, site: SiteDef, preferences: Electron.WebPreferences): void {
+    const elsewhere = (url: string) => {
+      if (/^https?:\/\//i.test(url)) {
+        this.emitFor(id, { id, type: 'external', url })
+      }
+    }
+
+    contents.setWindowOpenHandler(({ url }) => {
+      if (!siteMayOpen(site, url)) {
+        elsewhere(url)
+
+        return { action: 'deny' }
+      }
+
+      // The browser opens a new tab's page in place; the others keep sign-in popups (they need window.opener).
+      if (site.hosts === null) {
+        void contents.loadURL(url).catch(() => undefined)
+
+        return { action: 'deny' }
+      }
+
+      return { action: 'allow', overrideBrowserWindowOptions: { width: 520, height: 720, autoHideMenuBar: true, backgroundColor: '#ffffff', webPreferences: { ...preferences } } }
+    })
+    contents.on('did-create-window', child => {
+      child.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
+      child.webContents.on('will-navigate', (event, url) => {
+        if (!siteMayOpen(site, url)) {
+          event.preventDefault()
+        }
+      })
+    })
+    for (const name of ['will-navigate', 'will-redirect'] as const) {
+      contents.on(name as 'will-navigate', (event, url) => {
+        if (!siteMayOpen(site, url)) {
+          event.preventDefault()
+
+          if (name === 'will-navigate') {
+            elsewhere(url)
+          }
+        }
+      })
+    }
+    contents.on('will-attach-webview', event => event.preventDefault())
+    contents.on('before-input-event', (event, input) => {
+      if (input.type === 'keyDown' && (input.key === 'F12' || (input.key.toLowerCase() === 'i' && input.alt && (input.meta || input.control)))) {
+        event.preventDefault()
+      }
+    })
+    contents.on('page-title-updated', (_event, title) => this.emitFor(id, { id, type: 'title', title }))
+    const reportUrl = () => {
+      if (!contents.isDestroyed()) {
+        this.emitFor(id, { id, type: 'url', url: contents.getURL() })
+        this.emitFor(id, { id, type: 'history', canGoBack: contents.navigationHistory.canGoBack(), canGoForward: contents.navigationHistory.canGoForward() })
+      }
+    }
+    contents.on('did-navigate', reportUrl)
+    contents.on('did-navigate-in-page', reportUrl)
+    contents.on('did-start-loading', () => this.emitFor(id, { id, type: 'loading', loading: true }))
+    contents.on('did-stop-loading', () => this.emitFor(id, { id, type: 'loading', loading: false }))
+    contents.on('did-fail-load', (_event, code, description, url, isMainFrame) => {
+      if (isMainFrame && code !== -3) {
+        this.emitFor(id, { id, type: 'error', error: `${description} (${url})` })
+      }
+    })
   }
 
   private readonly previewRoots = new Map<string, string | null>()
@@ -244,6 +477,18 @@ export class WebViews {
   /** Point a preview somewhere else (a new dev-server port, another page of the site). */
   navigate(owner: WebContents, id: string, target: string): void {
     const contents = this.contentsFor(id, owner)
+    const site = this.siteViews.get(id)
+
+    // A site's view goes to its own pages (the browser: anywhere on the web).
+    if (contents && site) {
+      if (!siteMayOpen(site, target)) {
+        throw new Error(`${site.name} shows its own pages only`)
+      }
+
+      void contents.loadURL(target).catch(error => log('web', `${id}: load failed: ${error instanceof Error ? error.message : String(error)}`))
+
+      return
+    }
 
     // A Pinokio view goes anywhere on this machine (its home page, an app's page).
     if (contents && this.pinokioViews.has(id)) {
@@ -451,6 +696,13 @@ export class WebViews {
     this.previewFolders.delete(id)
     this.viewerFiles.delete(id)
     this.pinokioViews.delete(id)
+    this.siteViews.delete(id)
+
+    for (const [key, value] of this.siteOwners) {
+      if (value === id) {
+        this.siteOwners.delete(key)
+      }
+    }
 
     if (entry.kind === 'view') {
       if (!entry.host.isDestroyed()) {

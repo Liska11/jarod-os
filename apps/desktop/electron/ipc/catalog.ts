@@ -7,6 +7,7 @@ import { type CatalogGroupView, type CatalogResult, IPC } from '../../shared/ipc
 import { loginShellPath } from '../backend/shell-env.ts'
 import { type CatalogEntry, type CatalogGroup, entryView, findEntry, macGroups, parseCliListing, pickMacMethod, readCatalog } from '../catalog/catalog.ts'
 import { log } from '../log.ts'
+import { internetAllowed } from '../network.ts'
 import { run } from '../platform/exec.ts'
 import { type HostControlGate } from '../shell/host-control.ts'
 
@@ -253,6 +254,11 @@ export function registerCatalogIpc(gate: HostControlGate): void {
 
       if (!/^[a-z0-9][a-z0-9-]{0,63}$/.test(String(id))) {
         return { ok: false, output: 'Not a catalog id' }
+      }
+
+      // Installing downloads (removing does not): refused while Jarod's Internet is off.
+      if (action === 'install' && !internetAllowed()) {
+        return { ok: false, output: 'Internet désactivé pour Jarod : l’installation doit télécharger le logiciel.' }
       }
 
       try {

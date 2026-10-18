@@ -6,7 +6,7 @@
 //    une lecture bien plus large que celle que l'outil annonce ; la description le dit, au lieu de promettre la recherche de contenu.
 //  - les emplacements protégés (clés, identifiants, dossiers du système) ne sont ni parcourus ni cités, et un `scope` protégé est refusé avant toute lecture.
 //  - `since`/`until` comparent la date de CRÉATION (celle de l'Explorateur), comme « fichiers créés hier ».
-import { type Dirent, statSync } from "node:fs";
+import { type Dir, type Dirent, statSync } from "node:fs";
 import { lstat, opendir } from "node:fs/promises";
 import { homedir } from "node:os";
 import { isAbsolute, join, resolve } from "node:path";
@@ -195,7 +195,7 @@ export async function findFiles(search: Search, deps: FindDeps = {}): Promise<Fi
   const stack = [...roots];
   while (stack.length && !stop() && found.size < wanted) {
     const dir = stack.pop()!;
-    let handle;
+    let handle: Dir;
     try {
       handle = await opendir(dir);
     } catch {

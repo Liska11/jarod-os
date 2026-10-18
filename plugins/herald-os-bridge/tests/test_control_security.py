@@ -82,10 +82,11 @@ def test_child_process_never_inherits_the_gateway_secrets(plugin, shell_env):
 def test_child_environment_is_still_an_environment(plugin, shell_env):
     """Filtering must be surgical: the child keeps everything an ordinary command needs."""
     util = _mod(plugin, "util")
-    seen = _child_report(util, (PROBE, "PATH", "USERPROFILE", "SystemRoot"))
+    seen = _child_report(util, (PROBE, "PATH", "HOME", "USERPROFILE", "SystemRoot"))
     assert seen[PROBE] == "kept"
     assert seen["PATH"], "PATH was stripped"
-    assert seen["USERPROFILE"] or seen["SystemRoot"], "the environment was replaced instead of filtered"
+    # HOME on POSIX, USERPROFILE / SystemRoot on Windows: one of them proves the rest was inherited.
+    assert seen["HOME"] or seen["USERPROFILE"] or seen["SystemRoot"], "the environment was replaced instead of filtered"
 
 
 def test_control_env_reads_once_and_scrubs_its_own_environment(plugin, shell_env):

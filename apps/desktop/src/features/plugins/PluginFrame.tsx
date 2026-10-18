@@ -50,7 +50,7 @@ export function PluginFrame({ plugin, at, className, title, width, height }: { p
 
       const message = event.data as { herald?: number; id?: number; method?: PluginMethod; params?: Record<string, unknown>; ready?: boolean }
 
-      if (!message || message.herald !== 1) {
+      if (message?.herald !== 1) {
         return
       }
 

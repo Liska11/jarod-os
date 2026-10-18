@@ -1,8 +1,7 @@
 /**
  * Outils agent pour l'automatisation.
  */
-import type { ToolDef, ToolContext } from "@jarod/plugin-tools";
-import { resolveInWorkspace } from "@jarod/plugin-tools";
+import type { ToolDef } from "@jarod/plugin-tools";
 import type { AutomationService, AutomationTrigger, AutomationAction } from "./automation.js";
 
 export function automationTools(automation: AutomationService): ToolDef[] {
@@ -17,7 +16,7 @@ export function automationTools(automation: AutomationService): ToolDef[] {
         },
       },
       source: "builtin",
-      async run(args, ctx) {
+      async run(args, _ctx) {
         const filter = args.enabled !== undefined ? { enabled: args.enabled as boolean } : undefined;
         const rules = automation.list(filter);
         return rules.map(r => ({
@@ -40,7 +39,7 @@ export function automationTools(automation: AutomationService): ToolDef[] {
         required: ["id"],
       },
       source: "builtin",
-      async run(args, ctx) {
+      async run(args, _ctx) {
         const rule = automation.get(args.id as string);
         if (!rule) return `Règle introuvable : ${args.id}`;
         return JSON.stringify(rule, null, 2);
@@ -82,7 +81,7 @@ export function automationTools(automation: AutomationService): ToolDef[] {
       },
       source: "builtin",
       dangerous: true, // sensible → accord demandé
-      async run(args, ctx) {
+      async run(args, _ctx) {
         // Validation basique
         const trigger = args.trigger as AutomationTrigger;
         if (!trigger || (trigger.kind !== "schedule" && trigger.kind !== "manual")) {
@@ -146,7 +145,7 @@ export function automationTools(automation: AutomationService): ToolDef[] {
       },
       source: "builtin",
       dangerous: true,
-      async run(args, ctx) {
+      async run(args, _ctx) {
         const { id, ...patch } = args as { id: string } & Partial<{ name: string; enabled: boolean; trigger: AutomationTrigger; actions: AutomationAction[] }>;
         // Validation si trigger fourni
         if (patch.trigger && patch.trigger.kind !== "schedule" && patch.trigger.kind !== "manual") {
@@ -180,7 +179,7 @@ export function automationTools(automation: AutomationService): ToolDef[] {
       },
       source: "builtin",
       dangerous: true,
-      async run(args, ctx) {
+      async run(args, _ctx) {
         const ok = automation.delete(args.id as string);
         return ok ? `Règle supprimée : ${args.id}` : `Règle introuvable : ${args.id}`;
       },
@@ -197,7 +196,7 @@ export function automationTools(automation: AutomationService): ToolDef[] {
       },
       source: "builtin",
       dangerous: true,
-      async run(args, ctx) {
+      async run(args, _ctx) {
         const result = await automation.run(args.id as string);
         return result.ok ? `✅ ${result.summary}` : `❌ ${result.summary}`;
       },

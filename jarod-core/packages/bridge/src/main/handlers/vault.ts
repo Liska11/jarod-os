@@ -9,7 +9,7 @@
  * - supprimer un secret demande aussi une confirmation (irréversible : la valeur est effacée) ;
  * - noms, variables et domaines sont validés ; rien n'est écrit si une valeur est invalide.
  */
-import type { VaultEntry } from "@jarod/contracts";
+import type { VaultEntry, VaultKind } from "@jarod/contracts";
 import type { HandlerContext } from "./context.js";
 
 const NAME = /^[A-Za-z][A-Za-z0-9_]{0,63}$/;
@@ -28,6 +28,40 @@ export interface VaultView {
   createdAt: number;
   /** Une valeur est enregistrée (jamais la valeur). */
   hasValue: boolean;
+  kind: VaultKind;
+  /** En mémoire seulement, pour cette exécution du moteur. */
+  temporary: boolean;
+}
+
+const KINDS: VaultKind[] = ["api_key", "token", "password", "other"];
+
+/**
+ * Comment le coffre est protégé sur ce disque, lu dans ce que le storage a VRAIMENT fait à l'ouverture de la base
+ * (jamais deviné d'après les fichiers présents) :
+ * - `os-key` : base chiffrée, clé protégée par le compte (DPAPI sous Windows, trousseau ailleurs) ; l'état normal ;
+ * - `weak` : base chiffrée, mais la clé est dans un fichier à côté de la base (repli quand DPAPI a échoué) ;
+ * - `plain` : base en clair ;
+ * - `unknown` : le storage ne dit rien (port absent, magasin non reconnu).
+ * Ni clé, ni chemin, ni valeur n'y figurent.
+ */
+export type VaultProtection = "os-key" | "weak" | "plain" | "unknown";
+export interface VaultStatus {
+  protection: VaultProtection;
+  /** null : inconnu. */
+  encrypted: boolean | null;
+  /** Le magasin qui a rendu la clé (`dpapi`, `keychain`, `libsecret`, `file`…) ; null si base en clair ou inconnu. */
+  keyStore: string | null;
+}
+
+const OS_STORES = ["dpapi", "keychain", "libsecret"];
+
+export function vaultStatusOf(enc: { encrypted: boolean; keyStoreId?: string | null; weak: boolean } | undefined): VaultStatus {
+  if (!enc || typeof enc.encrypted !== "boolean") return { protection: "unknown", encrypted: null, keyStore: null };
+  if (!enc.encrypted) return { protection: "plain", encrypted: false, keyStore: null };
+  const keyStore = typeof enc.keyStoreId === "string" ? enc.keyStoreId : null;
+  if (enc.weak || keyStore === "file") return { protection: "weak", encrypted: true, keyStore: "file" };
+  if (keyStore && OS_STORES.includes(keyStore)) return { protection: "os-key", encrypted: true, keyStore };
+  return { protection: "unknown", encrypted: true, keyStore };
 }
 
 const bad = (why: string): never => {
@@ -39,7 +73,7 @@ export function createVaultHandlers(ctx: HandlerContext) {
   const views = (): VaultView[] =>
     vault()
       .list()
-      .map((e: VaultEntry) => ({ name: e.name, description: e.description, envVar: e.envVar, domains: [...e.domains], allowShell: e.allowShell, createdAt: e.createdAt, hasValue: vault().hasValue(e.name) }))
+      .map((e: VaultEntry) => ({ name: e.name, description: e.description, envVar: e.envVar, domains: [...e.domains], allowShell: e.allowShell, createdAt: e.createdAt, hasValue: vault().hasValue(e.name), kind: e.kind ?? "other", temporary: Boolean(e.temporary) }))
       .sort((a, b) => a.name.localeCompare(b.name));
   const sure = async (message: string, detail: string, action: string): Promise<void> => {
     if (!ctx.shell.confirm) bad("confirmation native indisponible, refusé");
@@ -49,11 +83,21 @@ export function createVaultHandlers(ctx: HandlerContext) {
   return {
     "vault-list": (): VaultView[] => views(),
 
+    "vault-status": (): VaultStatus => vaultStatusOf(ctx.kernel().storage?.dbEncryption),
+
+    /** Retire toute portée (domaines, commandes du shell) sans effacer la valeur : restreindre ne demande pas d'accord. */
+    "vault-revoke": (name: unknown): VaultView[] => {
+      const e = typeof name === "string" ? vault().get(name) : undefined;
+      if (!e) bad("secret inconnu");
+      vault().save({ ...(e as VaultEntry), domains: [], allowShell: false });
+      return views();
+    },
+
     /** `value` absent ou vide : la valeur enregistrée est gardée (modifier la description, les domaines…). Rend la liste relue. */
     "vault-save": async (entry: unknown, value?: unknown): Promise<VaultView[]> => {
       if (!entry || typeof entry !== "object" || Array.isArray(entry)) bad("entrée attendue");
       const e = entry as Record<string, unknown>;
-      const extra = Object.keys(e).filter((k) => !["name", "description", "envVar", "domains", "allowShell"].includes(k));
+      const extra = Object.keys(e).filter((k) => !["name", "description", "envVar", "domains", "allowShell", "kind", "temporary"].includes(k));
       if (extra.length) bad(`champ(s) inconnu(s) : ${extra.join(", ")}`);
       if (typeof e.name !== "string" || !NAME.test(e.name.trim())) bad("nom invalide : une lettre, puis lettres, chiffres ou « _ » (64 au plus)");
       const name = (e.name as string).trim();
@@ -67,6 +111,8 @@ export function createVaultHandlers(ctx: HandlerContext) {
       if (domains.length > 20) bad("20 domaines au plus");
       for (const d of domains) if (!DOMAIN.test(d)) bad(`domaine invalide : ${d.slice(0, 80)} (sans schéma, chemin ni port ; « *.exemple.org » permis)`);
       const allowShell = e.allowShell === undefined ? false : typeof e.allowShell === "boolean" ? e.allowShell : bad("allowShell : booléen attendu");
+      const kind = e.kind === undefined ? undefined : KINDS.includes(e.kind as VaultKind) ? (e.kind as VaultKind) : bad("type de secret inconnu");
+      const temporary = e.temporary === undefined ? undefined : typeof e.temporary === "boolean" ? e.temporary : bad("temporary : booléen attendu");
       if (value !== undefined && (typeof value !== "string" || value.length > MAX_VALUE)) bad(`valeur : texte de ${MAX_VALUE} caractères au plus`);
       const existing = vault().get(name);
       if (!existing && !value) bad("un nouveau secret a besoin d'une valeur");
@@ -87,7 +133,7 @@ export function createVaultHandlers(ctx: HandlerContext) {
           "Autoriser",
         );
       }
-      vault().save({ name, description, domains, allowShell, ...(envVar ? { envVar } : {}) }, value ? (value as string) : undefined);
+      vault().save({ name, description, domains, allowShell, ...(envVar ? { envVar } : {}), ...(kind ? { kind } : {}), ...(temporary !== undefined ? { temporary } : {}) }, value ? (value as string) : undefined);
       return views();
     },
 

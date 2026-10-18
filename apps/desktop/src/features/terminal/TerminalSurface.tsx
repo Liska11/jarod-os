@@ -60,7 +60,7 @@ export function TerminalSurface() {
   const mounted = useRef(false)
   const live = useRef(new Set<string>())
 
-  const create = async (program?: { id: string; label: string }) => {
+  const create = async (program?: { id?: string; environment?: string; vm?: string; ssh?: { host: string; port: number; user: string; identity?: string }; label: string }) => {
     if (pending.current) {
       return
     }
@@ -68,7 +68,7 @@ export function TerminalSurface() {
     pending.current = true
 
     try {
-      const handle = await window.heraldOS.terminal.create({ cols: 120, rows: 30, program: program?.id })
+      const handle = await window.heraldOS.terminal.create({ cols: 120, rows: 30, program: program?.id, environment: program?.environment, vm: program?.vm, ssh: program?.ssh })
 
       if (!mounted.current) {
         void quietly(() => window.heraldOS.terminal.dispose(handle.id))
@@ -91,13 +91,13 @@ export function TerminalSurface() {
     const request = $terminalRequest.get()
 
     if (tabs.length === 0 && !error) {
-      void create(request && Date.now() - request.at < FRESH_REQUEST_MS ? { id: request.program, label: request.label } : undefined)
+      void create(request && Date.now() - request.at < FRESH_REQUEST_MS ? { id: request.program, environment: request.environment, vm: request.vm, ssh: request.ssh, label: request.label } : undefined)
     }
 
     // Later requests (the Terminal already open) add a tab.
     return $terminalRequest.listen(next => {
       if (next) {
-        void create({ id: next.program, label: next.label })
+        void create({ id: next.program, environment: next.environment, vm: next.vm, ssh: next.ssh, label: next.label })
       }
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps

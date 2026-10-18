@@ -2,7 +2,7 @@
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
 import { realpathSync } from "node:fs";
-import { isAbsolute, relative, resolve, sep } from "node:path";
+import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { type DockerOptions, DEFAULT_DOCKER } from "@jarod/contracts";
 export { DEFAULT_DOCKER };
 export type { DockerOptions };
@@ -47,11 +47,17 @@ export const dockerCli: DockerExec = (args, timeoutMs = 120_000) =>
     );
   });
 
-const real = (p: string) => {
+/**
+ * The canonical path, also for a folder that does not exist yet: its closest existing ancestor is
+ * canonicalised and the rest re-attached, so a short (8.3) or linked prefix spells the same on both sides.
+ */
+const real = (p: string): string => {
+  const full = resolve(p);
   try {
-    return realpathSync.native(resolve(p));
+    return realpathSync.native(full);
   } catch {
-    return resolve(p);
+    const parent = dirname(full);
+    return parent === full ? full : join(real(parent), basename(full));
   }
 };
 

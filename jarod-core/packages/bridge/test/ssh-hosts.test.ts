@@ -93,4 +93,36 @@ describe("hôtes SSH", () => {
     expect(bad.message.length).toBe(500);
     await rejects(() => call("ssh-host-test", 3), /identifiant attendu/);
   });
+
+  it("agent commands per machine: off by default; on only after a native confirmation naming the machine; off at once", async () => {
+    const key = keyFile();
+    const asked: string[] = [];
+    const answers = [false, true];
+    const k = await setupKernel(undefined, [], { pickFile: async () => key, confirm: async (message, detail) => (asked.push(`${message}
+${detail}`), answers.shift() ?? false) });
+    await k.call("ssh-pick-key");
+    const list = (await k.call("ssh-host-add", { name: "pc2", host: "100.64.0.2", username: "ops", keyPath: key })) as { id: string; agentExec: boolean }[];
+    expect(list[0]!.agentExec).toBe(false);
+    expect(k.app.agent.settings.get("sshExecHosts" as never)).toBeUndefined();
+
+    await rejects(() => k.call("ssh-host-exec-set", list[0]!.id, true), /refusé par l'utilisateur/);
+    expect(((await k.call("ssh-hosts-list")) as { agentExec: boolean }[])[0]!.agentExec).toBe(false);
+
+    const on = (await k.call("ssh-host-exec-set", list[0]!.id, true)) as { agentExec: boolean }[];
+    expect(on[0]!.agentExec).toBe(true);
+    expect(asked).toHaveLength(2);
+    expect(asked[1]).toContain("pc2");
+    expect(asked[1]).toContain("ops@100.64.0.2:22");
+
+    const off = (await k.call("ssh-host-exec-set", list[0]!.id, false)) as { agentExec: boolean }[];
+    expect(off[0]!.agentExec).toBe(false);
+    expect(asked).toHaveLength(2);
+
+    await rejects(() => k.call("ssh-host-exec-set", "inconnu", true), /non déclaré/);
+    await rejects(() => k.call("ssh-host-exec-set", list[0]!.id, "yes"), /attendu/);
+    const none = await setupKernel(undefined, [], { pickFile: async () => key, noConfirm: true });
+    await none.call("ssh-pick-key");
+    const l2 = (await none.call("ssh-host-add", { name: "pc3", host: "100.64.0.3", username: "ops", keyPath: key })) as { id: string }[];
+    await rejects(() => none.call("ssh-host-exec-set", l2[0]!.id, true), /confirmation native indisponible/);
+  });
 });

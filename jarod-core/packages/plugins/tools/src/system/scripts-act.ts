@@ -189,7 +189,8 @@ foreach ($path in @($A.paths)) {
     }
     if ($isDir) { [Microsoft.VisualBasic.FileIO.FileSystem]::DeleteDirectory($full, 'AllDialogs', 'SendToRecycleBin', 'ThrowException') }
     else { [Microsoft.VisualBasic.FileIO.FileSystem]::DeleteFile($full, 'AllDialogs', 'SendToRecycleBin', 'ThrowException') }
-    $done += $full
+    # The path exactly as received: GetFullPath expands short (8.3) names, and the caller matches on its own spelling.
+    $done += [string]$path
   } catch {
     $errors += ([string]$path + ': ' + $_.Exception.Message)
   }

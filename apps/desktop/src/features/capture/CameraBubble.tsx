@@ -23,7 +23,7 @@ export function CameraBubble() {
         stream = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 480 }, height: { ideal: 480 }, facingMode: 'user' }, audio: false })
 
         if (stopped) {
-          stream.getTracks().forEach(track => track.stop())
+          stream.getTracks().forEach(track => { track.stop() })
 
           return
         }
@@ -38,7 +38,7 @@ export function CameraBubble() {
 
     return () => {
       stopped = true
-      stream?.getTracks().forEach(track => track.stop())
+      stream?.getTracks().forEach(track => { track.stop() })
     }
   }, [])
 

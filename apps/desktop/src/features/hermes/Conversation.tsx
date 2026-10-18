@@ -10,7 +10,7 @@ import { $activeSpace } from '../../store/spaces.ts'
 import { Markdown } from '../chat/Markdown.tsx'
 import { $chatArtifacts, $selectedArtifact, artifactsInWindow, dayLabel, formatTime, selectArtifact } from './artifact-store.ts'
 import { ArtifactCard } from './ArtifactCard.tsx'
-import { ComposerBar } from './ComposerBar.tsx'
+import { ComposerBar, ModelPicker } from './ComposerBar.tsx'
 import { HermesComposer } from './HermesComposer.tsx'
 import { SuggestionChips } from './SuggestionChips.tsx'
 import { ToolSummaryRow } from './ToolSummaryRow.tsx'
@@ -79,12 +79,13 @@ export function Conversation({ chat, online }: { chat: ChatState | null; online:
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex items-center gap-3 border-b border-line px-5 py-3.5">
+      <div className="relative flex items-center gap-3 border-b border-line px-5 py-3.5">
         <HermesAvatar size={36} rounded={10} />
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <div className="truncate text-[15px] leading-tight font-semibold text-fg">{assistant}</div>
           <div className="truncate text-[12px] text-fg-3">{chat?.title || t('chat.workspace', { name: space?.name ?? 'Personal' })}</div>
         </div>
+        <ModelPicker chat={chat} online={online} />
       </div>
 
       {chat ? <Transcript chat={chat} online={online} /> : <Hero online={online} />}
@@ -101,7 +102,9 @@ function Hero({ online }: { online: boolean }) {
   const { t, assistant } = useT()
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-6 px-6 page-enter">
+    // Scrolls in a short window instead of spilling over the header and the composer; `m-auto` centres it when there is room.
+    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-6 page-enter">
+      <div className="m-auto flex w-full flex-col items-center gap-6 py-6">
       <HermesAvatar size={48} rounded={14} />
       <div className="text-center">
         <div className="text-[20px] font-semibold tracking-tight text-fg">{assistant}</div>
@@ -113,6 +116,7 @@ function Hero({ online }: { online: boolean }) {
             {t(text)}
           </button>
         ))}
+      </div>
       </div>
     </div>
   )

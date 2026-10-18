@@ -258,10 +258,12 @@ export type ApprovalChoice = "once" | "session" | "always" | "deny";
 /** La demande d'accord envoyée au shell (`ApprovalRequestParams`). « Toujours » n'est jamais offert : la politique de Jarod le refuse pour ses outils sensibles. */
 export function approvalParams(sessionId: string, requestId: string, call: { name: string; args: Record<string, unknown> }, description: string): Record<string, unknown> {
   const args = JSON.stringify(call.args);
+  // A remote command is confirmed as it will run: the card shows the command itself, whole (the tool caps its length), not a clipped JSON.
+  const verbatim = call.name === "remote_exec" && typeof call.args.command === "string" ? call.args.command : null;
   return {
     session_id: sessionId,
     request_id: requestId,
-    command: `${call.name} ${clip(args, 400)}`,
+    command: verbatim ?? `${call.name} ${clip(args, 400)}`,
     description,
     choices: ["once", "deny"] satisfies ApprovalChoice[],
     allow_permanent: false,

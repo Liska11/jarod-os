@@ -24,6 +24,7 @@ import type { SkillRegistry } from "@jarod/plugin-skills";
 import { type ToolRegistry, validateArgs } from "@jarod/plugin-tools";
 import type { Attachment, Message, ToolCall } from "@jarod/contracts";
 import { redactText } from "@jarod/kernel/redact";
+import { activePolicy, toolVerdict } from "@jarod/kernel/network";
 import { newId, truncate } from "@jarod/kernel/util";
 import type { ToolGate } from "@jarod/plugin-permissions";
 
@@ -1167,6 +1168,12 @@ export async function executeGuardedTool(
   const tool = tools.get(call.name);
   if (!tool || s.disabledTools.includes(call.name)) {
     return { content: `Outil inconnu ou désactivé : ${call.name}`, isError: true };
+  }
+  // L'interrupteur Internet (fichier du shell, relu à chaque appel) : avant la politique de permissions et avant toute demande d'accord.
+  const offline = toolVerdict(activePolicy(), call.name, tool.source);
+  if (!offline.ok) {
+    extra.audit?.({ sessionId, tool: call.name, args: truncate(redactText(JSON.stringify(call.args ?? {})), 500), decision: "refusé (règle)" });
+    return { content: offline.reason, isError: true };
   }
   // Every action that changes something leaves a line: who asked, what, and who decided.
   const audit = (decision: AuditEntry["decision"], ok?: boolean) =>

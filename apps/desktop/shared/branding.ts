@@ -44,6 +44,7 @@ export function brandingName(value: unknown): string | null {
 
   // Control characters and line breaks become spaces.
   const name = value
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: intended, strips control characters from untrusted text
     .replace(/[\u0000-\u001f\u007f]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()

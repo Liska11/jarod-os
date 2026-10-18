@@ -1,5 +1,5 @@
 // Portage de packages/core/src/services/skills.ts (rév. 2e180305).
-import { existsSync, realpathSync } from "node:fs";
+import { type Dirent, existsSync, realpathSync } from "node:fs";
 import { mkdir, readdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import type { NotificationService } from "@jarod/plugin-storage";
@@ -179,7 +179,7 @@ export class SkillRegistry {
       const next: string[] = [];
       const atDepth: Found[] = [];
       for (const rel of level) {
-        let entries;
+        let entries: Dirent[];
         try {
           entries = await readdir(rel ? join(this.dir, ...rel.split("/")) : this.dir, { withFileTypes: true });
         } catch (e) {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Check, SystemFacts } from '../../../shared/system-audit.ts'
-import { checkDetail, checkLabel } from './DesktopSetup.tsx'
+import { canInstall, checkDetail, checkLabel } from './DesktopSetup.tsx'
 
 const check = (id: string, label: string): Check => ({ id, label, status: 'info', critical: false, detail: '' })
 
@@ -42,5 +42,22 @@ describe('checkDetail', () => {
 
   it('keeps the text main gave for a check it has no rule for', () => {
     expect(checkDetail({ ...check('os', 'Operating system'), detail: 'Windows 11' }, facts)).toBe('Windows 11')
+  })
+})
+
+describe('canInstall', () => {
+  const win = { platform: 'win32' } as SystemFacts
+  const linux = { platform: 'linux' } as SystemFacts
+  const missing = (id: string): Check => ({ id, label: id, status: 'missing', critical: false, detail: '' })
+
+  it('offers an install for a missing or outdated known tool on Windows', () => {
+    expect(canInstall(missing('git'), win)).toBe(true)
+    expect(canInstall({ ...missing('python'), status: 'outdated' }, win)).toBe(true)
+  })
+
+  it('offers nothing for a tool it cannot install, one already there, or outside Windows', () => {
+    expect(canInstall(missing('cuda'), win)).toBe(false)
+    expect(canInstall({ ...missing('git'), status: 'ok' }, win)).toBe(false)
+    expect(canInstall(missing('git'), linux)).toBe(false)
   })
 })

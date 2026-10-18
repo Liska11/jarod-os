@@ -6,7 +6,7 @@
 //   deviennent l'en-tête `Authorization: Bearer …` des serveurs distants (Jarod n'a pas de flux OAuth : le jeton d'accès est valable
 //   tant qu'il n'a pas expiré).
 // Rien n'est écrit côté Hermes. Les valeurs secrètes (jetons, variables d'environnement) ne figurent jamais dans le compte rendu.
-import { existsSync, readFileSync } from "node:fs";
+import { type Dirent, existsSync, readFileSync } from "node:fs";
 import { cp, readdir, readFile } from "node:fs/promises";
 import { isAbsolute, join } from "node:path";
 import type { McpServerConfig } from "@jarod/contracts";
@@ -216,7 +216,7 @@ export async function discoverSkillFolders(root: string): Promise<SkillFolder[]>
     const next: string[] = [];
     const here: SkillFolder[] = [];
     for (const rel of level) {
-      let entries;
+      let entries: Dirent[];
       try {
         entries = await readdir(rel ? join(root, ...rel.split("/")) : root, { withFileTypes: true });
       } catch {

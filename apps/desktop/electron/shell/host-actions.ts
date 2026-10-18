@@ -68,6 +68,21 @@ const SHELL_ACTIONS: Readonly<Record<string, ControlTier>> = {
   'shell.power.logout': 'destructive',
   'shell.power.reboot': 'destructive',
   'shell.power.poweroff': 'destructive',
+  'shell.winget.upgrade': 'mutate',
+}
+
+/**
+ * Upgrading one winget package the update check listed (`winget-install.ts`), after the person confirmed its exact id, version and
+ * source. It installs software, so it is `mutate`; its arguments are exactly those three, anything more is refused.
+ */
+export const WINGET_UPGRADE_ACTION = 'shell.winget.upgrade'
+
+const SHELL_SCHEMAS: Readonly<Record<string, readonly RegistryArgSpec[]>> = {
+  [WINGET_UPGRADE_ACTION]: [
+    { name: 'id', type: 'string', required: true },
+    { name: 'version', type: 'string', required: true },
+    { name: 'source', type: 'string', required: true },
+  ],
 }
 
 /** The idle unit restart, as the catalogue id the gate and the journal name it by. */
@@ -182,7 +197,7 @@ export function hostCatalogueEntries(): CatalogueEntry[] {
   }
 
   for (const [id, tier] of Object.entries(SHELL_ACTIONS)) {
-    entries.push({ id, tier })
+    entries.push(SHELL_SCHEMAS[id] ? { id, tier, args: SHELL_SCHEMAS[id] } : { id, tier })
   }
 
   return entries

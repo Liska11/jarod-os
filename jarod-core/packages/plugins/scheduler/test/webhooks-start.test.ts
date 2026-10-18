@@ -1,6 +1,6 @@
 // SPECS-P5-WEBHOOKS § 5 — barres WS1-WS5 (noyau), WQ1-WQ4 (file), WR1 (débit), WX1-WX2 (exécutant).
 // Ces tests utilisent un noyau réel (makeCore) avec un faux serveur de modèle compatible OpenAI.
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { sign, WebhookService, normalizeHookPort } from "../src/webhooks.js";
 import { makeCore } from "./helpers.js";
 

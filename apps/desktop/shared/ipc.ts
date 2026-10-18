@@ -375,6 +375,12 @@ export interface TerminalCreateOptions {
   rows: number
   /** A coding agent from the install catalog (its id) to run in the tab instead of a bare shell. */
   program?: string
+  /** An environment of the Jarod disk (its name): the shell starts with its tools first in PATH. */
+  environment?: string
+  /** A WSL machine (its name): the tab runs `wsl -d <name>` instead of the Windows shell. */
+  vm?: string
+  /** A remote machine (docs/REMOTE-SSH.md): the tab runs `ssh` to it, host keys checked strictly (an unknown key fails). */
+  ssh?: { host: string; port: number; user: string; identity?: string }
 }
 
 /** One entry of the install catalog (linux/catalog/*.json), with its state on this machine. */
@@ -478,6 +484,11 @@ export interface VoicePrefs {
   hotkey: string
   /** Seconds the mic keeps listening for a follow-up after Hermes finishes speaking. */
   followUpSeconds: number
+  /**
+   * Duplex: the mic keeps listening while Jarod speaks, and speaking over it interrupts (docs/VOICE.md). Off (classic): the mic is
+   * closed while Jarod speaks; the stop button still interrupts. Headphones make duplex reliable.
+   */
+  duplex: boolean
   /** Speak `notification.show` bodies (missions, reminders) aloud while voice is enabled. */
   announceNotifications: boolean
   /** Show Hermes's own tool results on screen (memory, automations, files) even outside a voice conversation. */
@@ -757,6 +768,10 @@ export type WebViewEvent =
   | { id: string; type: 'loading'; loading: boolean }
   | { id: string; type: 'error'; error: string }
   | { id: string; type: 'closed' }
+  /** A site's view can go back / forward. */
+  | { id: string; type: 'history'; canGoBack: boolean; canGoForward: boolean }
+  /** A site's link that leaves its hosts: the Browser page shows it. */
+  | { id: string; type: 'external'; url: string }
 
 /** One entry of a project listing (`fs.listTree`), for the Studio's file tree. */
 export interface TreeEntry {
@@ -953,6 +968,22 @@ export const IPC = {
   webOpenPreview: 'herald-os:web:open-preview',
   webNavigate: 'herald-os:web:navigate',
   webReload: 'herald-os:web:reload',
+  /** A site's own page (shared/web-sites.ts): the Browser or one of the Social apps, in its own partition. */
+  webOpenSite: 'herald-os:web:open-site',
+  /** Back or forward in a view's history. */
+  webHistory: 'herald-os:web:history',
+  /** Desktop apps the pages hand over to (electron/ipc/native-apps.ts): installed?, start, install with winget. */
+  nativeAppFind: 'herald-os:native-app:find',
+  nativeAppLaunch: 'herald-os:native-app:launch',
+  nativeAppInstall: 'herald-os:native-app:install',
+  /** A desktop app's window inside the right pane (electron/platform/window-embed.ts): take it, place it, give it back. */
+  nativeEmbedOpen: 'herald-os:native-embed:open',
+  nativeEmbedBounds: 'herald-os:native-embed:bounds',
+  nativeEmbedRelease: 'herald-os:native-embed:release',
+  /** Main -> renderer: the embedded app's window was closed. */
+  nativeEmbedGone: 'herald-os:native-embed:gone',
+  /** The Player page may stream these files (picked or dropped by the user) through jarod-media:. */
+  mediaAllow: 'herald-os:media:allow',
   /** Main -> renderer: title/url/loading changes and `closed`. */
   webEvent: 'herald-os:web:event',
 
@@ -972,6 +1003,66 @@ export const IPC = {
   systemAuditGet: 'herald-os:system-audit:get',
   /** Audit again, ignoring the saved report. */
   systemAuditRun: 'herald-os:system-audit:run',
+  /** Install (or update) one missing prerequisite on Windows: a closed list of tools (electron/setup/install.ts). */
+  systemAuditInstall: 'herald-os:system-audit:install',
+  // The Jarod disk (electron/data-root.ts, electron/data-disk.ts): where Jarod-OS keeps its data, and moving it.
+  dataDiskState: 'herald-os:data-disk:state',
+  dataDiskDrives: 'herald-os:data-disk:drives',
+  /** Make a folder the Jarod disk (copying the data in when asked), then restart. */
+  dataDiskApply: 'herald-os:data-disk:apply',
+  // Backups on the Jarod disk (electron/backups.ts, electron/ipc/backups.ts).
+  backupsState: 'herald-os:backups:state',
+  backupsCreate: 'herald-os:backups:create',
+  backupsSettings: 'herald-os:backups:settings',
+  backupsRemove: 'herald-os:backups:remove',
+  /** Put a backup back (the current state is kept aside), then restart. */
+  backupsRestore: 'herald-os:backups:restore',
+  // Sandboxes on the Jarod disk (electron/sandboxes.ts, electron/ipc/sandboxes.ts).
+  sandboxesState: 'herald-os:sandboxes:state',
+  sandboxesCreate: 'herald-os:sandboxes:create',
+  sandboxesCompare: 'herald-os:sandboxes:compare',
+  sandboxesApply: 'herald-os:sandboxes:apply',
+  sandboxesRemove: 'herald-os:sandboxes:remove',
+  // Environments on the Jarod disk (electron/environments.ts, electron/ipc/environments.ts).
+  environmentsState: 'herald-os:environments:state',
+  environmentsCreate: 'herald-os:environments:create',
+  environmentsRemove: 'herald-os:environments:remove',
+  // WSL machines and the Jarod disk (electron/vms.ts, electron/ipc/vms.ts).
+  vmsState: 'herald-os:vms:state',
+  vmsOnline: 'herald-os:vms:online',
+  vmsCreate: 'herald-os:vms:create',
+  vmsMove: 'herald-os:vms:move',
+  vmsStop: 'herald-os:vms:stop',
+  /** Erase a machine (wsl --unregister): the exact name typed by the person is required. */
+  vmsRemove: 'herald-os:vms:remove',
+  // The Internet switch (shared/network-policy.ts, electron/network.ts).
+  networkGet: 'herald-os:network:get',
+  networkSet: 'herald-os:network:set',
+  networkChanged: 'herald-os:network:changed',
+  // Remote machines (electron/remote-machines.ts, electron/ipc/remote-machines.ts).
+  remoteTailscale: 'herald-os:remote:tailscale',
+  remoteProbe: 'herald-os:remote:probe',
+  remoteScanKeys: 'herald-os:remote:scan-keys',
+  remoteTrustKeys: 'herald-os:remote:trust-keys',
+  remoteSyncHosts: 'herald-os:remote:sync-hosts',
+  // Update checks (electron/updates-check.ts).
+  updatesState: 'herald-os:updates:state',
+  updatesCheck: 'herald-os:updates:check',
+  updatesOpenWindowsUpdate: 'herald-os:updates:open-windows-update',
+  updatesPrepareUpgrade: 'herald-os:updates:prepare-upgrade',
+  updatesUpgrade: 'herald-os:updates:upgrade',
+  updatesProgress: 'herald-os:updates:progress',
+  // External backups (electron/external-backup.ts, electron/ipc/external-backup.ts).
+  externalBackupState: 'herald-os:external-backup:state',
+  externalBackupEstimate: 'herald-os:external-backup:estimate',
+  externalBackupCheck: 'herald-os:external-backup:check',
+  externalBackupChoose: 'herald-os:external-backup:choose',
+  externalBackupSetDestination: 'herald-os:external-backup:set-destination',
+  externalBackupSetOptions: 'herald-os:external-backup:set-options',
+  externalBackupRun: 'herald-os:external-backup:run',
+  externalBackupCancel: 'herald-os:external-backup:cancel',
+  externalBackupRestore: 'herald-os:external-backup:restore',
+  externalBackupProgress: 'herald-os:external-backup:progress',
 
   prefsGet: 'herald-os:prefs:get',
   prefsSet: 'herald-os:prefs:set',

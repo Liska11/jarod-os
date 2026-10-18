@@ -5,7 +5,7 @@ import { HERALD_EVENTS, type HeraldEventName } from '../../../shared/events.ts'
 import { Chips, GlassButton, GlassCard } from '../../components/ui/glass.tsx'
 import { sendPrompt } from '../../store/chat.ts'
 import { showPage } from '../../store/windows.ts'
-import type { CronJobDraft, DeliveryTarget } from './api.ts'
+import { type CronJobDraft, type DeliveryTarget, LOCAL_TARGET } from './api.ts'
 import { SCHEDULE_FORMATS_HINT, humanizeCronExpr } from './cron-humanize.ts'
 import { eventLabel, FieldLabel, GlyphTile, Hint, SelectInput, TextArea, TextInput, isLocalDelivery } from './presentation.tsx'
 
@@ -113,7 +113,7 @@ export function NewAutomationForm({ targets, creating, onCreate, onCancel }: { t
           <SelectInput id="new-automation-deliver" value={deliver} onChange={e => setDeliver(e.target.value)}>
             {targets.map(target => (
               <option key={target.id} value={target.id} disabled={target.home_target_set === false}>
-                {target.name}
+                {target.id === LOCAL_TARGET.id ? t('automation.deliver.localTarget') : target.name}
                 {target.home_target_set === false ? t('automation.deliver.homeMissing') : ''}
               </option>
             ))}

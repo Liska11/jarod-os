@@ -75,7 +75,7 @@ export function importPinokioScript(script: unknown, meta: { id: string; name: s
         }
       } catch (e) {
         vars.clear();
-        vSnapshot.forEach((v) => vars.add(v));
+        vSnapshot.forEach((v) => { vars.add(v); });
         throw e;
       }
     } catch (e) {

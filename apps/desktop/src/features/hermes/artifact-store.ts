@@ -3,13 +3,14 @@ import type { ChatMessage, ToolMessage } from '../../lib/chat-model.ts'
 import { $activeChatId } from '../../store/chat.ts'
 import { $artifacts, type Artifact } from '../../store/missions.ts'
 import { baseName } from '../../../shared/path-names.ts'
+import type { PaneApp } from './pane-apps.ts'
 
 /*
  * Page-local state for the Hermes page: which artifact the pane shows, which tab is open and
  * whether the document is being edited. Artifacts themselves live in store/missions.ts.
  */
 
-export type PaneTab = 'preview' | 'sources'
+export type PaneTab = 'preview' | 'sources' | PaneApp
 export type ArtifactKind = 'markdown' | 'text' | 'image' | 'other'
 
 /** Path the user explicitly picked; null means "newest artifact of the active chat". */

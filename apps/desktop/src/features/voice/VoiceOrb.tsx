@@ -5,6 +5,8 @@ import { cn } from '../../lib/cn.ts'
 import { AvoidedByViews } from './ActionHud.tsx'
 import type { VoiceState } from '../../lib/voice/engine.ts'
 import { $prefs } from '../../store/backend.ts'
+import { $echoFallback } from '../../store/voice-echo.ts'
+import { $voiceMetrics } from '../../store/voice-metrics.ts'
 import { $voice, $voiceActive, $voiceLevel, endConversation, interruptSpeech, LIVE_RATE_PER_MINUTE, toggleMute } from '../../store/voice.ts'
 
 const LABEL: Record<VoiceState, MessageKey | null> = {
@@ -63,6 +65,10 @@ export function VoiceOrb({ offsetClass = 'bottom-24' }: { offsetClass?: string }
   const voice = useStore($voice)
   const active = useStore($voiceActive)
   const level = useStore($voiceLevel)
+  const prefs = useStore($prefs)
+  const echoFallback = useStore($echoFallback)
+  // The latest turn's breakdown (end of speech → transcript, first model text, first sound), read by e2e/voice-turn-latency.spec.ts.
+  const lastTurn = useStore($voiceMetrics).lastTurn
 
   const label = LABEL[voice.state]
 
@@ -76,13 +82,27 @@ export function VoiceOrb({ offsetClass = 'bottom-24' }: { offsetClass?: string }
 
   return (
     <div className={cn('pointer-events-none absolute inset-x-0 z-(--z-overlay) flex justify-center px-4', offsetClass)}>
-      <AvoidedByViews role="status" aria-live="polite" className="float pointer-events-auto flex w-full max-w-xl items-center gap-3 rounded-2xl px-3.5 py-3 animate-rise">
+      <AvoidedByViews role="status" aria-live="polite" data-voice-turn={lastTurn ? JSON.stringify(lastTurn) : undefined} className="float pointer-events-auto flex w-full max-w-xl items-center gap-3 rounded-2xl px-3.5 py-3 animate-rise">
         <Orb state={voice.state} level={level} />
 
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 text-[11.5px] text-fg-3">
             <span className="font-medium text-fg-2">{label && t(label)}</span>
-            {voice.muted && <span className="rounded-full bg-warn/20 px-1.5 text-warn">muted</span>}
+            {voice.muted ? (
+              <span className="rounded-full bg-warn/20 px-1.5 text-warn">{t('voiceOrb.muted')}</span>
+            ) : (
+              voice.engine !== 'live' &&
+              prefs.voice.duplex !== false &&
+              (echoFallback ? (
+                <span className="rounded-full bg-warn/20 px-1.5 text-warn" title={t('voiceOrb.echoClassic.title')}>
+                  {t('voiceOrb.echoClassic')}
+                </span>
+              ) : (
+                <span className="rounded-full bg-accent-soft px-1.5 text-accent-strong" title={t('voiceOrb.duplex.title')}>
+                  {t('voiceOrb.duplex')}
+                </span>
+              ))
+            )}
             {voice.engine === 'live' ? (
               <span className="ml-auto flex items-center gap-1.5 tabular-nums" title={t('voiceOrb.costTitle')}>
                 <span className="rounded-full bg-accent-soft px-1.5 text-accent-strong">{t('voiceOrb.live')}</span>
@@ -91,7 +111,7 @@ export function VoiceOrb({ offsetClass = 'bottom-24' }: { offsetClass?: string }
                 <span>≈ ${estimate.toFixed(2)} today</span>
               </span>
             ) : (
-              <span className="ml-auto rounded-full bg-white/6 px-1.5 text-fg-4">free</span>
+              <span className="ml-auto rounded-full bg-white/6 px-1.5 text-fg-4">{t('voiceOrb.free')}</span>
             )}
           </div>
           {voice.captions.user && <div className="mt-0.5 truncate text-[12.5px] text-fg-2">“{voice.captions.user}”</div>}

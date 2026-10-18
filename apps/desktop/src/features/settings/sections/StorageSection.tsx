@@ -1,7 +1,7 @@
 import { useStore } from '@nanostores/react'
 import { useT } from '../../../lib/i18n.ts'
 import { IconDeviceFloppy, IconHome } from '@tabler/icons-react'
-import { GlassButton, ProgressBar } from '../../../components/ui/glass.tsx'
+import { GlassButton, GlassCard, ProgressBar } from '../../../components/ui/glass.tsx'
 import { formatBytes } from '../../../lib/format.ts'
 import { diskLabel } from '../../../lib/platform-labels.ts'
 import { useLocalData } from '../../../lib/use-async.ts'
@@ -9,7 +9,13 @@ import { $env } from '../../../store/backend.ts'
 import { sendPrompt } from '../../../store/chat.ts'
 import { useSystemStats } from '../../../store/system.ts'
 import { showPage } from '../../../store/windows.ts'
-import { SectionTitle, SettingsGroup, SettingsRow } from './shared.tsx'
+import { DataDiskPicker } from '../../setup/DataDiskPicker.tsx'
+import { BackupsBlock } from './BackupsBlock.tsx'
+import { ExternalBackupBlock } from './ExternalBackupBlock.tsx'
+import { SandboxesBlock } from './SandboxesBlock.tsx'
+import { EnvironmentsBlock } from './EnvironmentsBlock.tsx'
+import { VmsBlock } from './VmsBlock.tsx'
+import { SectionTitle, SettingsBlock, SettingsGroup, SettingsRow } from './shared.tsx'
 
 export function StorageSection() {
   const { t } = useT()
@@ -26,6 +32,22 @@ export function StorageSection() {
   return (
     <>
       <SectionTitle title={t('storage.title')} subtitle={t('storage.subtitle')} />
+
+      <SettingsBlock title={t('disk.settings.title')} label={t('disk.settings.title')} description={t('disk.settings.text')} keywords={t('disk.settings.keywords')}>
+        <GlassCard className="flex flex-col gap-2 p-4">
+          <p className="text-[12.5px] text-fg-3">{t('disk.settings.text')}</p>
+          <DataDiskPicker />
+        </GlassCard>
+      </SettingsBlock>
+
+      <BackupsBlock />
+      <ExternalBackupBlock />
+
+      <SandboxesBlock />
+
+      <EnvironmentsBlock />
+
+      <VmsBlock />
 
       <SettingsGroup title={t('storage.disks')}>
         {(stats?.disks ?? []).length === 0 && <SettingsRow icon={<IconDeviceFloppy />} label={t('storage.disks')} description={t('storage.reading')} keywords={t('storage.diskKw')} />}

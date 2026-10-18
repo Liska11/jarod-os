@@ -4,6 +4,7 @@ import { $nativeApps, loadNativeApps } from '../store/native-apps.ts'
 import { delegate, fail, ok, type OsCommand } from '../store/os-commands.ts'
 import { looksLikeFileNotUrl } from './files.ts'
 import { endConversation, interruptSpeech, startVoice, toggleMute } from '../store/voice.ts'
+import { setDuplex } from '../store/voice-echo.ts'
 import { setWakeWordEnabled } from '../store/wake.ts'
 import { openWebWindow } from '../store/web-windows.ts'
 import { showPage } from '../store/windows.ts'
@@ -279,6 +280,24 @@ export const systemCommands: readonly OsCommand[] = [
       await updatePrefs({ voice: { ...prefs, engine: engine as VoiceEngine } })
 
       return ok(`Voice engine set to ${String(engine)}`, { highlight: { kind: 'setting', id: 'voice' } })
+    }
+  },
+  {
+    id: 'voice.duplex.set',
+    title: 'Duplex voice mode',
+    description: 'Duplex: the mic stays open while Jarod speaks, so speaking interrupts it. Classic: the mic closes while Jarod speaks (no echo).',
+    tier: 'mutate',
+    args: [{ name: 'enabled', type: 'boolean', description: 'true for duplex, false for classic', required: true }],
+    phrases: [
+      { phrase: 'turn on duplex mode', args: { enabled: true } },
+      { phrase: 'use duplex mode', args: { enabled: true } },
+      { phrase: 'turn off duplex mode', args: { enabled: false } },
+      { phrase: 'use classic voice mode', args: { enabled: false } }
+    ],
+    run: async ({ enabled }) => {
+      await setDuplex(Boolean(enabled))
+
+      return ok(`Voice mode set to ${enabled ? 'duplex' : 'classic'}`, { highlight: { kind: 'setting', id: 'voice' } })
     }
   },
   {

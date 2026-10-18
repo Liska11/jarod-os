@@ -4,7 +4,7 @@ import { GlassButton } from '../../components/ui/glass.tsx'
 import { cn } from '../../lib/cn.ts'
 import { type MessageKey, t } from '../../lib/i18n.ts'
 import { jarod } from '../../lib/jarod.ts'
-import { type Destination, importable, type KeyLine, MESSAGING_KEYS, markReplaced, maskValue, parseKeysFile, parseLine } from './keys-import.ts'
+import { type Destination, importable, type KeyLine, MESSAGING_KEYS, maskValue, parseKeysFile, parseLine, settleLines } from './keys-import.ts'
 import { Footer, Heading } from './parts.tsx'
 
 type Outcome = { ok: boolean; where?: Destination; error?: string }
@@ -58,7 +58,7 @@ export function KeysStep({ onDone }: { onDone: () => void }) {
 
   const fix = (line: number, raw: string) => {
     // Only the corrected line is read again; duplicates are then judged over the whole set.
-    setLines(current => (current ? markReplaced(current.map(entry => (entry.line === line ? parseLine(raw, line) : entry))) : current))
+    setLines(current => (current ? settleLines(current.map(entry => (entry.line === line ? parseLine(raw, line) : entry))) : current))
   }
 
   const valid = lines ? importable(lines) : []
