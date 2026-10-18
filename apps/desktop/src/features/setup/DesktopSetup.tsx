@@ -1,6 +1,6 @@
-import { IconAlertTriangle, IconCheck, IconCopy, IconCpu, IconInfoCircle, IconRefresh, IconSparkles, IconX } from '@tabler/icons-react'
+import { IconAlertTriangle, IconCheck, IconCopy, IconCpu, IconDownload, IconInfoCircle, IconRefresh, IconSparkles, IconX } from '@tabler/icons-react'
 import { useEffect, useState } from 'react'
-import type { AuditReport, Check, CheckStatus, SystemFacts } from '../../../shared/system-audit.ts'
+import { type AuditReport, type Check, type CheckStatus, INSTALLABLE_PREREQUISITES, type SystemFacts } from '../../../shared/system-audit.ts'
 import { HeraldLogo } from '../../components/herald-logo.tsx'
 import { GlassButton } from '../../components/ui/glass.tsx'
 import { Spinner } from '../../components/ui/primitives.tsx'
@@ -151,6 +151,31 @@ function AuditStep({ onDone }: { onDone: () => void }) {
   const prerequisites = report?.checks.filter(c => !hardware.includes(c)) ?? []
   const toFix = prerequisites.filter(c => c.status === 'missing' || c.status === 'outdated').length
 
+  // Installing what the audit found missing (Windows): one at a time, then audit again so the screen shows the new state.
+  const [installing, setInstalling] = useState<string | null>(null)
+  const [outcomes, setOutcomes] = useState<Record<string, InstallOutcome>>({})
+  const installable = report ? prerequisites.filter(check => canInstall(check, report.facts)) : []
+
+  const install = async (check: Check): Promise<boolean> => {
+    setInstalling(check.id)
+    try {
+      const outcome = await window.heraldOS.systemAudit.install(check.id, check.status === 'outdated')
+      setOutcomes(current => ({ ...current, [check.id]: outcome }))
+      return outcome.ok
+    } catch (failure) {
+      setOutcomes(current => ({ ...current, [check.id]: { ok: false, error: (failure as Error).message } }))
+      return false
+    } finally {
+      setInstalling(null)
+    }
+  }
+
+  const installAndRecheck = async (checks: Check[]) => {
+    let any = false
+    for (const check of checks) any = (await install(check)) || any
+    if (any) await load(true)
+  }
+
   return (
     <div className="flex min-h-0 flex-col gap-4">
       <Heading
@@ -159,37 +184,87 @@ function AuditStep({ onDone }: { onDone: () => void }) {
         text={busy && !report ? t('setup.audit.running') : report?.blocked ? t('setup.audit.blocked') : toFix > 0 ? t('setup.audit.toFix', { count: toFix }) : t('setup.audit.allGood')}
       />
       {error && <p className="text-[12.5px] text-danger">{t('setup.audit.failed', { error })}</p>}
+      {installable.length > 0 && <p className="text-[12px] text-fg-3">{t('setup.audit.installNote')}</p>}
       {report && (
         <div className="flex min-h-0 flex-col gap-3 overflow-y-auto pr-1">
           <Section title={t('setup.audit.hardware')} checks={hardware} facts={report.facts} />
-          <Section title={t('setup.audit.prerequisites')} checks={prerequisites} facts={report.facts} />
+          <Section
+            title={t('setup.audit.prerequisites')}
+            checks={prerequisites}
+            facts={report.facts}
+            install={{ installing, outcomes, run: check => void installAndRecheck([check]) }}
+          />
         </div>
       )}
       <div className="flex items-center justify-between gap-2">
-        <GlassButton variant="ghost" onClick={() => void load(true)} disabled={busy}>
-          {busy ? <Spinner /> : <IconRefresh size={15} />} {t('setup.audit.again')}
-        </GlassButton>
-        <Footer onNext={onDone} label={t('setup.next')} disabled={busy || !report || report.blocked} />
+        <div className="flex items-center gap-2">
+          <GlassButton variant="ghost" onClick={() => void load(true)} disabled={busy || installing !== null}>
+            {busy ? <Spinner /> : <IconRefresh size={15} />} {t('setup.audit.again')}
+          </GlassButton>
+          {installable.length > 1 && (
+            <GlassButton onClick={() => void installAndRecheck(installable)} disabled={busy || installing !== null}>
+              {installing ? <Spinner /> : <IconDownload size={15} />} {t('setup.audit.installAll', { count: installable.length })}
+            </GlassButton>
+          )}
+        </div>
+        <Footer onNext={onDone} label={t('setup.next')} disabled={busy || installing !== null || !report || report.blocked} />
       </div>
     </div>
   )
 }
 
-function Section({ title, checks, facts }: { title: string; checks: Check[]; facts: SystemFacts }) {
+interface InstallOutcome {
+  ok: boolean
+  restart?: boolean
+  already?: boolean
+  error?: string
+}
+
+interface InstallControls {
+  installing: string | null
+  outcomes: Record<string, InstallOutcome>
+  run: (check: Check) => void
+}
+
+/** Missing or outdated, on Windows, and one of the tools the app knows how to install. */
+export function canInstall(check: Check, facts: SystemFacts): boolean {
+  return facts.platform === 'win32' && (check.status === 'missing' || check.status === 'outdated') && (INSTALLABLE_PREREQUISITES as readonly string[]).includes(check.id)
+}
+
+function Section({ title, checks, facts, install }: { title: string; checks: Check[]; facts: SystemFacts; install?: InstallControls }) {
   if (checks.length === 0) return null
   return (
     <section className="flex flex-col gap-1">
       <h3 className="text-[11px] font-semibold uppercase tracking-wide text-fg-3">{title}</h3>
       <ul className="flex flex-col gap-1">
         {checks.map(check => (
-          <CheckRow key={check.id} check={check} detail={checkDetail(check, facts)} />
+          <CheckRow key={check.id} check={check} detail={checkDetail(check, facts)} install={install && canInstall(check, facts) ? install : undefined} />
         ))}
       </ul>
     </section>
   )
 }
 
-function CheckRow({ check, detail }: { check: Check; detail: string }) {
+function InstallLine({ check, install }: { check: Check; install: InstallControls }) {
+  const outcome = install.outcomes[check.id]
+  const running = install.installing === check.id
+
+  return (
+    <div className="flex items-center gap-2 text-[12px]">
+      <GlassButton size="sm" onClick={() => install.run(check)} disabled={install.installing !== null}>
+        {running ? <Spinner /> : <IconDownload size={14} />}
+        {running ? t('setup.audit.installing') : check.status === 'outdated' ? t('setup.audit.update') : t('setup.audit.install')}
+      </GlassButton>
+      {outcome && !running && (
+        <span className={cn('min-w-0 flex-1 truncate', outcome.ok ? 'text-ok' : 'text-danger')} title={outcome.error}>
+          {outcome.ok ? (outcome.restart ? t('setup.audit.restartNeeded') : outcome.already ? t('setup.audit.alreadyInstalled') : t('setup.audit.installed')) : t('setup.audit.installFailed', { error: outcome.error ?? '' })}
+        </span>
+      )}
+    </div>
+  )
+}
+
+function CheckRow({ check, detail, install }: { check: Check; detail: string; install?: InstallControls }) {
   const [copied, setCopied] = useState(false)
   const showFix = check.fix && check.status !== 'ok'
 
@@ -226,6 +301,7 @@ function CheckRow({ check, detail }: { check: Check; detail: string }) {
           </button>
         </div>
       )}
+      {install && <InstallLine check={check} install={install} />}
     </li>
   )
 }

@@ -4,6 +4,7 @@ import os from 'node:os'
 import path from 'node:path'
 import type { AuditReport, Check, CheckStatus, Environment, Gpu, SystemFacts } from '../../shared/system-audit.ts'
 import { writeFileAtomic } from '../atomic-write.ts'
+import { loginShellPath } from '../backend/shell-env.ts'
 
 /*
  * First-run system audit (HANDOFF.md, section 7, step 1): inventory the hardware and the prerequisites, judge each one
@@ -25,16 +26,28 @@ export type { AuditReport, Check, CheckStatus, Environment, Gpu, SystemFacts } f
 
 export type Exec = (command: string, args: string[], timeoutMs?: number) => Promise<{ ok: boolean; stdout: string }>
 
-/** Runs a probe. On Windows, npm/pnpm are `.cmd` shims that only start through the shell; the probes' arguments are constants. */
-export const realExec: Exec = (command, args, timeoutMs = 8_000) =>
-  new Promise(resolve => {
-    const done = (error: Error | null, stdout: string) => resolve({ ok: !error, stdout: String(stdout ?? '') })
-    if (process.platform === 'win32' && !command.endsWith('.exe')) {
-      execShell([command, ...args].join(' '), { timeout: timeoutMs, windowsHide: true, encoding: 'utf8' }, done)
-    } else {
-      execFile(command, args, { timeout: timeoutMs, windowsHide: true, encoding: 'utf8' }, done)
-    }
-  })
+/**
+ * Runs a probe. On Windows, npm/pnpm are `.cmd` shims that only start through the shell; the probes' arguments are constants.
+ * `env` carries the PATH to search: after an install from the first-run screen, the app's own PATH is the one from sign-in.
+ */
+export function makeExec(env: NodeJS.ProcessEnv = process.env): Exec {
+  return (command, args, timeoutMs = 8_000) =>
+    new Promise(resolve => {
+      const done = (error: Error | null, stdout: string) => resolve({ ok: !error, stdout: String(stdout ?? '') })
+      if (process.platform === 'win32' && !command.endsWith('.exe')) {
+        execShell([command, ...args].join(' '), { env, timeout: timeoutMs, windowsHide: true, encoding: 'utf8' }, done)
+      } else {
+        execFile(command, args, { env, timeout: timeoutMs, windowsHide: true, encoding: 'utf8' }, done)
+      }
+    })
+}
+
+export const realExec: Exec = makeExec()
+
+/** The environment for probes and installs: on Windows, the PATH as the registry has it now (an install adds to it). */
+export async function freshEnv(): Promise<NodeJS.ProcessEnv> {
+  return process.platform === 'win32' ? { ...process.env, PATH: await loginShellPath() } : process.env
+}
 
 const WINDOWS_PROBE = String.raw`
 $ErrorActionPreference = 'SilentlyContinue'
@@ -318,7 +331,7 @@ export async function runAudit(options: {
   }
 
   const started = Date.now()
-  const facts = await (options.collect ?? (() => collectFacts()))()
+  const facts = await (options.collect ?? (async () => collectFacts(makeExec(await freshEnv()))))()
   log(`facts collected in ${Date.now() - started} ms`)
   const checks = evaluate(facts)
   const report: AuditReport = { version: AUDIT_VERSION, at: (options.now?.() ?? new Date()).toISOString(), facts, checks, blocked: checks.some(c => c.critical && c.status !== 'ok') }

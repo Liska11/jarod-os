@@ -972,6 +972,8 @@ export const IPC = {
   systemAuditGet: 'herald-os:system-audit:get',
   /** Audit again, ignoring the saved report. */
   systemAuditRun: 'herald-os:system-audit:run',
+  /** Install (or update) one missing prerequisite on Windows: a closed list of tools (electron/setup/install.ts). */
+  systemAuditInstall: 'herald-os:system-audit:install',
 
   prefsGet: 'herald-os:prefs:get',
   prefsSet: 'herald-os:prefs:set',

@@ -338,7 +338,9 @@ const api = {
     /** The system audit: the saved report, or the one running since startup. */
     get: (): Promise<AuditReport> => ipcRenderer.invoke(IPC.systemAuditGet),
     /** Audit the system again (after installing a missing prerequisite). */
-    run: (): Promise<AuditReport> => ipcRenderer.invoke(IPC.systemAuditRun)
+    run: (): Promise<AuditReport> => ipcRenderer.invoke(IPC.systemAuditRun),
+    /** Install (or, with `upgrade`, update) a prerequisite the audit found missing; Windows only. */
+    install: (tool: string, upgrade = false): Promise<{ ok: boolean; restart?: boolean; already?: boolean; error?: string }> => ipcRenderer.invoke(IPC.systemAuditInstall, tool, upgrade)
   },
   clipboard: {
     history: (limit = 50): Promise<ClipboardEntry[]> => ipcRenderer.invoke(IPC.clipboardHistory, limit),
