@@ -64,3 +64,13 @@ node scripts/autonomy/lot.mjs status # backlog lisible par machine
 - Délais et porte de lot : conservés. Renommage global : séparé, non lancé.
 - **Push prêt, pas lancé.** L'arbre est en avance de **30** commits sur `origin/feature/windows-port` (les 13 ci-dessus + 17 de la session précédente), avance simple, 104 fichiers. Balayage des lignes ajoutées : aucune forme de clé ou de jeton ; aucun binaire. Le push ne dépend pas de la signature Firefox (extension non câblée ni distribuée). Commande : `git push origin feature/windows-port`.
 - Restent à vous : signature Firefox (peut suivre), puis le renommage dans son propre lot.
+
+## Mise à jour du 2026-10-18 (suite) — après l'essai Firefox
+
+Commits ajoutés : `846fee9` (chargement temporaire sans signature), `76ff0c2` (essai guidé sur page neutre + son test de moteur réel), `1a65aea` (résultat du premier essai réel), `5c6e846` (traductions d'un lot de composants, backlog périmé fermé).
+
+- **Premier essai réel dans votre Firefox : réussi** (2e tentative) — voir `docs/E2-FIREFOX-READER-PLAN.md` §9.1. Reste non essayé là : refus d'accord, domaine interdit, navigation pendant l'attente, onglets leurres (couverts dans le Firefox de test).
+- **Traductions** : 73 → 59 chaînes anglaises. `CommandSurface` et le composant de classe `error-boundary` laissés.
+- **Plus de sujet autonome utile restant** : ce qui reste est soit à votre décision (signature, push, renommage), soit trop large (embarquer les embeddings, `cmd` dans le conteneur, métriques), soit non vérifiable sans application installée.
+- L'arbre est en avance de 36 commits sur `origin/feature/windows-port` (`git rev-list --count origin/feature/windows-port..HEAD`). Rien n'est poussé.
+
