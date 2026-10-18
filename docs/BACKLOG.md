@@ -21,7 +21,11 @@ Items identified and deliberately not done. Each survives the session here.
   `licenses/B21-requirements.txt` (transformers 5.5.4, 2 advisories) are the HISTORICAL approval records of 2026-09-29, not what is installed: the current locks pin docling-slim 2.140.0 and
   transformers 5.20.1 and are clean. The spaCy model (`en-core-web-sm`, a URL requirement) cannot be audited by version.
 - 543 lint warnings (accepted debt).
-- 18 shell protocol tests skipped on Windows (no fake named pipe): restore coverage.
+- **18 shell protocol tests skipped on Windows: DONE (2026-10-18).** The fake shells of `test_os_ui.py` and
+  `test_control_protocol_r2.py` now also serve a real named pipe (`tests/fake_pipe.py`, plain ctypes), the shell's Windows door;
+  the bridge suite runs 445/445 with 0 skipped. Checked by breaking the client's pipe exchange: 17 failures + 9 errors.
+  Note: `scripts/test-bridge.ps1` fails here before any test when pytest cannot reach `%TEMP%\pytest-of-<user>\pytest-current`
+  (access denied, machine-side); `--basetemp=<folder>` works around it.
 - **E2 WebRTC/UDP proof: control at zero on this machine (2026-10-18).** `browser.lifecycle.engine.test.ts › PREUVE RÉSEAU WebRTC/UDP`
   fails every time (it was the "intermittent" `integrations` failure): Chrome's WebRTC UDP never reaches a local witness, while QUIC does.
   Not a leak, not a timeout; machine-side cause not found (see `docs/E2-VALIDATION.md` §6.1). Re-run on another machine.

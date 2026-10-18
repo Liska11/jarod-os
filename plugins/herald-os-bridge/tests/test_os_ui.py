@@ -16,6 +16,14 @@ import time
 import pytest
 
 
+if hasattr(socket, "AF_UNIX"):
+    LOCAL_KIND = "unix"
+else:  # Windows: the shell's door is a named pipe
+    from fake_pipe import PipeServer
+
+    LOCAL_KIND = "pipe"
+
+
 def _mod(plugin, name):
     return importlib.import_module(plugin.__name__ + ".bridge." + name)
 
@@ -28,13 +36,17 @@ CATALOGUE = [
 
 
 class FakeShell:
-    """A JSON-lines server answering like the Electron control server on a Unix socket (macOS, Linux).
-    Windows reaches the shell over a named pipe, which these tests do not serve."""
+    """A JSON-lines server answering like the Electron control server: on a Unix socket (macOS, Linux) or,
+    on Windows, on a named pipe (the shell's door there)."""
 
     def __init__(self, kind: str, token: str):
         self.kind, self.token = kind, token
         self.requests: list[dict] = []
         self.path = ""
+        if kind == "pipe":
+            self.pipe = PipeServer(self._answer)
+            self.endpoint = self.pipe.endpoint
+            return
         # AF_UNIX paths are capped at ~104 bytes on macOS; pytest's tmp_path is far longer.
         self.dir = tempfile.mkdtemp(prefix="hos-", dir="/tmp")
         self.path = os.path.join(self.dir, "c.sock")
@@ -58,9 +70,12 @@ class FakeShell:
                     if not part:
                         break
                     data += part
-                request = json.loads(data.decode())
-                self.requests.append(request)
-                conn.sendall((json.dumps(self._reply(request)) + "\n").encode())
+                conn.sendall(self._answer(data))
+
+    def _answer(self, data: bytes) -> bytes:
+        request = json.loads(data.decode())
+        self.requests.append(request)
+        return (json.dumps(self._reply(request)) + "\n").encode()
 
     def _reply(self, request: dict) -> dict:
         if request.get("token") != self.token:
@@ -79,15 +94,15 @@ class FakeShell:
         return {"ok": False, "error": "unknown"}
 
     def close(self):
+        if self.kind == "pipe":
+            self.pipe.close()
+            return
         self.server.close()
-        if self.kind == "unix":
-            shutil.rmtree(self.dir, ignore_errors=True)
+        shutil.rmtree(self.dir, ignore_errors=True)
 
 
-@pytest.fixture(params=["unix"])
+@pytest.fixture(params=[LOCAL_KIND])
 def shell(request, monkeypatch, plugin):
-    if not hasattr(socket, "AF_UNIX"):
-        pytest.skip("this Python has no AF_UNIX (Windows)")
     fake = FakeShell(request.param, "secret-token")
     monkeypatch.setenv("HERALD_OS_CONTROL_SOCKET", fake.endpoint)
     monkeypatch.setenv("HERALD_OS_CONTROL_TOKEN", "secret-token")

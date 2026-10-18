@@ -31,6 +31,13 @@ PLUGIN_DIR = Path(__file__).resolve().parents[1]
 REPO_DIR = PLUGIN_DIR.parents[1]
 CLI = REPO_DIR / "linux" / "bin" / "herald-os"
 
+if hasattr(socket, "AF_UNIX"):
+    LOCAL_KIND = "unix"
+else:  # Windows: the shell's door is a named pipe
+    from fake_pipe import PipeServer
+
+    LOCAL_KIND = "pipe"
+
 CATALOGUE = [
     {"id": "page.open", "title": "Open a page", "tier": "read", "args": []},
     {"id": "memory.add", "title": "Remember something", "tier": "mutate", "args": [{"name": "text", "type": "string", "required": True}]},
@@ -59,17 +66,23 @@ class R2Shell:
         self.executed: list[str] = []
         self.retired: list[str] = []
         self.spent: set[str] = set()
-        if not hasattr(socket, "AF_UNIX"):
-            # The shell's Windows door is a named pipe, which this fake does not serve yet.
-            pytest.skip("this Python has no AF_UNIX (Windows): the R2 fake shell needs a Unix socket")
-        if kind == "unix":
-            self.dir = tempfile.mkdtemp(prefix="hos-r2-", dir="/tmp")
-            self.path = os.path.join(self.dir, "c.sock")
-            self.server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-            self.server.bind(self.path)
-            self.endpoint = self.path
+        if kind == "pipe":
+            # The shell's Windows door: a named pipe, served by the same replies.
+            self.pipe = PipeServer(self._answer)
+            self.endpoint = self.pipe.endpoint
+            return
+        self.dir = tempfile.mkdtemp(prefix="hos-r2-", dir="/tmp")
+        self.path = os.path.join(self.dir, "c.sock")
+        self.server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        self.server.bind(self.path)
+        self.endpoint = self.path
         self.server.listen(4)
         threading.Thread(target=self._serve, daemon=True).start()
+
+    def _answer(self, data: bytes) -> bytes:
+        request = json.loads(data.decode())
+        self.requests.append(request)
+        return (json.dumps(self._reply(request)) + "\n").encode()
 
     def _serve(self):
         while True:
@@ -84,9 +97,7 @@ class R2Shell:
                     if not part:
                         break
                     data += part
-                request = json.loads(data.decode())
-                self.requests.append(request)
-                conn.sendall((json.dumps(self._reply(request)) + "\n").encode())
+                conn.sendall(self._answer(data))
 
     def _reply(self, request: dict) -> dict:
         if request.get("token") != self.token:
@@ -117,15 +128,15 @@ class R2Shell:
         return {"ok": False, "code": "approval-granted", "error": "needs approval", "capability": {"id": CAPABILITY, "expiresAt": 1, "binding": "sha256:deadbeef"}}
 
     def close(self):
+        if self.kind == "pipe":
+            self.pipe.close()
+            return
         self.server.close()
-        if self.kind == "unix":
-            shutil.rmtree(self.dir, ignore_errors=True)
+        shutil.rmtree(self.dir, ignore_errors=True)
 
 
-@pytest.fixture(params=["unix"])
+@pytest.fixture(params=[LOCAL_KIND])
 def shell(request, monkeypatch, plugin):
-    if not hasattr(socket, "AF_UNIX"):
-        pytest.skip("this Python has no AF_UNIX (Windows)")
     fake = R2Shell(request.param, "secret-token")
     monkeypatch.setenv("HERALD_OS_CONTROL_SOCKET", fake.endpoint)
     monkeypatch.setenv("HERALD_OS_CONTROL_TOKEN", "secret-token")
@@ -173,7 +184,7 @@ def test_a_mutation_is_approved_by_the_shell_and_the_capability_is_spent_once(pl
 
 
 def test_a_refusal_is_final_and_changes_nothing(plugin, monkeypatch):
-    fake = R2Shell("unix", "secret-token", deny=True)
+    fake = R2Shell(LOCAL_KIND, "secret-token", deny=True)
     monkeypatch.setenv("HERALD_OS_CONTROL_SOCKET", fake.endpoint)
     monkeypatch.setenv("HERALD_OS_CONTROL_TOKEN", "secret-token")
     _mod(plugin, "util").forget_control_env()
@@ -228,7 +239,7 @@ def test_an_agent_mutation_shows_one_approval_and_the_host_is_the_one_asking(plu
     issues the capability that authorises this exact call. `_confirm` is where Hermes' own card lives,
     and reaching it here would be the second prompt R2.1 removes.
     """
-    fake = R2Shell("unix", "secret-token")
+    fake = R2Shell(LOCAL_KIND, "secret-token")
     monkeypatch.setenv("HERALD_OS_CONTROL_SOCKET", fake.endpoint)
     monkeypatch.setenv("HERALD_OS_CONTROL_TOKEN", "secret-token")
     util = _mod(plugin, "util")
@@ -264,7 +275,7 @@ def test_a_host_refusal_surfaces_as_a_tool_error_with_no_side_effect(plugin, mon
     R2.1: the bridge shows no card of its own for this tool, so a refusal here is the single answer to
     the single question that was asked — and the mutation has not run, and is not retried.
     """
-    fake = R2Shell("unix", "secret-token", deny=True)
+    fake = R2Shell(LOCAL_KIND, "secret-token", deny=True)
     monkeypatch.setenv("HERALD_OS_CONTROL_SOCKET", fake.endpoint)
     monkeypatch.setenv("HERALD_OS_CONTROL_TOKEN", "secret-token")
     _mod(plugin, "util").forget_control_env()
@@ -365,7 +376,7 @@ def test_an_agent_attempt_names_itself_once_across_every_request_it_makes(plugin
     approval. The same value reaches the bridge's own journal line, which is what makes the two
     journals readable together — and the shell never compares it to anything, so it authorises nothing.
     """
-    fake = R2Shell("unix", "secret-token")
+    fake = R2Shell(LOCAL_KIND, "secret-token")
     monkeypatch.setenv("HERALD_OS_CONTROL_SOCKET", fake.endpoint)
     monkeypatch.setenv("HERALD_OS_CONTROL_TOKEN", "secret-token")
     util = _mod(plugin, "util")
