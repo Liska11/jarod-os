@@ -398,7 +398,9 @@ describe.runIf(win)("sur cette machine (vrai PowerShell) : uniquement des fichie
     const f = join(dir, `${id}-fichier-au-nom-long.txt`);
     write(f, "vivant");
     // Le nom court que Windows donne au fichier, quand le volume en fabrique (le runner de la CI, pas toutes les machines).
-    const short = execFileSync("cmd.exe", ["/d", "/c", `for %I in ("${f}") do @echo %~sI`], { encoding: "utf8" }).trim();
+    const short = execFileSync("cmd.exe", ["/d", "/c", `for %I in ("${f}") do @echo %~sI`], { encoding: "utf8" })
+      .replace(/"/g, "")
+      .trim();
     if (!short || short.toLowerCase() === f.toLowerCase() || !short.includes("~")) t.skip();
     const out = JSON.parse(await files.run({ action: "trash", paths: [short] }, ctx));
     expect(out.applied).toHaveLength(1);
