@@ -25,6 +25,13 @@ Items identified and deliberately not done. Each survives the session here.
 - **E2 WebRTC/UDP proof: control at zero on this machine (2026-10-18).** `browser.lifecycle.engine.test.ts › PREUVE RÉSEAU WebRTC/UDP`
   fails every time (it was the "intermittent" `integrations` failure): Chrome's WebRTC UDP never reaches a local witness, while QUIC does.
   Not a leak, not a timeout; machine-side cause not found (see `docs/E2-VALIDATION.md` §6.1). Re-run on another machine.
+- **E2 engine daemon started but not yet registered (seen once, 2026-10-18).** A session closed while `browser_harness.daemon`
+  was still starting left the daemon running: its pid file was not written yet, and its command line does not carry the profile, so
+  neither `close()` nor the sweep can find it. Lead: give the daemon the profile path on its command line (then `killProfileProcesses`
+  covers it), or wait for the pid file before closing.
+- **~880 `jarod-e2e-*` folders in `%TEMP%`** (`jarod-e2e`, `-coding`, `-worktrees`, `-mobile`, `-hermesone`, `-<pid>-<ts>-hang/stray/upd-local-rel`…), left by
+  the desktop Playwright runs over several weeks: the e2e launcher does not remove its profiles. Not touched (not E2 profiles, no
+  ownership marker); to fix in `apps/desktop/e2e/launch.ts`, then clean once.
 - **Rotation of `control-audit.jsonl`: DONE (2026-10-17).** `FileJournal` rotates to `<name>.1` (one older generation, replaced each time) once the file reaches 8 MiB (`DEFAULT_JOURNAL_LIMIT`), also at opening; a failed rotation is counted in `failures()` and never changes a decision. Tests: `host-control/tests/journal_rotation.rs`.
 - The Python client is more tolerant than the shell on pipe endpoints (the Rust host emits the strict form).
 - R2/R3 end-to-end in the real application to re-prove (disposable profile).
