@@ -1,6 +1,7 @@
 import type { BackupActionResult, BackupsState } from '../shared/backups.ts'
 import type { SandboxResult, SandboxesState } from '../shared/sandboxes.ts'
 import type { EnvironmentResult, EnvironmentsState } from '../shared/environments.ts'
+import type { VmResult, VmsState } from '../shared/vms.ts'
 import type { DataDiskApplyResult, DataDiskState, DriveInfo } from '../shared/data-disk.ts'
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import {
@@ -369,6 +370,15 @@ const api = {
     /** Build a Python (uv) or Node.js environment of `version` ("3.12", "22"…). */
     create: (name: string, kind: 'python' | 'node', version: string): Promise<EnvironmentResult> => ipcRenderer.invoke(IPC.environmentsCreate, name, kind, version),
     remove: (name: string): Promise<EnvironmentResult> => ipcRenderer.invoke(IPC.environmentsRemove, name)
+  },
+  vms: {
+    state: (): Promise<VmsState> => ipcRenderer.invoke(IPC.vmsState),
+    online: (): Promise<Array<{ id: string; label: string }>> => ipcRenderer.invoke(IPC.vmsOnline),
+    /** Install a distribution as `name` on the Jarod disk (not started: its first start in a terminal asks for a user). */
+    create: (distro: string, name: string): Promise<VmResult> => ipcRenderer.invoke(IPC.vmsCreate, distro, name),
+    move: (name: string): Promise<VmResult> => ipcRenderer.invoke(IPC.vmsMove, name),
+    stop: (name: string): Promise<VmResult> => ipcRenderer.invoke(IPC.vmsStop, name),
+    remove: (name: string, typed: string): Promise<VmResult> => ipcRenderer.invoke(IPC.vmsRemove, name, typed)
   },
   systemAudit: {
     /** The system audit: the saved report, or the one running since startup. */

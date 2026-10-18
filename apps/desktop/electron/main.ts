@@ -35,6 +35,7 @@ import { registerDataDiskIpc } from './ipc/data-disk.ts'
 import { BackupService } from './ipc/backups.ts'
 import { registerSandboxesIpc } from './ipc/sandboxes.ts'
 import { registerEnvironmentsIpc } from './ipc/environments.ts'
+import { registerVmsIpc } from './ipc/vms.ts'
 import { applyDataRoot } from './data-root.ts'
 import { MEDIA_SCHEME_PRIVILEGES, registerMediaIpc } from './ipc/media.ts'
 import { registerNativeAppsIpc } from './ipc/native-apps.ts'
@@ -628,6 +629,7 @@ function registerCoreIpc(): void {
   backups.register()
   registerSandboxesIpc()
   registerEnvironmentsIpc()
+  registerVmsIpc()
   registerDataDiskIpc({ state: dataRoot, configDir: shellConfigDir(), stopBackend: () => backend.stop(), startBackend: () => void backend.start(), relaunch: () => relaunch(false) })
   registerNativeAppsIpc()
   registerWindowEmbeds()

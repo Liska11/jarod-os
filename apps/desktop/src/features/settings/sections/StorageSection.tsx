@@ -13,6 +13,7 @@ import { DataDiskPicker } from '../../setup/DataDiskPicker.tsx'
 import { BackupsBlock } from './BackupsBlock.tsx'
 import { SandboxesBlock } from './SandboxesBlock.tsx'
 import { EnvironmentsBlock } from './EnvironmentsBlock.tsx'
+import { VmsBlock } from './VmsBlock.tsx'
 import { SectionTitle, SettingsBlock, SettingsGroup, SettingsRow } from './shared.tsx'
 
 export function StorageSection() {
@@ -43,6 +44,8 @@ export function StorageSection() {
       <SandboxesBlock />
 
       <EnvironmentsBlock />
+
+      <VmsBlock />
 
       <SettingsGroup title={t('storage.disks')}>
         {(stats?.disks ?? []).length === 0 && <SettingsRow icon={<IconDeviceFloppy />} label={t('storage.disks')} description={t('storage.reading')} keywords={t('storage.diskKw')} />}

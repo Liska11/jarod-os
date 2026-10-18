@@ -377,6 +377,8 @@ export interface TerminalCreateOptions {
   program?: string
   /** An environment of the Jarod disk (its name): the shell starts with its tools first in PATH. */
   environment?: string
+  /** A WSL machine (its name): the tab runs `wsl -d <name>` instead of the Windows shell. */
+  vm?: string
 }
 
 /** One entry of the install catalog (linux/catalog/*.json), with its state on this machine. */
@@ -1018,6 +1020,14 @@ export const IPC = {
   environmentsState: 'herald-os:environments:state',
   environmentsCreate: 'herald-os:environments:create',
   environmentsRemove: 'herald-os:environments:remove',
+  // WSL machines and the Jarod disk (electron/vms.ts, electron/ipc/vms.ts).
+  vmsState: 'herald-os:vms:state',
+  vmsOnline: 'herald-os:vms:online',
+  vmsCreate: 'herald-os:vms:create',
+  vmsMove: 'herald-os:vms:move',
+  vmsStop: 'herald-os:vms:stop',
+  /** Erase a machine (wsl --unregister): the exact name typed by the person is required. */
+  vmsRemove: 'herald-os:vms:remove',
 
   prefsGet: 'herald-os:prefs:get',
   prefsSet: 'herald-os:prefs:set',

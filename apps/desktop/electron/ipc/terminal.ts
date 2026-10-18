@@ -1,4 +1,5 @@
 import { environmentVariables, listEnvironments } from '../environments.ts'
+import { listVms, VM_NAME } from '../vms.ts'
 import { type BrowserWindow, ipcMain, type WebContents } from 'electron'
 import fs from 'node:fs'
 import { createRequire } from 'node:module'
@@ -117,7 +118,7 @@ export function registerTerminalIpc(getWindow: () => BrowserWindow | null): void
     owned.get(owner)?.add(id)
   }
 
-  ipcMain.handle(IPC.terminalCreate, (event, options: TerminalCreateOptions): TerminalHandle => {
+  ipcMain.handle(IPC.terminalCreate, async (event, options: TerminalCreateOptions): Promise<TerminalHandle> => {
     const pty = loadPty()
     // Output goes back to the window that created the PTY (in panels mode each terminal is its own
     // window); the main window is only a fallback.
@@ -150,8 +151,15 @@ export function registerTerminalIpc(getWindow: () => BrowserWindow | null): void
     const baseEnv = environment && environmentsDir ? environmentVariables(environmentsDir, environment, process.env) : process.env
     const home = os.homedir()
     const resolved = program ? ([path.join(home, '.local', 'bin', program), path.join(home, '.local', 'share', 'mise', 'shims', program)].find(candidate => fs.existsSync(candidate)) ?? program) : null
+    // A WSL machine: the tab is that machine's shell (the name was checked against the list of machines).
+    const vm = options.vm && process.platform === 'win32' && VM_NAME.test(options.vm) ? (await listVms()).find(item => item.name === options.vm) : undefined
+
+    if (options.vm && !vm) {
+      throw new Error(`${options.vm} is not a WSL machine of this computer`)
+    }
+
     const args = process.platform === 'win32' ? [] : resolved ? ['-l', '-c', `${JSON.stringify(resolved)}; exec ${JSON.stringify(shell)} -l`] : ['-l']
-    const child = pty.spawn(shell, args, {
+    const child = pty.spawn(vm ? 'wsl.exe' : shell, vm ? ['-d', vm.name, '--cd', '~'] : args, {
       name: 'xterm-256color',
       cols: Math.max(2, options.cols),
       rows: Math.max(1, options.rows),

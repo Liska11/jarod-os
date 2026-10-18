@@ -46,17 +46,42 @@ Then it applies the choice:
 
 The old folders are kept, and the person is told where they are. Jarod-OS never formats, partitions or deletes anything.
 
-## What comes next on the disk
+## What lives on the disk
 
-- **Backups** go in `backups\<date>\`:
-  - a consistent copy of `data\`, taken with the core paused or through SQLite's backup API;
-  - an incremental copy of `workspace\`;
-  - retention by count and age, set in Settings.
-  - A restore is a move in reverse: copy, check, then switch.
-- **Sandboxes** go in `sandboxes\<name>\`: a copy of a project, or a git worktree, where the agent works without touching the original. Results come back as a diff the person accepts. A sandbox is deleted only on request, and goes to the Recycle Bin.
-- **Environments** go in `environments\<name>\`: per-project runtimes (Node, Python with `uv`, toolchains), so the system stays clean, together with a manifest that describes how to rebuild each one.
-- **VMs** go in `vms\<name>\`: Hyper-V or WSL disks (`.vhdx`), created and imported there, for example with `wsl --import <name> D:\Jarod-OS\vms\<name> <tar>`.
-  - They need NTFS or ReFS and room, hence the FAT and low-space warnings.
-  - Starting a VM is always the person's decision.
+All four are in Settings › Storage, and each needs the Jarod disk: without one, the section says so. Each reads its folder from `JAROD_OS_ROOT`.
 
-Each feature reads its folder from `JAROD_OS_ROOT`. Without a Jarod disk, the default folders are used: `%LOCALAPPDATA%\Jarod-OS` for data, and `Documents\Jarod-OS` for the workspace.
+### Backups — `backups\<id>\` (electron/backups.ts)
+
+- **What a backup holds.** `data\` and `workspace\`, plus a `backup.json` manifest that is written last. A folder without its manifest is an interrupted backup and is ignored.
+- **Incremental through hard links.** A file unchanged since the previous backup (same size and modification time) is a hard link, not a copy. So a backup costs only what changed, and any backup can be deleted on its own. Folders that tools rebuild are skipped: `node_modules`, `.venv`, caches.
+- **When.** Daily: at startup, when the last backup is more than a day old, before the core starts. Or by hand.
+- **Consistency.** The core is stopped while `data\` is copied, because its database is open. It starts again right away; the workspace is copied afterwards.
+- **Keeping.** The newest 10 are kept by default; the number can be set.
+- **Restore.** The current folders are first moved into a `before-restore` backup (nothing is deleted). Then the backup is copied back and Jarod-OS restarts.
+
+### Sandboxes — `sandboxes\<name>\` (electron/sandboxes.ts)
+
+- **What a sandbox is.** A copy of a project, with a `.jarod-sandbox.json` file written last. `.git` is kept. The rebuildable folders are left out unless asked for.
+- **Compare.** Files are compared by content and reported as added, modified or removed, against the project.
+- **Apply.** All changes or only some. Added and modified files are copied into the project. Files removed in the sandbox go to the Recycle Bin in the project, never straight to deletion. The project must be a folder Jarod-OS may edit: home or the Jarod disk.
+- **Throw away.** A sandbox goes to the Recycle Bin.
+
+### Environments — `environments\<name>\` (electron/environments.ts)
+
+- **Python.** A virtual environment made with `uv venv --python <version> --seed`; uv fetches the Python if it is missing.
+- **Node.js.** The official Windows build from nodejs.org: the newest release of the asked version. It is unpacked with Windows' own `tar`, called by its full path, because Git's GNU tar reads `C:` as a remote host.
+- **Manifest.** `env.json` is written last. A failed build is removed.
+- **Terminal.** A Terminal tab can open inside an environment: its tools come first in `PATH` (and `VIRTUAL_ENV` is set for Python), and the tab starts in its folder.
+
+### Virtual machines — `vms\<name>\` (electron/vms.ts)
+
+These are WSL machines.
+
+- **List.** The machines of this Windows account, with the folder holding each one's disk (read from the registry). Docker Desktop's own machines are hidden.
+- **Install.** A new machine goes onto the disk with `wsl --install <distro> --name <name> --location <root>\vms\<name> --no-launch`. Its first start, in a Terminal tab, asks for a user.
+- **Move.** An existing machine moves there with `wsl --manage <name> --move <folder>`, after it is stopped.
+- **Open.** A Terminal tab runs `wsl -d <name>`.
+- **Remove.** `wsl --unregister` erases the machine's disk, so the person must type its exact name first.
+- **Requirements.** VMs need NTFS or ReFS and room, hence the FAT and low-space warnings. Starting a machine is always the person's decision.
+
+Without a Jarod disk, the default folders are used: `%LOCALAPPDATA%\Jarod-OS` for data, and `Documents\Jarod-OS` for the workspace.

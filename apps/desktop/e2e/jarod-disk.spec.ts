@@ -112,3 +112,22 @@ test('a Python environment built with uv, and a terminal that runs its Python', 
   await expect(page.getByText('py-test', { exact: true })).toBeVisible()
   await expect(page.getByText(/^Python 3\.11\./)).toBeVisible()
 })
+
+test('the WSL machines of this computer are listed, read-only', async () => {
+  await page.getByRole('button', { name: 'Général', exact: true }).click()
+  await page.getByRole('button', { name: 'Stockage', exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'Machines virtuelles' })).toBeVisible()
+
+  // Nothing is installed, moved or started here: the list is what `wsl --list --verbose` reports, without Docker's own.
+  const state = await page.evaluate(() => window.heraldOS.vms.state())
+  expect(state.available).toBe(true)
+  expect(state.root).toBe(root)
+  expect(state.list.every(vm => !/^docker-desktop/i.test(vm.name))).toBe(true)
+
+  if (state.list.length > 0) {
+    // The row reads "<name> · arrêtée" (or "en marche"), then where its disk is.
+    await expect(page.getByText(`${state.list[0].name} · `, { exact: false }).first()).toBeVisible()
+  } else {
+    await expect(page.getByText('Aucune machine pour l’instant.')).toBeVisible()
+  }
+})
