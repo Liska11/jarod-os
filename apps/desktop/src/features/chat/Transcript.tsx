@@ -88,7 +88,7 @@ function Assistant({ message }: { message: AssistantMessage }) {
   return (
     <div className="flex gap-3">
       <div className="mt-1.5 flex size-5 shrink-0 items-center justify-center">
-        <HermesMark size={14} className={cn(message.streaming && 'animate-pulse-soft')} />
+        <HermesMark size={20} className={cn(message.streaming && 'animate-pulse-soft')} />
       </div>
       <div className="min-w-0 flex-1">
         {hasReasoning && (
