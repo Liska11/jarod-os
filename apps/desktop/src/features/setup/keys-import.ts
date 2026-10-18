@@ -142,7 +142,53 @@ function normalName(written: string): { name: string; renamedFrom?: string } {
     .toUpperCase()
   const known = ALIASES[plain]
 
-  return known ? { name: known, renamedFrom: plain } : { name: plain }
+  if (known) return { name: known, renamedFrom: plain }
+  // A variable name cannot start with a digit, but some services do (1min.ai, 1fichier): read under KEY_<name>.
+  if (/^\d/.test(plain)) return { name: `KEY_${plain}`, renamedFrom: plain }
+
+  return { name: plain }
+}
+
+/**
+ * Keys whose prefix belongs to one service only, checked in this order (sk-ant- before anything else that starts with sk-).
+ * A bare `sk-` is not here: OpenAI, DeepSeek and others share it.
+ */
+const SHAPES = ['ANTHROPIC_API_KEY', 'OPENROUTER_API_KEY', 'GROQ_API_KEY', 'HF_TOKEN', 'GOOGLE_API_KEY', 'XAI_API_KEY', 'PERPLEXITY_API_KEY', 'TELEGRAM_BOT_TOKEN', 'SLACK_BOT_TOKEN', 'SLACK_APP_TOKEN'] as const
+
+/** The service a key belongs to by its shape alone, or null. */
+export function serviceOfValue(value: string): string | null {
+  return SHAPES.find(name => FORMATS[name]?.[0].test(value)) ?? null
+}
+
+/**
+ * A key that would go to the vault but whose shape names one service (`OPENROUTEUR=sk-or-…`) goes to that service instead,
+ * marked as read from its name. Only when it is the file's one key of that shape and nothing in the file names the service
+ * already: otherwise one key would silently replace another, and the person chooses.
+ */
+export function routeByShape(lines: readonly KeyLine[]): KeyLine[] {
+  const named = new Set(lines.filter(entry => entry.status === 'ok' && entry.destination !== 'vault').map(entry => entry.name))
+  const byService = new Map<string, KeyLine[]>()
+
+  for (const entry of lines) {
+    if (entry.status !== 'ok' || entry.destination !== 'vault') continue
+    const service = serviceOfValue(entry.value)
+    if (service) byService.set(service, [...(byService.get(service) ?? []), entry])
+  }
+
+  const moved = new Map<number, string>()
+  for (const [service, entries] of byService) {
+    if (entries.length === 1 && !named.has(service)) moved.set(entries[0].line, service)
+  }
+
+  return lines.map(entry => {
+    const service = moved.get(entry.line)
+    return service ? { ...entry, name: service, renamedFrom: entry.renamedFrom ?? entry.name, destination: destinationOf(service) } : entry
+  })
+}
+
+/** The file's lines judged together: keys recognised by their shape, then duplicates (the last valid line of a name wins). */
+export function settleLines(lines: readonly KeyLine[]): KeyLine[] {
+  return markReplaced(routeByShape(lines))
 }
 
 /** One line of the file: skipped (blank, comment), ok, or invalid with the reason. */
@@ -168,7 +214,7 @@ export function parseLine(raw: string, line: number): KeyLine {
 
 /** The whole file; duplicates keep their last valid line, earlier ones are marked `replaced` by it. */
 export function parseKeysFile(text: string): KeyLine[] {
-  return markReplaced(
+  return settleLines(
     text
       .replace(/^﻿/, '')
       .split(/\r?\n/)
