@@ -1,7 +1,7 @@
 // E2 contre le VRAI moteur : browser-harness (épinglé) derrière le pont borné, pilotant un Chrome JETABLE (profil neuf, effacé à la fin)
 // sur un site d'essai contrôlé. Aucun profil réel n'est ouvert ; la configuration de test (liste blanche « localhost ») n'est PAS celle de l'utilisateur.
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
@@ -339,7 +339,15 @@ describe.skipIf(!HAS)("E2 — moteur réel, navigateur jetable, site contrôlé"
   }, 120_000);
 
   it("HÔTE (préparation du branchement) sur le moteur réel : éteint = rien ; activé via le RÉGLAGE UTILISATEUR (domaine pointé, pas « localhost ») = session lancée au premier accord, témoin à zéro, fermeture complète quand le réglage s'éteint", async () => {
-    const jetables = () => readdirSync(tmpdir()).filter((n) => n.startsWith("jarod-e2-")).length;
+    // Les profils de CE processus seulement (marqueur `ownerPid`) : d'autres fichiers d'essai créent et balaient des `jarod-e2-*` en même temps.
+    const ours = (n: string) => {
+      try {
+        return (JSON.parse(readFileSync(join(tmpdir(), n, "owner.json"), "utf8")) as { ownerPid?: number }).ownerPid === process.pid;
+      } catch {
+        return false;
+      }
+    };
+    const jetables = () => readdirSync(tmpdir()).filter((n) => n.startsWith("jarod-e2-") && ours(n)).length;
     const settings: { v: unknown } = { v: { enabled: false, allowDomains: ["site.localhost"] } };
     const attached: unknown[] = [];
     const tools = { attachConnectedBrowser: (p: unknown) => (attached.push(p), () => void attached.pop()) };

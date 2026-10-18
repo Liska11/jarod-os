@@ -95,6 +95,8 @@ export async function launchDisposableBrowser(opts: LaunchOptions): Promise<Disp
         child.once("exit", () => (clearTimeout(t), r()));
       });
     }
+    // Ce qui porte encore le profil (Chrome relancé sous un autre numéro) : sinon il survit et recrée son dossier.
+    killProfileProcesses(profileDir);
     for (let i = 0; i < 10; i++) {
       if (removeDisposableProfile(profileDir)) return;
       await new Promise((r) => setTimeout(r, 300));
@@ -193,6 +195,38 @@ export function commandLineOf(pid: number): string | null {
   }
 }
 
+/**
+ * Arrête les processus dont la ligne de commande contient CE profil jetable (et leurs enfants) ; rend leur nombre. Le numéro noté au lancement
+ * ne suffit pas : mesuré, Chrome peut continuer sous un autre numéro, que `close()` et le balayage laissaient alors tourner. Le dossier
+ * (suffixe aléatoire, vérifié jetable) ne désigne que ce navigateur ; il est passé par l'environnement, jamais collé dans une commande.
+ */
+export function killProfileProcesses(profileDir: string): number {
+  if (!isDisposableProfile(profileDir)) return 0;
+  const needle = resolve(profileDir);
+  let pids: number[] = [];
+  try {
+    if (process.platform === "win32") {
+      const script = "Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -and $_.CommandLine.Contains($env:JAROD_PROFILE) -and $_.ProcessId -ne $PID } | ForEach-Object { $_.ProcessId }";
+      const out = execFileSync("powershell", ["-NoProfile", "-NonInteractive", "-Command", script], { encoding: "utf8", timeout: 15_000, windowsHide: true, env: { ...process.env, JAROD_PROFILE: needle } });
+      pids = out.split(/\r?\n/).map(Number).filter((n) => Number.isInteger(n) && n > 0);
+    } else {
+      for (const n of readdirSync("/proc")) {
+        if (!/^\d+$/.test(n)) continue;
+        try {
+          if (readFileSync(`/proc/${n}/cmdline`, "utf8").split("\0").join(" ").includes(needle)) pids.push(Number(n));
+        } catch {
+          /* parti entre-temps */
+        }
+      }
+    }
+  } catch {
+    return 0;
+  }
+  pids = pids.filter((pid) => pid !== process.pid);
+  for (const pid of pids) killTree(pid);
+  return pids.length;
+}
+
 function killTree(pid: number): void {
   try {
     if (process.platform === "win32") execFileSync("taskkill", ["/PID", String(pid), "/T", "/F"], { stdio: "ignore", timeout: 15_000, windowsHide: true });
@@ -245,7 +279,8 @@ export function sweepStaleSessions(): string[] {
       if (!st.isDirectory() || st.isSymbolicLink() || !isDisposableProfile(dir)) continue;
       const m = readMarker(dir);
       if (!m || alive(m.ownerPid)) continue;
-      if (m.chromePid > 0 && alive(m.chromePid) && (commandLineOf(m.chromePid) ?? "").includes(dir)) killTree(m.chromePid);
+      // Par le profil, pas par `chromePid` : ce numéro peut être mort alors que le navigateur tourne encore sous un autre.
+      killProfileProcesses(dir);
       stopSessionDaemon(dir);
       // Windows garde les fichiers verrouillés un instant après l'arrêt du navigateur : quelques essais courts.
       let removed = false;

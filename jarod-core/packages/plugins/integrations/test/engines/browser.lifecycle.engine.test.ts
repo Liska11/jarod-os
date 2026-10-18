@@ -33,7 +33,25 @@ function processesMatching(needle: string): { pid: number; name: string }[] {
   const out = execFileSync("powershell", ["-NoProfile", "-NonInteractive", "-Command", script], { encoding: "utf8", windowsHide: true }).trim();
   return out ? out.split(/\r?\n/u).map((l) => ({ pid: Number(l.split("|")[0]), name: l.split("|")[1] ?? "" })) : [];
 }
-const daemons = () => processesMatching("browser_harness.daemon");
+/**
+ * Le démon du moteur d'UNE session : le numéro écrit dans son dossier d'exécution privé (`<profil>/bh-state/run/*.pid`), et ses enfants directs
+ * (le lanceur du venv et le processus qu'il lance). Comparer tous les démons de la machine avant/après comptait aussi ceux qu'un autre fichier
+ * d'essai lance en même temps.
+ */
+function sessionDaemons(profile: string): number[] {
+  const run = join(profile, "bh-state", "run");
+  const roots: number[] = [];
+  for (const n of existsSync(run) ? readdirSync(run).filter((f) => f.endsWith(".pid")) : []) {
+    const raw = readFileSync(join(run, n), "utf8").trim();
+    const pid = Number((raw.startsWith("{") ? (JSON.parse(raw) as { pid?: number }).pid : raw.split(/\s+/)[0]) ?? 0);
+    if (pid > 0) roots.push(pid);
+  }
+  if (roots.length === 0) return [];
+  const list = roots.join(",");
+  const script = `Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -and $_.CommandLine.Contains('browser_harness.daemon') -and (@(${list}) -contains $_.ProcessId -or @(${list}) -contains $_.ParentProcessId) } | ForEach-Object { $_.ProcessId }`;
+  const out = execFileSync("powershell", ["-NoProfile", "-NonInteractive", "-Command", script], { encoding: "utf8", windowsHide: true }).trim();
+  return out ? out.split(/\r?\n/u).map(Number) : [];
+}
 const pidAlive = (pid: number) => {
   try {
     process.kill(pid, 0);
@@ -275,17 +293,16 @@ describe.skipIf(!HAS)("E2 — cycle de vie, révocation, confinement CDP, nettoy
     const settings = { v: { enabled: true, allowDomains: ["site.localhost"] } as unknown };
     const { host, sessions } = appHost(settings);
     try {
-      const daemonsBefore = daemons().map((d) => d.pid);
       await host.openTab(siteUrl("/"));
       const profile = sessions[0]!.browser.profileDir;
       const mine = processesMatching(profile).map((p) => p.pid);
       expect(mine.length).toBeGreaterThan(1); // le navigateur et ses sous-processus
-      const myDaemons = daemons().map((d) => d.pid).filter((p) => !daemonsBefore.includes(p));
+      const myDaemons = sessionDaemons(profile);
       expect(myDaemons.length).toBeGreaterThan(0); // le démon du moteur de CETTE session (le lanceur du venv et le processus qu'il lance)
       await host.close();
       await wait(1500);
       expect(processesMatching(profile)).toEqual([]);
-      expect(daemons().map((d) => d.pid).filter((p) => !daemonsBefore.includes(p))).toEqual([]);
+      expect(myDaemons.filter(pidAlive)).toEqual([]);
       expect(existsSync(profile)).toBe(false);
       // les voisins n'ont pas bougé
       expect(existsSync(join(decoyDir, "intact.txt"))).toBe(true);
