@@ -160,7 +160,7 @@ then, in another terminal, `JAROD_BRIDGE=http://127.0.0.1:10493 npm --prefix mob
 
 **Left to do**
 
-0. Real phones: verified on a Galaxy Note 8 (Android 9, WebView 101, X25519 from `x25519-shim.ts`) through `adb reverse` — pairing with the fingerprint, unlock, streamed reply, WakeService waking the closed app with a content-free notification. Still to try there: camera scan, voice message, approval with the fingerprint, an Android 11+ phone (PIN as well as biometrics), and the LAN / Tailscale path instead of USB.
+0. Real phones: verified on a Galaxy Note 8 (Android 9, WebView 101, X25519 from `x25519-shim.ts`) through `adb reverse` — pairing with the fingerprint, unlock, streamed reply, an approval accepted with the fingerprint, WakeService waking the closed app with a content-free notification. Still to try there: camera scan, voice message, an Android 11+ phone (PIN as well as biometrics), and the LAN / Tailscale path instead of USB.
 1. Approvals from runs started on the PC and from scheduled tasks mirrored to the phone (first answer wins, PC or phone), behind an explicit setting — today `backgroundHooks.approve` refuses, and the desktop's approvals stay on the desktop.
 2. WakeService hardening: restart after reboot (`BOOT_COMPLETED`), back-off when the PC is unreachable, battery measurements, and the Android 14+ foreground-service type review for Play.
 3. A notification setting per kind (finished tasks, reminders, alerts) and a «what's new» list on the phone.
