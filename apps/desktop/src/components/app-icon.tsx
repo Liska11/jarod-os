@@ -13,34 +13,6 @@ const PATHS: Record<AppIconId, React.ReactNode> = {
       <path d="M4.5 7.5 12 11.5l7.5-4M12 11.5v9" />
     </>
   ),
-  // Browser: a globe.
-  browser: (
-    <>
-      <circle cx="12" cy="12" r="8" />
-      <path d="M4 12h16M12 4c2.4 2.3 3.6 5 3.6 8s-1.2 5.7-3.6 8c-2.4-2.3-3.6-5-3.6-8s1.2-5.7 3.6-8z" />
-    </>
-  ),
-  // Social: two speech bubbles.
-  social: (
-    <>
-      <path d="M4 6.5A1.5 1.5 0 0 1 5.5 5h8A1.5 1.5 0 0 1 15 6.5v5a1.5 1.5 0 0 1-1.5 1.5H9l-3 2.5V13h-.5A1.5 1.5 0 0 1 4 11.5z" />
-      <path d="M17.5 9h1A1.5 1.5 0 0 1 20 10.5v5a1.5 1.5 0 0 1-1.5 1.5H18v2.5L15 17h-3.5a1.5 1.5 0 0 1-1.5-1.5V15" />
-    </>
-  ),
-  // Messaging: a paper plane.
-  messaging: (
-    <>
-      <path d="M20 4 3.5 10.8l6.2 2.4L20 4z" />
-      <path d="M20 4 13.4 20.5l-3.7-7.3" />
-    </>
-  ),
-  // Player: a play mark in a rounded screen.
-  player: (
-    <>
-      <rect x="3.5" y="5" width="17" height="14" rx="2" />
-      <path d="M10.5 9.2v5.6l4.6-2.8z" fill="currentColor" />
-    </>
-  ),
   hermes: null,
   overview: <path d="M4 11.5 12 5l8 6.5V19a1 1 0 0 1-1 1h-4v-5h-6v5H5a1 1 0 0 1-1-1z" />,
   missions: (

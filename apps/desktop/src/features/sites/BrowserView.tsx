@@ -1,12 +1,10 @@
 import { useStore } from '@nanostores/react'
-import { IconArrowLeft, IconArrowRight, IconExternalLink, IconHome, IconRefresh } from '@tabler/icons-react'
+import { IconArrowLeft, IconArrowRight, IconHome, IconRefresh } from '@tabler/icons-react'
 import { useEffect, useRef, useState } from 'react'
 import { SITES, addressToUrl } from '../../../shared/web-sites.ts'
 import { GlassButton } from '../../components/ui/glass.tsx'
 import { Spinner } from '../../components/ui/primitives.tsx'
 import { useT } from '../../lib/i18n.ts'
-import { $page } from '../../store/windows.ts'
-import { useNativeApp } from './native-app.ts'
 import { $browserRequest, $siteViews, openSiteView, useSiteView } from './site-views.ts'
 import { SiteSurface } from './SiteSurface.tsx'
 
@@ -18,16 +16,14 @@ function go(url: string): void {
   }
 }
 
-/** The Browser page: the web inside Jarod-OS, searched with Brave Search; a page can go on in Brave itself. */
-export function BrowserPage() {
+/** The browser in the right pane: the web beside the chat, searched with Brave Search. */
+export function BrowserView({ active }: { active: boolean }) {
   const { t } = useT()
-  const active = useStore($page) === 'browser'
   const surface = useRef<HTMLDivElement>(null)
   const state = useSiteView('browser', surface, active)
   const request = useStore($browserRequest)
   const [address, setAddress] = useState('')
   const [editing, setEditing] = useState(false)
-  const brave = useNativeApp('brave', 'Brave')
 
   // The address bar follows the page unless the person is typing in it.
   useEffect(() => {
@@ -61,8 +57,8 @@ export function BrowserPage() {
   }
 
   return (
-    <div className="flex h-full flex-col">
-      <div className="flex items-center gap-1.5 border-b border-line px-3 py-2">
+    <div className={active ? 'flex min-h-0 flex-1 flex-col' : 'hidden'}>
+      <div className="flex items-center gap-1 border-b border-line px-2 py-1.5">
         <GlassButton size="icon" variant="ghost" aria-label={t('sites.back')} disabled={!state.canGoBack} onClick={() => state.id && void window.heraldOS.web.history(state.id, 'back')}>
           <IconArrowLeft />
         </GlassButton>
@@ -98,12 +94,6 @@ export function BrowserPage() {
           spellCheck={false}
           className="glass-input h-8 min-w-0 flex-1 rounded-lg px-3 text-[12.5px] outline-none"
         />
-        {brave.installed && (
-          <GlassButton size="sm" variant="ghost" disabled={!/^https?:/.test(state.url)} onClick={() => brave.launch(state.url)} title={t('sites.openInBrave')}>
-            <IconExternalLink />
-            Brave
-          </GlassButton>
-        )}
       </div>
       <SiteSurface ref={surface} state={state} name={t('app.browser')} />
     </div>

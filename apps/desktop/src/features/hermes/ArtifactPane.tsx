@@ -23,7 +23,7 @@ import type React from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import type { FilePreview } from '../../../shared/ipc.ts'
-import { Dropdown, EmptyGlass, GlassButton, Tabs, type TabDef } from '../../components/ui/glass.tsx'
+import { Dropdown, EmptyGlass, GlassButton } from '../../components/ui/glass.tsx'
 import { cn } from '../../lib/cn.ts'
 import type { ChatState } from '../../lib/chat-model.ts'
 import { formatBytes } from '../../lib/format.ts'
@@ -31,16 +31,14 @@ import { useLocalData } from '../../lib/use-async.ts'
 import type { Artifact } from '../../store/missions.ts'
 import { notify } from '../../store/notifications.ts'
 import { Markdown } from '../chat/Markdown.tsx'
-import { $editing, $paneTab, $selectedArtifact, $zoom, artifactKind, collectSources, extensionOf, isEditable, type PaneTab, type SourceRow } from './artifact-store.ts'
+import { $editing, $paneTab, $selectedArtifact, $zoom, artifactKind, collectSources, extensionOf, isEditable, type SourceRow } from './artifact-store.ts'
 import { MenuDivider, MenuItem, PopMenu } from './Menu.tsx'
+import { isPaneApp } from './pane-apps.ts'
+import { PaneAppViews, PaneTabs } from './PaneApps.tsx'
 import { revealLabel } from '../../lib/platform-labels.ts'
 import { attempt } from '../../lib/native.ts'
 import { type MessageKey, t, useT } from '../../lib/i18n.ts'
 
-const TABS: readonly TabDef<PaneTab>[] = [
-  { id: 'preview', label: 'pane.preview' as MessageKey },
-  { id: 'sources', label: 'pane.sources' as MessageKey }
-]
 const ZOOMS = [50, 75, 100, 125, 150]
 
 /* Light document colours: the transcript markdown styles read these tokens, so scoping them to the sheet re-skins it. */
@@ -78,6 +76,8 @@ export function ArtifactPane({ chat }: { chat: ChatState | null }) {
   const editable = Boolean(artifact && isEditable(artifact.name) && file.data?.kind === 'text')
   const kind = artifact ? artifactKind(artifact.name) : 'other'
   const showToolbar = tab === 'preview' && editable
+  // An app opened from the sidebar (browser, a messaging app, the player) has the pane to itself.
+  const appTab = isPaneApp(tab)
 
   // Leaving an artifact or reloading it discards an unsaved draft.
   useEffect(() => {
@@ -178,8 +178,8 @@ export function ArtifactPane({ chat }: { chat: ChatState | null }) {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex items-center gap-3 border-b border-line px-4 py-3">
-        <Tabs tabs={TABS.map(item => ({ ...item, label: t(item.label as MessageKey) }))} value={tab} onChange={next => $paneTab.set(next)} />
+      <PaneTabs value={tab} />
+      <div className={cn('flex items-center gap-3 border-b border-line px-4 py-2', appTab && 'hidden')}>
         {artifact && <span className="min-w-0 flex-1 truncate text-[12.5px] text-fg-2">{artifact.name}</span>}
         {!artifact && <span className="flex-1" />}
         <span className="hidden items-center gap-1.5 text-[12px] text-fg-3 xl:flex" title={t('pane.review.title')}>
@@ -308,7 +308,8 @@ export function ArtifactPane({ chat }: { chat: ChatState | null }) {
         </div>
       )}
 
-      <div className="min-h-0 flex-1 overflow-y-auto p-4">
+      <PaneAppViews tab={tab} />
+      <div className={cn('min-h-0 flex-1 overflow-y-auto p-4', appTab && 'hidden')}>
         {tab === 'sources' ? (
           <Sources chat={chat} />
         ) : !artifact ? (

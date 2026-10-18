@@ -33,6 +33,7 @@ import { locateRuntime, PINOKIO_URL, PinokioService } from './pinokio/service.ts
 import { registerSystemAuditIpc } from './ipc/system-audit.ts'
 import { MEDIA_SCHEME_PRIVILEGES, registerMediaIpc } from './ipc/media.ts'
 import { registerNativeAppsIpc } from './ipc/native-apps.ts'
+import { registerWindowEmbeds } from './platform/window-embed.ts'
 import { AuditService } from './setup/service.ts'
 import { log, logTail } from './log.ts'
 import { installProblemLogging } from './problem-log.ts'
@@ -612,6 +613,7 @@ function registerCoreIpc(): void {
   registerPinokioIpc(pinokio, () => webViews, () => (panels ? panels.mainWindow() : mainWindow))
   registerSystemAuditIpc(systemAudit)
   registerNativeAppsIpc()
+  registerWindowEmbeds()
   registerMediaIpc()
 }
 

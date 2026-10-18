@@ -3,13 +3,14 @@ import { atom, map } from 'nanostores'
 import { type RefObject, useEffect } from 'react'
 import type { WebViewEvent } from '../../../shared/ipc.ts'
 import type { SiteId } from '../../../shared/web-sites.ts'
-import { $windows, MAIN_WINDOW_ID, type OSWindow, showPage } from '../../store/windows.ts'
+import { $windows, MAIN_WINDOW_ID, type OSWindow } from '../../store/windows.ts'
+import { openPaneApp } from '../hermes/pane-apps.ts'
 import { useNativeView } from '../web/native-view.ts'
 
 /*
- * The Browser and Social pages: one native view per site (electron/ipc/web.ts openSite), opened the first time its page
- * shows and kept afterwards, so a conversation or a video carries on while another page is up. A site's link that
- * leaves it opens in the Browser page.
+ * Sites in the right pane, beside the chat: one native view per site (electron/ipc/web.ts openSite), opened the first
+ * time its tab shows and kept afterwards, so a conversation or a video carries on behind another tab. A site's link
+ * that leaves it opens in the browser tab.
  */
 
 export interface SiteViewState {
@@ -26,7 +27,7 @@ const EMPTY: SiteViewState = { id: null, url: '', title: '', loading: false, can
 
 export const $siteViews = map<Partial<Record<SiteId, SiteViewState>>>({})
 
-/** A page the Browser should show (a link out of a Social app); the Browser page takes it and clears it. */
+/** A page the browser tab should show (a link out of another site); the browser takes it and clears it. */
 export const $browserRequest = atom<string | null>(null)
 
 const opening = new Set<SiteId>()
@@ -112,14 +113,14 @@ export async function openSiteView(site: SiteId): Promise<void> {
   }
 }
 
-/** Show a page in the Browser page (a link a Social app cannot show itself). */
+/** Show a page in the browser tab (a link another site cannot show itself). */
 export function openInBrowser(url: string): void {
   $browserRequest.set(url)
-  showPage('browser')
+  openPaneApp('browser')
 }
 
 /**
- * Keep `site`'s view over `element` while `active` (its page and tab are the ones showing). The view opens the first
+ * Keep `site`'s view over `element` while `active` (its tab is the one showing). The view opens the first
  * time it is active and stays open, hidden, afterwards.
  */
 export function useSiteView(site: SiteId, element: RefObject<HTMLElement | null>, active: boolean): SiteViewState & { visible: boolean; covered: boolean } {

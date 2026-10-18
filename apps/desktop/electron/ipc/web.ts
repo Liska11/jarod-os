@@ -5,7 +5,7 @@ import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { IPC, type WebOpenOptions, type WebViewBounds, type WebViewEvent } from '../../shared/ipc.ts'
 import { isViewable } from '../../shared/viewer.ts'
-import { chromeUserAgent, isSiteId, type SiteDef, SITES, siteMayOpen, sitePartition } from '../../shared/web-sites.ts'
+import { chromeUserAgent, isSiteId, PASSKEY_GUARD, type SiteDef, SITES, siteMayOpen, sitePartition } from '../../shared/web-sites.ts'
 import { log } from '../log.ts'
 import { isLoopbackOrigin } from '../pinokio/guard.ts'
 
@@ -225,6 +225,36 @@ function prepareSitePartition(site: SiteDef, parent: BrowserWindow | null): void
   }
 }
 
+/**
+ * PASSKEY_GUARD in every frame of a site's view, cross-site frames included (each is its own target: attached as it
+ * starts, held until the guard is in). Through the DevTools protocol, since no preload reaches a sandboxed page's own
+ * world before its scripts. Best effort: a view the guard could not reach still works, with Windows' dialog.
+ */
+async function guardPasskeys(contents: WebContents, site: string): Promise<void> {
+  const dbg = contents.debugger
+  const guardTarget = async (session?: string) => {
+    await dbg.sendCommand('Page.enable', {}, session).catch(() => undefined)
+    await dbg.sendCommand('Page.addScriptToEvaluateOnNewDocument', { source: PASSKEY_GUARD, runImmediately: true }, session).catch(() => undefined)
+    await dbg.sendCommand('Target.setAutoAttach', { autoAttach: true, waitForDebuggerOnStart: true, flatten: true }, session).catch(() => undefined)
+  }
+
+  try {
+    if (!dbg.isAttached()) {
+      dbg.attach('1.3')
+    }
+
+    dbg.on('message', (_event, method, params: { sessionId?: string }) => {
+      if (method === 'Target.attachedToTarget' && params.sessionId) {
+        const session = params.sessionId
+        void guardTarget(session).then(() => dbg.sendCommand('Runtime.runIfWaitingForDebugger', {}, session).catch(() => undefined))
+      }
+    })
+    await guardTarget()
+  } catch (error) {
+    log('web', `${site}: passkey guard unavailable: ${error instanceof Error ? error.message : String(error)}`)
+  }
+}
+
 /** A preview may show http(s) pages and local files inside the project folder, nothing else. */
 function previewAllows(url: string, root: string | null): boolean {
   if (isHttp(url)) {
@@ -322,7 +352,12 @@ export class WebViews {
     this.siteOwners.set(key, id)
     const contents = entry.kind === 'view' ? entry.view.webContents : entry.win.webContents
     this.guardSite(id, contents, site, preferences)
-    void contents.loadURL(site.home).catch(error => log('web', `${id}: load failed: ${error instanceof Error ? error.message : String(error)}`))
+    // A blank document first: the DevTools protocol answers only once the view has one.
+    void contents
+      .loadURL('about:blank')
+      .then(() => Promise.race([guardPasskeys(contents, site.id), new Promise(resolve => setTimeout(resolve, 3000))]))
+      .then(() => contents.loadURL(site.home))
+      .catch(error => log('web', `${id}: load failed: ${error instanceof Error ? error.message : String(error)}`))
     log('web', `opened site ${site.id} ${id} (${entry.kind})`)
 
     return id

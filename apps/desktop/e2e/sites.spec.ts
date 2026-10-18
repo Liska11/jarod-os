@@ -1,7 +1,8 @@
 import { expect, test, type Page } from '@playwright/test'
 import { type Launched, launchShell } from './launch'
 
-// The Browser, Social, Messaging and Player pages: each site opens in its own view, partition and Chrome user agent.
+// Apps in the right pane, beside the chat (sidebar Apps and Messaging sections): each site in its own view, partition and
+// Chrome user agent. Desktop apps (Signal, MovieBox, VLC) are not opened here: they would take the person's real windows.
 test.describe.configure({ mode: 'serial' })
 
 let shell: Launched
@@ -52,8 +53,10 @@ test.afterAll(async () => {
   await shell.close()
 })
 
-test('the Browser page opens Brave Search in its own partition', async () => {
+test('the browser opens in the right pane, Brave Search in its own partition', async () => {
   await page.getByRole('button', { name: 'Navigateur', exact: true }).click()
+  await expect(page.getByRole('tab', { name: 'Navigateur' })).toHaveAttribute('aria-selected', 'true')
+  await expect(page.getByRole('tab', { name: 'Aperçu' })).toBeVisible()
   await expect.poll(async () => (await guests()).some(guest => guest.url.includes('search.brave.com')), { timeout: 45_000 }).toBe(true)
   const guest = (await guests()).find(item => item.url.includes('search.brave.com'))
   expect(guest?.partition).toContain('jarod-site-browser')
@@ -67,14 +70,36 @@ test('the address bar searches what is not an address', async () => {
   await expect.poll(async () => (await guests()).some(guest => guest.url.includes('search.brave.com/search?q=jarod')), { timeout: 30_000 }).toBe(true)
 })
 
-test('Social shows TikTok and Instagram, each in its own session', async () => {
-  await page.getByRole('button', { name: 'Social', exact: true }).click()
+test('TikTok and Instagram open as pane tabs, each in its own session', async () => {
+  await page.getByRole('button', { name: 'TikTok', exact: true }).click()
   await expect.poll(async () => (await guests()).some(guest => guest.url.includes('tiktok.com')), { timeout: 45_000 }).toBe(true)
-  await page.getByRole('tab', { name: 'Instagram' }).click()
+  await page.getByRole('button', { name: 'Instagram', exact: true }).click()
   await expect.poll(async () => (await guests()).some(guest => guest.url.includes('instagram.com')), { timeout: 45_000 }).toBe(true)
   const all = await guests()
   expect(all.find(item => item.url.includes('tiktok.com'))?.partition).toContain('jarod-site-tiktok')
   expect(all.find(item => item.url.includes('instagram.com'))?.partition).toContain('jarod-site-instagram')
+})
+
+test('a site cannot raise a passkey prompt without a click (Windows would put its dialog over everything)', async () => {
+  const result = await shell.app.evaluate(async ({ webContents }) => {
+    const contents = webContents.getAllWebContents().find(item => item.getURL().includes('instagram.com'))
+
+    return contents
+      ? String(
+          await contents.executeJavaScript(`(async () => {
+            const conditional = await PublicKeyCredential.isConditionalMediationAvailable()
+            try {
+              await navigator.credentials.get({ publicKey: { challenge: new Uint8Array(16), timeout: 1000 } })
+              return 'prompted ' + conditional
+            } catch (error) {
+              return error.message + ' ' + conditional
+            }
+          })()`)
+        )
+      : 'no view'
+  })
+
+  expect(result).toBe('A passkey needs a click. false')
 })
 
 test('the Messaging section opens Telegram and WhatsApp, which see Chrome, not Electron', async () => {
@@ -88,13 +113,15 @@ test('the Messaging section opens Telegram and WhatsApp, which see Chrome, not E
   await expect.poll(async () => (await guests()).some(guest => guest.url.includes('web.telegram.org')), { timeout: 45_000 }).toBe(true)
 })
 
-test('Signal offers its desktop app', async () => {
-  await page.getByRole('button', { name: 'Signal', exact: true }).click()
-  await expect(page.getByRole('button', { name: /^(Ouvrir Signal|Installer Signal)$/ })).toBeVisible({ timeout: 15_000 })
+test('a pane tab closes, and the pane goes back to the preview', async () => {
+  await page.getByRole('button', { name: 'Fermer Telegram' }).click()
+  await expect(page.getByRole('tab', { name: 'Telegram' })).toHaveCount(0)
+  await expect(page.getByRole('tab', { name: 'Aperçu' })).toHaveAttribute('aria-selected', 'true')
 })
 
-test('the Player page waits for files', async () => {
+test('the player waits for files in its tab', async () => {
   await page.getByRole('button', { name: 'Lecteur', exact: true }).click()
+  await expect(page.getByRole('tab', { name: 'Lecteur' })).toHaveAttribute('aria-selected', 'true')
   await expect(page.getByText('Rien à lire pour l’instant')).toBeVisible({ timeout: 15_000 })
   await expect(page.getByRole('button', { name: 'Ajouter des fichiers' })).toBeVisible()
 })

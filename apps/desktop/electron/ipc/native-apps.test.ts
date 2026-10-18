@@ -27,8 +27,13 @@ describe('native apps', () => {
     expect(launchArgument('signal', 'anything')).toEqual([])
   })
 
+  it('finds MovieBox GUI, which winget does not carry', () => {
+    expect(findNativeApp('moviebox', env, file => file === 'C:\\Program Files\\MovieBox GUI\\moviebox-gui.exe', 'win32')).toBe('C:\\Program Files\\MovieBox GUI\\moviebox-gui.exe')
+    expect(wingetInstall('moviebox')).toBeNull()
+  })
+
   it('installs with winget, exact id, without upgrading', () => {
-    const { command, args } = wingetInstall('signal')
+    const { command, args } = wingetInstall('signal') ?? { command: '', args: [] }
 
     expect(command).toBe('winget')
     expect(args).toEqual(expect.arrayContaining(['install', '--id', 'OpenWhisperSystems.Signal', '--exact', '--no-upgrade', '--silent']))

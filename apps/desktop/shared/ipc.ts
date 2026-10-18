@@ -965,6 +965,12 @@ export const IPC = {
   nativeAppFind: 'herald-os:native-app:find',
   nativeAppLaunch: 'herald-os:native-app:launch',
   nativeAppInstall: 'herald-os:native-app:install',
+  /** A desktop app's window inside the right pane (electron/platform/window-embed.ts): take it, place it, give it back. */
+  nativeEmbedOpen: 'herald-os:native-embed:open',
+  nativeEmbedBounds: 'herald-os:native-embed:bounds',
+  nativeEmbedRelease: 'herald-os:native-embed:release',
+  /** Main -> renderer: the embedded app's window was closed. */
+  nativeEmbedGone: 'herald-os:native-embed:gone',
   /** The Player page may stream these files (picked or dropped by the user) through jarod-media:. */
   mediaAllow: 'herald-os:media:allow',
   /** Main -> renderer: title/url/loading changes and `closed`. */

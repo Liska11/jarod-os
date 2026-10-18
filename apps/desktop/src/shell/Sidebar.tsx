@@ -1,7 +1,8 @@
 import { useStore } from '@nanostores/react'
-import { IconBrandSignal, IconBrandTelegram, IconBrandWhatsapp, IconLayoutSidebarLeftCollapse, IconLayoutSidebarLeftExpand, IconPlus } from '@tabler/icons-react'
-import type { MessagingApp } from '../../shared/web-sites.ts'
-import { $messagingApp, showMessaging } from '../features/sites/messaging.ts'
+import { IconLayoutSidebarLeftCollapse, IconLayoutSidebarLeftExpand, IconPlus } from '@tabler/icons-react'
+import { $paneTab } from '../features/hermes/artifact-store.ts'
+import { APPS_SECTION, MESSAGING_SECTION, openPaneApp, type PaneApp } from '../features/hermes/pane-apps.ts'
+import { PaneAppIcon, usePaneAppName } from '../features/hermes/PaneApps.tsx'
 import { useRef, useState } from 'react'
 import { AppGlyph, HermesAvatar } from '../components/app-icon.tsx'
 import { cn } from '../lib/cn.ts'
@@ -87,7 +88,7 @@ export function Sidebar() {
       </div>
 
       <nav className={cn('relative mt-5 flex flex-col gap-0.5', collapsed && 'w-full items-center')} aria-label={t('sidebar.pages')}>
-        {PAGES.filter(def => def.id !== 'messaging').map(def => {
+        {PAGES.map(def => {
           const activePage = def.id === page
           const name = appText(def.id, def).name
 
@@ -111,7 +112,8 @@ export function Sidebar() {
         })}
       </nav>
 
-      <MessagingSection collapsed={collapsed} />
+      <AppSection collapsed={collapsed} label={t('sidebar.apps')} apps={APPS_SECTION} />
+      <AppSection collapsed={collapsed} label={t('sidebar.messaging')} apps={MESSAGING_SECTION} />
 
       <div className={cn('my-4 h-px bg-line', collapsed ? 'w-6' : 'mx-1')} />
 
@@ -230,41 +232,36 @@ export function Sidebar() {
   )
 }
 
-const MESSAGING: ReadonlyArray<{ id: MessagingApp; name: string; icon: React.ReactNode }> = [
-  { id: 'telegram', name: 'Telegram', icon: <IconBrandTelegram size={16} stroke={1.9} /> },
-  { id: 'whatsapp', name: 'WhatsApp', icon: <IconBrandWhatsapp size={16} stroke={1.9} /> },
-  { id: 'signal', name: 'Signal', icon: <IconBrandSignal size={16} stroke={1.9} /> }
-]
-
-/** The Messaging section: Telegram, WhatsApp and Signal, each opening the Messaging page on it. */
-function MessagingSection({ collapsed }: { collapsed: boolean }) {
-  const { t } = useT()
+/** A sidebar section of apps that open in the right pane, beside the chat (the Hermes page). */
+function AppSection({ collapsed, label, apps }: { collapsed: boolean; label: string; apps: readonly PaneApp[] }) {
   const page = useStore($page)
-  const app = useStore($messagingApp)
+  const tab = useStore($paneTab)
+  const nameOf = usePaneAppName()
 
   return (
     <>
       <div className={cn('my-4 h-px bg-line', collapsed ? 'w-6' : 'mx-1')} />
-      {!collapsed && <span className="mb-1.5 px-2 text-[10px] font-semibold tracking-[0.14em] text-fg-3 uppercase">{t('sidebar.messaging')}</span>}
-      <nav className={cn('flex flex-col gap-0.5', collapsed && 'w-full items-center')} aria-label={t('sidebar.messaging')}>
-        {MESSAGING.map(item => {
-          const on = page === 'messaging' && app === item.id
+      {!collapsed && <span className="mb-1.5 px-2 text-[10px] font-semibold tracking-[0.14em] text-fg-3 uppercase">{label}</span>}
+      <nav className={cn('flex flex-col gap-0.5', collapsed && 'w-full items-center')} aria-label={label}>
+        {apps.map(app => {
+          const on = page === 'hermes' && tab === app
+          const name = nameOf(app)
 
           return (
             <button
-              key={item.id}
+              key={app}
               type="button"
-              onClick={() => showMessaging(item.id)}
-              aria-current={on ? 'page' : undefined}
-              aria-label={collapsed ? item.name : undefined}
+              onClick={() => openPaneApp(app)}
+              aria-current={on ? 'true' : undefined}
+              aria-label={collapsed ? name : undefined}
               className={cn(
                 'side-item group relative flex h-8 items-center rounded-lg text-[12.5px] transition-colors duration-150',
                 collapsed ? 'w-9 justify-center' : 'gap-2.5 px-2.5',
-                on ? 'bg-accent text-accent-fg shadow-[0_4px_16px_rgba(47,125,255,.45)]' : 'text-fg-2 hover:bg-white/8 hover:text-fg'
+                on ? 'bg-white/14 text-fg' : 'text-fg-2 hover:bg-white/8 hover:text-fg'
               )}
             >
-              {item.icon}
-              {collapsed ? <span className="side-tip">{item.name}</span> : <span className="truncate">{item.name}</span>}
+              <PaneAppIcon app={app} size={16} />
+              {collapsed ? <span className="side-tip">{name}</span> : <span className="truncate">{name}</span>}
             </button>
           )
         })}

@@ -396,7 +396,14 @@ const api = {
     installed: (app: string): Promise<boolean> => ipcRenderer.invoke(IPC.nativeAppFind, app),
     /** Start it, with a page (Brave) or a file (VLC). */
     launch: (app: string, target?: string): Promise<void> => ipcRenderer.invoke(IPC.nativeAppLaunch, app, target),
-    install: (app: string): Promise<{ ok: boolean; already?: boolean; restart?: boolean; error?: string }> => ipcRenderer.invoke(IPC.nativeAppInstall, app)
+    install: (app: string): Promise<{ ok: boolean; already?: boolean; restart?: boolean; error?: string }> => ipcRenderer.invoke(IPC.nativeAppInstall, app),
+    /** Start (or find) the app and bring its window into the right pane, with a file for VLC. */
+    embed: (app: string, target?: string): Promise<void> => ipcRenderer.invoke(IPC.nativeEmbedOpen, app, target),
+    /** Place the embedded window over the tab (CSS px of this window), or hide it. */
+    place: (app: string, bounds: WebViewBounds, visible: boolean): void => ipcRenderer.send(IPC.nativeEmbedBounds, app, bounds, visible),
+    /** Give the window its frame back (the tab closed). */
+    release: (app: string): Promise<void> => ipcRenderer.invoke(IPC.nativeEmbedRelease, app),
+    onGone: (listener: (app: string) => void): Unsubscribe => subscribe(IPC.nativeEmbedGone, listener)
   },
   media: {
     /** Let the Player stream these files; resolves with a jarod-media: URL for each one that exists. */

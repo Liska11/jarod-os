@@ -4,12 +4,15 @@ import { EmptyGlass, GlassButton } from '../../components/ui/glass.tsx'
 import { Spinner } from '../../components/ui/primitives.tsx'
 import { cn } from '../../lib/cn.ts'
 import { useT } from '../../lib/i18n.ts'
+import { openInVlc } from '../hermes/pane-apps.ts'
 import { useNativeApp } from '../sites/native-app.ts'
 import { addToPlaylist, fileName, isAudio, isMedia, isSubtitle, nextIndex, previousIndex, toVtt } from './player-model.ts'
 
 /*
- * The Player page: videos and music from this computer, in a playlist. Files stream through jarod-media: (only the
- * ones picked or dropped here). What Chromium cannot decode goes on in VLC, installed with one click if missing.
+ * The player in the right pane: videos and music from this computer, in a playlist, beside the chat (it keeps playing
+ * behind another tab). Files stream through jarod-media: (only the
+ * ones picked or dropped here). What Chromium cannot decode goes on in VLC, in its own tab of the pane (installed with
+ * one click if missing).
  */
 
 const STORE_KEY = 'jarod.player.playlist'
@@ -41,7 +44,7 @@ async function readSubtitles(file: string): Promise<{ label: string; url: string
   return text ? { label: fileName(file), url: URL.createObjectURL(new Blob([toVtt(text, file)], { type: 'text/vtt' })) } : null
 }
 
-export function PlayerPage() {
+export function Player({ active }: { active: boolean }) {
   const { t } = useT()
   const [playlist, setPlaylist] = useState<string[]>(loadPlaylist)
   const [urls, setUrls] = useState<Record<string, string>>({})
@@ -186,7 +189,7 @@ export function PlayerPage() {
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: page-wide player shortcuts and file drop
     <div
-      className="flex h-full flex-col outline-none"
+      className={cn('min-h-0 flex-1 flex-col outline-none', active ? 'flex' : 'hidden')}
       tabIndex={-1}
       onKeyDown={onKeyDown}
       onDragOver={event => {
@@ -200,7 +203,7 @@ export function PlayerPage() {
         void add([...event.dataTransfer.files].map(file => window.heraldOS.fs.pathForFile(file)).filter(Boolean))
       }}
     >
-      <div className="flex flex-wrap items-center gap-1.5 border-b border-line px-3 py-2">
+      <div className="flex flex-wrap items-center gap-1 border-b border-line px-2 py-1.5">
         <GlassButton size="sm" variant="primary" onClick={() => void pick()}>
           <IconFilePlus />
           {t('player.add')}
@@ -232,15 +235,15 @@ export function PlayerPage() {
         )}
         <span className="flex-1" />
         {vlc.installed && (
-          <GlassButton size="sm" variant="ghost" disabled={!current} onClick={() => current && vlc.launch(current)}>
+          <GlassButton size="sm" variant="ghost" disabled={!current} onClick={() => current && openInVlc(current)}>
             <IconExternalLink />
             {t('player.openInVlc')}
           </GlassButton>
         )}
       </div>
 
-      <div className="flex min-h-0 flex-1">
-        <div className="relative flex min-w-0 flex-1 items-center justify-center bg-black/40">
+      <div className="flex min-h-0 flex-1 flex-col">
+        <div className="relative flex min-h-0 min-w-0 flex-1 items-center justify-center bg-black/40">
           {current && urls[current] ? (
             <>
               {/* biome-ignore lint/a11y/useMediaCaption: subtitles are the person's own file, added with the Subtitles button */}
@@ -265,7 +268,7 @@ export function PlayerPage() {
                 <div className="absolute inset-x-6 bottom-20 flex flex-col items-center gap-2 rounded-xl bg-black/70 p-4 text-center text-[12.5px] text-fg-2">
                   <span>{t('player.unsupported', { name: fileName(current) })}</span>
                   {vlc.installed ? (
-                    <GlassButton size="sm" variant="primary" onClick={() => vlc.launch(current)}>
+                    <GlassButton size="sm" variant="primary" onClick={() => openInVlc(current)}>
                       <IconExternalLink />
                       {t('player.openInVlc')}
                     </GlassButton>
@@ -285,7 +288,7 @@ export function PlayerPage() {
         </div>
 
         {playlist.length > 0 && (
-          <aside className="flex w-64 shrink-0 flex-col border-l border-line">
+          <aside className="flex max-h-[38%] shrink-0 flex-col border-t border-line">
             <div className="flex items-center justify-between px-3 py-2 text-[10px] font-semibold tracking-[0.14em] text-fg-3 uppercase">
               <span>{t('player.playlist', { count: playlist.length })}</span>
               <button type="button" aria-label={t('player.clear')} onClick={() => setPlaylist([])} className="flex size-5 items-center justify-center rounded hover:bg-white/10 hover:text-fg">

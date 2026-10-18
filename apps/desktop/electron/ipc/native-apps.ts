@@ -8,19 +8,27 @@ import { log } from '../log.ts'
 import { interpret, realRunner, type InstallResult, type Runner } from '../setup/install.ts'
 
 /*
- * Desktop apps the Social, Player and Browser pages hand over to: Signal (it has no web version), VLC (what Chromium
- * cannot play) and Brave. Jarod-OS finds them where their installers put them, starts them with a file or page, and
- * installs a missing one with winget. The list is closed, and so are the arguments: a file the user picked, a web page.
+ * Desktop apps the right pane hands over to: Signal and MovieBox (no web version), VLC (what Chromium cannot play) and
+ * Brave. Jarod-OS finds them where their installers put them, starts them with a file or page, and installs a missing
+ * one with winget when winget knows it. The list is closed, and so are the arguments: a file the user picked, a web page.
  */
 
 export interface NativeAppDef {
-  winget: string
+  /** The winget package; null when winget does not carry the app (it is then installed by hand). */
+  winget: string | null
   /** Where the installer puts the program, under an environment folder. */
   places: ReadonlyArray<readonly ['LOCALAPPDATA' | 'ProgramFiles' | 'ProgramFiles(x86)', string]>
 }
 
 export const NATIVE_APPS: Readonly<Record<NativeAppId, NativeAppDef>> = {
   signal: { winget: 'OpenWhisperSystems.Signal', places: [['LOCALAPPDATA', 'Programs\\signal-desktop\\Signal.exe']] },
+  moviebox: {
+    winget: null,
+    places: [
+      ['ProgramFiles', 'MovieBox GUI\\moviebox-gui.exe'],
+      ['LOCALAPPDATA', 'Programs\\MovieBox GUI\\moviebox-gui.exe']
+    ]
+  },
   vlc: {
     winget: 'VideoLAN.VLC',
     places: [
@@ -76,10 +84,16 @@ export function launchArgument(id: NativeAppId, target: unknown, isFile: (file: 
   return []
 }
 
-export function wingetInstall(id: NativeAppId): { command: string; args: string[] } {
+export function wingetInstall(id: NativeAppId): { command: string; args: string[] } | null {
+  const pkg = NATIVE_APPS[id].winget
+
+  if (!pkg) {
+    return null
+  }
+
   return {
     command: 'winget',
-    args: ['install', '--id', NATIVE_APPS[id].winget, '--exact', '--source', 'winget', '--no-upgrade', '--silent', '--disable-interactivity', '--accept-package-agreements', '--accept-source-agreements']
+    args: ['install', '--id', pkg, '--exact', '--source', 'winget', '--no-upgrade', '--silent', '--disable-interactivity', '--accept-package-agreements', '--accept-source-agreements']
   }
 }
 
@@ -89,6 +103,11 @@ export async function installNativeApp(id: NativeAppId, run: Runner = realRunner
   }
 
   const command = wingetInstall(id)
+
+  if (!command) {
+    return { ok: false, error: `${id} cannot be installed automatically` }
+  }
+
   log('apps', `installing ${id}: ${command.command} ${command.args.join(' ')}`)
   const { code, output } = await run(command, process.env, 15 * 60_000)
   const result = interpret(id, code, output)

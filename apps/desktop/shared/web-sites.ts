@@ -116,9 +116,34 @@ export function addressToUrl(input: string): string | null {
   return `${SEARCH}${encodeURIComponent(text)}`
 }
 
-/** Desktop apps the pages hand over to (Signal has no web version; VLC plays what Chromium cannot; Brave itself). */
-export type NativeAppId = 'signal' | 'vlc' | 'brave'
+/** Desktop apps the pane hands over to (Signal and MovieBox have no web version; VLC plays what Chromium cannot; Brave). */
+export type NativeAppId = 'signal' | 'moviebox' | 'vlc' | 'brave'
 
 export function isNativeAppId(value: unknown): value is NativeAppId {
-  return value === 'signal' || value === 'vlc' || value === 'brave'
+  return value === 'signal' || value === 'moviebox' || value === 'vlc' || value === 'brave'
 }
+
+/**
+ * Runs in every frame of a site's view before the page's own scripts (electron/ipc/web.ts). A passkey request needs a
+ * click of the person's: Meta's pages ask for one as they load, and Windows then shows its security dialog over
+ * everything (and Jarod-OS cannot quit while it is up). Conditional requests (passkey autofill, which Electron has no UI
+ * for) wait forever, as in a browser where the person never picks a passkey; a request after a click goes through.
+ */
+export const PASSKEY_GUARD = `(() => {
+  const store = navigator.credentials
+  if (!store || typeof store.get !== 'function' || store.__jarodGuard) return
+  const get = store.get.bind(store)
+  const create = store.create ? store.create.bind(store) : null
+  const clicked = () => Boolean(navigator.userActivation && navigator.userActivation.isActive)
+  const refuse = () => Promise.reject(new DOMException('A passkey needs a click.', 'NotAllowedError'))
+  Object.defineProperty(store, '__jarodGuard', { value: true })
+  store.get = options => {
+    if (options && options.publicKey) {
+      if (options.mediation === 'conditional') return new Promise(() => {})
+      if (!clicked()) return refuse()
+    }
+    return get(options)
+  }
+  if (create) store.create = options => (options && options.publicKey && !clicked() ? refuse() : create(options))
+  if (window.PublicKeyCredential) PublicKeyCredential.isConditionalMediationAvailable = () => Promise.resolve(false)
+})()`
