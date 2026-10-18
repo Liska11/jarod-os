@@ -201,7 +201,7 @@ describe("Q19-5 — un paquet n'écrit que des préférences : liste blanche, ap
     const never = [
       "autoApproveTools", "shellGuard", "agentMode", "disabledTools", "disabledSkills", "disabledPlugins", "sessionBudget",
       "workspace", "providerOverrides", "rag", "updates", "remote", "mobile", "android", "apiServer", "webhooks", "telegram",
-      "discord", "slack", "email", "whatsapp", "sshHosts", "vault", "lsp", "localEngine", "ecosystem", "learning", "curator",
+      "discord", "slack", "email", "whatsapp", "sshHosts", "sshExecHosts", "vault", "lsp", "localEngine", "ecosystem", "learning", "curator",
       "autoImprovement", "terminalShell", "voice", "desktop", "pluginTrust", "alwaysAllowTools",
     ];
     for (const key of never) expect(IMPORTABLE_SETTINGS.includes(key), key).toBe(false);

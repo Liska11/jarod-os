@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { readFileSync } from 'node:fs'
+import { readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { type Launched, launchShell } from './launch'
 
@@ -108,8 +108,65 @@ test('Connexions › Machines distantes shows Tailscale’s real state and the s
   }
 
   await expect(page.getByRole('button', { name: 'Ajouter une machine' })).toBeVisible()
-  await expect(page.getByText(/L’agent ne lance pas de commandes sur ces machines/)).toBeVisible()
+  await expect(page.getByText(/L’agent ne lance de commandes sur une machine que si vous l’activez/)).toBeVisible()
   await page.screenshot({ path: path.join(process.env.AUDIT_SHOTS ?? shell.root, 'remote-machines.png') }).catch(() => undefined)
+})
+
+test('Réglages › Appareils: agent commands on a machine are off by default, on only after a native confirmation, off at once', async () => {
+  // The core appends its remote commands to the shell's control journal; the path it is given lies in this run's throwaway root.
+  const journal = await shell.app.evaluate(() => process.env.JAROD_CONTROL_JOURNAL ?? '')
+  expect(journal.startsWith(shell.root)).toBe(true)
+  expect(path.basename(journal)).toBe('control-audit.jsonl')
+  await expect.poll(async () => (await page.evaluate(() => window.heraldOS.backend.getState())).phase, { timeout: 60_000 }).toBe('ready')
+
+  // Native dialogs replaced in main: the key "chosen" is a throwaway file, every confirmation is recorded and accepted. Nothing connects.
+  const key = path.join(shell.root, 'id_e2e')
+  writeFileSync(key, 'not a real key\n')
+  await shell.app.evaluate(({ dialog }, file) => {
+    const g = globalThis as unknown as { __dialogs: { message: string; detail: string }[] }
+
+    g.__dialogs = []
+    dialog.showOpenDialog = (async () => ({ canceled: false, filePaths: [file] })) as never
+    dialog.showMessageBox = (async (...args: unknown[]) => {
+      const options = args.at(-1) as { message: string; detail?: string }
+
+      g.__dialogs.push({ message: options.message, detail: options.detail ?? '' })
+
+      return { response: 0, checkboxChecked: false }
+    }) as never
+  }, key)
+  const dialogs = () => shell.app.evaluate(() => (globalThis as unknown as { __dialogs: { message: string; detail: string }[] }).__dialogs)
+
+  await page.getByRole('button', { name: 'Réglages' }).first().click()
+  await page.getByRole('button', { name: 'Appareils et API', exact: true }).first().click()
+  await expect(page.getByText('Hôtes SSH').first()).toBeVisible({ timeout: 30_000 })
+  await page.getByRole('button', { name: 'Ajouter…' }).last().click()
+  await page.getByLabel('Nom de l’hôte').fill('pc-e2e')
+  await page.getByLabel('Adresse de l’hôte').fill('100.64.0.9')
+  await page.getByLabel('Utilisateur', { exact: true }).fill('ops')
+  await page.getByRole('button', { name: 'Choisir la clé…' }).click()
+  await expect(page.getByText('Clé : id_e2e')).toBeVisible()
+  await page.getByRole('button', { name: 'Ajouter', exact: true }).click()
+
+  const toggle = page.getByRole('switch', { name: 'Laisser l’agent exécuter des commandes sur pc-e2e (chacune confirmée)' })
+  await expect(toggle).toHaveAttribute('aria-checked', 'false')
+  await expect(page.getByText(/commandes de l’agent : non/)).toBeVisible()
+  expect(await dialogs()).toEqual([])
+
+  await toggle.click()
+  await expect(toggle).toHaveAttribute('aria-checked', 'true')
+  await expect(page.getByText(/commandes de l’agent : oui, chacune confirmée/)).toBeVisible()
+  const asked = await dialogs()
+  expect(asked).toHaveLength(1)
+  expect(asked[0]!.message).toContain('pc-e2e')
+  expect(asked[0]!.detail).toContain('ops@100.64.0.9:22')
+  await page.screenshot({ path: path.join(process.env.AUDIT_SHOTS ?? shell.root, 'ssh-agent-commands.png') }).catch(() => undefined)
+
+  await toggle.click()
+  await expect(toggle).toHaveAttribute('aria-checked', 'false')
+  expect(await dialogs()).toHaveLength(1)
+  await page.getByRole('button', { name: 'Retirer pc-e2e' }).click()
+  await expect(toggle).toHaveCount(0)
 })
 
 test('the switch stays off after a restart: nothing turns the Internet back on by itself', async () => {

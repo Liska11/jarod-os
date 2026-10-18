@@ -611,6 +611,11 @@ export interface Settings {
    */
   sshHosts?: SshHostRecord[];
   /**
+   * Ids of the declared SSH hosts on which the agent may run commands (`remote_exec`), one confirmed command at a time. Absent or
+   * empty: off, and the tool is not offered to the model. Written only by the desktop's `ssh-host-exec-set` (native confirmation).
+   */
+  sshExecHosts?: string[];
+  /**
    * La période du tick du plugin `automation`, en millisecondes — le seul réglage de cette famille
    * qui règle un TEMPS plutôt qu'une liste.
    *

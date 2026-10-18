@@ -25,6 +25,8 @@ export interface SshHost {
   username: string
   port: number
   keyPath: string
+  /** The agent may run commands on it (remote_exec), each one confirmed. Off unless turned on here. */
+  agentExec?: boolean
 }
 
 export interface SshTest {

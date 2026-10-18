@@ -22,6 +22,7 @@ import { systemDestroyTools } from "./system/destroy.js";
 import { systemReadTools } from "./system/tools.js";
 import { pinokioTools } from "./pinokio/tools.js";
 import { ToolRegistry } from "./registry.js";
+import { remoteExecTool } from "./remote-exec.js";
 import { searchTools } from "./search.js";
 import { skillHubTools } from "./skills-hub-tools.js";
 import { SshService } from "./ssh.js";
@@ -40,6 +41,7 @@ export * from "./present.js";
 export * from "./profile-tools.js";
 export * from "./rag-tools.js";
 export * from "./registry.js";
+export * from "./remote-exec.js";
 export * from "./search.js";
 export * from "./skills-hub-tools.js";
 export * from "./skills-tools.js";
@@ -103,6 +105,9 @@ export class ToolsService extends Service {
     for (const t of systemDestroyTools()) r.register(t);
     // Pinokio (ADR-022) : offerts seulement quand Jarod-OS embarque le moteur (JAROD_PINOKIO_URL) ; installer, lancer, arrêter sont `dangerous`.
     for (const t of pinokioTools()) r.register(t);
+    // Remote commands (docs/REMOTE-SSH.md): offered only while a declared host is enabled for them and the control journal is there;
+    // each call asks the person to confirm the exact command (once or deny, never "always").
+    r.register(remoteExecTool({ hosts: this.sshHosts, ssh: this.ssh }));
   }
 
   /**

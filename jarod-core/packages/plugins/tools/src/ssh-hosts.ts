@@ -37,6 +37,13 @@ export const SSH_TEST_COMMAND = "id -un && hostname && uname -sm";
 /** Clé des réglages qui porte la liste déclarée. Les hôtes ne sont donc pas un fichier à part. */
 export const SSH_HOSTS_SETTINGS_KEY = "sshHosts";
 
+/**
+ * Settings key holding the ids of the declared hosts on which the AGENT may run commands (`remote_exec`), each command after the
+ * person's confirmation. Absent or empty: the feature is off and the tool is not offered to the model. Only the desktop's dedicated
+ * channel (`ssh-host-exec-set`, behind a native confirmation) writes it; the generic settings writer does not know this key.
+ */
+export const SSH_EXEC_HOSTS_SETTINGS_KEY = "sshExecHosts";
+
 /** Longueur maximale d'un nom d'hôte déclaré : un nom, pas un paragraphe. */
 const NAME_MAX = 60;
 
@@ -193,7 +200,34 @@ export class SshHostsService {
     const reste = rows.filter((r) => r.id !== id);
     if (reste.length === rows.length) throw new SshInputError(unknownHostMessage(id));
     this.settings.set(SSH_HOSTS_SETTINGS_KEY, reste);
+    // A removed host takes its agent permission with it: a later host can never inherit it.
+    if (this.execEnabledIds().includes(id)) this.setExecEnabled(id, false);
     return reste;
+  }
+
+  /** Ids of the declared hosts on which the agent may run commands (each one confirmed). Unknown ids are dropped. */
+  execEnabledIds(): string[] {
+    const raw = this.settings.get(SSH_EXEC_HOSTS_SETTINGS_KEY);
+    if (!Array.isArray(raw)) return [];
+    const declared = new Set(this.list().map((r) => r.id));
+    return [...new Set(raw.filter((id): id is string => typeof id === "string" && declared.has(id)))];
+  }
+
+  /** Allows or withdraws agent commands on one declared host. Connects nothing. Rend la liste à jour. */
+  setExecEnabled(id: string, enabled: boolean): string[] {
+    const current = this.settings.get(SSH_EXEC_HOSTS_SETTINGS_KEY);
+    const ids = Array.isArray(current) ? current.filter((x): x is string => typeof x === "string") : [];
+    if (enabled) {
+      this.host(id); // an unknown id is refused, never stored
+      if (!ids.includes(id)) ids.push(id);
+      this.settings.set(SSH_EXEC_HOSTS_SETTINGS_KEY, ids);
+    } else {
+      this.settings.set(
+        SSH_EXEC_HOSTS_SETTINGS_KEY,
+        ids.filter((x) => x !== id),
+      );
+    }
+    return this.execEnabledIds();
   }
 
   /** Un hôte déclaré, par son identifiant. Un identifiant inconnu est un refus, pas une connexion. */

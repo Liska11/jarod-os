@@ -158,6 +158,13 @@ describe("conversions", () => {
     expect(String(p.command)).toContain("run_shell");
   });
 
+  it("shows a remote command verbatim and whole, with once/deny only", () => {
+    const command = `find / -name '*.log' -mtime +7 ${"x".repeat(600)} && echo "done"`;
+    const p = approvalParams("s1", "r2", { name: "remote_exec", args: { machine: "pc2", target: "ops@100.64.0.2:22", command } }, "Run this command on pc2");
+    expect(p.command).toBe(command);
+    expect(p).toMatchObject({ tool_name: "remote_exec", choices: ["once", "deny"], allow_permanent: false, allow_session: false, description: "Run this command on pc2" });
+  });
+
   it("n'accorde que sur un choix positif lisible", () => {
     expect(isApproved({ choice: "once" })).toBe(true);
     expect(isApproved({ choice: "deny" })).toBe(false);

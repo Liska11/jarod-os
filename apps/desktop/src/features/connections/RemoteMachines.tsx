@@ -15,7 +15,8 @@ import { errorText } from '../settings/sections/shared.tsx'
 /*
  * Connexions › Machines distantes (docs/REMOTE-SSH.md): Tailscale's state and its machines, the SSH targets you declared, and for each one
  * three separate checks — the network (a TCP connection), the host key (its fingerprint, confirmed before it is trusted) and the
- * authentication (the engine's fixed test command) — then a Terminal tab on it. The agent does not run commands on these machines.
+ * authentication (the engine's fixed test command) — then a Terminal tab on it. The agent runs commands on a machine only when it is
+ * enabled in Settings › Devices, one command at a time, each confirmed by the person (remote_exec, docs/REMOTE-SSH.md).
  */
 
 type Tailscale = Awaited<ReturnType<typeof window.heraldOS.remote.tailscale>>
