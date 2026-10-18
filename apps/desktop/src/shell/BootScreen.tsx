@@ -29,7 +29,7 @@ export function BootScreen({ state, leaving = false }: { state: BackendState; le
       aria-hidden={leaving}
     >
       <div className={cn('no-drag glass flex w-[440px] flex-col items-center gap-6 rounded-2xl px-8 py-10 text-center', leaving && 'boot-card-leave')}>
-        <HeraldLogo height={44} />
+        <HeraldLogo height={120} />
         <div className="flex flex-col gap-1.5">
           <div className="text-[22px] font-medium tracking-tight">Jarod-OS</div>
           <div className="flex items-center justify-center gap-2 text-[13px] text-fg-2">

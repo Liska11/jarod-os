@@ -1,8 +1,23 @@
 // Imported (not a public URL) so Vite rewrites it relative to `base` for the packaged `file://` renderer.
-import heraldMarkUrl from '../assets/brand/herald-mark.png'
+import markUrl from '../assets/brand/jarod-core-mark.webp'
 import { cn } from '../lib/cn.ts'
 
-/** The Jarod-OS mark (the glowing core), a square dark tile with rounded corners; sized by height. */
+/**
+ * The Jarod-OS mark: the glowing core, its edges fading to transparency so it blends into any background, with a soft blue halo
+ * so it stands out. Square; sized by height.
+ */
 export function HeraldLogo({ height = 14, className }: { height?: number; className?: string }) {
-  return <img src={heraldMarkUrl} alt="Jarod-OS" height={height} style={{ height, width: height, borderRadius: Math.round(height * 0.22) }} draggable={false} className={cn('shrink-0 select-none object-cover', className)} />
+  const glow = Math.max(4, Math.round(height * 0.18))
+
+  return (
+    <img
+      src={markUrl}
+      alt="Jarod-OS"
+      height={height}
+      width={height}
+      style={{ height, width: height, filter: `drop-shadow(0 0 ${glow}px rgba(64, 128, 255, 0.45))` }}
+      draggable={false}
+      className={cn('shrink-0 select-none', className)}
+    />
+  )
 }

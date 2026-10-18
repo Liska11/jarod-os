@@ -40,7 +40,7 @@ export function Screensaver({ onDismiss }: { onDismiss: () => void }) {
         <span className="text-[20px] text-fg-2 text-shadow-soft">{now.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })}</span>
       </div>
       <div className="absolute bottom-10 left-1/2 -translate-x-1/2 opacity-70">
-        <HeraldLogo height={28} />
+        <HeraldLogo height={72} />
       </div>
     </div>
   )

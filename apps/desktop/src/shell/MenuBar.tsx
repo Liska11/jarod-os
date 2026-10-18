@@ -263,7 +263,7 @@ export function MenuBar() {
   return (
     <header className="drag-region absolute inset-x-0 top-0 z-(--z-menubar) flex h-(--menubar-h) items-center justify-between px-3 text-[12.5px] text-fg select-none" style={{ background: 'linear-gradient(180deg, var(--menubar-from, rgba(3,10,40,.55)), var(--menubar-to, rgba(3,10,40,.15)))' }}>
       <div className="flex items-center gap-2.5 pl-[74px]">
-        <HeraldLogo height={12} />
+        <HeraldLogo height={24} />
         <span className="font-semibold">Jarod-OS</span>
         {title !== 'Jarod-OS' && (
           <>

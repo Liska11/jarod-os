@@ -68,7 +68,7 @@ export function FirstRunSetup() {
     <div className="absolute inset-0 z-(--z-boot) flex items-center justify-center bg-bg/85 backdrop-blur-md animate-fade-in" role="dialog" aria-label={t('setup.title')}>
       <div className="float flex w-[min(560px,92vw)] flex-col gap-5 rounded-2xl p-7">
         <div className="flex items-center gap-3">
-          <HeraldLogo height={22} />
+          <HeraldLogo height={56} />
           <span className="flex-1" />
           <div className="flex gap-1.5" aria-hidden>
             {steps.map(item => (
