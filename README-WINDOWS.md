@@ -207,4 +207,4 @@ What is different from macOS and Jarod-OS Linux, honestly:
   node-pty's Windows binaries; if it was installed with scripts disabled, run `npm rebuild node-pty`.
 - **See what the agent did.** `%LOCALAPPDATA%\hermes\herald-os\audit.jsonl`, one JSON line per call:
   `{ts, tool, tier, action, decision, ok, summary, error, args}`. The app's own log is
-  `%LOCALAPPDATA%\hermes\logs\herald-os.log`.
+  `%LOCALAPPDATA%\hermes\logs\jarod-os.log` (it was `herald-os.log` before; the app renames it on first start).

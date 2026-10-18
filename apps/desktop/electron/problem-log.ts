@@ -1,7 +1,7 @@
 import type { App, IpcMain, IpcMainInvokeEvent, WebContents } from 'electron'
 
 /*
- * Every problem the app meets reaches herald-os.log, not only the main process's own:
+ * Every problem the app meets reaches the app log (jarod-os.log), not only the main process's own:
  * - a rejected promise nobody handled in the main process (uncaught exceptions were already logged);
  * - what a window prints as an error or a warning: uncaught exceptions and unhandled rejections of the page, the React
  *   error boundary, and the error toasts (`notify` prints them), from every window, popouts and surfaces included;

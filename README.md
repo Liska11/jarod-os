@@ -439,7 +439,7 @@ and words it must leave out, such as a client's name.
 | --- | --- |
 | Jarod-OS preferences | `~/.hermes/herald-os/prefs.json` (edit them in Settings) |
 | Audit log, control socket | `~/.hermes/herald-os/` |
-| Log file | `~/.hermes/logs/herald-os.log` |
+| Log file | `~/.hermes/logs/jarod-os.log` |
 | Hermes config, memories, sessions, credentials | `~/.hermes/`, managed by Hermes |
 
 A few options come from environment variables, mostly for development: starting windowed on macOS
@@ -530,7 +530,7 @@ does not change the shell's code. Moving the pin is described in [upstream/READM
 - **"No Hermes runtime found", or the boot screen never finishes.** Run `hermes doctor`. If Hermes
   lives somewhere other than `~/.hermes/hermes-agent` and is not on your PATH, start with
   `HERALD_OS_HERMES_ROOT=/path/to/hermes-agent npm run dev`. The cause is usually in
-  `~/.hermes/logs/herald-os.log`.
+  `~/.hermes/logs/jarod-os.log`.
 - **macOS says Jarod-OS "is damaged" or "cannot be opened".** The build is not notarized yet: run
   `xattr -dr com.apple.quarantine "/Applications/Jarod-OS.app"` and open it again.
 - **Hermes uses shell commands instead of its system tools.** `hermes plugins list` should show

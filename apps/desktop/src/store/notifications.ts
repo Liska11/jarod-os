@@ -78,7 +78,7 @@ export function notify(input: NotifyInput): HermesNotification {
   const rest = $notifications.get().filter(n => n.id !== item.id)
   $notifications.set([item, ...rest].slice(0, MAX))
 
-  // An error shown to the person is also a problem to keep: the main process copies console errors to herald-os.log.
+  // An error shown to the person is also a problem to keep: the main process copies console errors to jarod-os.log.
   if (item.level === 'error') {
     console.error(`[notify] ${item.title}${item.body ? `: ${item.body}` : ''}`)
   }

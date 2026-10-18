@@ -1,7 +1,31 @@
+import { existsSync, renameSync } from 'node:fs'
 import path from 'node:path'
 import { redactLine } from '../shared/redact.ts'
 import { hermesHome } from './paths.ts'
 import { RotatingLog } from './rotating-log.ts'
+
+/** The app's log, in `<Hermes home>/logs/`. It was `herald-os.log` before the Jarod-OS name. */
+export const LOG_NAME = 'jarod-os.log'
+const LEGACY_NAME = 'herald-os.log'
+
+/**
+ * Renames the old `herald-os.log` (and its older generation `.1`) to the Jarod-OS name, so the history stays in one file.
+ * A `jarod-os.log` that already exists is never overwritten; a failure leaves the old file where it is.
+ */
+export function adoptLegacyLog(dir: string): void {
+  for (const suffix of ['', '.1']) {
+    const legacy = path.join(dir, LEGACY_NAME + suffix)
+    const current = path.join(dir, LOG_NAME + suffix)
+
+    try {
+      if (existsSync(legacy) && !existsSync(current)) {
+        renameSync(legacy, current)
+      }
+    } catch {
+      /* in use or not ours to move: the old file simply stays */
+    }
+  }
+}
 
 const MAX_TAIL = 400
 const tail: string[] = []
@@ -13,12 +37,14 @@ function ensureSink(): RotatingLog | null {
     return sink
   }
 
-  // Under Vitest the log stays in memory: tests used to append to the person's real herald-os.log (HERMES_HOME).
+  // Under Vitest the log stays in memory: tests used to append to the person's real log (HERMES_HOME).
   if (process.env.VITEST) {
     return null
   }
 
-  sink = new RotatingLog(path.join(hermesHome(), 'logs', 'herald-os.log'), MAX_LOG_BYTES)
+  const dir = path.join(hermesHome(), 'logs')
+  adoptLegacyLog(dir)
+  sink = new RotatingLog(path.join(dir, LOG_NAME), MAX_LOG_BYTES)
 
   return sink
 }

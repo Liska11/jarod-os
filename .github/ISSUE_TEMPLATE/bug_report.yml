@@ -49,6 +49,6 @@ body:
     attributes:
       label: Logs
       description: |
-        The end of `~/.hermes/logs/herald-os.log` (on Linux, also `~/.local/state/herald-os/shell.log`).
+        The end of `~/.hermes/logs/jarod-os.log` (on Linux, also `~/.local/state/herald-os/shell.log`).
         Remove anything private (API keys, file names, conversation text) before pasting.
       render: text

@@ -7,7 +7,7 @@ Jarod-OS is running but something misbehaves.
 
 - **Hermes does not answer.** The menu bar shows a badge while Hermes is unreachable. Run
   `hermes doctor` in a terminal; if it asks you to sign in, run `hermes setup`. Jarod-OS's own
-  log is `~/.hermes/logs/herald-os.log`.
+  log is `~/.hermes/logs/jarod-os.log`.
 - **Hermes runs shell commands instead of its system tools.** The system bridge is not loaded:
   run `npm run bootstrap` in your Jarod-OS checkout (or `herald-os setup` from a package), then
   restart Jarod-OS. `hermes plugins list` should show `herald-os-bridge` as enabled.
@@ -38,12 +38,12 @@ Jarod-OS is running but something misbehaves.
 ## Hooks and event automations
 
 - **A hook does not run.** It must be executable (`chmod +x`) and must not end in `.sample`. Its
-  output is in `~/.hermes/logs/herald-os.log`, on lines starting with `[hooks]`.
+  output is in `~/.hermes/logs/jarod-os.log`, on lines starting with `[hooks]`.
 - **An event automation did not run.** Hermes must be running when the event happens, and the
   automation must be on. The log has a `[events]` line for every event and every automation fired.
 
 ## Collecting details for a bug report
 
 On Jarod-OS Linux, `herald-os debug` prints the versions and the last lines of the logs. On a Mac,
-attach the end of `~/.hermes/logs/herald-os.log`. Report security problems privately, as described
+attach the end of `~/.hermes/logs/jarod-os.log`. Report security problems privately, as described
 in [SECURITY.md](../../SECURITY.md).

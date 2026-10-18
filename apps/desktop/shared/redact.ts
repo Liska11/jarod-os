@@ -1,7 +1,7 @@
 /**
  * Même liste que `jarod-core/packages/kernel/src/redact.ts` (source unique du noyau) : le shell ne peut pas
  * l'importer (`apps/desktop` n'a aucune dépendance `@jarod/*`), et une erreur d'agent, un HTTP refusé ou une
- * ligne de journal ne doit pas afficher un secret — ni dans la fenêtre, ni dans `herald-os.log`.
+ * ligne de journal ne doit pas afficher un secret — ni dans la fenêtre, ni dans `jarod-os.log`.
  * Toute modification du noyau doit être répercutée ici (les tests des deux côtés portent les mêmes vecteurs).
  */
 const SECRET_TEXT: [RegExp, string][] = [
