@@ -49,6 +49,15 @@ export function legacyShellConfigDir(home: string = os.homedir()): string {
 
 export const isDev = process.env.HERALD_OS_BUILD_MODE === 'development' || Boolean(osEnv('DEV_SERVER'))
 
+/**
+ * The Windows AppUserModelID: the installed app's only when packaged. Any run from the checkout (dev server, `electron .`, the
+ * e2e suite) uses electron.exe; under the installed app's id it left a Start Menu shortcut to electron.exe carrying that id,
+ * and the taskbar then showed Electron's icon for the installed Jarod-OS.
+ */
+export function appUserModelId(packaged: boolean): string {
+  return packaged ? 'one.jarod.os' : 'one.jarod.os.dev'
+}
+
 export function devServerUrl(): string | undefined {
   return osEnv('DEV_SERVER')
 }

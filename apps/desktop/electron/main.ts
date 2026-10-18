@@ -39,7 +39,7 @@ import { registerNotificationHistoryIpc } from './notifications-history.ts'
 import { osEnv } from './env.ts'
 import { claimSingleInstance } from './single-instance.ts'
 import { SwitchService } from './switches.ts'
-import { hermesHome, heraldOsDataDir, isDev, legacyShellConfigDir, shellConfigDir } from './paths.ts'
+import { appUserModelId, hermesHome, heraldOsDataDir, isDev, legacyShellConfigDir, shellConfigDir } from './paths.ts'
 import { readPrefs, writePrefs } from './prefs.ts'
 import { isOmarchy, readOmarchyTheme } from './theme/omarchy.ts'
 import { prefsForTheme } from './theme/themes.ts'
@@ -735,10 +735,10 @@ app.whenReady().then(async () => {
     app.dock?.setIcon(icon)
   }
 
-  // Windows groups the taskbar button, jump list and toast notifications under this id. A dev run (`electron .`) gets its own: it leaves a
-  // Start Menu shortcut to electron.exe under its id, and sharing the installed app's id made the taskbar show Electron's atom for Jarod-OS.
+  // Windows groups the taskbar button, jump list and toast notifications under this id. Only the packaged app takes the installed
+  // app's id: a run from the checkout (dev or e2e, both on electron.exe) leaves a Start Menu shortcut under its id (see paths.ts).
   if (process.platform === 'win32') {
-    app.setAppUserModelId(isDev ? 'one.jarod.os.dev' : 'one.jarod.os')
+    app.setAppUserModelId(appUserModelId(app.isPackaged))
   }
 
   registerCoreIpc()
