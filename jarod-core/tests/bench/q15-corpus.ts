@@ -24,7 +24,7 @@
  *
  *     pnpm --filter @jarod/gates bench:q15-corpus
  */
-import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, type Stats, statSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -79,7 +79,7 @@ function walk(dir: string, keep: (name: string) => boolean, out: string[]): void
   }
   for (const name of entries) {
     const p = join(dir, name);
-    let st;
+    let st: Stats;
     try {
       st = statSync(p);
     } catch {
@@ -243,7 +243,7 @@ async function main(): Promise<void> {
       const vs = readEmbeddings(await res.json());
       if (vs.length !== batch.length || vs.some((v) => v.length !== DIM)) throw new Error("réponse d'embeddings incomplète");
       const out = new Float32Array(vs.length * DIM);
-      vs.forEach((v, i) => out.set(v, i * DIM));
+      vs.forEach((v, i) => { out.set(v, i * DIM); });
       appendFileSync(vecPath, Buffer.from(out.buffer));
       n += vs.length;
       if (Math.floor(n / 2000) !== Math.floor((n - vs.length) / 2000)) {

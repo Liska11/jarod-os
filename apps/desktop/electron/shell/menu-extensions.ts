@@ -37,7 +37,7 @@ const expandHome = (arg: string) => (arg === '~' ? os.homedir() : arg.startsWith
 export function runMenuExtension(id: string): Promise<void> {
   const entry = readMenuExtensions().entries.find(item => item.id === id)
 
-  if (!entry || entry.action.kind !== 'exec') {
+  if (entry?.action.kind !== 'exec') {
     return Promise.reject(new Error('That entry is no longer in menu.json'))
   }
 

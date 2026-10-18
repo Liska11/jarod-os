@@ -56,7 +56,7 @@ function topK(scores: number[], k: number): number[] {
 
 function rrf(a: readonly number[], b: readonly number[], limit: number): number[] {
   const score = new Map<number, number>();
-  for (const list of [a, b]) list.forEach((id, r) => score.set(id, (score.get(id) ?? 0) + 1 / (RRF_K + r + 1)));
+  for (const list of [a, b]) list.forEach((id, r) => { score.set(id, (score.get(id) ?? 0) + 1 / (RRF_K + r + 1)); });
   return [...score.entries()].sort((x, y) => y[1] - x[1] || x[0] - y[0]).slice(0, limit).map(([id]) => id);
 }
 
@@ -129,7 +129,7 @@ async function main(): Promise<void> {
     const fts = new Database(":memory:");
     fts.exec("CREATE VIRTUAL TABLE fts USING fts5(text, content='', tokenize='unicode61 remove_diacritics 2')");
     const ins = fts.prepare("INSERT INTO fts(rowid, text) VALUES (?, ?)");
-    chunks.forEach((c, i) => ins.run(i + 1, c.text));
+    chunks.forEach((c, i) => { ins.run(i + 1, c.text); });
     const stmt = fts.prepare(`SELECT rowid FROM fts WHERE fts MATCH ? ORDER BY bm25(fts) LIMIT ${DEPTH}`);
     const inv = chunks.map((c) => 1 / norm(c.vector));
 

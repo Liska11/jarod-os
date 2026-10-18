@@ -648,7 +648,7 @@ export async function trashItems(items: FileItem[]): Promise<boolean> {
 
   try {
     await window.heraldOS.fs.trash(items.map(item => item.path))
-    items.forEach(item => invalidatePath(item.path))
+    items.forEach(item => { invalidatePath(item.path) })
 
     if (items.some(item => item.path === $selectedPath.get())) {
       $selectedPath.set(null)

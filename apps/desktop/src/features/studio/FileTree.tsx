@@ -36,7 +36,7 @@ function buildTree(root: string, entries: TreeEntry[]): Node[] {
 
   const order = (nodes: Node[]) => {
     nodes.sort((a, b) => (a.kind === b.kind ? a.name.localeCompare(b.name, undefined, { numeric: true }) : a.kind === 'directory' ? -1 : 1))
-    nodes.forEach(n => order(n.children))
+    nodes.forEach(n => { order(n.children) })
   }
   order(top.children)
 

@@ -186,7 +186,7 @@ export function createSessionHandlers(ctx: HandlerContext, gate: FileGate) {
     "set-session-model-override": (sessionId: unknown, override: unknown): true => {
       if (typeof sessionId !== "string" || !agent().sessions.get(sessionId)) throw new Error(`[oneai] conversation inconnue : ${String(sessionId)}`);
       const o = override && typeof override === "object" ? (override as { provider?: unknown; model?: unknown }) : null;
-      if (!o || !o.model) {
+      if (!o?.model) {
         agent().updateSessionContext(sessionId, { modelPinned: false });
         return true;
       }

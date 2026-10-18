@@ -203,7 +203,7 @@ describe.skipIf(!existsSync(BIN))("sidecar turbovec réel (sidecars/turbovec, co
     const { insert, shadow, withShadow, plain, flag } = await setup(tv, "turbovec");
     const next = rng(9);
     const vectors = Array.from({ length: 400 }, () => vec(next));
-    vectors.forEach((v, i) => insert(`d${i}`, 0, v));
+    vectors.forEach((v, i) => { insert(`d${i}`, 0, v); });
     flag(true);
     try {
       for (let n = 0; n < 20; n++) {

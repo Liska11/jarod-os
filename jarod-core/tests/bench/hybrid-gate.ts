@@ -186,7 +186,7 @@ async function main(): Promise<void> {
       };
       const hq = held.questions.map((x) => ({ text: x.q, ok: new Set(x.answer.map(fullH)) }));
       const f = await runSet(hq);
-      const lost = held.questions.filter((x, i) => f.ranks.off[i] !== null && f.ranks.off[i]! <= 10 && (f.ranks.on[i] === null || f.ranks.on[i]! > 10)).map((x) => x.n);
+      const lost = held.questions.filter((_x, i) => f.ranks.off[i] !== null && f.ranks.off[i]! <= 10 && (f.ranks.on[i] === null || f.ranks.on[i]! > 10)).map((x) => x.n);
       barF = f.hybrid.at1 >= f.dense.at1 && f.hybrid.at3 >= f.dense.at3 && f.hybrid.at10 >= f.dense.at10 && lost.length === 0;
       report.f = { n: hq.length, dense: f.dense, hybrid: f.hybrid, ranks: Object.fromEntries(held.questions.map((x, i) => [x.n, [f.ranks.off[i], f.ranks.on[i]]])), lost };
       console.log(`(f) hors échantillon ${hq.length} questions — dense @1 ${f.dense.at1} @3 ${f.dense.at3} @10 ${f.dense.at10} MRR ${f.dense.mrr} ; hybride @1 ${f.hybrid.at1} @3 ${f.hybrid.at3} @10 ${f.hybrid.at10} MRR ${f.hybrid.mrr} ; sorties du top 10 : ${lost.length ? lost.join(",") : "aucune"} → BARRE (f) : ${barF ? "TENUE" : "MANQUÉE"}`);
@@ -201,7 +201,7 @@ async function main(): Promise<void> {
     for (let i = 0; i < lq.length; i += 16) {
       const batch = lq.slice(i, i + 16);
       const v = await a.embeddings.embed(batch);
-      batch.forEach((t, j) => vecs.set(t, v[j]!));
+      batch.forEach((t, j) => { vecs.set(t, v[j]!); });
     }
     let current = "";
     real.setEmbedder(async () => [vecs.get(current)!]);

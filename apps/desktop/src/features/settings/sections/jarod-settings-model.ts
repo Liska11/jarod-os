@@ -133,6 +133,7 @@ export function readRootProblem(root: string): string | null {
     return t('validate.readRootAbsolute')
   }
 
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: intended, rejects input that contains control characters
   if (/(^|[\\/])\.\.([\\/]|$)/.test(r) || /[*?<>|"\u0000-\u001f]/.test(r)) {
     return t('validate.readRootChars')
   }

@@ -393,7 +393,8 @@ export class EngineService {
 
   /** Remembers the folder chosen for Hugging Face downloads (already validated by the caller, who knows where the profile lives): an absolute path, nothing else. */
   setModelsDir(dir: string): LocalEngineConfig {
-    if (typeof dir !== "string" || !isAbsolute(dir) || dir.length > 1024 || /[ -]/.test(dir)) throw new Error("Dossier des modèles : un chemin absolu est attendu.");
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: intended, rejects input that contains control characters
+    if (typeof dir !== "string" || !isAbsolute(dir) || dir.length > 1024 || /[\u0000-\u001f]/.test(dir)) throw new Error("Dossier des modèles : un chemin absolu est attendu.");
     return this.save({ modelsDir: dir });
   }
 

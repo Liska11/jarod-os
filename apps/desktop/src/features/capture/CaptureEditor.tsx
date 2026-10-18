@@ -59,7 +59,7 @@ function drawShape(ctx: CanvasRenderingContext2D, shape: Shape, scale: number): 
       }
 
       ctx.beginPath()
-      shape.points.forEach((point, i) => (i === 0 ? ctx.moveTo(point.x, point.y) : ctx.lineTo(point.x, point.y)))
+      shape.points.forEach((point, i) => { if (i === 0) ctx.moveTo(point.x, point.y); else ctx.lineTo(point.x, point.y) })
       ctx.stroke()
       break
     case 'box':

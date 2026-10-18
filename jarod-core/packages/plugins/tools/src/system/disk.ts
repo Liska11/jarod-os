@@ -1,6 +1,6 @@
 // Outils système (phase 1, lecture seule) : `system_disk_usage`. Le parcours (équivalent de `du -d`) et la liste des emplacements protégés
 // de Herald OS (`WINDOWS_PROTECTED`, permissions.py) : un chemin protégé est refusé AVANT toute lecture, par son nom puis par son chemin réel.
-import { type Dirent, realpathSync } from "node:fs";
+import { type Dir, type Dirent, realpathSync } from "node:fs";
 import { lstat, opendir } from "node:fs/promises";
 import { homedir } from "node:os";
 import { isAbsolute, join, relative, resolve, sep } from "node:path";
@@ -67,7 +67,7 @@ export async function measureTree(root: string, depth: number, opts: { deadline:
   async function visit(dir: string, level: number): Promise<number> {
     if (opts.signal?.aborted) throw new Error("Interrompu");
     let total = 0;
-    let handle;
+    let handle: Dir;
     try {
       handle = await opendir(dir);
     } catch {

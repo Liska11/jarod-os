@@ -1,13 +1,13 @@
 // SPECS-P5-WEBHOOKS § 5 — gate vivante (WG0-WG8).
 // Opt-in : GATE_WEBHOOKS_LIVE=1
 // Sans l'opt-in : refus explicite, code 2, avant vitest ET au chargement du fichier de test.
-import { describe, expect, it, beforeAll, afterAll, vi } from "vitest";
-import { sign, WebhookService } from "@jarod/plugin-scheduler";
+import { describe, expect, it, beforeAll, afterAll } from "vitest";
+import { sign } from "@jarod/plugin-scheduler";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { randomUUID } from "node:crypto";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, rmSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { spawn, type ChildProcess } from "node:child_process";
 
@@ -87,13 +87,12 @@ process.env.JAROD_HOME = testDataDir;
 const fakeModel = new FakeModelServer();
 
 describe("Gate vivante WebhookService (WG0-WG8)", () => {
-  let modelPort: number;
   let jarodProcess: ChildProcess | null = null;
   let jarodPort: number | null = null;
   let jarodHookSecret: string | null = null;
 
   beforeAll(async () => {
-    modelPort = await fakeModel.start();
+    await fakeModel.start();
     console.log(`[WG] Faux modèle sur ${fakeModel.url}`);
     // Active webhooks dans le profil de test AVANT de lancer le CLI
     // Écriture DIRECTE dans la base SQLite pour éviter tout problème de verrou cross-processus

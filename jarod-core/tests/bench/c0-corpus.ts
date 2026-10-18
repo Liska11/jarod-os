@@ -137,7 +137,7 @@ async function main(): Promise<void> {
       const vs = readEmbeddings(await res.json());
       if (vs.length !== batch.length || vs.some((v) => v.length !== DIM)) throw new Error("réponse d'embeddings incomplète");
       const out = new Float32Array(vs.length * DIM);
-      vs.forEach((v, i) => out.set(v, i * DIM));
+      vs.forEach((v, i) => { out.set(v, i * DIM); });
       appendFileSync(vPath, Buffer.from(out.buffer));
     }
     const m = emb.metrics();

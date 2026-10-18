@@ -1,11 +1,9 @@
 // Portage de packages/cli/src/main.ts (rév. 2e180305) — sous-commandes dont les services sont portés
 // (ask, sessions, show, search, memory, profiles, events, serve — P3 avec plugin-gateways).
 // `mcp` : SPECS-P5-MCP.md ; `acp` : SPECS-P5-ACP.md. Plus aucune commande en attente. `improve` n'est pas porté (décision du 2026-10-02).
-import { spawn } from "node:child_process";
-import { closeSync, existsSync, mkdirSync, openSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { createInterface } from "node:readline/promises";
-import { setTimeout as sleep } from "node:timers/promises";
 import { redactKeyedText } from "@jarod/kernel/redact";
 import type { MemoryType, Settings } from "@jarod/contracts";
 import type { AgentHooks } from "@jarod/plugin-agent";
@@ -25,7 +23,6 @@ const tty = process.stdout.isTTY;
 const dim = (s: string) => (tty ? `\x1b[2m${s}\x1b[0m` : s);
 const bold = (s: string) => (tty ? `\x1b[1m${s}\x1b[0m` : s);
 const red = (s: string) => (tty ? `\x1b[31m${s}\x1b[0m` : s);
-const green = (s: string) => (tty ? `\x1b[32m${s}\x1b[0m` : s);
 
 export const HELP = `Jarod-One ${VERSION} — en ligne de commande
 
@@ -366,10 +363,6 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
       }
       break;
     }
-    default:
-      console.error(`Commande inconnue : ${args.command}\n\n${HELP}`);
-      await core.dispose();
-      return 2;
     case "portability": {
       const bundleDir = args.positional[1];
       if (args.positional[0] !== "apply" || !bundleDir) {
@@ -386,6 +379,10 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
       await core.dispose();
       return code;
     }
+    default:
+      console.error(`Commande inconnue : ${args.command}\n\n${HELP}`);
+      await core.dispose();
+      return 2;
   }
   await core.dispose();
   return 0;

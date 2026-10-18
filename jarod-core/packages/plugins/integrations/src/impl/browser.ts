@@ -92,6 +92,7 @@ export const DEFAULT_DENY_DOMAINS = [
 ];
 const DENY_HOST_WORDS = /bank|banque|bnpparibas|creditagricole|societegenerale|boursorama|payment|paiement|checkout|wallet/i;
 const DEFAULT_KEYS = ["enter", "tab", "escape", "up", "down", "pageup", "pagedown", "home", "end"];
+// biome-ignore lint/suspicious/noControlCharactersInRegex: intended, CONTROL rejects text that contains control characters
 const CONTROL = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/;
 
 export interface BrowserAuditEntry {

@@ -10,7 +10,7 @@ import type {} from "@jarod/plugin-storage";
 import type { Context } from "cordis";
 import { JobsService } from "./jobs.js";
 import { type Schedule, Scheduler } from "./scheduler.js";
-import { DEFAULT_HOOK_PORT, WebhookService, normalizeHookPort } from "./webhooks.js";
+import { WebhookService, normalizeHookPort } from "./webhooks.js";
 
 export * from "./cron.js";
 export * from "./jobs.js";

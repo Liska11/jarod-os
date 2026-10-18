@@ -5,7 +5,6 @@ import { createServer, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
 import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
-import type { TestCore as JarodCore } from "./helpers.js";
 import { MIGRATIONS } from "@jarod/plugin-storage";
 import {
   blobToFloats,

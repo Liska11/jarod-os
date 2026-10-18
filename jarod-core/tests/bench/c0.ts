@@ -79,7 +79,7 @@ function loadItems(): { items: Item[]; chunkVectors: Float32Array; chunks: Chunk
   const kv = readFileSync(join(C0_DIR, "keyword-vectors.f32"));
   const kvf = new Float32Array(kv.buffer, kv.byteOffset, kv.byteLength / 4);
   if (kvf.length !== kw.length * DIM) throw new Error("vecteurs des requêtes D incomplets : lancer bench:c0-corpus");
-  kw.forEach((k, i) => items.push({ set: "D", text: k.text, vector: kvf.subarray(i * DIM, (i + 1) * DIM), ok: new Set(k.acceptable) }));
+  kw.forEach((k, i) => { items.push({ set: "D", text: k.text, vector: kvf.subarray(i * DIM, (i + 1) * DIM), ok: new Set(k.acceptable) }); });
   const chunkVectors = all.subarray(queries.length * DIM);
   return { items, chunkVectors, chunks };
 }
@@ -109,7 +109,7 @@ function buildFts(chunks: readonly Chunk[], size: number, path: string): { db: D
 
 function rrf(a: readonly number[], b: readonly number[], limit: number): number[] {
   const score = new Map<number, number>();
-  for (const list of [a, b]) list.forEach((id, r) => score.set(id, (score.get(id) ?? 0) + 1 / (RRF_K + r + 1)));
+  for (const list of [a, b]) list.forEach((id, r) => { score.set(id, (score.get(id) ?? 0) + 1 / (RRF_K + r + 1)); });
   return [...score.entries()].sort((x, y) => y[1] - x[1] || x[0] - y[0]).slice(0, limit).map(([id]) => id);
 }
 

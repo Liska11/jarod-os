@@ -363,6 +363,7 @@ export class FileGate {
 /** Segment de nom sûr (SANK-UI `attachment-staging.ts:20-31`, `media.ts:41-48`) : ni séparateur ni contrôle. */
 export function sanitizeSegment(value: unknown, fallback: string, max = 200): string {
   const cleaned = String(value ?? "")
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: intended, strips control characters from untrusted text
     .replace(/[\x00-\x1F<>:"/\\|?*]/g, "")
     .replace(/\s+/g, "_")
     .replace(/\.{2,}/g, ".")

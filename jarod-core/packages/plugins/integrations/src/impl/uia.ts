@@ -74,6 +74,7 @@ export interface UiaDeps {
   now?: () => number;
 }
 
+// biome-ignore lint/suspicious/noControlCharactersInRegex: intended, CONTROL rejects text that contains control characters
 const CONTROL = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/;
 
 export class UiaAutomation {

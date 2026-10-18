@@ -201,7 +201,7 @@ export function createAcpHandlers(opts: { core: AcpCore; transport: AcpTransport
       if (method !== "session/cancel") return;
       const id = obj(params).sessionId;
       const st = typeof id === "string" ? sessions.get(id) : undefined;
-      if (!st || !st.running || typeof id !== "string") return;
+      if (!st?.running || typeof id !== "string") return;
       st.cancelled = true;
       st.abort?.abort();
       core.stop(id);

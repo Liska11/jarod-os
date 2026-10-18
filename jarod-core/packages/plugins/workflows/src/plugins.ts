@@ -420,7 +420,7 @@ export class PluginHost {
   /** Résout des noms d'outils (« roll_dice » ou « des_roll_dice ») en noms enregistrés du plugin ; aucun nom = tous. */
   private resolveTools(id: string, names: readonly string[]): { loaded: Loaded; tools: string[] } {
     const loaded = this.loaded.get(id);
-    if (!loaded || loaded.info.state !== "active") throw new Error(`Plugin « ${id} » introuvable ou inactif.`);
+    if (loaded?.info.state !== "active") throw new Error(`Plugin « ${id} » introuvable ou inactif.`);
     const prefix = `${id.replace(/-/g, "_")}_`;
     if (!names.length) return { loaded, tools: [...loaded.info.tools] };
     const tools = names.map((n) => {

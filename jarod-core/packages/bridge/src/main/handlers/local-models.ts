@@ -17,6 +17,7 @@ const bad = (why: string): never => {
   throw new Error(`[oneai] modèles locaux : ${why}`);
 };
 
+// biome-ignore lint/suspicious/noControlCharactersInRegex: intended, rejects input that contains control characters
 const ID = /^[^\u0000-\u001f]{1,300}$/;
 
 function backendOf(v: unknown): LocalBackend {
