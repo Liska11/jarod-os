@@ -30,6 +30,24 @@ const PAIRING_TTL_MS = 10 * 60_000;
 const APPROVAL_TIMEOUT_MS = 10 * 60_000;
 /** A voice message, decoded: about two minutes of Opus, with room to spare. */
 export const MAX_VOICE_BYTES = 3 * 1024 * 1024;
+/**
+ * A photo or file sent from the phone. Base64 inside a sealed frame grows it by about 1.8: 4 MB keeps
+ * the frame under the mobile bridge's 8 MB limit.
+ */
+export const MAX_REMOTE_FILE_BYTES = 4 * 1024 * 1024;
+/** What a phone may send: images, PDFs and plain text. Anything else is refused here, whatever the phone says. */
+const REMOTE_FILE_MIMES = new Set([
+  "image/png",
+  "image/jpeg",
+  "image/gif",
+  "image/webp",
+  "application/pdf",
+  "text/plain",
+  "text/markdown",
+  "text/csv",
+  "application/json",
+]);
+const MAX_TITLE = 120;
 /** How long a direct channel may stay open without completing its handshake. */
 const HANDSHAKE_MS = 15_000;
 const TOUCH_MS = 60_000;
@@ -44,6 +62,35 @@ function safeEqualHex(a: string, b: string): boolean {
   const left = Buffer.from(a, "utf8");
   const right = Buffer.from(b, "utf8");
   return left.length === right.length && timingSafeEqual(left, right);
+}
+
+const startsWith = (data: Buffer, ...bytes: number[]) => bytes.every((b, i) => data[i] === b);
+
+/**
+ * Whether the bytes are what the declared type says: the leading signature for images and PDFs,
+ * valid UTF-8 without NUL bytes for text. The type the phone names is never trusted on its own.
+ */
+export function contentMatches(mime: string, data: Buffer): boolean {
+  switch (mime) {
+    case "image/png":
+      return startsWith(data, 0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a);
+    case "image/jpeg":
+      return startsWith(data, 0xff, 0xd8, 0xff);
+    case "image/gif":
+      return data.subarray(0, 6).toString("latin1") === "GIF87a" || data.subarray(0, 6).toString("latin1") === "GIF89a";
+    case "image/webp":
+      return data.subarray(0, 4).toString("latin1") === "RIFF" && data.subarray(8, 12).toString("latin1") === "WEBP";
+    case "application/pdf":
+      return data.subarray(0, 5).toString("latin1") === "%PDF-";
+    default:
+      if (data.includes(0)) return false;
+      try {
+        new TextDecoder("utf-8", { fatal: true }).decode(data);
+        return true;
+      } catch {
+        return false;
+      }
+  }
 }
 
 // RemoteDevice, RemoteConfig (host.ts:25-40) : déplacés dans @jarod/contracts (ré-exportés).
@@ -428,7 +475,10 @@ export class RemoteHost extends Emitter<{ status: RemoteStatus }> implements App
     this.send(c.cid, await c.channel.seal(message));
   }
 
-  /** Remote API: a deliberately small surface (conversations only; no settings, files or keys). */
+  /**
+   * Remote API: a deliberately small surface (conversations only; no settings or keys). Files only go
+   * one way: a phone may attach a checked photo or document to a message, never read this computer's.
+   */
   private async call(c: Client, method: string, p: Record<string, unknown>): Promise<unknown> {
     const core = this.core;
     const session = (id: unknown) => {
@@ -451,6 +501,21 @@ export class RemoteHost extends Emitter<{ status: RemoteStatus }> implements App
         const s = core.sessions.create();
         return { id: s.id, title: s.title };
       }
+      case "sessions.rename": {
+        const s = session(p.sessionId);
+        const title = String(p.title ?? "").replace(/\s+/g, " ").trim().slice(0, MAX_TITLE);
+        if (!title) throw new Error("Titre vide");
+        core.sessions.rename(s.id, title);
+        return { id: s.id, title };
+      }
+      case "sessions.delete": {
+        // The phone asks for a confirmation first; here, the run is stopped and the conversation goes,
+        // its attachments with it (like the desktop's delete).
+        const s = session(p.sessionId);
+        core.stop(s.id);
+        core.sessions.delete(s.id);
+        return true;
+      }
       case "messages.list":
         return core.messages
           .list(session(p.sessionId).id)
@@ -463,6 +528,8 @@ export class RemoteHost extends Emitter<{ status: RemoteStatus }> implements App
             toolName: m.toolName,
             isError: m.isError,
             toolCalls: m.toolCalls?.map((t) => ({ id: t.id, name: t.name })),
+            // Names and sizes only: the files themselves stay on this computer.
+            attachments: m.attachments?.map((a) => ({ name: a.name, mime: a.mime, size: a.size })),
           }));
       case "chat.send": {
         const s = session(p.sessionId);
@@ -485,6 +552,23 @@ export class RemoteHost extends Emitter<{ status: RemoteStatus }> implements App
         const r = await core.submit(s.id, heard, this.hooksFor(c));
         if (r.kind === "command") return { kind: "command", heard, text: r.result.text ?? "" };
         return { kind: r.kind, heard };
+      }
+      case "chat.file": {
+        // A photo or file from the phone, stored as an attachment of the conversation (encrypted like
+        // the desktop's), then sent with the optional caption as one message.
+        const s = session(p.sessionId);
+        const mime = String(p.mime ?? "").toLowerCase();
+        if (!REMOTE_FILE_MIMES.has(mime)) throw new Error("Type de fichier non pris en charge");
+        const data = Buffer.from(String(p.data ?? ""), "base64");
+        if (data.length === 0) throw new Error("Fichier vide");
+        if (data.length > MAX_REMOTE_FILE_BYTES) throw new Error("Fichier trop volumineux (4 Mo au plus)");
+        if (!contentMatches(mime, data)) throw new Error("Le contenu ne correspond pas au type annoncé");
+        const name = String(p.name ?? "").trim() || "fichier";
+        const attachment = core.attachments.save(name, mime, data);
+        const text = String(p.text ?? "").slice(0, MAX_TEXT);
+        const r = await core.submit(s.id, text, this.hooksFor(c), [attachment]);
+        if (r.kind === "busy") core.attachments.deleteUnreferenced([attachment.id]);
+        return { kind: r.kind, attachment };
       }
       case "chat.stop":
         core.stop(session(p.sessionId).id);

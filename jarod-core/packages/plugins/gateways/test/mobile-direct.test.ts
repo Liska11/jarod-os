@@ -396,6 +396,110 @@ describe("mobile bridge — the app's conversations", () => {
   });
 });
 
+describe("mobile bridge — tidying conversations from the phone", () => {
+  it("renames a conversation, and refuses an unknown one or an empty title", async () => {
+    const r = await started();
+    try {
+      const session = r.core.sessions.create("Ancien titre");
+      const { phone } = await pairPhone(r);
+      const renamed = await phone.rpc("sessions.rename", { sessionId: session.id, title: "  Courses\n de la semaine " });
+      expect(renamed.result).toEqual({ id: session.id, title: "Courses de la semaine" });
+      expect(r.core.sessions.get(session.id)?.title).toBe("Courses de la semaine");
+      expect((await phone.rpc("sessions.rename", { sessionId: session.id, title: "   " })).error).toContain("vide");
+      expect((await phone.rpc("sessions.rename", { sessionId: "inconnu", title: "x" })).error).toContain("introuvable");
+      const long = await phone.rpc("sessions.rename", { sessionId: session.id, title: "a".repeat(500) });
+      expect((long.result as { title: string }).title).toHaveLength(120);
+      phone.hangUp();
+    } finally {
+      await r.stop();
+    }
+  });
+
+  it("deletes a conversation with its attachments, and refuses an unknown one", async () => {
+    const r = await started();
+    try {
+      const session = r.core.sessions.create("À supprimer");
+      const kept = r.core.sessions.create("À garder");
+      const att = r.core.attachments.save("note.txt", "text/plain", Buffer.from("bonjour"));
+      r.core.messages.add(session.id, { role: "user", content: "voici", attachments: [att] });
+      const { phone } = await pairPhone(r);
+      expect((await phone.rpc("sessions.delete", { sessionId: "inconnu" })).error).toContain("introuvable");
+      expect((await phone.rpc("sessions.delete", { sessionId: session.id })).result).toBe(true);
+      expect(r.core.sessions.get(session.id)).toBeUndefined();
+      expect(r.core.attachments.get(att.id)).toBeUndefined();
+      expect(r.core.sessions.get(kept.id)).toBeDefined();
+      phone.hangUp();
+    } finally {
+      await r.stop();
+    }
+  });
+});
+
+describe("mobile bridge — a photo or file from the phone", () => {
+  const png = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.alloc(32)]);
+
+  it("stores a checked file as an attachment of the conversation and sends it", async () => {
+    const r = await started();
+    try {
+      const session = r.core.sessions.create("Photos");
+      const { phone } = await pairPhone(r);
+      const sent = await phone.rpc("chat.file", {
+        sessionId: session.id,
+        name: "photo.png",
+        mime: "image/png",
+        data: png.toString("base64"),
+        text: "que vois-tu ?",
+      });
+      expect(sent.error).toBeUndefined();
+      const { attachment } = sent.result as { attachment: { id: string; name: string; size: number } };
+      expect(attachment).toMatchObject({ name: "photo.png", size: png.length });
+      expect(r.core.attachments.read(attachment.id).equals(png)).toBe(true);
+      await phone.waitFor((e) => e.event === "agent" && (e.data.type === "error" || e.data.type === "done"));
+      const messages = (await phone.rpc("messages.list", { sessionId: session.id })).result as {
+        role: string;
+        content: string;
+        attachments?: { name: string; mime: string; size: number }[];
+      }[];
+      const mine = messages.find((m) => m.role === "user");
+      expect(mine?.content).toBe("que vois-tu ?");
+      expect(mine?.attachments).toEqual([{ name: "photo.png", mime: "image/png", size: png.length }]);
+      phone.hangUp();
+    } finally {
+      await r.stop();
+    }
+  });
+
+  it("refuses an unknown conversation, a bad type, a lying type, an empty or too large file", async () => {
+    const r = await started();
+    try {
+      const session = r.core.sessions.create("Refus");
+      const { phone } = await pairPhone(r);
+      const send = (params: Record<string, unknown>) =>
+        phone.rpc("chat.file", { sessionId: session.id, name: "f", mime: "image/png", data: png.toString("base64"), ...params });
+
+      expect((await send({ sessionId: "inconnu" })).error).toContain("introuvable");
+      const exe = Buffer.from("MZ\x90\x00").toString("base64");
+      expect((await send({ mime: "application/x-msdownload", data: exe })).error).toContain("non pris en charge");
+      expect((await send({ mime: "text/html", data: Buffer.from("<b>x</b>").toString("base64") })).error).toContain(
+        "non pris en charge",
+      );
+      expect((await send({ mime: "image/jpeg" })).error).toContain("ne correspond pas");
+      expect((await send({ mime: "text/plain", data: exe })).error).toContain("ne correspond pas");
+      expect((await send({ data: "" })).error).toContain("vide");
+      const big = Buffer.concat([png, Buffer.alloc(4 * 1024 * 1024)]).toString("base64");
+      expect((await send({ data: big })).error).toContain("trop volumineux");
+
+      const text = await send({ name: "liste.txt", mime: "text/plain", data: Buffer.from("œufs, café").toString("base64") });
+      expect(text.error).toBeUndefined();
+      const stored = r.core.db.all<{ name: string }>("SELECT name FROM attachments");
+      expect(stored.map((a) => a.name)).toEqual(["liste.txt"]);
+      phone.hangUp();
+    } finally {
+      await r.stop();
+    }
+  });
+});
+
 describe("mobile bridge — approvals reach the phone", () => {
   it("asks the phone, one decision per request, and reads nothing but a boolean", async () => {
     const r = await started();
