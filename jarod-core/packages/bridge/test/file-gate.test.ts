@@ -255,7 +255,7 @@ describe("SPECS-P5-WORKSPACE.md : garde du dossier de travail PAR DÉFAUT (picke
 
   it("chemin relatif, UNC, flux alternatif, valeur non texte : refusés avant tout accès disque", () => {
     const { gate } = world();
-    for (const bad of ["dossier\sous", "\\serveur\partage", "C:\a:flux", "C:a", 42, null, undefined]) {
+    for (const bad of ["dossier\\sous", "\\\\serveur\\partage", "C:\\a:flux", "C:a", 42, null, undefined]) {
       denied(() => gate.pickedOnly("set-default-workspace", bad, null), /./);
     }
   });

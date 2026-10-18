@@ -85,7 +85,7 @@ describe('Hugging Face errors', () => {
 })
 
 describe('preset draft', () => {
-  const preset = { id: 'p1', name: 'Qwen', model: 'D:\m\q.gguf', draftModel: '', extraArgs: ['--x'], ctxSize: 16384, gpuLayers: 99, flashAttn: 'auto', cacheType: 'f16', temperature: 0.7, topP: null, topK: 40, minP: null, reasoning: 'auto', parallelSlots: 2, modelName: 'q.gguf', modelPresent: true, draftModelName: '' } as const
+  const preset = { id: 'p1', name: 'Qwen', model: 'D:\\m\\q.gguf', draftModel: '', extraArgs: ['--x'], ctxSize: 16384, gpuLayers: 99, flashAttn: 'auto', cacheType: 'f16', temperature: 0.7, topP: null, topK: 40, minP: null, reasoning: 'auto', parallelSlots: 2, modelName: 'q.gguf', modelPresent: true, draftModelName: '' } as const
 
   it('round-trips a preset through the draft without touching model, draft model or arguments', () => {
     const draft = draftOf({ ...preset, extraArgs: [...preset.extraArgs] })

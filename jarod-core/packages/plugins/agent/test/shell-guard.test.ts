@@ -417,7 +417,7 @@ describe("garde du shell — la politique en vigueur se lit", () => {
 describe("garde du shell — Windows : AppContainer (jarod-sandbox) ou refus", () => {
   const sondeWindows = (ok: boolean): ShellProbe => (input) =>
     input.id === "jarod-sandbox"
-      ? { ok, path: ok ? "C:\outils\jarod-sandbox.exe" : null, detail: ok ? "présent (simulé)" : "absent (simulé)" }
+      ? { ok, path: ok ? "C:\\outils\\jarod-sandbox.exe" : null, detail: ok ? "présent (simulé)" : "absent (simulé)" }
       : { ok: false, path: null, detail: `n'existe pas sur win32` };
 
   it("avec le mécanisme, la ligne part telle quelle vers `jarod-sandbox exec`, dossier de travail en tête", async () => {
@@ -434,7 +434,7 @@ describe("garde du shell — Windows : AppContainer (jarod-sandbox) ou refus", (
 
     expect(plan.mechanism).toBe("jarod-sandbox");
     expect(plan.mode).toBe("exec");
-    expect(plan.bin).toBe("C:\outils\jarod-sandbox.exe");
+    expect(plan.bin).toBe("C:\\outils\\jarod-sandbox.exe");
     expect(plan.args.slice(0, 4)).toEqual(["exec", "--workspace", racine, "--cwd"]);
     // La ligne est le dernier argument, entière, guillemets compris : aucun recollage.
     expect(plan.args.slice(-2)).toEqual(["--", ligne]);

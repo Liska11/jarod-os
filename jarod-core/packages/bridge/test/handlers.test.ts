@@ -2228,7 +2228,7 @@ describe("SPECS-P5-WORKSPACE.md : dossier de travail PAR DÉFAUT (get/set-defaul
     app.agent.settings.set("workspace", dflt);
     expect(() => call("set-default-workspace", join(dflt, "sous"))).toThrow(/garde fichiers : dossier non choisi/);
     expect(app.agent.settings.get("workspace")).toBe(dflt);
-    for (const bad of [42, {}, "relatif", "\\serveur\partage"]) expect(() => call("set-default-workspace", bad)).toThrow();
+    for (const bad of [42, {}, "relatif", "\\\\serveur\\partage"]) expect(() => call("set-default-workspace", bad)).toThrow();
     expect(app.agent.settings.get("workspace")).toBe(dflt);
   });
 

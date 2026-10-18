@@ -117,7 +117,7 @@ describe('endpointGuid', () => {
   it('takes the GUID after the last dot and nothing else', () => {
     expect(endpointGuid('{0.0.0.00000000}.{011CF933-BA84-4978-ABF9-B52B07CC4CB0}')).toBe('{011cf933-ba84-4978-abf9-b52b07cc4cb0}')
     expect(endpointGuid('{0.0.1.00000000}.{eb98b82f-b0c1-45a9-899c-a3b65ed9ab26}')).toBe('{eb98b82f-b0c1-45a9-899c-a3b65ed9ab26}')
-    expect(endpointGuid("{0.0.0.00000000}.{x'; Remove-Item C:\ }")).toBeNull()
+    expect(endpointGuid("{0.0.0.00000000}.{x'; Remove-Item C:\\ }")).toBeNull()
     expect(endpointGuid('{not-a-device}')).toBeNull()
     expect(endpointGuid('')).toBeNull()
   })

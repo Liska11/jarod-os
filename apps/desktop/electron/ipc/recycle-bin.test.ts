@@ -30,7 +30,7 @@ describe('trashTarget / isRecycleBin', () => {
     expect(isRecycleBin(RECYCLE_BIN, 'win32')).toBe(true)
     expect(isRecycleBin(RECYCLE_BIN, 'linux')).toBe(false)
     expect(isRecycleBin('shell:Startup', 'win32')).toBe(false)
-    expect(isRecycleBin('C:\shell:RecycleBinFolder', 'win32')).toBe(false)
+    expect(isRecycleBin('C:\\shell:RecycleBinFolder', 'win32')).toBe(false)
   })
 })
 
