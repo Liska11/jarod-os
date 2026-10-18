@@ -1,0 +1,21 @@
+# gitleaks findings reviewed and accepted: every one is a test or fixture value, not a credential
+# (canary strings, the fake token the contract fixtures must reject, the RFC 6455 sample handshake key,
+# sha256 digests of model files). One line per finding fingerprint (commit:file:rule:line); a new finding still fails.
+
+224c346da13dc33136970ac887fa2cc6997034a9:contracts/v1/fixtures/c1-control-decision/invalid-extra-field.json:generic-api-key:5
+224c346da13dc33136970ac887fa2cc6997034a9:contracts/v1/fixtures/c3-bridge-audit-entry/invalid-contains-token-field.json:generic-api-key:12
+224c346da13dc33136970ac887fa2cc6997034a9:contracts/v1/fixtures/c3-bridge-audit-entry/invalid-token-argument-in-clear.json:generic-api-key:12
+224c346da13dc33136970ac887fa2cc6997034a9:contracts/v1/fixtures/c3-control-audit-entry/invalid-contains-token-field.json:generic-api-key:11
+224c346da13dc33136970ac887fa2cc6997034a9:contracts/v1/fixtures/c7-tool-audit-entry/invalid-contains-token-field.json:generic-api-key:6
+224c346da13dc33136970ac887fa2cc6997034a9:plugins/herald-os-bridge/tests/test_contracts.py:generic-api-key:116
+25e7af524902b1f7d1cdc3ba33c5d85f5a211715:jarod-core/packages/cli/test/startup-failure.test.ts:generic-api-key:41
+30d3eb4eb49a82a341625392c990c108b9f986d1:jarod-core/packages/cli/test/diagnostics.test.ts:generic-api-key:26
+30d3eb4eb49a82a341625392c990c108b9f986d1:jarod-core/packages/plugins/llm/test/gguf-fit.test.ts:generic-api-key:105
+30d3eb4eb49a82a341625392c990c108b9f986d1:jarod-core/tests/bench/q16-ml.ts:generic-api-key:35
+30d3eb4eb49a82a341625392c990c108b9f986d1:jarod-core/tests/bench/q16-ml.ts:generic-api-key:36
+62dde692d953fe94d15beb87f00ea594575e9b45:jarod-core/packages/plugins/storage/test/snapshot-without-vault.test.ts:generic-api-key:10
+8def8c5a3662539419d56f4f6c68e2abf2b4ba43:jarod-core/packages/plugins/integrations/test/engines/browser.lifecycle.engine.test.ts:generic-api-key:236
+934302819c3278faf20ea69268a935ce9fa4bfc5:jarod-core/packages/bridge/test/vault.test.ts:generic-api-key:14
+95cc707bb417a3a4a3329cf6d86e2340b3e44ea4:jarod-core/packages/plugins/integrations/test/engines/mxc.engine.test.ts:generic-api-key:39
+a7e172938f4b270397feabc664c266823d99d25f:jarod-core/packages/plugins/integrations/test/integrations.test.ts:generic-api-key:143
+b076342b76e7472541daa5079693e013ecbbd420:jarod-core/packages/plugins/tools/test/remote-exec.test.ts:generic-api-key:288

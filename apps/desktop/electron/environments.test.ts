@@ -102,9 +102,10 @@ describe('environments', () => {
   })
 
   it('puts the environment first in PATH for a terminal', () => {
-    const env = environmentVariables(dir, { name: 'site-py', kind: 'python', requested: '3.12', version: '3.12.7', created: '' }, { Path: 'C:\\Windows' })
+    const system = path.join(dir, 'system')
+    const env = environmentVariables(dir, { name: 'site-py', kind: 'python', requested: '3.12', version: '3.12.7', created: '' }, { Path: system })
 
-    expect(env.Path?.split(path.delimiter)).toEqual([path.join(dir, 'site-py', 'Scripts'), 'C:\\Windows'])
+    expect(env.Path?.split(path.delimiter)).toEqual([path.join(dir, 'site-py', 'Scripts'), system])
     expect(env.VIRTUAL_ENV).toBe(path.join(dir, 'site-py'))
     expect(env.JAROD_ENVIRONMENT).toBe('site-py')
   })

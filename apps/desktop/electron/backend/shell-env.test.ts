@@ -26,8 +26,9 @@ describe('mergePaths', () => {
   it('keeps the first occurrence, comparing case-insensitively when asked', () => {
     const lists = [['C:\\Hermes\\bin', 'C:\\Win'], ['c:\\hermes\\BIN', '', 'D:\\tools']]
 
-    expect(mergePaths(lists, true).split(path.delimiter)).toEqual(['C:\\Hermes\\bin', 'C:\\Win', 'D:\\tools'])
-    expect(mergePaths([['/a', '/b'], ['/a', '/B']], false).split(path.delimiter)).toEqual(['/a', '/b', '/B'])
+    // Compare joined strings: on POSIX the delimiter is ':', which a drive letter also contains.
+    expect(mergePaths(lists, true)).toBe(['C:\\Hermes\\bin', 'C:\\Win', 'D:\\tools'].join(path.delimiter))
+    expect(mergePaths([['/a', '/b'], ['/a', '/B']], false)).toBe(['/a', '/b', '/B'].join(path.delimiter))
   })
 })
 

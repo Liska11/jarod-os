@@ -78,7 +78,10 @@ export function testModeEnabled(env: Record<string, string | undefined>, package
  * (les raccourcis d'édition restent ceux de la page), et sous macOS seulement les rôles standard — jamais « Affichage »
  * (rechargement, DevTools, zoom de la page). `"default"` = ne rien changer.
  */
-export function applicationMenuTemplate(platform: string, packaged: boolean): import("electron").MenuItemConstructorOptions[] | null | "default" {
+/** The subset of Electron's `MenuItemConstructorOptions` used here; this package does not depend on Electron. */
+export type MenuRoleItem = { role: "appMenu" | "editMenu" | "windowMenu" };
+
+export function applicationMenuTemplate(platform: string, packaged: boolean): MenuRoleItem[] | null | "default" {
   if (!packaged) return "default";
   if (platform === "darwin") return [{ role: "appMenu" }, { role: "editMenu" }, { role: "windowMenu" }];
   return null;

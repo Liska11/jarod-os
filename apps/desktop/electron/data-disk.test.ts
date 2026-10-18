@@ -50,7 +50,8 @@ describe('rootProblem', () => {
   })
 })
 
-describe('moving to a Jarod disk', () => {
+// A Jarod root is a drive-letter path (`rootProblem`), so the real copies below can only run on Windows.
+describe.skipIf(process.platform !== 'win32')('moving to a Jarod disk', () => {
   let base: string
   let dataDir: string
   let workspace: string

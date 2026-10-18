@@ -99,6 +99,16 @@ describe('assertPipeDacl', () => {
     expect(() => assertPipeDacl(`O:BA G:BA ${expected}(A;;FR;;;WD)`, expected)).toThrow(/more than the requested/)
     expect(() => assertPipeDacl(`O:BA G:BA D:P(A;;FRFW;;;${LOGON})(A;;FRFW;;;${USER})`, expected)).toThrow(/more than the requested/)
   })
+
+  it('reads the built-in Administrator alias back as the account that was asked for, and nothing else', () => {
+    const admin = 'S-1-5-21-4239583824-265399229-1323058055-500'
+    const wanted = controlPipeSddl([admin])
+
+    expect(() => assertPipeDacl('O:BAG:S-1-5-21-4239583824-265399229-1323058055-513D:P(A;;0x12019f;;;LA)', wanted)).not.toThrow()
+    expect(() => assertPipeDacl('O:BA G:BA D:P(A;;0x12019f;;;LG)', wanted)).toThrow(/missing/)
+    expect(() => assertPipeDacl('O:BA G:BA D:P(A;;0x12019f;;;LA)', expected)).toThrow(/missing/)
+    expect(() => assertPipeDacl(`O:BA G:BA D:P(A;;0x12019f;;;LA)(A;;FR;;;${admin})`, wanted)).toThrow(/more than the requested/)
+  })
 })
 
 describe('isLogonSid', () => {

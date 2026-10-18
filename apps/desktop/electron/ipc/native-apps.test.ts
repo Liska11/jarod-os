@@ -1,3 +1,4 @@
+import path from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 
 vi.mock('electron', () => ({ ipcMain: { handle: () => undefined } }))
@@ -21,9 +22,12 @@ describe('native apps', () => {
   it('hands over only a web page to Brave and an existing file to VLC', () => {
     expect(launchArgument('brave', 'https://example.com/')).toEqual(['https://example.com/'])
     expect(launchArgument('brave', '--disable-web-security')).toEqual([])
-    expect(launchArgument('vlc', 'C:\\Films\\a.mkv', () => true)).toEqual(['--', 'C:\\Films\\a.mkv'])
+    // Absolute for the host running the tests (a drive-letter path is not absolute on POSIX).
+    const film = path.resolve('Films', 'a.mkv')
+
+    expect(launchArgument('vlc', film, () => true)).toEqual(['--', film])
     expect(launchArgument('vlc', '--extraintf=http', () => true)).toEqual([])
-    expect(launchArgument('vlc', 'C:\\missing.mkv', () => false)).toEqual([])
+    expect(launchArgument('vlc', path.resolve('missing.mkv'), () => false)).toEqual([])
     expect(launchArgument('signal', 'anything')).toEqual([])
   })
 
