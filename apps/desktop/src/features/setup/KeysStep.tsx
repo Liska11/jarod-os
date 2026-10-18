@@ -151,6 +151,7 @@ function KeyRow({ entry, outcome, onFix, locked }: { entry: KeyLine; outcome?: O
         {outcome?.ok ? <IconCheck size={14} className="text-ok" /> : outcome ? <IconX size={14} className="text-danger" /> : bad ? <IconAlertTriangle size={14} className="text-warn" /> : <IconKey size={14} className="text-fg-3" />}
         <span className="text-fg-3">{t('setup.keys.line', { line: entry.line })}</span>
         <span className="font-mono text-fg">{entry.name || '—'}</span>
+        {entry.renamedFrom && <span className="text-fg-4">{t('setup.keys.renamed', { name: entry.renamedFrom })}</span>}
         <span className="font-mono text-fg-3">{entry.value ? maskValue(entry.value) : ''}</span>
         <span className="min-w-0 flex-1 truncate text-right text-fg-3">
           {outcome?.ok

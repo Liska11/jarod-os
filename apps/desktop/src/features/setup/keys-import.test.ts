@@ -22,6 +22,38 @@ describe('parseLine', () => {
     expect(parseLine('A=two words', 1).problem).toBe('spaces')
   })
 
+  it('reads the forms people actually write in a notes file', () => {
+    // a colon instead of =, the YAML / notes habit
+    expect(parseLine(`OPENAI_API_KEY: ${OPENAI}`, 1)).toMatchObject({ status: 'ok', name: 'OPENAI_API_KEY', value: OPENAI, destination: 'provider' })
+    // a colon inside the value is kept (Telegram tokens have one)
+    expect(parseLine('TELEGRAM_BOT_TOKEN: 123456789:AAabcdefghijklmnopqrstuvwxyz0123456', 1)).toMatchObject({ status: 'ok', value: '123456789:AAabcdefghijklmnopqrstuvwxyz0123456' })
+    // a name written in words, any case, with spaces, dashes or dots
+    expect(parseLine(`OpenAI API Key = ${OPENAI}`, 1)).toMatchObject({ status: 'ok', name: 'OPENAI_API_KEY' })
+    expect(parseLine(`groq-api-key=gsk_abcdefghijklmnopqrstuvwx`, 1)).toMatchObject({ status: 'ok', name: 'GROQ_API_KEY' })
+    // a comment after the key
+    expect(parseLine(`OPENAI_API_KEY=${OPENAI}   # personal`, 1)).toMatchObject({ status: 'ok', value: OPENAI })
+    // typographic quotes and invisible characters from a copy-paste
+    expect(parseLine(`OPENAI_API_KEY=“${OPENAI}”`, 1)).toMatchObject({ status: 'ok', value: OPENAI })
+    expect(parseLine(`OPENAI_API_KEY=​${OPENAI}‍`, 1)).toMatchObject({ status: 'ok', value: OPENAI })
+    expect(parseLine(`﻿OPENAI_API_KEY=${OPENAI}`, 1)).toMatchObject({ status: 'ok', name: 'OPENAI_API_KEY' })
+  })
+
+  it('sends a common nickname of a provider key to that provider, and says so', () => {
+    expect(parseLine(`CLAUDE_API_KEY=sk-ant-abcdefghijklmnopqrstuvwxyz`, 1)).toMatchObject({ status: 'ok', name: 'ANTHROPIC_API_KEY', renamedFrom: 'CLAUDE_API_KEY', destination: 'provider' })
+    expect(parseLine(`OPENAI_KEY=${OPENAI}`, 1)).toMatchObject({ name: 'OPENAI_API_KEY', renamedFrom: 'OPENAI_KEY', destination: 'provider' })
+    expect(parseLine('GEMINI_API_KEY=AIzaabcdefghijklmnopqrstuvwxyz0123456', 1)).toMatchObject({ status: 'ok', name: 'GOOGLE_API_KEY', destination: 'provider' })
+    expect(parseLine('HUGGINGFACE_TOKEN=hf_abcdefghijklmnopqrstuvwx', 1)).toMatchObject({ status: 'ok', name: 'HF_TOKEN' })
+    // an exact name is not marked renamed; an unknown name still goes to the vault unchanged
+    expect(parseLine(`OPENAI_API_KEY=${OPENAI}`, 1).renamedFrom).toBeUndefined()
+    expect(parseLine('GITHUB_TOKEN=ghp_abc', 1)).toMatchObject({ name: 'GITHUB_TOKEN', destination: 'vault' })
+  })
+
+  it('still refuses what is not a key line', () => {
+    expect(parseLine('broken line', 1).status).toBe('invalid')
+    expect(parseLine('Note: rotate these every month', 1)).toMatchObject({ status: 'invalid', problem: 'spaces' })
+    expect(parseLine('OPENAI_API_KEY: abc', 1)).toMatchObject({ status: 'invalid', problem: 'format:sk-…' })
+  })
+
   it('checks the shape of well-known services', () => {
     expect(parseLine('OPENAI_API_KEY=abc', 1)).toMatchObject({ status: 'invalid', problem: 'format:sk-…' })
     expect(parseLine('ANTHROPIC_API_KEY=sk-ant-abcdefghijklmnopqrstuvwxyz', 1).status).toBe('ok')
