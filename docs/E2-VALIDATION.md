@@ -69,6 +69,18 @@ Essai : `browser.lifecycle.engine.test.ts › PREUVE RÉSEAU WebRTC/UDP`. Un té
 
 Le contrôle prouve que le témoin voit ce qui sortirait ; il montre aussi que le proxy mort ne couvre pas l'UDP (c'est le drapeau `disable_non_proxied_udp` qui le ferme) et que le drapeau ne couvre pas le TCP (c'est le filet).
 
+### 6.1 Contrôle à zéro (2026-10-18) : preuve non concluante sur la machine, pas une fuite
+
+Le 2026-10-18, sur la même machine et le même Chromium (`chromium-1243`), le contrôle WebRTC reçoit **0** datagramme (WebTransport : 6, TURN-TCP : 1 connexion, 2 candidats d'hôte), à chaque exécution, seul ou sous charge. L'essai échoue donc sur sa première assertion, avec un message qui renvoie ici. Ce que montre le diagnostic :
+
+- **Ce n'est pas un délai.** Collecte ICE jamais terminée, même après 12 s ou 20 s d'attente.
+- **Ce n'est pas le témoin seul sur le bouclage.** Sous Windows, un socket lié à une adresse réseau ne peut pas écrire vers `127.0.0.1` (`EADDRNOTAVAIL`), ni vers l'adresse d'une autre interface (`ENETUNREACH`) ; depuis `0.0.0.0`, si. Mais un témoin sur CHAQUE adresse IPv4 de la machine (`169.254.x`, `172.20.x` Hyper-V, `192.168.1.x`, `192.168.56.x` VirtualBox) ne reçoit rien non plus, y compris avec la permission média accordée (`--use-fake-ui-for-media-stream`), où Chrome lie un socket à chaque vraie adresse.
+- **Ce ne sont pas** `--allow-loopback-in-peer-connection`, `--force-webrtc-ip-handling-policy=default_public_and_private_interfaces`, ni la désactivation de `LocalNetworkAccessChecks*` (essayés un par un : 0).
+- **Ni une stratégie, ni le pare-feu** : aucune clé sous `Policies\Chromium` ni `Policies\Google\Chrome` ; règles du pare-feu pour ce `chrome.exe` : entrantes, `Allow` ; sortie par défaut non configurée.
+- Journal WebRTC de Chrome : sockets UDP prêts, aucune requête de liaison STUN visible, aucune erreur.
+
+Conclusion : quelque chose sur la machine a changé depuis le 2026-10-17 (interfaces Hyper-V/VirtualBox/APIPA, mise à jour de Windows ou logiciel réseau) et empêche l'UDP WebRTC de ce Chromium d'atteindre un témoin local. Les résultats « durcis » à zéro ne prouvent rien tant que le contrôle est à zéro ; le durcissement lui-même (les drapeaux) n'a pas changé. À refaire sur une autre machine, ou sur celle-ci une fois la cause trouvée. Les sondes utilisées ne sont pas dans le dépôt (scripts jetables).
+
 ## 7. Autres preuves réseau (rappel)
 
 Garde CDP seule : zéro requête vers un serveur témoin interdit pour redirections 302/307/en chaîne/meta, images, scripts, CSS, trames, `fetch`, XHR, balise, SSE, travailleur, nouvelle fenêtre, formulaire, service worker (son script est refusé). Pile complète : zéro requête et zéro connexion. Mesuré non couvert par `Fetch` : WebSocket et préconnexion (couverts par le filet). Détail : `browser.engine.test.ts` (29 essais).

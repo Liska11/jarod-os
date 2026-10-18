@@ -98,8 +98,9 @@ describe.skipIf(!HAS)("E2 — cycle de vie, révocation, confinement CDP, nettoy
     };
     const control = await run({ hard: false, backstop: false }, "rtc");
     const controlWt = await run({ hard: false, backstop: false }, "wt");
-    // Le contrôle PROUVE que le témoin voit ce qui sortirait : sans lui, un zéro ne dirait rien.
-    expect(control.udp).toBeGreaterThan(0);
+    // Le contrôle PROUVE que le témoin voit ce qui sortirait : sans lui, un zéro ne dirait rien. S'il est à zéro, c'est la MACHINE
+    // qui ne laisse pas sortir l'UDP WebRTC de Chrome, pas une fuite : la preuve n'est pas concluante ici (docs/E2-VALIDATION.md §6.1).
+    expect(control.udp, "contrôle WebRTC : aucun datagramme STUN/TURN-UDP n'atteint le témoin sur cette machine, preuve non concluante (docs/E2-VALIDATION.md §6.1)").toBeGreaterThan(0);
     expect(control.candidates).toBeGreaterThan(0);
     expect(controlWt.udp).toBeGreaterThan(0);
     // Le filet (proxy mort) seul NE couvre PAS l'UDP : mesuré, c'est pourquoi le drapeau existe.
