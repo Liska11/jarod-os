@@ -24,13 +24,37 @@ export function protectedRoots(env: NodeJS.ProcessEnv = process.env, home: strin
 
 const norm = (p: string, win: boolean) => (win ? resolve(p).toLowerCase() : resolve(p));
 
-/** La racine protégée qui contient `path` (ou qui l'est), ou `null`. Comparaison sans casse sous Windows. */
+const canonicalRoots = new Map<string, string>();
+/**
+ * Le chemin réel d'une racine protégée, mis en cache : une variable d'environnement peut l'écrire avec un nom court (8.3,
+ * `C:\Users\RUNNER~1\…`) ou à travers un lien, alors que le chemin réel d'une cible (jonction suivie) est en noms longs.
+ */
+function canonicalRoot(root: string): string {
+  let real = canonicalRoots.get(root);
+  if (real === undefined) {
+    try {
+      real = realpathSync.native(root);
+    } catch {
+      real = root;
+    }
+    canonicalRoots.set(root, real);
+  }
+  return real;
+}
+
+const inside = (root: string, p: string, win: boolean) => {
+  const rel = relative(norm(root, win), p);
+  return rel === "" || (rel !== ".." && !rel.startsWith(`..${sep}`) && !isAbsolute(rel));
+};
+
+/**
+ * La racine protégée qui contient `path` (ou qui l'est), ou `null`. Comparaison sans casse sous Windows, avec la racine telle
+ * qu'écrite ET son chemin réel : sinon un chemin réel en noms longs passerait à côté d'une racine écrite en nom court.
+ */
 export function protectedRoot(path: string, roots: readonly string[], win = process.platform === "win32"): string | null {
   const p = norm(path, win);
   for (const root of roots) {
-    const r = norm(root, win);
-    const rel = relative(r, p);
-    if (rel === "" || (rel !== ".." && !rel.startsWith(`..${sep}`) && !isAbsolute(rel))) return root;
+    if (inside(root, p, win) || inside(canonicalRoot(root), p, win)) return root;
   }
   return null;
 }

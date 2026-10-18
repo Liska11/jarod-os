@@ -389,6 +389,25 @@ describe.runIf(win)("sur cette machine (vrai PowerShell) : uniquement des fichie
     expect(readFileSync(join(sub, "x.txt"), "utf8")).toBe("dedans");
   }, 120_000);
 
+  it("trash réel par un nom court (8.3) : l'élément mis à la corbeille est bien compté comme fait", async (t) => {
+    const files = tool(tools, "system_files");
+    const id = `jarod-corbeille-court-${Date.now().toString(36)}`;
+    const dir = join(tmpdir(), id);
+    mkdirSync(dir, { recursive: true });
+    dirs.push(dir);
+    const f = join(dir, `${id}-fichier-au-nom-long.txt`);
+    write(f, "vivant");
+    // Le nom court que Windows donne au fichier, quand le volume en fabrique (le runner de la CI, pas toutes les machines).
+    const short = execFileSync("cmd.exe", ["/d", "/c", `for %I in ("${f}") do @echo %~sI`], { encoding: "utf8" }).trim();
+    if (!short || short.toLowerCase() === f.toLowerCase() || !short.includes("~")) t.skip();
+    const out = JSON.parse(await files.run({ action: "trash", paths: [short] }, ctx));
+    expect(out.applied).toHaveLength(1);
+    expect(existsSync(f)).toBe(false);
+    expect(restoreFromBin(`${id}-fichier`).length).toBe(1);
+    await new Promise((r) => setTimeout(r, 1500));
+    expect(readFileSync(f, "utf8")).toBe("vivant");
+  }, 120_000);
+
   it("trash réel : un élément absent est une erreur, et rien d'autre n'est touché", async () => {
     const files = tool(tools, "system_files");
     const d = temp();
