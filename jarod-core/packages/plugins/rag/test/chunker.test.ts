@@ -16,7 +16,7 @@ const manifestWith = (sections: DocumentManifest["sections"]): DocumentManifest 
 });
 const doc = (text: string, sections: DocumentManifest["sections"]) => ({ manifest: manifestWith(sections), text });
 const para = (tag: string, n: number) => Array.from({ length: n }, (_, i) => `${tag} phrase numéro ${i} du paragraphe, avec quelques mots de plus.`).join("\n");
-const sec = (text: string, level: number, title: string, from: number, to: number) => ({ start: from, end: to, page: null, level, title });
+const sec = (_text: string, level: number, title: string, from: number, to: number) => ({ start: from, end: to, page: null, level, title });
 
 /** Texte à trois sections de niveau 1 (~ 300 caractères chacune) et leurs sections. */
 function threeSections() {

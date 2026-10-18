@@ -54,7 +54,7 @@ describe("une exécution planifiée passe par la file durable", () => {
   });
 
   it("sans file attachée, le planificateur travaille comme avant", async () => {
-    const { core, scheduler, ran, schedule } = await setup();
+    const { core, ran, schedule } = await setup();
     // Un hôte qui n'attache rien garde le comportement d'origine : aucune régression, aucun refus.
     const standalone = new Scheduler(core.db, async (s) => {
       ran.push(s.id);

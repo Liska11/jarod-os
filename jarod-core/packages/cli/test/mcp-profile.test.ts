@@ -43,7 +43,7 @@ async function planted(): Promise<{ root: string; dir: string; sessionId: string
   const pm = new ProfileManager(root);
   pm.create("travail");
   pm.setActive("travail");
-  const { core, dataDir } = await openCore({ env: { JAROD_HOME: root } });
+  const { core } = await openCore({ env: { JAROD_HOME: root } });
   let sessionId = "";
   try {
     const s = core.sessions.create("Conversation sur les roses");

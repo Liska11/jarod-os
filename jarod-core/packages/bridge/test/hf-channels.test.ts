@@ -18,7 +18,6 @@ import type { HfWiring } from "../src/main/handlers/context.js";
 import { setupKernel } from "./ui-parite-helpers.js";
 
 const REPO = "acme/tiny-GGUF";
-const GIB = 1024 ** 3;
 const sha256 = (b: Uint8Array) => createHash("sha256").update(b).digest("hex");
 const bytesOf = (n: number, seed: number) => {
   const out = Buffer.alloc(n);

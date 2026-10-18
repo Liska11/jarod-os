@@ -47,8 +47,6 @@ export interface AutomationConfig {
 }
 
 const DEFAULT_TICK_MS = 30_000;
-const MIN_TICK_MS = 1_000;
-const MAX_TICK_MS = 3_600_000;
 
 interface Row {
   id: string;

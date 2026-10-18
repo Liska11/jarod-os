@@ -37,7 +37,6 @@ const OUT_SHA: Record<string, string> = {
 };
 const REPEATS = 3;
 const WARMUP = 3;
-const SUPPORT = ["laya_config.json", "tokenizer/tokenizer.json", "tokenizer/tokenizer_config.json"];
 
 interface StateResult {
   lang: "fr" | "en";

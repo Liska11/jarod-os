@@ -23,7 +23,6 @@ const tty = process.stdout.isTTY;
 const dim = (s: string) => (tty ? `\x1b[2m${s}\x1b[0m` : s);
 const bold = (s: string) => (tty ? `\x1b[1m${s}\x1b[0m` : s);
 const red = (s: string) => (tty ? `\x1b[31m${s}\x1b[0m` : s);
-const green = (s: string) => (tty ? `\x1b[32m${s}\x1b[0m` : s);
 
 export const HELP = `Jarod-One ${VERSION} — en ligne de commande
 

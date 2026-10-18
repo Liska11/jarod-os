@@ -590,7 +590,7 @@ export class LspManager {
       extensions: c.extensions.map((e) => (e.startsWith(".") ? e : `.${e}`).toLowerCase()),
       installHint: `Vérifiez que « ${c.command} » est installé.`,
       custom: true,
-      resolve: (root: string) => {
+      resolve: (_root: string) => {
         const p = findOnPath(c.command);
         if (!p) return null;
         const launch = binaryLaunch(p, c.args);
