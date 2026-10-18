@@ -1,11 +1,9 @@
 // Portage de packages/cli/src/main.ts (rév. 2e180305) — sous-commandes dont les services sont portés
 // (ask, sessions, show, search, memory, profiles, events, serve — P3 avec plugin-gateways).
 // `mcp` : SPECS-P5-MCP.md ; `acp` : SPECS-P5-ACP.md. Plus aucune commande en attente. `improve` n'est pas porté (décision du 2026-10-02).
-import { spawn } from "node:child_process";
-import { closeSync, existsSync, mkdirSync, openSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { createInterface } from "node:readline/promises";
-import { setTimeout as sleep } from "node:timers/promises";
 import { redactKeyedText } from "@jarod/kernel/redact";
 import type { MemoryType, Settings } from "@jarod/contracts";
 import type { AgentHooks } from "@jarod/plugin-agent";

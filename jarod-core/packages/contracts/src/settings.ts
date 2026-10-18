@@ -5,7 +5,6 @@
  * chaque plugin propriétaire les ré-exporte depuis ce module.
  */
 import { type AutoImprovementConfig, DEFAULT_AUTO_IMPROVEMENT } from "./auto-improvement-config.js";
-import type { Cipher } from "./domain.js";
 import { DEFAULT_ECOSYSTEM_FLAGS, type EcosystemFlags } from "./ecosystem.js";
 
 // remote/host.ts:25-31

@@ -8,7 +8,6 @@ import { createHash } from "node:crypto";
 import type { Db, SqlValue } from "@jarod/plugin-storage";
 import type { JobsService } from "@jarod/plugin-scheduler";
 import { nextCronRun } from "@jarod/plugin-scheduler";
-import type { Context } from "cordis";
 import { normalizeAutomationTickMs } from "./normalize.js";
 
 export { normalizeAutomationTickMs };

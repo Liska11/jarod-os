@@ -1,8 +1,7 @@
 /**
  * Outils agent pour l'automatisation.
  */
-import type { ToolDef, ToolContext } from "@jarod/plugin-tools";
-import { resolveInWorkspace } from "@jarod/plugin-tools";
+import type { ToolDef } from "@jarod/plugin-tools";
 import type { AutomationService, AutomationTrigger, AutomationAction } from "./automation.js";
 
 export function automationTools(automation: AutomationService): ToolDef[] {

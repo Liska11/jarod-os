@@ -37,7 +37,7 @@ import { existsSync, realpathSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { basename, delimiter, dirname, isAbsolute, join, parse, relative, resolve, sep } from "node:path";
 import type { ToolCall } from "@jarod/contracts";
-import { containerPath, DEFAULT_DOCKER, type DockerOptions, DockerSandbox, execArgs } from "./docker-sandbox.js";
+import { containerPath, DEFAULT_DOCKER, DockerSandbox, execArgs } from "./docker-sandbox.js";
 import { type WriteScope, type ShellPolicy, DEFAULT_SHELL_POLICY } from "@jarod/contracts";
 export { DEFAULT_SHELL_POLICY };
 export type { WriteScope, ShellPolicy };

@@ -13,7 +13,7 @@ import {
   type AutomationAction,
 } from "@jarod/contracts";
 import { nextCronRun } from "@jarod/plugin-scheduler";
-import { assertProfile, type HandlerContext } from "./context.js";
+import type { HandlerContext } from "./context.js";
 
 /** Une entrée IPC mal formée est refusée avec le chemin fautif, jamais castée (AV2-007). */
 function dit(canal: string, e: { issues: { path: PropertyKey[]; message: string }[] }): Error {

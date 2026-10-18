@@ -4,14 +4,14 @@
 import { type ChildProcess, spawn } from "node:child_process";
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { readFile } from "node:fs/promises";
-import { basename, delimiter, dirname, extname, isAbsolute, join, relative, resolve } from "node:path";
+import { basename, dirname, extname, isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { findOnPath } from "@jarod/kernel/find-on-path";
 import { killTree } from "@jarod/kernel/util";
-import type { LspConfig, LspServerConfig, ToolCall } from "@jarod/contracts";
+import type { LspConfig, ToolCall } from "@jarod/contracts";
 import { resolveInWorkspace } from "./builtin.js";
 import type { ShellApprover } from "@jarod/plugin-permissions";
-import type { ToolContext, ToolDef } from "./registry.js";
+import type { ToolDef } from "./registry.js";
 
 // ---------- Types ----------
 
