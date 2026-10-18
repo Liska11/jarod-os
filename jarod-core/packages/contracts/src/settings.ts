@@ -258,7 +258,13 @@ export interface VaultEntry {
   /** May be given to shell commands as an environment variable. */
   allowShell: boolean;
   createdAt: number;
+  /** What it is, for the person (Jarod-OS, Sécurité › Secrets). Absent: `other`. */
+  kind?: VaultKind;
+  /** Held in memory only, for this run of the core: never written to disk, gone at the next start. */
+  temporary?: boolean;
 }
+
+export type VaultKind = "api_key" | "token" | "password" | "other";
 
 // services/vision.ts:17-23
 export interface ImageDescriptionConfig {

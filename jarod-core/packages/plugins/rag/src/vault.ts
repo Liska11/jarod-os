@@ -40,10 +40,20 @@ export function hostAllowed(host: string, domains: string[]): boolean {
 }
 
 export class VaultService {
+  /**
+   * Temporary entries (Jarod-OS « usage temporaire ») : the entry AND its value live only in this map, for this run of the core.
+   * Never in the settings, never in the `secrets` table, so never in a backup; gone at the next start.
+   */
+  private readonly temporary = new Map<string, { entry: VaultEntry; value: string }>();
+
   constructor(private readonly settings: SettingsService) {}
 
-  list(): VaultEntry[] {
+  private stored(): VaultEntry[] {
     return this.settings.get("vault") ?? [];
+  }
+
+  list(): VaultEntry[] {
+    return [...this.stored(), ...[...this.temporary.values()].map((t) => t.entry)];
   }
 
   get(name: string): VaultEntry | undefined {
@@ -51,7 +61,7 @@ export class VaultService {
   }
 
   hasValue(name: string): boolean {
-    return Boolean(this.settings.getSecret(vaultKey(name)));
+    return this.temporary.has(name) || Boolean(this.settings.getSecret(vaultKey(name)));
   }
 
   /** Adds or updates an entry. `value` undefined keeps the stored one (editing the description). */
@@ -64,6 +74,10 @@ export class VaultService {
     if (!ENV_NAME.test(envVar)) throw new Error(`Nom de variable d'environnement invalide : ${envVar}`);
     const existing = this.get(name);
     if (!existing && !value) throw new Error("Un nouveau secret a besoin d'une valeur.");
+    const temporary = existing ? Boolean(existing.temporary) : Boolean(input.temporary);
+    if (existing && input.temporary !== undefined && Boolean(input.temporary) !== temporary) {
+      throw new Error("Un secret ne passe pas de temporaire à enregistré (ni l'inverse) : supprimez-le et recréez-le.");
+    }
     const entry: VaultEntry = {
       name,
       description: input.description.trim().slice(0, 300),
@@ -71,23 +85,31 @@ export class VaultService {
       domains: [...new Set(input.domains.map((d) => d.trim().toLowerCase()).filter(Boolean))],
       allowShell: Boolean(input.allowShell),
       createdAt: existing?.createdAt ?? Date.now(),
+      ...(input.kind && input.kind !== "other" ? { kind: input.kind } : {}),
+      ...(temporary ? { temporary: true } : {}),
     };
+    if (temporary) {
+      const previous = this.temporary.get(name);
+      this.temporary.set(name, { entry, value: value || previous?.value || "" });
+      return entry;
+    }
     if (value) this.settings.setSecret(vaultKey(name), value);
-    this.settings.set("vault", [...this.list().filter((e) => e.name !== name), entry]);
+    this.settings.set("vault", [...this.stored().filter((e) => e.name !== name), entry]);
     return entry;
   }
 
   remove(name: string): void {
+    if (this.temporary.delete(name)) return;
     this.settings.setSecret(vaultKey(name), "");
     this.settings.set(
       "vault",
-      this.list().filter((e) => e.name !== name),
+      this.stored().filter((e) => e.name !== name),
     );
   }
 
   private value(name: string): string {
     const entry = this.get(name);
-    const value = this.settings.getSecret(vaultKey(name));
+    const value = this.temporary.get(name)?.value ?? this.settings.getSecret(vaultKey(name));
     if (!entry || !value) throw new Error(`Secret inconnu dans le coffre : ${name}`);
     return value;
   }

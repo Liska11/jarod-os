@@ -17,7 +17,7 @@ describe("coffre d'identifiants", () => {
   it("créer : la valeur est chiffrée côté main, utilisable par l'agent ; la liste dit « hasValue » et ne contient JAMAIS la valeur", async () => {
     const { call, app } = await setupKernel();
     const list = (await call("vault-save", { name: "GITHUB_TOKEN", description: "Jeton GitHub" }, SECRET)) as View[];
-    expect(list).toEqual([{ name: "GITHUB_TOKEN", description: "Jeton GitHub", envVar: "GITHUB_TOKEN", domains: [], allowShell: false, createdAt: expect.any(Number), hasValue: true }]);
+    expect(list).toEqual([{ name: "GITHUB_TOKEN", description: "Jeton GitHub", envVar: "GITHUB_TOKEN", domains: [], allowShell: false, createdAt: expect.any(Number), hasValue: true, kind: "other", temporary: false }]);
     expect(JSON.stringify(list)).not.toContain(SECRET);
     expect(JSON.stringify(await call("vault-list"))).not.toContain(SECRET);
     expect(app.agent.vault.hasValue("GITHUB_TOKEN")).toBe(true);
@@ -102,6 +102,34 @@ describe("coffre d'identifiants", () => {
       expect(err!.message).not.toContain(SECRET);
     }
     expect(app.agent.vault.list()).toEqual([]);
+  });
+
+  it("temporaire : utilisable par l'agent, mais écrit nulle part (ni réglages ni table des valeurs) ; il ne change pas de nature", async () => {
+    const { call, app } = await setupKernel();
+    const list = (await call("vault-save", { name: "TEMP", kind: "password", temporary: true }, SECRET)) as View[];
+    expect(list[0]).toMatchObject({ name: "TEMP", kind: "password", temporary: true, hasValue: true });
+    expect(app.agent.vault.hasValue("TEMP")).toBe(true);
+    expect(app.agent.settings.getSecret("vault:TEMP")).toBeUndefined();
+    expect(JSON.stringify(app.agent.settings.getAll())).not.toContain("TEMP");
+    await rejects(() => call("vault-save", { name: "TEMP", temporary: false }), /temporaire/);
+    await rejects(() => call("vault-save", { name: "X", kind: "carte" }, SECRET), /type de secret inconnu/);
+  });
+
+  it("révoquer retire domaines et shell sans boîte ni effacement de la valeur", async () => {
+    const { call, app, confirms } = await setupKernel(undefined, [true]);
+    await call("vault-save", { name: "T", domains: ["api.github.com"], allowShell: true }, SECRET);
+    const list = (await call("vault-revoke", "T")) as View[];
+    expect(list[0]).toMatchObject({ domains: [], allowShell: false, hasValue: true });
+    expect(confirms).toHaveLength(1);
+    expect(app.agent.settings.getSecret("vault:T")).toBe(SECRET);
+    await rejects(() => call("vault-revoke", "inconnu"), /secret inconnu/);
+  });
+
+  it("l'état de protection dit si la base est chiffrée, sans rien rendre de la clé", async () => {
+    const { call } = await setupKernel();
+    const status = (await call("vault-status")) as { encrypted: boolean; keyStore: string | null };
+    expect(typeof status.encrypted).toBe("boolean");
+    expect(Object.keys(status).sort()).toEqual(["encrypted", "keyStore"]);
   });
 
   it("le secret n'est jamais importable ni exposé par get-jarod-settings", async () => {

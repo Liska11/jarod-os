@@ -11,6 +11,19 @@ export interface VaultEntry {
   allowShell: boolean
   createdAt: number
   hasValue: boolean
+  /** What it is (absent on an older engine: other). */
+  kind?: VaultKind
+  /** Held in the engine's memory only, gone at its next start. */
+  temporary?: boolean
+}
+
+export type VaultKind = 'api_key' | 'token' | 'password' | 'other'
+export const VAULT_KINDS: VaultKind[] = ['api_key', 'token', 'password', 'other']
+
+/** How the vault is kept on this disk (`vault-status`). */
+export interface VaultStatus {
+  encrypted: boolean
+  keyStore: 'dpapi' | 'file' | 'other' | null
 }
 
 export interface VaultDraft {
@@ -21,6 +34,8 @@ export interface VaultDraft {
   domains: string
   allowShell: boolean
   value: string
+  kind: VaultKind
+  temporary: boolean
 }
 
 const NAME = /^[A-Za-z][A-Za-z0-9_]{0,63}$/
@@ -28,10 +43,10 @@ const ENV = /^[A-Za-z_][A-Za-z0-9_]{0,127}$/
 const DOMAIN = /^(\*\.)?([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$|^localhost$/
 export const MAX_VALUE = 20_000
 
-export const emptyVault = (): VaultDraft => ({ name: '', description: '', envVar: '', domains: '', allowShell: false, value: '' })
+export const emptyVault = (): VaultDraft => ({ name: '', description: '', envVar: '', domains: '', allowShell: false, value: '', kind: 'api_key', temporary: false })
 
 export function draftOf(entry: VaultEntry): VaultDraft {
-  return { name: entry.name, description: entry.description, envVar: entry.envVar, domains: entry.domains.join('\n'), allowShell: entry.allowShell, value: '' }
+  return { name: entry.name, description: entry.description, envVar: entry.envVar, domains: entry.domains.join('\n'), allowShell: entry.allowShell, value: '', kind: entry.kind ?? 'other', temporary: Boolean(entry.temporary) }
 }
 
 export function parseDomains(text: string): string[] {
@@ -84,7 +99,7 @@ export function vaultProblems(draft: VaultDraft, isNew: boolean, existing: reado
 /** What `vault-save` receives: the entry, and the value only when one was typed (an empty box keeps the saved value). */
 export function savePayload(draft: VaultDraft): { entry: Record<string, unknown>; value: string | undefined } {
   return {
-    entry: { name: draft.name.trim(), description: draft.description.trim(), ...(draft.envVar.trim() ? { envVar: draft.envVar.trim() } : {}), domains: parseDomains(draft.domains), allowShell: draft.allowShell },
+    entry: { name: draft.name.trim(), description: draft.description.trim(), ...(draft.envVar.trim() ? { envVar: draft.envVar.trim() } : {}), domains: parseDomains(draft.domains), allowShell: draft.allowShell, kind: draft.kind, temporary: draft.temporary },
     value: draft.value ? draft.value : undefined
   }
 }

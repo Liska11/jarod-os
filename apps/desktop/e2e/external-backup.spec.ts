@@ -83,6 +83,10 @@ test('a restore puts the saved workspace back and keeps the current one beside i
   test.setTimeout(180_000)
   const workspace = path.join(shell.root, 'workspace')
   writeFileSync(path.join(workspace, 'avant.txt'), 'modifié après la sauvegarde')
+  // The app restarts itself after a restore; here it only quits, so no instance outside the test's control is left running.
+  await shell.app.evaluate(({ app }) => {
+    app.relaunch = () => undefined
+  })
   const closed = new Promise<void>(resolve => shell.app.once('close', () => resolve()))
   const result = await page.evaluate(folder => window.heraldOS.externalBackup.restore(folder), backupFolder)
 

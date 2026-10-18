@@ -8,7 +8,7 @@ import { reportEngineError } from './jarod-controls.tsx'
 import { isUnsupported } from './providers-model.ts'
 import { InlineNote, markSaved, SectionTitle, SettingsGroup, SettingsRow } from './shared.tsx'
 import { t, useT } from '../../../lib/i18n.ts'
-import { draftOf, emptyVault, reachText, savePayload, type VaultDraft, type VaultEntry, vaultProblems } from './vault-model.ts'
+import { draftOf, emptyVault, reachText, savePayload, VAULT_KINDS, type VaultDraft, type VaultEntry, type VaultKind, vaultProblems, type VaultStatus } from './vault-model.ts'
 
 /*
  * Secrets: values the agent can use without ever seeing them. A secret can be sent only to the domains you list, and can be made available to shell commands
@@ -19,6 +19,8 @@ import { draftOf, emptyVault, reachText, savePayload, type VaultDraft, type Vaul
 export function VaultSection() {
   useT()
   const vault = useBackendData(() => jarod<VaultEntry[]>('vault-list'))
+  // An older engine has no `vault-status`: the protection line is then left out, not guessed.
+  const status = useBackendData(() => jarod<VaultStatus>('vault-status'))
   const [editing, setEditing] = useState<{ isNew: boolean; draft: VaultDraft } | null>(null)
   const [busy, setBusy] = useState(false)
 
@@ -56,11 +58,23 @@ export function VaultSection() {
     <>
       <SectionTitle title={t('settings.vault.title')} subtitle={t('settings.vault.subtitle')} />
       {vault.error && <InlineNote tone="danger">{t('settings.vault.readFailed', { error: vault.error })}</InlineNote>}
+      {status.data && (
+        <InlineNote tone={status.data.encrypted && status.data.keyStore === 'dpapi' ? 'info' : 'warn'}>
+          {t(status.data.encrypted ? (`settings.vault.status.${status.data.keyStore ?? 'other'}` as 'settings.vault.status.dpapi') : 'settings.vault.status.plain')}
+        </InlineNote>
+      )}
+      <InlineNote tone="info">{t('settings.vault.sent')}</InlineNote>
       <SettingsGroup title={t('settings.vault.vault')}>
         {vault.data?.length === 0 && <SettingsRow icon={<IconLock />} label={t('settings.vault.none')} description={t('settings.vault.none.hint')} keywords="secrets vault empty" />}
         {vault.data?.map(entry => (
           <SettingsRow key={entry.name} icon={<IconLock />} label={entry.name} description={[entry.description, reachText(entry)].filter(Boolean).join(' — ')} keywords={`secret vault ${entry.name} ${entry.domains.join(' ')}`}>
             {!entry.hasValue && <Pill tone="warn">{t('settings.vault.noValue')}</Pill>}
+            {entry.temporary && <Pill tone="accent">{t('settings.vault.temporaryPill')}</Pill>}
+            {(entry.domains.length > 0 || entry.allowShell) && (
+              <GlassButton size="sm" variant="ghost" disabled={busy} onClick={() => void run(t('settings.vault.revoked'), () => jarod('vault-revoke', entry.name))} aria-label={t('settings.vault.revoke.aria', { name: entry.name })}>
+                {t('settings.vault.revoke')}
+              </GlassButton>
+            )}
             <GlassButton size="sm" variant="ghost" disabled={busy} onClick={() => setEditing({ isNew: false, draft: draftOf(entry) })} aria-label={t('settings.persona.edit.aria', { name: entry.name })}>
               {t('settings.persona.edit')}
             </GlassButton>
@@ -106,6 +120,24 @@ function Form({ state, names, busy, onCancel, onSave }: { state: { isNew: boolea
           {state.isNew ? t('settings.vault.value') : t('settings.vault.value.keep')}
           <input type="password" autoComplete="off" spellCheck={false} value={draft.value} onChange={event => set('value', event.target.value)} className={`${input} h-8 font-mono`} />
         </label>
+      </div>
+      <div className="flex flex-wrap items-end gap-3">
+        <label className="flex flex-col gap-1 text-[11.5px] text-fg-3">
+          {t('settings.vault.kind')}
+          <select value={draft.kind} onChange={event => set('kind', event.target.value as VaultKind)} className={`${input} h-8`}>
+            {VAULT_KINDS.map(kind => (
+              <option key={kind} value={kind}>
+                {t(`settings.vault.kind.${kind}` as 'settings.vault.kind.other')}
+              </option>
+            ))}
+          </select>
+        </label>
+        {state.isNew && (
+          <label className="flex items-center gap-2 pb-1 text-[12px] text-fg-2">
+            <Toggle checked={draft.temporary} onChange={value => set('temporary', value)} label={t('settings.vault.temporary')} />
+            {t('settings.vault.temporary.hint')}
+          </label>
+        )}
       </div>
       <label className="flex flex-col gap-1 text-[11.5px] text-fg-3">
         {t('settings.vault.description')}

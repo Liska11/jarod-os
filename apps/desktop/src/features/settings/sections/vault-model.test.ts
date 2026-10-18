@@ -35,10 +35,10 @@ describe('vaultProblems', () => {
 
 describe('payload and summaries', () => {
   it('sends the entry and a value only when typed; an edit draft starts without the value', () => {
-    expect(savePayload({ ...ok, description: ' tok ', envVar: ' GH ', allowShell: true })).toEqual({ entry: { name: 'GithubToken', description: 'tok', envVar: 'GH', domains: ['api.github.com'], allowShell: true }, value: 'ghp_x' })
+    expect(savePayload({ ...ok, description: ' tok ', envVar: ' GH ', allowShell: true })).toEqual({ entry: { name: 'GithubToken', description: 'tok', envVar: 'GH', domains: ['api.github.com'], allowShell: true, kind: 'api_key', temporary: false }, value: 'ghp_x' })
     expect(savePayload({ ...ok, value: '' }).value).toBeUndefined()
     expect('envVar' in savePayload(ok).entry).toBe(false)
-    expect(draftOf({ name: 'A', description: 'd', envVar: 'E', domains: ['x.org', 'y.org'], allowShell: true, createdAt: 1, hasValue: true })).toEqual({ name: 'A', description: 'd', envVar: 'E', domains: 'x.org\ny.org', allowShell: true, value: '' })
+    expect(draftOf({ name: 'A', description: 'd', envVar: 'E', domains: ['x.org', 'y.org'], allowShell: true, createdAt: 1, hasValue: true })).toEqual({ name: 'A', description: 'd', envVar: 'E', domains: 'x.org\ny.org', allowShell: true, value: '', kind: 'other', temporary: false })
   })
 
   it('says where a secret may be used', () => {

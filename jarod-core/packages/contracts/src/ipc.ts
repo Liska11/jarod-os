@@ -50,6 +50,9 @@ export const JAROD_INVOKE_CHANNELS = [
   "vault-list",
   "vault-save",
   "vault-remove",
+  // Jarod-OS (Sécurité › Secrets) : état de protection du coffre, et retrait de toute portée sans effacer la valeur.
+  "vault-status",
+  "vault-revoke",
   // Hôtes SSH déclarés : la clé se choisit dans la boîte native, jamais tapée.
   "ssh-hosts-list",
   "ssh-pick-key",
