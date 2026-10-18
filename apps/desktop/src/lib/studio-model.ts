@@ -88,6 +88,7 @@ export function resolvePath(raw: string, cwd: string | null, home: string): stri
   return `/${parts.join('/')}`
 }
 
+// biome-ignore lint/suspicious/noControlCharactersInRegex: intended, matches ANSI escape sequences (ESC) and control characters
 const ANSI = /\u001b\[[0-9;?]*[ -/]*[@-~]|\u001b\][^\u0007]*\u0007/g
 const LOCAL_URL = /\bhttps?:\/\/(?:localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1?\])(?::\d{2,5})?(?:\/[^\s'"<>)\]]*)?/i
 

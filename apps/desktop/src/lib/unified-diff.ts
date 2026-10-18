@@ -15,6 +15,7 @@ export interface FileDiff {
 
 const HUNK = /^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,\d+)? @@/
 const RENDERED_HEADER = /^a\/(.+?) → b\/(.+)$/
+// biome-ignore lint/suspicious/noControlCharactersInRegex: intended, matches ANSI escape sequences (ESC) and control characters
 const ANSI = /\u001b\[[0-9;?]*[ -/]*[@-~]/g
 
 function stripPrefix(raw: string): string | null {

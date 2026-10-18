@@ -80,6 +80,7 @@ function text(key: string, v: unknown, max: number, empty = true): string {
   const t = v.trim();
   if (!empty && !t) return bad(key, "ne peut pas être vide");
   if (t.length > max) return bad(key, `au plus ${max} caractères`);
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: intended, rejects input that contains control characters
   if (/[\u0000-\u001f]/.test(t)) return bad(key, "caractère de contrôle refusé");
   return t;
 }
@@ -165,6 +166,7 @@ const programOk = (s: string): string | null => (/^[^\s"'`;&|<>*?$%(){}[\]^!]+$/
 const readRootOk = (s: string): string | null => {
   if (!/^([a-zA-Z]:[\\/]|\\\\|\/)/.test(s)) return "chemin absolu (par exemple C:\\Users\\vous\\scoop\\shims)";
   if (/(^|[\\/])\.\.([\\/]|$)/.test(s)) return "sans « .. »";
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: intended, rejects input that contains control characters
   if (/[*?<>|"\u0000-\u001f]/.test(s)) return "sans joker ni caractère interdit dans un chemin";
   return null;
 };

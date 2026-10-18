@@ -318,7 +318,7 @@ export function createHuggingFaceHandlers(ctx: HandlerContext) {
     "hf-search": async (input: unknown) => {
       const o = strict(input, ["query"], "hf-search");
       const q = o.query;
-      // eslint-disable-next-line no-control-regex -- une requête n'a aucun caractère de contrôle
+      // biome-ignore lint/suspicious/noControlCharactersInRegex: intended, rejects input that contains control characters
       if (typeof q !== "string" || q.trim().length < 1 || q.length > 100 || /[\u0000-\u001f]/.test(q)) return fail("BAD_INPUT", "« query » : texte de 1 à 100 caractères, sans caractère de contrôle (requête)");
       const token = readToken();
       try {

@@ -382,6 +382,7 @@ export function luaString(text: string): string {
     .replace(/\\/g, '\\\\')
     .replace(/"/g, '\\"')
     .replace(/\n/g, '\\n')
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: intended, strips control characters from untrusted text
     .replace(/[\u0000-\u001f]/g, '')}"`
 }
 

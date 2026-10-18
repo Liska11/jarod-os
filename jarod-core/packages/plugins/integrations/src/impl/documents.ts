@@ -49,7 +49,7 @@ export interface ParsedDocument {
 
 /** Sortie du sidecar : texte seulement, sans caractères de contrôle ni séquences d'échappement, bornée. */
 export function cleanOutput(spec: ParserSpec, raw: string): ParsedDocument {
-  // eslint-disable-next-line no-control-regex
-  const text = raw.replace(/\x1b\[[0-9;]*[A-Za-z]/g, "").replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f​-‏‪-‮⁦-⁩]/g, "");
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: intended, matches ANSI escape sequences (ESC) and control characters
+  const text = raw.replace(/\x1b\[[0-9;]*[A-Za-z]/g, "").replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f\u200b-\u200f\u202a-\u202e\u2066-\u2069]/g, "");
   return text.length > spec.maxOutputChars ? { markdown: text.slice(0, spec.maxOutputChars), truncated: true } : { markdown: text, truncated: false };
 }

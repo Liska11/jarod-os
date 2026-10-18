@@ -33,7 +33,7 @@ export function validateModelsDir(dir: unknown, o: { dataRoot: string; profileDi
   const refuse = (reason: string): ModelsDirCheck => ({ ok: false, reason });
   if (typeof dir !== "string" || dir.trim() === "") return refuse("aucun dossier indiqué");
   if (dir.length > MAX_PATH) return refuse(`chemin de plus de ${MAX_PATH} caractères`);
-  // eslint-disable-next-line no-control-regex -- un chemin ne porte aucun caractère de contrôle
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: intended, rejects input that contains control characters
   if (/[\u0000-\u001f]/.test(dir)) return refuse("caractère de contrôle dans le chemin");
   if (!isAbsolute(dir)) return refuse("chemin absolu attendu");
   let real: string;
