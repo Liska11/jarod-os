@@ -59,6 +59,7 @@ export const JAROD_INVOKE_CHANNELS = [
   "ssh-host-add",
   "ssh-host-remove",
   "ssh-host-test",
+  "ssh-host-exec-set",
   // Téléphone (pont local, appairage) et Android (adb) : l'allumage et le programme adb passent par des boîtes natives.
   "phone-status",
   "phone-bridge-set",

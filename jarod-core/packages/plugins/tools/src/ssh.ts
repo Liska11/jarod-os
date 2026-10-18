@@ -104,6 +104,11 @@ export interface SshCommand {
   args: string[];
   /** Délai, en millisecondes, avant que le processus soit tué. */
   timeoutMs: number;
+  /**
+   * Cap on what is kept of stdout and of stderr, in characters, each. Past it the rest is read and dropped (the process is never
+   * left blocked on a full pipe) and `outputTruncated` says so. Absent: no cap.
+   */
+  maxOutputChars?: number;
 }
 
 /** Ce que le processus local a rendu, y compris la façon dont il est mort. */
@@ -120,6 +125,8 @@ export interface SshProcessOutcome {
   binaryMissing: boolean;
   /** Le lancement a échoué pour une autre raison. Chaîne vide sinon. */
   spawnError: string;
+  /** Output went past `maxOutputChars` and was cut. */
+  outputTruncated?: boolean;
 }
 
 /**
@@ -171,7 +178,15 @@ export function spawnSshCommand(command: SshCommand): Promise<SshProcessOutcome>
 
     let stdout = "";
     let stderr = "";
+    let outputTruncated = false;
     let timedOut = false;
+    const cap = command.maxOutputChars;
+    const keep = (current: string, chunk: string): string => {
+      if (cap === undefined) return current + chunk;
+      const room = cap - current.length;
+      if (chunk.length > room) outputTruncated = true;
+      return room > 0 ? current + chunk.slice(0, room) : current;
+    };
     let graceTimer: NodeJS.Timeout | undefined;
     let timer: NodeJS.Timeout | undefined;
     let settled = false;
@@ -181,7 +196,7 @@ export function spawnSshCommand(command: SshCommand): Promise<SshProcessOutcome>
       settled = true;
       if (timer) clearTimeout(timer);
       if (graceTimer) clearTimeout(graceTimer);
-      resolve(outcome({ stdout, stderr, ...partial }));
+      resolve(outcome({ stdout, stderr, ...(outputTruncated ? { outputTruncated } : {}), ...partial }));
     };
 
     timer = setTimeout(() => {
@@ -206,10 +221,10 @@ export function spawnSshCommand(command: SshCommand): Promise<SshProcessOutcome>
     child.stdout?.setEncoding("utf8");
     child.stderr?.setEncoding("utf8");
     child.stdout?.on("data", (chunk: string) => {
-      stdout += chunk;
+      stdout = keep(stdout, chunk);
     });
     child.stderr?.on("data", (chunk: string) => {
-      stderr += chunk;
+      stderr = keep(stderr, chunk);
     });
     child.on("error", (error) => {
       const code = (error as NodeJS.ErrnoException).code;
@@ -245,6 +260,8 @@ export interface SshResult {
   timedOut: boolean;
   /** Durée réelle, en millisecondes. */
   durationMs: number;
+  /** Output was cut at the requested cap (`SshExecOptions.maxOutputChars`). */
+  outputTruncated?: boolean;
 }
 
 /** Un appel dont on exige le succès : l'échec devient une exception qui porte le résultat. */
@@ -262,6 +279,10 @@ export class SshFailureError extends Error {
 export interface SshExecOptions {
   /** Délai avant mise à mort du processus, en millisecondes. */
   timeoutMs?: number;
+  /** Cap on the kept stdout and stderr, in characters each (see `SshCommand.maxOutputChars`). */
+  maxOutputChars?: number;
+  /** One command and nothing else: no terminal, no forwarding of any kind (see `SshArgOptions.noForwarding`). */
+  noForwarding?: boolean;
 }
 
 export interface SshServiceOptions {
@@ -288,7 +309,28 @@ export interface SshSessionContext {
 export interface SshArgOptions {
   /** Délai de connexion, en secondes. Défaut : 15. */
   connectTimeoutSeconds?: number;
+  /**
+   * No interactive session and no tunnel through this connection: no terminal is requested, every port forwarding (local, remote,
+   * dynamic, from any ssh_config too) is cleared, and neither the agent, X11 nor a local command is forwarded or run.
+   */
+  noForwarding?: boolean;
 }
+
+/** The options `noForwarding` adds, in this order, before the key. */
+export const SSH_NO_FORWARDING_OPTIONS: readonly string[] = [
+  "-o",
+  "RequestTTY=no",
+  "-o",
+  "ClearAllForwardings=yes",
+  "-o",
+  "ForwardAgent=no",
+  "-o",
+  "ForwardX11=no",
+  "-o",
+  "PermitLocalCommand=no",
+  "-o",
+  "Tunnel=no",
+];
 
 // ── Construction de l'argv ──────────────────────────────────────────────────
 
@@ -391,6 +433,7 @@ export function buildSshOptions(target: SshTarget, options: SshArgOptions = {}):
     "IdentitiesOnly=yes", // Seule la clé déclarée est proposée.
     "-o",
     "PreferredAuthentications=publickey", // Aucun chemin par mot de passe n'existe.
+    ...(options.noForwarding ? SSH_NO_FORWARDING_OPTIONS : []),
     "-i",
     clean.keyPath,
     "-p",
@@ -479,9 +522,20 @@ export class SshSession {
       throw new SshInputError(`Délai invalide : « ${String(options.timeoutMs)} ».`);
     }
 
-    const args = buildSshArgs(this.target, remote);
+    const cap = options.maxOutputChars;
+    if (cap !== undefined && (!Number.isInteger(cap) || cap < 1)) {
+      throw new SshInputError(`Plafond de sortie invalide : « ${String(cap)} ».`);
+    }
+
+    const args = buildSshArgs(this.target, remote, options.noForwarding ? { noForwarding: true } : {});
     const startedAt = this.context.now();
-    const raw = await this.run({ file: this.context.sshBinary, args, timeoutMs }, timeoutMs);
+    const raw = await this.run({ file: this.context.sshBinary, args, timeoutMs, ...(cap === undefined ? {} : { maxOutputChars: cap }) }, timeoutMs);
+    // A transport that ignores the cap still never hands back more than it.
+    if (cap !== undefined && (raw.stdout.length > cap || raw.stderr.length > cap)) {
+      raw.stdout = raw.stdout.slice(0, cap);
+      raw.stderr = raw.stderr.slice(0, cap);
+      raw.outputTruncated = true;
+    }
     return toResult(raw, this.target, this.context.now() - startedAt);
   }
 
@@ -522,7 +576,14 @@ export class SshSession {
 
 /** Ce qu'un transport a rendu devient un résultat lisible, sans jamais confondre échec et succès. */
 function toResult(raw: SshProcessOutcome, target: SshTarget, durationMs: number): SshResult {
-  const base = { exitCode: raw.exitCode, stdout: raw.stdout, stderr: raw.stderr, timedOut: raw.timedOut, durationMs };
+  const base = {
+    exitCode: raw.exitCode,
+    stdout: raw.stdout,
+    stderr: raw.stderr,
+    timedOut: raw.timedOut,
+    durationMs,
+    ...(raw.outputTruncated ? { outputTruncated: true } : {}),
+  };
 
   if (raw.timedOut) {
     return {

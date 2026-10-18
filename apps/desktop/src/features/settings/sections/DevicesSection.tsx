@@ -285,7 +285,13 @@ function SshBlock() {
     <SettingsGroup title={t('settings.devices.ssh')}>
       {hosts.data?.length === 0 && <SettingsRow icon={<IconTerminal2 />} label={t('settings.devices.ssh.none')} description={t('settings.devices.ssh.none.hint')} keywords={t('settings.devices.sshNoneKw')} />}
       {hosts.data?.map(host => (
-        <SettingsRow key={host.id} icon={<IconTerminal2 />} label={host.name} description={`${sshLine(host)} · ${t('settings.devices.ssh.key', { file: baseName(host.keyPath) })}${tests[host.id] ? ` · ${tests[host.id]}` : ''}`} keywords={t('settings.devices.sshHostKw', { name: host.name, address: host.host })}>
+        <SettingsRow key={host.id} icon={<IconTerminal2 />} label={host.name} description={`${sshLine(host)} · ${t('settings.devices.ssh.key', { file: baseName(host.keyPath) })} · ${host.agentExec ? t('settings.devices.ssh.agent.enabled') : t('settings.devices.ssh.agent.disabled')}${tests[host.id] ? ` · ${tests[host.id]}` : ''}`} keywords={t('settings.devices.sshHostKw', { name: host.name, address: host.host })}>
+          <Toggle
+            checked={host.agentExec === true}
+            label={t('settings.devices.ssh.agent.aria', { name: host.name })}
+            disabled={busy}
+            onChange={value => void run(value ? t('settings.devices.ssh.agent.on', { name: host.name }) : t('settings.devices.ssh.agent.off', { name: host.name }), () => jarod('ssh-host-exec-set', host.id, value))}
+          />
           <GlassButton size="sm" variant="ghost" disabled={busy} onClick={() => void test(host)} aria-label={t('settings.devices.ssh.test.aria', { name: host.name })}>
             {t('settings.devices.ssh.test')}
           </GlassButton>

@@ -9,6 +9,8 @@
  * - le contenu de la clé n'est jamais lu : seul son chemin traverse ;
  * - `ssh-host-test` lance la commande de TEST fixe du service (`id`, `hostname`, `uname`), jamais une commande saisie, et ne rend que le verdict
  *   et ces trois lignes (jamais l'erreur brute du serveur au-delà de 500 caractères).
+ * - `ssh-host-exec-set` lets the AGENT run commands on one host (`remote_exec`, each command confirmed by the person). Turning it on goes
+ *   through a NATIVE confirmation that names the machine; turning it off is immediate. The list (`sshExecHosts`) has no other writer.
  */
 import { realpathSync } from "node:fs";
 import type { SshHostRecord } from "@jarod/contracts";
@@ -19,10 +21,12 @@ export interface SshHostsPort {
   add(input: { name: string; host: string; username: string; port?: number | string; keyPath: string }): SshHostRecord[];
   remove(id: string): SshHostRecord[];
   test(id: string): Promise<{ ok: boolean; stdout: string; message: string; timedOut: boolean; durationMs: number; hostName: string }>;
+  execEnabledIds(): string[];
+  setExecEnabled(id: string, enabled: boolean): string[];
 }
 
-/** Ce que l'écran voit d'un hôte : tout, sauf rien de secret (il n'y en a pas : le chemin d'une clé n'est pas une clé). */
-export type SshHostView = SshHostRecord;
+/** Ce que l'écran voit d'un hôte : tout, sauf rien de secret (il n'y en a pas : le chemin d'une clé n'est pas une clé), plus son réglage d'agent. */
+export type SshHostView = SshHostRecord & { agentExec: boolean };
 
 export function createSshHostHandlers(ctx: HandlerContext) {
   const hosts = (): SshHostsPort => {
@@ -41,8 +45,13 @@ export function createSshHostHandlers(ctx: HandlerContext) {
     }
   };
 
+  const view = (rows: SshHostRecord[]): SshHostView[] => {
+    const on = new Set(hosts().execEnabledIds());
+    return rows.map((r) => ({ ...r, agentExec: on.has(r.id) }));
+  };
+
   return {
-    "ssh-hosts-list": (): SshHostView[] => (ctx.kernel().sshHosts ? hosts().list() : []),
+    "ssh-hosts-list": (): SshHostView[] => (ctx.kernel().sshHosts ? view(hosts().list()) : []),
 
     /** Boîte « Ouvrir » native ; rend le chemin choisi (retenu pour ce lancement) ou null si annulée. */
     "ssh-pick-key": async (): Promise<string | null> => {
@@ -63,12 +72,31 @@ export function createSshHostHandlers(ctx: HandlerContext) {
       if (!picked.has(real(o.keyPath as string))) {
         throw new Error("[oneai] ssh : clé non choisie dans la boîte « Ouvrir » (le chemin d'une clé ne se tape pas : utilisez « Choisir la clé… »)");
       }
-      return hosts().add({ name: o.name as string, host: o.host as string, username: o.username as string, keyPath: o.keyPath as string, ...(o.port === undefined ? {} : { port: o.port as number | string }) });
+      return view(hosts().add({ name: o.name as string, host: o.host as string, username: o.username as string, keyPath: o.keyPath as string, ...(o.port === undefined ? {} : { port: o.port as number | string }) }));
     },
 
     "ssh-host-remove": (id: unknown): SshHostView[] => {
       if (typeof id !== "string" || !id) throw new Error("[oneai] ssh : identifiant attendu");
-      return hosts().remove(id);
+      return view(hosts().remove(id));
+    },
+
+    /** Agent commands on one host: on after a native confirmation naming the machine, off at once. Rend la liste. */
+    "ssh-host-exec-set": async (id: unknown, enabled: unknown): Promise<SshHostView[]> => {
+      if (typeof id !== "string" || !id || typeof enabled !== "boolean") throw new Error("[oneai] ssh : (id: string, enabled: boolean) attendu");
+      if (enabled) {
+        const host = hosts().list().find((r) => r.id === id);
+        if (!host) throw new Error("[oneai] ssh : hôte non déclaré");
+        if (!ctx.shell.confirm) throw new Error("[oneai] ssh : confirmation native indisponible, refusé");
+        const ok = await ctx.shell.confirm(
+          `Laisser l'agent exécuter des commandes sur « ${host.name} » ?`,
+          `${host.username}@${host.host}:${host.port}\n\nL'agent pourra PROPOSER des commandes pour cette machine. Chacune vous sera montrée telle quelle, avec la machine, et ne s'exécutera qu'après « Autoriser une fois ». ` +
+            "Aucun « toujours autoriser ». Refusé si l'interrupteur Internet bloque la machine ou si sa clé d'hôte n'est pas approuvée. Chaque tentative est écrite au journal de contrôle.",
+          "Autoriser les commandes",
+        );
+        if (!ok) throw new Error("[oneai] ssh : refusé par l'utilisateur");
+      }
+      hosts().setExecEnabled(id, enabled);
+      return view(hosts().list());
     },
 
     /** La commande de TEST fixe : verdict et sortie (`id`, `hostname`, `uname`) ; aucune commande saisie ne passe par ici. */

@@ -231,7 +231,11 @@ const shellHost: ShellHost | null = panels ?? appHost
 // by a one-shot capability (shell/host-control.ts).
 const { backend: backendToken, cli: cliToken } = controlTokens()
 const surfaceTokens = { backend: backendToken, cli: cliToken }
-const journalControl = controlAuditSink(path.join(heraldOsDataDir(), 'control-audit.jsonl'))
+const controlJournalFile = path.join(heraldOsDataDir(), 'control-audit.jsonl')
+const journalControl = controlAuditSink(controlJournalFile)
+// The core appends its remote commands (remote_exec: attempt, decision, exit code) to this same journal, in the same line shape;
+// without this variable it offers no remote commands at all (docs/REMOTE-SSH.md).
+process.env.JAROD_CONTROL_JOURNAL = controlJournalFile
 const auditControl = (entry: ControlAuditEntry) => {
   log('control', `${entry.allowed ? 'allowed' : 'refused'} ${entry.cmd}${entry.command ? ` ${entry.command}` : ''} from ${entry.client}: ${entry.reason}`)
   journalControl(entry)
