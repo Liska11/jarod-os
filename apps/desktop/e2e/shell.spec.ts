@@ -47,18 +47,19 @@ test.describe('onboarding', () => {
   test('the wizard does not come back on the next launch of the same profile', async () => {
     const root = shell.root
     await shell.app.close()
-    const again = await launchShell({ HERALD_OS_CONFIG_DIR: `${root}/config`, JAROD_OS_DATA: `${root}/data`, JAROD_WORKSPACE: `${root}/workspace` })
+    // Same root (config, data, workspace), not owned: the root is removed once, by the last launch below.
+    const again = await launchShell({}, { root, own: false })
 
     try {
       await expect(again.page.getByRole('button', { name: 'Accueil' })).toBeVisible({ timeout: 60_000 })
       await again.page.waitForTimeout(3000)
       await expect(again.page.getByText('Bienvenue dans Jarod-OS')).toHaveCount(0)
     } finally {
-      await again.app.close().catch(() => undefined)
+      await again.close()
     }
 
-    // the shared window is gone: the next tests start their own
-    shell = await launchShell({ HERALD_OS_CONFIG_DIR: `${root}/config`, JAROD_OS_DATA: `${root}/data`, JAROD_WORKSPACE: `${root}/workspace` })
+    // the shared window is gone: the next tests start their own, which now owns the root (removed in afterAll)
+    shell = await launchShell({}, { root, own: true })
     page = shell.page
     await expect(page.getByRole('button', { name: 'Accueil' })).toBeVisible({ timeout: 60_000 })
   })
