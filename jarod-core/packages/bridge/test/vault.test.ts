@@ -5,6 +5,8 @@
  */
 import { cleanup } from "@jarod/kernel/testing";
 import { afterEach, describe, expect, it } from "vitest";
+import type { DesktopKernel } from "../src/main/handlers/index.js";
+import { vaultStatusOf } from "../src/main/handlers/vault.js";
 import { setupKernel } from "./ui-parite-helpers.js";
 
 afterEach(cleanup);
@@ -125,11 +127,36 @@ describe("coffre d'identifiants", () => {
     await rejects(() => call("vault-revoke", "inconnu"), /secret inconnu/);
   });
 
-  it("l'état de protection dit si la base est chiffrée, sans rien rendre de la clé", async () => {
-    const { call } = await setupKernel();
-    const status = (await call("vault-status")) as { encrypted: boolean; keyStore: string | null };
-    expect(typeof status.encrypted).toBe("boolean");
-    expect(Object.keys(status).sort()).toEqual(["encrypted", "keyStore"]);
+  it("l'état de protection vient du storage : chacun des quatre états, rien d'autre que trois champs", () => {
+    expect(vaultStatusOf({ encrypted: true, keyStoreId: "dpapi", weak: false })).toEqual({ protection: "os-key", encrypted: true, keyStore: "dpapi" });
+    expect(vaultStatusOf({ encrypted: true, keyStoreId: "keychain", weak: false })).toEqual({ protection: "os-key", encrypted: true, keyStore: "keychain" });
+    // Repli quand DPAPI a échoué : la clé est dans `db.key`, à côté de la base.
+    expect(vaultStatusOf({ encrypted: true, keyStoreId: "file", weak: true })).toEqual({ protection: "weak", encrypted: true, keyStore: "file" });
+    expect(vaultStatusOf({ encrypted: true, weak: true })).toEqual({ protection: "weak", encrypted: true, keyStore: "file" });
+    expect(vaultStatusOf({ encrypted: false, keyStoreId: null, weak: false })).toEqual({ protection: "plain", encrypted: false, keyStore: null });
+    // Inconnu : port absent, ancien storage sans `keyStoreId`, magasin non reconnu (mémoire des tests).
+    expect(vaultStatusOf(undefined)).toEqual({ protection: "unknown", encrypted: null, keyStore: null });
+    expect(vaultStatusOf({ encrypted: true, weak: false })).toEqual({ protection: "unknown", encrypted: true, keyStore: null });
+    expect(vaultStatusOf({ encrypted: true, keyStoreId: "memory", weak: false })).toEqual({ protection: "unknown", encrypted: true, keyStore: "memory" });
+  });
+
+  it("vault-status lit le storage du kernel ; sans storage il dit « inconnu » ; jamais une valeur ni la clé", async () => {
+    const { call, app, kernel } = await setupKernel();
+    await call("vault-save", { name: "T" }, SECRET);
+    expect(await call("vault-status")).toEqual({ protection: "unknown", encrypted: null, keyStore: null });
+    const storage = (app as unknown as { storage: NonNullable<DesktopKernel["storage"]> & { dbEncryption: { encrypted: boolean; keyStoreId: string | null; weak: boolean } } }).storage;
+    expect(storage.dbEncryption).toMatchObject({ encrypted: true, keyStoreId: "memory" });
+    kernel.storage = { ...storage, dbEncryption: { ...storage.dbEncryption, keyStoreId: "dpapi" } } as never;
+    expect(await call("vault-status")).toEqual({ protection: "os-key", encrypted: true, keyStore: "dpapi" });
+    kernel.storage = { ...storage, dbEncryption: { encrypted: true, keyStoreId: "file", weak: true } } as never;
+    const weak = await call("vault-status");
+    expect(weak).toEqual({ protection: "weak", encrypted: true, keyStore: "file" });
+    const key = storage.findKey((storage as unknown as { dataDir: string }).dataDir);
+    expect(key).toBeTruthy();
+    expect(JSON.stringify(weak)).not.toContain(SECRET);
+    expect(JSON.stringify(weak)).not.toContain(key as string);
+    kernel.storage = storage;
+    expect(await call("vault-status")).toEqual({ protection: "unknown", encrypted: true, keyStore: "memory" });
   });
 
   it("le secret n'est jamais importable ni exposé par get-jarod-settings", async () => {

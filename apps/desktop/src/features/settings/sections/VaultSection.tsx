@@ -8,7 +8,7 @@ import { reportEngineError } from './jarod-controls.tsx'
 import { isUnsupported } from './providers-model.ts'
 import { InlineNote, markSaved, SectionTitle, SettingsGroup, SettingsRow } from './shared.tsx'
 import { t, useT } from '../../../lib/i18n.ts'
-import { draftOf, emptyVault, reachText, savePayload, VAULT_KINDS, type VaultDraft, type VaultEntry, type VaultKind, vaultProblems, type VaultStatus } from './vault-model.ts'
+import { draftOf, emptyVault, protectionNote, reachText, savePayload, VAULT_KINDS, type VaultDraft, type VaultEntry, type VaultKind, vaultProblems, type VaultStatus } from './vault-model.ts'
 
 /*
  * Secrets: values the agent can use without ever seeing them. A secret can be sent only to the domains you list, and can be made available to shell commands
@@ -19,8 +19,9 @@ import { draftOf, emptyVault, reachText, savePayload, VAULT_KINDS, type VaultDra
 export function VaultSection() {
   useT()
   const vault = useBackendData(() => jarod<VaultEntry[]>('vault-list'))
-  // An older engine has no `vault-status`: the protection line is then left out, not guessed.
+  // Read from the engine only: an error or an older engine without `vault-status` says "unknown", never a guess.
   const status = useBackendData(() => jarod<VaultStatus>('vault-status'))
+  const protection = protectionNote(status.data, status.error, status.loading)
   const [editing, setEditing] = useState<{ isNew: boolean; draft: VaultDraft } | null>(null)
   const [busy, setBusy] = useState(false)
 
@@ -58,10 +59,10 @@ export function VaultSection() {
     <>
       <SectionTitle title={t('settings.vault.title')} subtitle={t('settings.vault.subtitle')} />
       {vault.error && <InlineNote tone="danger">{t('settings.vault.readFailed', { error: vault.error })}</InlineNote>}
-      {status.data && (
-        <InlineNote tone={status.data.encrypted && status.data.keyStore === 'dpapi' ? 'info' : 'warn'}>
-          {t(status.data.encrypted ? (`settings.vault.status.${status.data.keyStore ?? 'other'}` as 'settings.vault.status.dpapi') : 'settings.vault.status.plain')}
-        </InlineNote>
+      {protection && (
+        <div data-testid="vault-protection" data-state={protection.key} role={protection.tone === 'info' ? 'status' : 'alert'}>
+          <InlineNote tone={protection.tone}>{t(`settings.vault.status.${protection.key}`)}</InlineNote>
+        </div>
       )}
       <InlineNote tone="info">{t('settings.vault.sent')}</InlineNote>
       <SettingsGroup title={t('settings.vault.vault')}>

@@ -1,5 +1,45 @@
 import { describe, expect, it } from 'vitest'
-import { draftOf, emptyVault, MAX_VALUE, parseDomains, reachText, savePayload, vaultProblems } from './vault-model.ts'
+import { en } from '../../../locales/en.ts'
+import { fr } from '../../../locales/fr.ts'
+import { draftOf, emptyVault, MAX_VALUE, parseDomains, protectionNote, reachText, savePayload, vaultProblems } from './vault-model.ts'
+
+describe('protectionNote', () => {
+  it('DPAPI key: the normal state, said plainly', () => {
+    expect(protectionNote({ protection: 'os-key', encrypted: true, keyStore: 'dpapi' }, null, false)).toEqual({ tone: 'info', key: 'dpapi' })
+    expect(protectionNote({ protection: 'os-key', encrypted: true, keyStore: 'keychain' }, null, false)).toEqual({ tone: 'info', key: 'os' })
+  })
+
+  it('key-file fallback: a warning', () => {
+    expect(protectionNote({ protection: 'weak', encrypted: true, keyStore: 'file' }, null, false)).toEqual({ tone: 'warn', key: 'weak' })
+  })
+
+  it('clear database: danger', () => {
+    expect(protectionNote({ protection: 'plain', encrypted: false, keyStore: null }, null, false)).toEqual({ tone: 'danger', key: 'plain' })
+  })
+
+  it('unknown, unreadable or from an older engine: unknown, never guessed from the other fields', () => {
+    expect(protectionNote({ protection: 'unknown', encrypted: true, keyStore: 'memory' }, null, false)).toEqual({ tone: 'warn', key: 'unknown' })
+    expect(protectionNote(null, 'unsupported channel vault-status', false)).toEqual({ tone: 'warn', key: 'unknown' })
+    // Older engine answer (encrypted + keyStore, no `protection`): not read as protected.
+    expect(protectionNote({ encrypted: true, keyStore: 'dpapi' }, null, false)).toEqual({ tone: 'warn', key: 'unknown' })
+    expect(protectionNote({ protection: 'os-key' }, 'boom', false)).toEqual({ tone: 'warn', key: 'unknown' })
+    expect(protectionNote(null, null, false)).toEqual({ tone: 'warn', key: 'unknown' })
+  })
+
+  it('nothing while the first answer is awaited', () => {
+    expect(protectionNote(null, null, true)).toBeNull()
+  })
+
+  it('every state has a sentence in both languages; the weak one says what to do', () => {
+    for (const key of ['dpapi', 'os', 'weak', 'plain', 'unknown'] as const) {
+      expect(en[`settings.vault.status.${key}`]).toBeTruthy()
+      expect(fr[`settings.vault.status.${key}`]).toBeTruthy()
+    }
+    expect(fr['settings.vault.status.weak']).toMatch(/db\.key/)
+    expect(fr['settings.vault.status.weak']).toMatch(/Pour revenir à DPAPI/)
+    expect(en['settings.vault.status.weak']).toMatch(/To go back to DPAPI/)
+  })
+})
 
 const ok = { ...emptyVault(), name: 'GithubToken', value: 'ghp_x', domains: 'api.github.com' }
 

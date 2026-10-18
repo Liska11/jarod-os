@@ -10,8 +10,6 @@
  * - noms, variables et domaines sont validés ; rien n'est écrit si une valeur est invalide.
  */
 import type { VaultEntry, VaultKind } from "@jarod/contracts";
-import { existsSync } from "node:fs";
-import { dirname, join } from "node:path";
 import type { HandlerContext } from "./context.js";
 
 const NAME = /^[A-Za-z][A-Za-z0-9_]{0,63}$/;
@@ -37,11 +35,33 @@ export interface VaultView {
 
 const KINDS: VaultKind[] = ["api_key", "token", "password", "other"];
 
-/** Comment le coffre est protégé sur ce disque : base chiffrée ou non, et où est rangée la clé de la base. */
+/**
+ * Comment le coffre est protégé sur ce disque, lu dans ce que le storage a VRAIMENT fait à l'ouverture de la base
+ * (jamais deviné d'après les fichiers présents) :
+ * - `os-key` : base chiffrée, clé protégée par le compte (DPAPI sous Windows, trousseau ailleurs) ; l'état normal ;
+ * - `weak` : base chiffrée, mais la clé est dans un fichier à côté de la base (repli quand DPAPI a échoué) ;
+ * - `plain` : base en clair ;
+ * - `unknown` : le storage ne dit rien (port absent, magasin non reconnu).
+ * Ni clé, ni chemin, ni valeur n'y figurent.
+ */
+export type VaultProtection = "os-key" | "weak" | "plain" | "unknown";
 export interface VaultStatus {
-  encrypted: boolean;
-  /** `dpapi` : clé protégée par le compte Windows ; `file` : clé dans un fichier à côté de la base (protection faible) ; null : base en clair. */
-  keyStore: "dpapi" | "file" | "other" | null;
+  protection: VaultProtection;
+  /** null : inconnu. */
+  encrypted: boolean | null;
+  /** Le magasin qui a rendu la clé (`dpapi`, `keychain`, `libsecret`, `file`…) ; null si base en clair ou inconnu. */
+  keyStore: string | null;
+}
+
+const OS_STORES = ["dpapi", "keychain", "libsecret"];
+
+export function vaultStatusOf(enc: { encrypted: boolean; keyStoreId?: string | null; weak: boolean } | undefined): VaultStatus {
+  if (!enc || typeof enc.encrypted !== "boolean") return { protection: "unknown", encrypted: null, keyStore: null };
+  if (!enc.encrypted) return { protection: "plain", encrypted: false, keyStore: null };
+  const keyStore = typeof enc.keyStoreId === "string" ? enc.keyStoreId : null;
+  if (enc.weak || keyStore === "file") return { protection: "weak", encrypted: true, keyStore: "file" };
+  if (keyStore && OS_STORES.includes(keyStore)) return { protection: "os-key", encrypted: true, keyStore };
+  return { protection: "unknown", encrypted: true, keyStore };
 }
 
 const bad = (why: string): never => {
@@ -63,12 +83,7 @@ export function createVaultHandlers(ctx: HandlerContext) {
   return {
     "vault-list": (): VaultView[] => views(),
 
-    "vault-status": (): VaultStatus => {
-      const db = ctx.kernel().agent.db;
-      if (!db.encrypted) return { encrypted: false, keyStore: null };
-      const dir = dirname(db.file);
-      return { encrypted: true, keyStore: existsSync(join(dir, "db.key.dpapi")) ? "dpapi" : existsSync(join(dir, "db.key")) ? "file" : "other" };
-    },
+    "vault-status": (): VaultStatus => vaultStatusOf(ctx.kernel().storage?.dbEncryption),
 
     /** Retire toute portée (domaines, commandes du shell) sans effacer la valeur : restreindre ne demande pas d'accord. */
     "vault-revoke": (name: unknown): VaultView[] => {
