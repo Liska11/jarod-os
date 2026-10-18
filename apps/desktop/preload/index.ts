@@ -412,7 +412,13 @@ const api = {
     state: (): Promise<import('../electron/ipc/updates-check.ts').UpdatesState> => ipcRenderer.invoke(IPC.updatesState),
     /** Read-only check of Windows, drivers and winget software (only while Jarod's Internet is on). */
     check: (): Promise<import('../electron/ipc/updates-check.ts').UpdatesState> => ipcRenderer.invoke(IPC.updatesCheck),
-    openWindowsUpdate: (): Promise<void> => ipcRenderer.invoke(IPC.updatesOpenWindowsUpdate)
+    openWindowsUpdate: (): Promise<void> => ipcRenderer.invoke(IPC.updatesOpenWindowsUpdate),
+    /** Step 1 of upgrading one listed winget package: the exact id, version and source to confirm, and a one-shot token. */
+    prepareUpgrade: (target: import('../electron/winget-install.ts').WingetTarget): Promise<import('../electron/ipc/updates-check.ts').PrepareReply> =>
+      ipcRenderer.invoke(IPC.updatesPrepareUpgrade, target),
+    /** Step 2, after the person confirmed: runs that one upgrade through the control gate. */
+    upgrade: (token: string): Promise<import('../electron/ipc/updates-check.ts').UpgradeReply> => ipcRenderer.invoke(IPC.updatesUpgrade, token),
+    onProgress: (listener: (progress: import('../electron/winget-install.ts').WingetProgress) => void): Unsubscribe => subscribe(IPC.updatesProgress, listener)
   },
   network: {
     /** Jarod's Internet policy (the switch in the top bar). */

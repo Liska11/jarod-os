@@ -21,7 +21,8 @@ This note follows `docs/AUDIT-GLOBAL.md` and the request `prompt/Prompt-Jarod_os
 | Engine database | `Db`, `rekeyFile`, `VACUUM INTO` | `snapshotWithoutSecrets`, maintenance mode `--db-snapshot` |
 | Vault | `VaultService`, `vault-*` channels, native confirmations | Type, temporary entries, revocation, protection status |
 | SSH | `SshService` (`StrictHostKeyChecking=yes`), `ssh-hosts-*` | Separate network test, host-key trust with its fingerprint, terminal |
-| Terminal | node-pty, `vm` and `environment` options | `ssh` and `winget` options |
+| Terminal | node-pty, `vm` and `environment` options | `ssh` option |
+| Updates | Control gate, host catalogue | One confirmed `winget upgrade` (`shell.winget.upgrade`), docs/UPDATES.md |
 | Tool gate | `executeGuardedTool` | `toolVerdict` (Internet switch) |
 | Voice | `ChainedEngine`, `SpeakStream`, `Endpointer` | `SentenceSpeaker`, duplex / classic mode, measurements |
 | Model picker | `ModelPicker` | Moved into the header; offline state |
@@ -48,7 +49,7 @@ This note follows `docs/AUDIT-GLOBAL.md` and the request `prompt/Prompt-Jarod_os
 | `updates-check.json` | Shell config. |
 | `VaultEntry` | Gains `kind?` and `temporary?`, both optional: no migration. `vault-status` and `vault-revoke` join the channel list. |
 | `VoicePrefs.duplex` | Default `true`: the previous behaviour. |
-| `TerminalCreateOptions` | Gains `ssh?` and `winget?`. |
+| `TerminalCreateOptions` | Gains `ssh?`. The `winget?` option is gone: an upgrade runs from Système › Mises à jour, through the gate. |
 | Sidebar | A stored width equal to the old default (132) moves to the new one (184). A width chosen by hand is kept. |
 
 **No destructive migration.**

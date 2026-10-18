@@ -39,7 +39,7 @@ Voir aussi l'annexe A.
 - Pas de second PC : SSH distant réel non testable.
 - Pas de disque externe dédié aux essais : un vrai débranchement n'est pas testable sans accord.
 - Pas de micro testé en conditions réelles : aucune session vocale réelle n'a été lancée.
-- `winget` et Windows Update ne sont jamais lancés en mode installation.
+- Windows Update n'est jamais lancé en mode installation. `winget upgrade` (un paquet confirmé, docs/UPDATES.md) n'est testé qu'avec un winget simulé : aucun logiciel n'est installé par les tests.
 - Aucun profil réel n'est utilisé : les tests vivent dans `%TEMP%\jarod-e2e-*`, supprimés à la fin, ce que vérifie `global-setup`.
 
 ## 2. Cartographie
