@@ -15,6 +15,9 @@ const config: CapacitorConfig = {
     // No remote debugging in a release build; a debug build keeps it for development.
     webContentsDebuggingEnabled: false
   },
+  // Capacitor's default ("debug") writes every plugin call and result to the Android log in a debug
+  // build — the unwrapped device key and the one-time pairing code among them. Never.
+  loggingBehavior: 'none',
   plugins: {
     LocalNotifications: { iconColor: '#2f7dff' }
   }

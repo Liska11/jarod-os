@@ -2,11 +2,15 @@
  * A throwaway Jarod for the phone app's development: a real kernel on a temporary profile (nothing
  * of yours is read or written), its mobile bridge on port 10493, and a scripted model that streams
  * its answer and asks for one approval when told "approuve". Prints the pairing link.
+ * Phone approvals are on, and a loopback-only control port (CONTROL_PORT, default 10494) lets a
+ * developer play the PC: `/approve` asks the phones as a background task would, `/notify?kind=`
+ * (task, reminder, alert) adds a notification.
  *
  *   pnpm --dir jarod-core exec tsx packages/plugins/gateways/scripts/dev-phone-pc.ts
  *   JAROD_BRIDGE=http://127.0.0.1:10493 npm --prefix mobile run dev
  */
 import { bootApp, discoverPlugins, shutdown, tempDir } from "@jarod/kernel/testing";
+import { createServer } from "node:http";
 import { memoryKeyStore } from "@jarod/plugin-storage";
 
 const port = Number(process.env.PORT ?? 10493);
@@ -18,11 +22,14 @@ plugins.gateways = { autoStart: false };
 const app = await bootApp(plugins);
 const core = app.agent as unknown as {
   settings: { patch(v: Record<string, unknown>): void; set(k: string, v: unknown): void };
+  sessions: { create(title?: string): { id: string } };
+  backgroundHooks: { approve(sessionId: string, call: unknown, description: string): Promise<boolean> };
   providers: { client: (provider: string) => unknown };
   notifications: { add(kind: string, title: string, body?: string): void };
 };
 core.settings.patch({ activeProvider: "openai", activeModel: "dev-phone" });
 core.settings.set("autoTitle", false);
+core.settings.set("phoneApprovals", true);
 
 let turn = 0;
 core.providers.client = () => ({
@@ -52,9 +59,35 @@ const hub = app.gateways;
 await hub.mobile.start(port);
 const pairing = await hub.mobile.appPairing();
 console.log(`\nJarod de développement sur le port ${port}. Lien d'association (10 min) :\n\n${pairing.appLink}\n`);
-setInterval(() => core.notifications.add("info", "Rappel de test", "Une notification du PC de développement."), 120_000).unref();
+
+// Playing the PC, from this computer only.
+const NOTES: Record<string, [string, string, string]> = {
+  task: ["success", "Tâche terminée", "Le rapport de test est prêt."],
+  reminder: ["info", "Rappel", "Appeler le garage à 15 h."],
+  alert: ["warning", "Alerte", "Le disque D: est presque plein."],
+};
+const control = createServer((req, res) => {
+  const url = new URL(req.url ?? "/", "http://127.0.0.1");
+  if (url.pathname === "/approve") {
+    const session = core.sessions.create("Tâche planifiée (test)");
+    const call = { id: `bg-${Date.now()}`, name: "run_shell", args: { command: "echo sauvegarde" } };
+    void core.backgroundHooks.approve(session.id, call, "Lancer la sauvegarde de test").then((ok) => console.log(`approbation : ${ok ? "acceptée" : "refusée"}`));
+    res.end("demandée\n");
+    return;
+  }
+  if (url.pathname === "/notify") {
+    const note = NOTES[url.searchParams.get("kind") ?? "task"] ?? NOTES.task!;
+    core.notifications.add(note[0], note[1], note[2]);
+    res.end("envoyée\n");
+    return;
+  }
+  res.statusCode = 404;
+  res.end();
+});
+control.listen(Number(process.env.CONTROL_PORT ?? 10494), "127.0.0.1");
 
 const stop = async () => {
+  control.close();
   await hub.mobile.close();
   await shutdown(app);
   process.exit(0);

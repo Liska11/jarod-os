@@ -3,6 +3,7 @@ package os.jarod.mobile;
 import android.os.Bundle;
 import android.speech.tts.TextToSpeech;
 import android.speech.tts.Voice;
+import android.util.Log;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
@@ -64,18 +65,44 @@ public class JarodSpeechPlugin extends Plugin {
         else doStatus(call);
     }
 
+    /** Same language, whether the engine writes it "fr" or "fra" (Samsung's engine uses the latter). */
+    private static boolean sameLanguage(Locale a, Locale b) {
+        try {
+            return a.getISO3Language().equals(b.getISO3Language());
+        } catch (Exception e) {
+            return a.getLanguage().equals(b.getLanguage());
+        }
+    }
+
     /** An installed voice for the language, never one that needs the network; null if there is none. */
     private Voice offlineVoice(Locale locale) {
-        if (tts.getVoices() == null) return null;
+        java.util.Set<Voice> voices = tts.getVoices();
+        if (voices == null) return null;
         Voice best = null;
-        for (Voice v : tts.getVoices()) {
+        for (Voice v : voices) {
+            if (debug()) Log.d("JarodSpeech", v.getName() + " " + v.getLocale() + " net=" + v.isNetworkConnectionRequired() + " " + v.getFeatures());
             if (v.isNetworkConnectionRequired()) continue;
             if (v.getFeatures() != null && v.getFeatures().contains(TextToSpeech.Engine.KEY_FEATURE_NOT_INSTALLED)) continue;
-            if (!v.getLocale().getLanguage().equals(locale.getLanguage())) continue;
+            if (!sameLanguage(v.getLocale(), locale)) continue;
             // The country first (fr-FR before fr-CA for a French phone), then the quality.
             if (best == null || rank(v, locale) > rank(best, locale)) best = v;
         }
         return best;
+    }
+
+    /**
+     * Engines that list no usable Voice object (some vendors') still say whether the language's data
+     * is on the phone; KEY_FEATURE_EMBEDDED_SYNTHESIS on each request keeps the synthesis local.
+     */
+    private boolean installedLanguage(Locale locale) {
+        int r = tts.isLanguageAvailable(locale);
+        if (debug()) Log.d("JarodSpeech", "isLanguageAvailable(" + locale + ") = " + r);
+        return r >= TextToSpeech.LANG_AVAILABLE;
+    }
+
+    /** Voice lists go to the log of a debuggable build only. */
+    private boolean debug() {
+        return (getContext().getApplicationInfo().flags & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0;
     }
 
     private static int rank(Voice v, Locale locale) {
@@ -95,10 +122,11 @@ public class JarodSpeechPlugin extends Plugin {
     private void doStatus(PluginCall call) {
         JSObject out = new JSObject();
         boolean ok = Boolean.TRUE.equals(ready);
-        Voice voice = ok ? offlineVoice(localeOf(call)) : null;
-        out.put("available", ok && voice != null);
+        Locale locale = localeOf(call);
+        boolean usable = ok && (offlineVoice(locale) != null || installedLanguage(locale));
+        out.put("available", usable);
         if (!ok) out.put("reason", "Aucun moteur de synthèse vocale sur ce téléphone.");
-        else if (voice == null) out.put("reason", "Aucune voix installée sur le téléphone pour cette langue.");
+        else if (!usable) out.put("reason", "Aucune voix installée sur le téléphone pour cette langue.");
         call.resolve(out);
     }
 
@@ -113,12 +141,14 @@ public class JarodSpeechPlugin extends Plugin {
             call.reject("Aucun moteur de synthèse vocale sur ce téléphone.");
             return;
         }
-        Voice voice = offlineVoice(localeOf(call));
-        if (voice == null) {
+        Locale locale = localeOf(call);
+        Voice voice = offlineVoice(locale);
+        if (voice != null) tts.setVoice(voice);
+        else if (installedLanguage(locale)) tts.setLanguage(locale);
+        else {
             call.reject("Aucune voix installée sur le téléphone pour cette langue.");
             return;
         }
-        tts.setVoice(voice);
         Bundle params = new Bundle();
         params.putString(TextToSpeech.Engine.KEY_FEATURE_EMBEDDED_SYNTHESIS, "true");
         int mode = Boolean.TRUE.equals(call.getBoolean("flush", false)) ? TextToSpeech.QUEUE_FLUSH : TextToSpeech.QUEUE_ADD;
