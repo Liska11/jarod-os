@@ -320,6 +320,9 @@ const api = {
     openPreview: (target: string, options: WebOpenOptions = {}): Promise<string> => ipcRenderer.invoke(IPC.webOpenPreview, target, options),
     navigate: (id: string, target: string): Promise<void> => ipcRenderer.invoke(IPC.webNavigate, id, target),
     reload: (id: string): Promise<void> => ipcRenderer.invoke(IPC.webReload, id),
+    /** A site's page (the Browser, a Social app): one view per site, in the site's own partition; resolves with its id. */
+    openSite: (site: string): Promise<string> => ipcRenderer.invoke(IPC.webOpenSite, site),
+    history: (id: string, direction: 'back' | 'forward'): Promise<void> => ipcRenderer.invoke(IPC.webHistory, id, direction),
     onEvent: (listener: (event: WebViewEvent) => void): Unsubscribe => subscribe(IPC.webEvent, listener)
   },
   pinokio: {
@@ -387,6 +390,17 @@ const api = {
   jarod: {
     /** Perform a native gesture the Jarod engine asked for (see electron/ipc/jarod-shell-gestures.ts). */
     shell: (kind: string, params: Record<string, unknown> = {}): Promise<unknown> => ipcRenderer.invoke(IPC.jarodShell, kind, params)
+  },
+  nativeApps: {
+    /** Signal, VLC or Brave is installed on this computer. */
+    installed: (app: string): Promise<boolean> => ipcRenderer.invoke(IPC.nativeAppFind, app),
+    /** Start it, with a page (Brave) or a file (VLC). */
+    launch: (app: string, target?: string): Promise<void> => ipcRenderer.invoke(IPC.nativeAppLaunch, app, target),
+    install: (app: string): Promise<{ ok: boolean; already?: boolean; restart?: boolean; error?: string }> => ipcRenderer.invoke(IPC.nativeAppInstall, app)
+  },
+  media: {
+    /** Let the Player stream these files; resolves with a jarod-media: URL for each one that exists. */
+    allow: (files: string[]): Promise<Array<{ file: string; url: string }>> => ipcRenderer.invoke(IPC.mediaAllow, files)
   },
   bridge: {
     readPolicy: (): Promise<string> => ipcRenderer.invoke(IPC.bridgePolicyRead),

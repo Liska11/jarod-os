@@ -2,7 +2,7 @@ import type { ComponentType } from 'react'
 import type { InstalledApp } from '../../shared/ipc.ts'
 
 /** Pages inside the main Hermes window (sidebar navigation). */
-export type PageId = 'overview' | 'hermes' | 'missions' | 'memory' | 'files' | 'automations' | 'kanban' | 'connections' | 'settings'
+export type PageId = 'overview' | 'hermes' | 'missions' | 'memory' | 'files' | 'automations' | 'kanban' | 'browser' | 'social' | 'messaging' | 'player' | 'connections' | 'settings'
 
 /** Apps that open in their own floating window. */
 export type FloatingAppId = 'terminal' | 'system' | 'chat-popout' | 'web' | 'studio' | 'capture-editor' | 'camera' | 'widget' | 'pinokio'
@@ -44,6 +44,10 @@ export type AppIconId =
   | 'grid'
   | 'trash'
   | 'pinokio'
+  | 'browser'
+  | 'social'
+  | 'messaging'
+  | 'player'
 
 export const PAGES: readonly HermesAppDef<PageId>[] = [
   { id: 'overview', name: 'Overview', tagline: 'Your day, already in motion.', category: 'productivity', kind: 'page', icon: 'overview', shortcut: '1' },
@@ -53,6 +57,11 @@ export const PAGES: readonly HermesAppDef<PageId>[] = [
   { id: 'files', name: 'Files', tagline: 'Everything on this computer.', category: 'productivity', kind: 'page', icon: 'files', shortcut: '5' },
   { id: 'automations', name: 'Automations', tagline: 'Good routines, handled.', category: 'productivity', kind: 'page', icon: 'automations', shortcut: '6' },
   { id: 'kanban', name: 'Kanban', tagline: 'Tasks the agent can pick up.', category: 'productivity', kind: 'page', icon: 'kanban' },
+  { id: 'browser', name: 'Browser', tagline: 'The web, inside Jarod-OS.', category: 'productivity', kind: 'page', icon: 'browser' },
+  { id: 'social', name: 'Social', tagline: 'TikTok and Instagram.', category: 'productivity', kind: 'page', icon: 'social' },
+  // Shown as its own sidebar section (Telegram, WhatsApp, Signal), not in the page list.
+  { id: 'messaging', name: 'Messaging', tagline: 'Telegram, WhatsApp and Signal.', category: 'productivity', kind: 'page', icon: 'messaging' },
+  { id: 'player', name: 'Player', tagline: 'Your videos and music.', category: 'creative', kind: 'page', icon: 'player' },
   { id: 'connections', name: 'Connections', tagline: 'Bring your tools into one workspace.', category: 'system', kind: 'page', icon: 'connections', shortcut: '7' },
   { id: 'settings', name: 'Settings', tagline: 'Choose how Hermes works with you.', category: 'system', kind: 'page', icon: 'settings', shortcut: ',' }
 ]

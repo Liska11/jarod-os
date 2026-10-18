@@ -757,6 +757,10 @@ export type WebViewEvent =
   | { id: string; type: 'loading'; loading: boolean }
   | { id: string; type: 'error'; error: string }
   | { id: string; type: 'closed' }
+  /** A site's view can go back / forward. */
+  | { id: string; type: 'history'; canGoBack: boolean; canGoForward: boolean }
+  /** A site's link that leaves its hosts: the Browser page shows it. */
+  | { id: string; type: 'external'; url: string }
 
 /** One entry of a project listing (`fs.listTree`), for the Studio's file tree. */
 export interface TreeEntry {
@@ -953,6 +957,16 @@ export const IPC = {
   webOpenPreview: 'herald-os:web:open-preview',
   webNavigate: 'herald-os:web:navigate',
   webReload: 'herald-os:web:reload',
+  /** A site's own page (shared/web-sites.ts): the Browser or one of the Social apps, in its own partition. */
+  webOpenSite: 'herald-os:web:open-site',
+  /** Back or forward in a view's history. */
+  webHistory: 'herald-os:web:history',
+  /** Desktop apps the pages hand over to (electron/ipc/native-apps.ts): installed?, start, install with winget. */
+  nativeAppFind: 'herald-os:native-app:find',
+  nativeAppLaunch: 'herald-os:native-app:launch',
+  nativeAppInstall: 'herald-os:native-app:install',
+  /** The Player page may stream these files (picked or dropped by the user) through jarod-media:. */
+  mediaAllow: 'herald-os:media:allow',
   /** Main -> renderer: title/url/loading changes and `closed`. */
   webEvent: 'herald-os:web:event',
 

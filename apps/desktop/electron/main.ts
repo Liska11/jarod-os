@@ -31,6 +31,8 @@ import { registerWebIpc, type WebViews } from './ipc/web.ts'
 import { broadcastPinokioState, openElsewhere, registerPinokioIpc } from './ipc/pinokio.ts'
 import { locateRuntime, PINOKIO_URL, PinokioService } from './pinokio/service.ts'
 import { registerSystemAuditIpc } from './ipc/system-audit.ts'
+import { MEDIA_SCHEME_PRIVILEGES, registerMediaIpc } from './ipc/media.ts'
+import { registerNativeAppsIpc } from './ipc/native-apps.ts'
 import { AuditService } from './setup/service.ts'
 import { log, logTail } from './log.ts'
 import { installProblemLogging } from './problem-log.ts'
@@ -92,8 +94,9 @@ if (!process.env.HERMES_HOME?.trim() && !process.env.HERALD_OS_BACKEND_URL?.trim
   process.env.HERMES_HOME = path.join(jarodDataDir(), 'herald-home')
 }
 
-// Widget plugins load from herald-plugin://<id>/ (registered before the app is ready, as Electron requires).
-protocol.registerSchemesAsPrivileged([{ scheme: 'herald-plugin', privileges: { standard: true, secure: true, supportFetchAPI: true } }])
+// Widget plugins load from herald-plugin://<id>/, the Player streams jarod-media:// (registered before the app is
+// ready, in one call, as Electron requires).
+protocol.registerSchemesAsPrivileged([{ scheme: 'herald-plugin', privileges: { standard: true, secure: true, supportFetchAPI: true } }, MEDIA_SCHEME_PRIVILEGES])
 
 // Electron shows a modal dialog for an uncaught main-process error and waits on it: the whole
 // shell, the Linux session included, would freeze behind a box nobody may see. Log it and go on.
@@ -608,6 +611,8 @@ function registerCoreIpc(): void {
   registerEditIpc(() => webViews)
   registerPinokioIpc(pinokio, () => webViews, () => (panels ? panels.mainWindow() : mainWindow))
   registerSystemAuditIpc(systemAudit)
+  registerNativeAppsIpc()
+  registerMediaIpc()
 }
 
 /** Quit and start again (the backend is stopped on the way out, as for any quit), in safe mode or not. */

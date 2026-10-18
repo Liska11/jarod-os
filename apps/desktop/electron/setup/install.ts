@@ -89,7 +89,7 @@ function tail(text: string, lines = 4): string {
 }
 
 /** Reads a finished command: exit code (any sign) and output → the result shown and logged. */
-export function interpret(tool: InstallableTool, code: number | null, output: string): InstallResult {
+export function interpret(tool: string, code: number | null, output: string): InstallResult {
   const unsigned = code === null ? null : code >>> 0
 
   if (unsigned === 0) return { ok: true, ...(tool === 'wsl' ? { restart: true } : {}) }

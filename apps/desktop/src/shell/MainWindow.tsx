@@ -14,6 +14,10 @@ const PAGE_VIEW: Record<PageId, ComponentType> = {
   files: lazy(() => import('../features/files/FilesPage.tsx').then(m => ({ default: m.FilesPage }))),
   automations: lazy(() => import('../features/automations/AutomationsPage.tsx').then(m => ({ default: m.AutomationsPage }))),
   kanban: lazy(() => import('../features/kanban/KanbanPage.tsx').then(m => ({ default: m.KanbanPage }))),
+  browser: lazy(() => import('../features/sites/BrowserPage.tsx').then(m => ({ default: m.BrowserPage }))),
+  social: lazy(() => import('../features/sites/SocialPage.tsx').then(m => ({ default: m.SocialPage }))),
+  messaging: lazy(() => import('../features/sites/MessagingPage.tsx').then(m => ({ default: m.MessagingPage }))),
+  player: lazy(() => import('../features/player/PlayerPage.tsx').then(m => ({ default: m.PlayerPage }))),
   connections: lazy(() => import('../features/connections/ConnectionsPage.tsx').then(m => ({ default: m.ConnectionsPage }))),
   settings: lazy(() => import('../features/settings/SettingsPage.tsx').then(m => ({ default: m.SettingsPage })))
 }
@@ -26,6 +30,10 @@ const PAGE_LABEL: Record<PageId, string> = {
   files: 'Files',
   automations: 'Automations',
   kanban: 'Kanban',
+  browser: 'Browser',
+  social: 'Social',
+  messaging: 'Messaging',
+  player: 'Player',
   connections: 'Connections',
   settings: 'Settings'
 }
