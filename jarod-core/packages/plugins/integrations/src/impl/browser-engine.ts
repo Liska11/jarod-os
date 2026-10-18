@@ -96,12 +96,8 @@ export async function launchDisposableBrowser(opts: LaunchOptions): Promise<Disp
       });
     }
     for (let i = 0; i < 10; i++) {
-      try {
-        rmSync(profileDir, { recursive: true, force: true });
-        return;
-      } catch {
-        await new Promise((r) => setTimeout(r, 300));
-      }
+      if (removeDisposableProfile(profileDir)) return;
+      await new Promise((r) => setTimeout(r, 300));
     }
   };
   const portFile = join(userData, "DevToolsActivePort");
@@ -119,6 +115,36 @@ export async function launchDisposableBrowser(opts: LaunchOptions): Promise<Disp
 }
 
 const MARKER = "owner.json";
+
+/**
+ * Un essai d'effacement d'un profil jetable, le marqueur de propriété EN DERNIER : tout le reste d'abord, puis le marqueur et le dossier une
+ * fois seuls. Si Windows garde un fichier du navigateur verrouillé, le dossier reste avec son marqueur et le prochain essai (ou balayage) le
+ * finit ; un `rmSync` récursif direct pouvait effacer le marqueur puis buter, laissant un dossier que plus rien n'avait le droit de nettoyer.
+ * Rend vrai si le dossier n'existe plus. `rm` n'est remplaçable que pour les essais.
+ */
+export function removeDisposableProfile(dir: string, rm: (path: string, o: { recursive?: boolean; force?: boolean }) => void = rmSync): boolean {
+  if (!isDisposableProfile(dir)) return false;
+  let rest: string[];
+  try {
+    rest = readdirSync(dir).filter((n) => n !== MARKER);
+  } catch {
+    return !existsSync(dir);
+  }
+  for (const n of rest) {
+    try {
+      rm(join(dir, n), { recursive: true, force: true });
+    } catch {
+      /* verrouillé : le marqueur reste */
+    }
+  }
+  try {
+    if (readdirSync(dir).some((n) => n !== MARKER)) return false;
+    rm(dir, { recursive: true, force: true });
+  } catch {
+    /* réessayé plus tard */
+  }
+  return !existsSync(dir);
+}
 
 interface Marker {
   ownerPid: number;
@@ -224,12 +250,7 @@ export function sweepStaleSessions(): string[] {
       // Windows garde les fichiers verrouillés un instant après l'arrêt du navigateur : quelques essais courts.
       let removed = false;
       for (let i = 0; i < 20 && !removed; i++) {
-        try {
-          rmSync(dir, { recursive: true, force: true });
-          removed = !existsSync(dir);
-        } catch {
-          /* verrouillé */
-        }
+        removed = removeDisposableProfile(dir);
         if (!removed) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 250);
       }
       if (removed) swept.push(dir);
