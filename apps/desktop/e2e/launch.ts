@@ -93,6 +93,8 @@ export async function launchShell(extraEnv: Record<string, string> = {}, options
   }
 
   Object.assign(env, {
+    // The Hermes home too: without it a test run wrote herald-os.log, migrations and the bridge plugin link into the real one.
+    HERMES_HOME: path.join(root, 'hermes'),
     HERALD_OS_CONFIG_DIR: path.join(root, 'config'),
     JAROD_OS_DATA: path.join(root, 'data'),
     JAROD_WORKSPACE: path.join(root, 'workspace'),
