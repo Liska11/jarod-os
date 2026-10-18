@@ -81,6 +81,8 @@ Le 2026-10-18, sur la même machine et le même Chromium (`chromium-1243`), le c
 
 Conclusion : quelque chose sur la machine a changé depuis le 2026-10-17 (interfaces Hyper-V/VirtualBox/APIPA, mise à jour de Windows ou logiciel réseau) et empêche l'UDP WebRTC de ce Chromium d'atteindre un témoin local. Les résultats « durcis » à zéro ne prouvent rien tant que le contrôle est à zéro ; le durcissement lui-même (les drapeaux) n'a pas changé. À refaire sur une autre machine, ou sur celle-ci une fois la cause trouvée. Les sondes utilisées ne sont pas dans le dépôt (scripts jetables).
 
+Après un redémarrage de la machine (même jour) : toujours 0, même message. Seul changement visible : l'adresse de l'interface Hyper-V (`172.20.x` → `172.26.x`), recréée à chaque démarrage. Un état passager du système est donc écarté ; piste suivante : désactiver une à une les interfaces virtuelles (Hyper-V/WSL, VirtualBox) et relancer l'essai — réglage réseau du système, à faire par l'utilisateur.
+
 ## 7. Autres preuves réseau (rappel)
 
 Garde CDP seule : zéro requête vers un serveur témoin interdit pour redirections 302/307/en chaîne/meta, images, scripts, CSS, trames, `fetch`, XHR, balise, SSE, travailleur, nouvelle fenêtre, formulaire, service worker (son script est refusé). Pile complète : zéro requête et zéro connexion. Mesuré non couvert par `Fetch` : WebSocket et préconnexion (couverts par le filet). Détail : `browser.engine.test.ts` (29 essais).
