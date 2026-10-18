@@ -29,9 +29,11 @@ Items identified and deliberately not done. Each survives the session here.
   was still starting left the daemon running: its pid file was not written yet, and its command line does not carry the profile, so
   neither `close()` nor the sweep can find it. Lead: give the daemon the profile path on its command line (then `killProfileProcesses`
   covers it), or wait for the pid file before closing.
-- **~880 `jarod-e2e-*` folders in `%TEMP%`** (`jarod-e2e`, `-coding`, `-worktrees`, `-mobile`, `-hermesone`, `-<pid>-<ts>-hang/stray/upd-local-rel`…), left by
-  the desktop Playwright runs over several weeks: the e2e launcher does not remove its profiles. Not touched (not E2 profiles, no
-  ownership marker); to fix in `apps/desktop/e2e/launch.ts`, then clean once.
+- **`jarod-e2e-*` folders in `%TEMP%`: leak FIXED (2026-10-18), stock left.** This repository's Playwright launcher
+  (`apps/desktop/e2e/launch.ts`) now removes its roots robustly and a global teardown fails any run that leaves one (`2f16af8`).
+  Stock found: 43 folders (392 MB) from this repository, created since 2026-10-17; 833 folders (131 MB) named by the ORIGINAL Jarod
+  project's own e2e harness (`packages/desktop/test/e2e`, prefixes `jarod-e2e-coding`, `-worktrees`, `-mobile`, `-hermesone`,
+  `-<pid>-<ts>-hang/stray/upd-local-rel`…, profile at the root), which this repository never creates. One-time cleanup: owner's decision.
 - **Rotation of `control-audit.jsonl`: DONE (2026-10-17).** `FileJournal` rotates to `<name>.1` (one older generation, replaced each time) once the file reaches 8 MiB (`DEFAULT_JOURNAL_LIMIT`), also at opening; a failed rotation is counted in `failures()` and never changes a decision. Tests: `host-control/tests/journal_rotation.rs`.
 - The Python client is more tolerant than the shell on pipe endpoints (the Rust host emits the strict form).
 - R2/R3 end-to-end in the real application to re-prove (disposable profile).
