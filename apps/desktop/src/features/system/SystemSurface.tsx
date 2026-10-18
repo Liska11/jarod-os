@@ -12,6 +12,7 @@ import { useBackendData } from '../../lib/use-async.ts'
 import { sendPrompt } from '../../store/chat.ts'
 import { showSurface } from '../../store/surface.ts'
 import { useSystemInfo, useSystemStats } from '../../store/system.ts'
+import { UpdatesPanel } from './UpdatesPanel.tsx'
 
 export function SystemSurface() {
   const { t } = useT()
@@ -128,6 +129,10 @@ export function SystemSurface() {
           ))}
         </tbody>
       </table>
+
+      <div className="mt-8">
+        <UpdatesPanel />
+      </div>
 
       {hermes.data && (
         <div className="mt-8">

@@ -408,6 +408,12 @@ const api = {
     trustKeys: (token: string): Promise<{ ok: boolean; error?: string }> => ipcRenderer.invoke(IPC.remoteTrustKeys, token),
     syncHosts: (hosts: string[]): Promise<NetworkPolicy> => ipcRenderer.invoke(IPC.remoteSyncHosts, hosts)
   },
+  updates: {
+    state: (): Promise<import('../electron/ipc/updates-check.ts').UpdatesState> => ipcRenderer.invoke(IPC.updatesState),
+    /** Read-only check of Windows, drivers and winget software (only while Jarod's Internet is on). */
+    check: (): Promise<import('../electron/ipc/updates-check.ts').UpdatesState> => ipcRenderer.invoke(IPC.updatesCheck),
+    openWindowsUpdate: (): Promise<void> => ipcRenderer.invoke(IPC.updatesOpenWindowsUpdate)
+  },
   network: {
     /** Jarod's Internet policy (the switch in the top bar). */
     get: (): Promise<NetworkPolicy> => ipcRenderer.invoke(IPC.networkGet),
