@@ -8,8 +8,25 @@ export interface Recording {
   cancel(): void
 }
 
-/** Starts recording a voice message. The microphone is released as soon as it stops. */
-export async function startRecording(onAutoStop?: () => void): Promise<Recording> {
+/**
+ * How loud a frame is, 0 to 1: the RMS of the samples (bytes centred on 128), lifted so that speech
+ * at a normal distance fills most of the range.
+ */
+export function levelOf(samples: Uint8Array): number {
+  if (!samples.length) return 0
+  let sum = 0
+  for (const v of samples) {
+    const x = (v - 128) / 128
+    sum += x * x
+  }
+  return Math.min(1, Math.sqrt(sum / samples.length) * 4)
+}
+
+/**
+ * Starts recording a voice message. The microphone is released as soon as it stops. `onLevel`, if
+ * given, hears the voice's loudness about 15 times a second (the live conversation's animation).
+ */
+export async function startRecording(onAutoStop?: () => void, onLevel?: (level: number) => void): Promise<Recording> {
   const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } })
   const mime = MIMES.find(m => MediaRecorder.isTypeSupported(m)) ?? ''
   const recorder = new MediaRecorder(stream, mime ? { mimeType: mime, audioBitsPerSecond: 32_000 } : undefined)
@@ -17,7 +34,31 @@ export async function startRecording(onAutoStop?: () => void): Promise<Recording
   const started = Date.now()
   recorder.ondataavailable = e => e.data.size && chunks.push(e.data)
   recorder.start(1000)
-  const release = () => stream.getTracks().forEach(t => t.stop())
+  let meter: (() => void) | null = null
+  if (onLevel) {
+    try {
+      const ctx = new AudioContext()
+      const analyser = ctx.createAnalyser()
+      analyser.fftSize = 512
+      ctx.createMediaStreamSource(stream).connect(analyser)
+      const samples = new Uint8Array(analyser.fftSize)
+      const timer = setInterval(() => {
+        analyser.getByteTimeDomainData(samples)
+        onLevel(levelOf(samples))
+      }, 66)
+      meter = () => {
+        clearInterval(timer)
+        void ctx.close()
+      }
+    } catch {
+      // No Web Audio: the recording works, the animation just does not follow the voice.
+    }
+  }
+  const release = () => {
+    meter?.()
+    meter = null
+    stream.getTracks().forEach(t => t.stop())
+  }
   const limit = setTimeout(() => onAutoStop?.(), MAX_RECORDING_MS)
   return {
     stop: () =>

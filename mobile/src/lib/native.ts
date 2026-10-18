@@ -58,11 +58,16 @@ export interface SpeechPlugin {
   /** One piece of a reply; `flush` for the first piece stops what was being said. */
   speak(o: { text: string; lang: string; flush: boolean }): Promise<void>
   stop(): Promise<void>
+  /** `state`: the phone starts or stops speaking (the live conversation's animation). */
+  addListener(event: 'state', fn: (e: { speaking: boolean }) => void): Promise<{ remove: () => Promise<void> }>
 }
 
 const NativeSpeech = registerPlugin<SpeechPlugin>('JarodSpeech')
 
 /** In a desktop browser (`npm run dev`), the browser's own synthesis stands in. */
+const devSpeechListeners = new Set<(e: { speaking: boolean }) => void>()
+const devSpeechState = (speaking: boolean) => devSpeechListeners.forEach(fn => fn({ speaking }))
+let devLast: SpeechSynthesisUtterance | null = null
 const devSpeech: SpeechPlugin = {
   status: async () =>
     'speechSynthesis' in window ? { available: true } : { available: false, reason: 'Pas de synthèse vocale dans ce navigateur.' },
@@ -70,9 +75,19 @@ const devSpeech: SpeechPlugin = {
     if (flush) speechSynthesis.cancel()
     const u = new SpeechSynthesisUtterance(text)
     u.lang = lang
+    devLast = u
+    u.onstart = () => devSpeechState(true)
+    u.onend = u.onerror = () => devLast === u && devSpeechState(false)
     speechSynthesis.speak(u)
   },
-  stop: async () => speechSynthesis.cancel()
+  stop: async () => {
+    speechSynthesis.cancel()
+    devSpeechState(false)
+  },
+  addListener: async (_event, fn) => {
+    devSpeechListeners.add(fn)
+    return { remove: async () => void devSpeechListeners.delete(fn) }
+  }
 }
 
 export const speech: SpeechPlugin = isNative ? NativeSpeech : devSpeech

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Link } from '../App.tsx'
+import { LiveTalk } from '../components/LiveTalk.tsx'
 import { Markdown } from '../components/Markdown.tsx'
 import type { JarodChannel, PushedEvent } from '../lib/channel.ts'
 import { applyEvent, type Conversation, describeArgs, fromHistory, type StoredMessage } from '../lib/chat-model.ts'
@@ -69,6 +70,10 @@ export function ChatScreen({ pc, channel, link, subscribe, onLock, onPcChanged, 
   const lastReply = useRef('')
   const speakRef = useRef(speak)
   speakRef.current = speak
+  // Live talk reads its own answers aloud: the transcript underneath must not read them a second time.
+  const [live, setLive] = useState(false)
+  const liveRef = useRef(live)
+  liveRef.current = live
   const [prefs, setPrefs] = useState<NotifyPrefs>(loadPrefs)
   const [news, setNews] = useState<NewsItem[]>([])
   const [seenAt, setSeenAt] = useState(loadSeen)
@@ -145,7 +150,7 @@ export function ChatScreen({ pc, channel, link, subscribe, onLock, onPcChanged, 
           if (e.data.sessionId === sessionRef.current) {
             const m = e.data.message as { role?: string; content?: string } | undefined
             if (e.data.type === 'message' && m?.role === 'assistant' && m.content?.trim()) lastReply.current = m.content
-            if (e.data.type === 'done' && lastReply.current && speakRef.current && !document.hidden) {
+            if (e.data.type === 'done' && lastReply.current && speakRef.current && !liveRef.current && !document.hidden) {
               void readAloud(lastReply.current).catch(err => setError((err as Error).message))
             }
             if (e.data.type === 'done') lastReply.current = ''
@@ -480,6 +485,12 @@ export function ChatScreen({ pc, channel, link, subscribe, onLock, onPcChanged, 
 
       {(error || heard) && <p className={`note ${error ? 'danger' : ''} slim`}>{error || heard}</p>}
 
+      <div className="live-launch">
+        <button type="button" className="live-open" aria-label="Conversation en direct" disabled={!channel} onClick={() => setLive(true)}>
+          <span className="live-dot" aria-hidden="true" />
+          Live
+        </button>
+      </div>
       <footer className="composer">
         <input ref={photoInput} type="file" accept="image/*" capture="environment" hidden onChange={e => void sendFile(e.target.files?.[0]).finally(() => (e.target.value = ''))} />
         <input ref={fileInput} type="file" accept={ACCEPT} hidden onChange={e => void sendFile(e.target.files?.[0]).finally(() => (e.target.value = ''))} />
@@ -516,6 +527,17 @@ export function ChatScreen({ pc, channel, link, subscribe, onLock, onPcChanged, 
           </button>
         )}
       </footer>
+      {live && (
+        <LiveTalk
+          ensureSession={ensureSession}
+          call={call}
+          subscribe={subscribe}
+          onClose={() => {
+            setLive(false)
+            void refreshSessions()
+          }}
+        />
+      )}
     </main>
   )
 }

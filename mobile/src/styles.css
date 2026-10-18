@@ -409,3 +409,209 @@ button.icon.rec {
   flex: 1;
   max-height: 140px;
 }
+
+/* ---------- Live conversation (LiveTalk.tsx) ---------- */
+.live {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  background: radial-gradient(120% 70% at 50% 85%, #0b2a7a 0%, var(--bg) 70%);
+  padding: max(10px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
+}
+.live-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--fg-2);
+}
+.live-text {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 12px 4px;
+}
+.live-heard {
+  align-self: flex-end;
+  color: var(--fg-2);
+  font-style: italic;
+  margin: 0;
+}
+.live-reply {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  line-height: 1.45;
+}
+.live-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding-bottom: 8px;
+}
+.live-phase {
+  margin: 8px 0 0;
+  font-weight: 600;
+}
+.live-note {
+  margin: 0;
+  min-height: 1.4em;
+  color: var(--fg-3);
+  font-size: 14px;
+  text-align: center;
+}
+.live-note.danger {
+  color: var(--danger);
+}
+
+.orb {
+  position: relative;
+  width: 168px;
+  height: 168px;
+  border-radius: 50%;
+  border: none;
+  padding: 0;
+  background: transparent;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  transition: transform 80ms linear;
+}
+.orb-core {
+  position: absolute;
+  inset: 18px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #8fbaff 0%, var(--accent) 45%, #123a9c 100%);
+  box-shadow: 0 0 40px rgba(47, 125, 255, 0.55);
+  transition: background 200ms, box-shadow 200ms;
+}
+.orb-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 3px solid transparent;
+}
+.orb-bars {
+  position: absolute;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+.orb-bars i {
+  width: 8px;
+  height: 22px;
+  border-radius: 4px;
+  background: #fff;
+  animation: orb-wave 900ms ease-in-out infinite;
+}
+.orb-bars i:nth-child(2) { animation-delay: -150ms; }
+.orb-bars i:nth-child(3) { animation-delay: -300ms; }
+.orb-bars i:nth-child(4) { animation-delay: -450ms; }
+.orb-bars i:nth-child(5) { animation-delay: -600ms; }
+
+/* Waiting: a slow breath, an invitation to press. */
+.orb.idle .orb-core,
+.orb.error .orb-core {
+  animation: orb-breathe 3.2s ease-in-out infinite;
+}
+.orb.error .orb-core {
+  background: radial-gradient(circle at 35% 30%, #ffb3b3 0%, var(--danger) 55%, #7a1d1d 100%);
+  box-shadow: 0 0 30px rgba(255, 109, 109, 0.45);
+}
+/* You speak: warm colour; the size follows your voice (inline transform). */
+.orb.listening .orb-core {
+  background: radial-gradient(circle at 35% 30%, #b6ffe6 0%, var(--ok) 50%, #0c7a58 100%);
+  box-shadow: 0 0 60px rgba(54, 230, 166, 0.6);
+}
+.orb.listening .orb-ring {
+  border-color: rgba(54, 230, 166, 0.5);
+  animation: orb-ripple 1.2s ease-out infinite;
+}
+/* Sending and thinking: a ring turning around the bubble. */
+.orb.sending .orb-ring,
+.orb.thinking .orb-ring {
+  border-color: rgba(143, 186, 255, 0.25);
+  border-top-color: #8fbaff;
+  animation: orb-spin 900ms linear infinite;
+}
+/* Jarod answers and speaks: bars dancing in the bubble, ripples around it. */
+.orb.answering .orb-bars,
+.orb.reading .orb-bars,
+.orb.speaking .orb-bars {
+  display: flex;
+}
+.orb.answering .orb-bars i,
+.orb.reading .orb-bars i {
+  animation-duration: 1.6s;
+  opacity: 0.7;
+}
+.orb.speaking .orb-ring {
+  border-color: rgba(143, 186, 255, 0.55);
+  animation: orb-ripple 1.4s ease-out infinite;
+}
+.orb.speaking .orb-core {
+  box-shadow: 0 0 70px rgba(47, 125, 255, 0.75);
+}
+
+@keyframes orb-breathe {
+  0%, 100% { transform: scale(0.96); }
+  50% { transform: scale(1.03); }
+}
+@keyframes orb-ripple {
+  0% { transform: scale(0.9); opacity: 0.9; }
+  100% { transform: scale(1.35); opacity: 0; }
+}
+@keyframes orb-spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes orb-wave {
+  0%, 100% { transform: scaleY(0.45); }
+  50% { transform: scaleY(1.8); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .orb,
+  .orb * {
+    animation-duration: 0s !important;
+    animation-iteration-count: 1 !important;
+    transition: none !important;
+  }
+}
+
+/* The way into live talk: centred just above the message bar. */
+.live-launch {
+  display: flex;
+  justify-content: center;
+  padding: 6px 0;
+  background: transparent;
+}
+.live-open {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 22px;
+  min-height: 40px;
+  border-radius: 999px;
+  border: 1px solid rgba(143, 186, 255, 0.45);
+  background: linear-gradient(180deg, rgba(47, 125, 255, 0.35), rgba(18, 58, 156, 0.55));
+  box-shadow: 0 4px 18px rgba(47, 125, 255, 0.35);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.live-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #8fbaff 0%, var(--accent) 60%);
+  box-shadow: 0 0 10px rgba(47, 125, 255, 0.9);
+  animation: orb-breathe 2.4s ease-in-out infinite;
+}

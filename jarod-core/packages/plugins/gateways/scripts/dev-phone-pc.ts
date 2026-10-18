@@ -56,6 +56,9 @@ core.providers.client = () => ({
 });
 
 const hub = app.gateways;
+// No speech-to-text on a throwaway profile: a fixed sentence stands in, saying it is one.
+(hub as unknown as { transcribeWith: (audio: Buffer) => Promise<string> }).transcribeWith = async (audio) =>
+  `Ceci est une transcription de test (${Math.max(1, Math.round(audio.length / 1024))} Ko d'audio reçus).`;
 await hub.mobile.start(port);
 const pairing = await hub.mobile.appPairing();
 console.log(`\nJarod de développement sur le port ${port}. Lien d'association (10 min) :\n\n${pairing.appLink}\n`);

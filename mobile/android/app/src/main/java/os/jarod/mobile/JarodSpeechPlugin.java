@@ -2,6 +2,7 @@ package os.jarod.mobile;
 
 import android.os.Bundle;
 import android.speech.tts.TextToSpeech;
+import android.speech.tts.UtteranceProgressListener;
 import android.speech.tts.Voice;
 import android.util.Log;
 import com.getcapacitor.JSObject;
@@ -26,11 +27,46 @@ public class JarodSpeechPlugin extends Plugin {
     private Boolean ready = null;
     private final List<PluginCall> waiting = new ArrayList<>();
     private int utterance = 0;
+    /** The last piece queued: when it ends (or reading is stopped), the phone has stopped speaking. */
+    private volatile String lastQueued = "";
+    private volatile boolean speaking = false;
+
+    /** "state" events ({ speaking }) for the live conversation's animation. */
+    private final UtteranceProgressListener progress = new UtteranceProgressListener() {
+        @Override
+        public void onStart(String id) {
+            setSpeaking(true);
+        }
+
+        @Override
+        public void onDone(String id) {
+            if (id.equals(lastQueued)) setSpeaking(false);
+        }
+
+        @Override
+        public void onError(String id) {
+            if (id.equals(lastQueued)) setSpeaking(false);
+        }
+
+        @Override
+        public void onStop(String id, boolean interrupted) {
+            setSpeaking(false);
+        }
+    };
+
+    private void setSpeaking(boolean now) {
+        if (speaking == now) return;
+        speaking = now;
+        JSObject out = new JSObject();
+        out.put("speaking", now);
+        notifyListeners("state", out);
+    }
 
     @Override
     public void load() {
         tts = new TextToSpeech(getContext(), status -> {
             ready = status == TextToSpeech.SUCCESS;
+            if (ready) tts.setOnUtteranceProgressListener(progress);
             List<PluginCall> calls;
             synchronized (waiting) {
                 calls = new ArrayList<>(waiting);
@@ -152,7 +188,9 @@ public class JarodSpeechPlugin extends Plugin {
         Bundle params = new Bundle();
         params.putString(TextToSpeech.Engine.KEY_FEATURE_EMBEDDED_SYNTHESIS, "true");
         int mode = Boolean.TRUE.equals(call.getBoolean("flush", false)) ? TextToSpeech.QUEUE_FLUSH : TextToSpeech.QUEUE_ADD;
-        int r = tts.speak(call.getString("text", ""), mode, params, "jarod-" + (++utterance));
+        String id = "jarod-" + (++utterance);
+        lastQueued = id;
+        int r = tts.speak(call.getString("text", ""), mode, params, id);
         if (r == TextToSpeech.SUCCESS) call.resolve();
         else call.reject("La synthèse vocale a échoué.");
     }
@@ -160,6 +198,7 @@ public class JarodSpeechPlugin extends Plugin {
     @PluginMethod
     public void stop(PluginCall call) {
         if (tts != null) tts.stop();
+        setSpeaking(false);
         call.resolve();
     }
 }
