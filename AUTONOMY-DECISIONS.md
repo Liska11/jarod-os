@@ -96,3 +96,10 @@ Un sujet par commit local. Les arbitrages sont ici, un par section, pour revue �
 - **Écarté** : `xpinstall.signatures.required=false` (inopérant sur Firefox de série, et affaiblirait le navigateur de l'utilisateur) ; tout chargement fait par moi dans le Firefox personnel (interdit sans accord distinct).
 - **Non vérifié** : le comportement dans le Firefox de l'utilisateur. Documentation seule, aucun code modifié.
 - **Annuler** : `git revert` du commit « docs(firefox) ».
+
+## 13. Essai guidé sur page neutre (Firefox du propriétaire, module temporaire)
+- **Décision** : `firefox-trial.ts` (page neutre sur `essai.localhost`, canal, attente du geste, question posée à l'utilisateur, lecture de `#sujet` seulement, affichage local, fermeture) + `scripts/firefox-reader-trial.ts` (terminal interactif obligatoire, le « oui » est TAPÉ par l'utilisateur). Liste blanche = l'hôte d'essai seulement, propre à l'essai ; aucun réglage permanent ; interdictions de domaines intactes.
+- **Pourquoi** : l'extension n'est pas branchée à l'application ; un programme d'essai séparé évite de câbler une surface permanente avant validation. L'accord vient du terminal de l'utilisateur, pas de moi.
+- **Tests** : `firefox-trial.test.ts` (5, fausse extension : lecture après « oui », refus, autre domaine refusé avant toute question, délai, page neutre) ; `firefox.trial.engine.test.ts` (vraie extension, Firefox de test : lecture exacte du texte convenu, leurre jamais lu) ; `vitest .../test/firefox` 40/40 ; `tsc` propre.
+- **Risque** : première utilisation réelle dans le Firefox du propriétaire : comportement non vérifié là (version, politiques).
+- **Annuler** : supprimer `firefox-trial.ts`, `scripts/firefox-reader-trial.ts` et leurs deux tests (`git revert` du commit « feat(firefox) »).
