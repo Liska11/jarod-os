@@ -13,6 +13,7 @@ import { showPage } from '../../store/windows.ts'
 import { appById, distinctAppLabel, type FloatingAppId } from '../apps.ts'
 import { NativeIcon, pinnedFor, useDockMagnification } from '../Dock.tsx'
 import { OUR_MAIN_TITLE, ourFloatingAppId, windowLabel } from './shell-utils.ts'
+import { useT } from '../../lib/i18n.ts'
 
 /** The dock window is 720 x 84; a gentler magnification keeps swollen icons inside it. */
 const PANELS_MAGNIFY_MAX = 0.28
@@ -68,6 +69,7 @@ function nextWindow(windows: WmWindow[], lastId: number | undefined): WmWindow {
  * compositor window grouped by app; clicking focuses (and cycles), middle-click closes.
  */
 export function DockSurface() {
+  const { t } = useT()
   const wm = useStore($wm)
   const { apps, iconFor } = useNativeApps()
   const platform = useStore($env)?.platform ?? 'linux'
@@ -219,7 +221,7 @@ export function DockSurface() {
   const menuEntry = menu ? entries.find(e => e.id === menu.id) : undefined
 
   return (
-    <nav className="relative flex h-full w-full items-end justify-center pb-1" aria-label="Dock">
+    <nav className="relative flex h-full w-full items-end justify-center pb-1" aria-label={t('dock.label')}>
       <div ref={barRef} data-dock-bar className="glass dock-bar flex items-end gap-2 rounded-2xl px-3 py-2" onMouseMove={onMove} onMouseLeave={onLeave}>
         {entries.map(entry => (
           <button
@@ -292,7 +294,7 @@ export function DockSurface() {
             className="flex h-8 w-full items-center gap-2.5 rounded-lg px-2.5 text-[12.5px] text-fg-2 hover:bg-white/8 hover:text-fg"
           >
             <IconX size={14} className="text-fg-3" />
-            <span className="flex-1 text-left">Close</span>
+            <span className="flex-1 text-left">{t('chat.close')}</span>
           </button>
           {menuEntry.windows.length > 1 && (
             <button
@@ -308,7 +310,7 @@ export function DockSurface() {
               className="flex h-8 w-full items-center gap-2.5 rounded-lg px-2.5 text-[12.5px] text-fg-2 hover:bg-white/8 hover:text-fg"
             >
               <IconX size={14} className="text-fg-3" />
-              <span className="flex-1 text-left">Close all</span>
+              <span className="flex-1 text-left">{t('dock.closeAll')}</span>
             </button>
           )}
         </div>

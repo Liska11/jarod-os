@@ -4,6 +4,7 @@ import { SurfaceErrorBoundary } from '../../components/error-boundary.tsx'
 import { cn } from '../../lib/cn.ts'
 import { type Edge, resizeBounds } from '../../lib/window-geometry.ts'
 import { $focusedWindowId, closeWindow, desktopArea, focusWindow, MAIN_WINDOW_ID, minimizeWindow, minSizeOf, type OSWindow, setBounds, toggleMaximize } from '../../store/windows.ts'
+import { useT } from '../../lib/i18n.ts'
 
 const EDGES: Edge[] = ['n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw']
 // The handles sit on the frame's outline, 4px outside it: the frame clips its children to its rounded corners,
@@ -24,6 +25,7 @@ const EDGE_CLASS: Record<Edge, string> = {
  * Content stays mounted while minimized (visibility is not lifecycle).
  */
 export const Window = memo(function Window({ win, children, chrome = true }: { win: OSWindow; children: React.ReactNode; chrome?: boolean }) {
+  const { t } = useT()
   const focusedId = useStore($focusedWindowId)
   const focused = focusedId === win.id
   const frame = useRef<HTMLDivElement>(null)
@@ -131,9 +133,9 @@ export const Window = memo(function Window({ win, children, chrome = true }: { w
             onDoubleClick={() => toggleMaximize(win.id)}
           >
             <div className="group flex items-center gap-2">
-              <TrafficLight color="#ff5f57" label={main ? 'Hide' : 'Close'} onClick={() => closeWindow(win.id)} glyph="×" />
-              <TrafficLight color="#febc2e" label="Minimize" onClick={() => minimizeWindow(win.id)} glyph="–" />
-              <TrafficLight color="#28c840" label="Zoom" onClick={() => toggleMaximize(win.id)} glyph="+" />
+              <TrafficLight color="#ff5f57" label={main ? t('window.hide') : t('window.close')} onClick={() => closeWindow(win.id)} glyph="×" />
+              <TrafficLight color="#febc2e" label={t('window.minimize')} onClick={() => minimizeWindow(win.id)} glyph="–" />
+              <TrafficLight color="#28c840" label={t('window.zoom')} onClick={() => toggleMaximize(win.id)} glyph="+" />
             </div>
             <div className={cn('min-w-0 flex-1 truncate text-center text-[12.5px] font-medium', focused ? 'text-fg' : 'text-fg-3')}>{win.title}</div>
             <div className="w-[62px]" />

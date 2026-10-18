@@ -107,3 +107,10 @@ Un sujet par commit local. Les arbitrages sont ici, un par section, pour revue �
 ## 14. Premier essai réel de l'extension : réussi à la 2e tentative
 - Voir `docs/E2-FIREFOX-READER-PLAN.md` §9.1. Une lecture, sur la page neutre, avec un « oui » tapé par le propriétaire ; rien d'autre lu ; tout fermé. La 1re tentative (aucun geste) n'a pas de cause établie.
 - **Annuler** : rien à annuler côté système ; le module temporaire disparaît à la fermeture de Firefox. Documentation : `git revert` du commit « docs(firefox) : first real trial ».
+
+## 15. Backlog réexaminé ; traductions d'un lot de composants visibles
+- **Backlog périmé retiré** : « deux frontends sur un profil » — déjà couvert (`BEGIN IMMEDIATE` + `busy_timeout`, test `tests/integration/sqlite-contention.test.ts` 5/5 relancé). « Client Python plus tolérant que le shell sur les points d'accès pipe » : laissé tel quel (la tolérance `strip()` ne rend rien d'incorrect acceptable ; la durcir ne créerait que des échecs).
+- **Décision (i18n)** : 9 fichiers (Composer, Transcript, ChatSurface, Window, DockSurface, MemoryMenu, OverviewComposer + catalogues) passent par `t()` ; 8 clés neuves en et fr (`window.*`, `dock.*`, `memory.options`, `chat.askLabel`), les clés existantes `chat.*` réutilisées. Rapport : 73 → 59 chaînes anglaises.
+- **Écarté** : `error-boundary.tsx` (composant de classe : pas de hook), `CommandSurface.tsx` (gabarits avec variables ; lot à part).
+- **Tests** : `tsc` propre ; test de parité des catalogues inclus dans `vitest run` complet du shell : 142 fichiers, 1132 passés, 3 ignorés. **Non vérifié à l'écran** (pas de lancement graphique de l'application).
+- **Annuler** : `git revert` du commit « i18n(shell) ».

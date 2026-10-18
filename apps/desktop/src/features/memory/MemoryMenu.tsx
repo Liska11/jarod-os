@@ -2,9 +2,11 @@ import { IconFileText, IconRefresh, IconUser } from '@tabler/icons-react'
 import { useEffect, useRef, useState } from 'react'
 import { MoreButton } from '../../components/ui/glass.tsx'
 import type { MemoryFile } from './memory-store.ts'
+import { useT } from '../../lib/i18n.ts'
 
 /** The header's "…" menu: reload from disk, or open a memory file in the default editor. */
 export function MemoryMenu({ onReload, onOpenFile, disabled }: { onReload: () => void; onOpenFile: (file: MemoryFile) => void; disabled?: boolean }) {
+  const { t } = useT()
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
@@ -45,9 +47,9 @@ export function MemoryMenu({ onReload, onOpenFile, disabled }: { onReload: () =>
 
   return (
     <div ref={ref} className="relative">
-      <MoreButton aria-label="Memory options" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(value => !value)} />
+      <MoreButton aria-label={t('memory.options')} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(value => !value)} />
       {open && (
-        <div role="menu" aria-label="Memory options" className="float absolute top-9 right-0 z-20 w-48 overflow-hidden rounded-xl p-1 animate-pop">
+        <div role="menu" aria-label={t('memory.options')} className="float absolute top-9 right-0 z-20 w-48 overflow-hidden rounded-xl p-1 animate-pop">
           {items.map(item => (
             <button key={item.label} type="button" role="menuitem" disabled={item.disabled} onClick={item.onClick} className="flex h-8 w-full items-center gap-2.5 rounded-lg px-2.5 text-[12.5px] text-fg-2 hover:bg-white/8 hover:text-fg disabled:cursor-not-allowed disabled:opacity-40">
               <span className="text-fg-3">{item.icon}</span>

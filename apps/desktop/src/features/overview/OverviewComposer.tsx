@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { cn } from '../../lib/cn.ts'
 import { useSlashCatalog } from '../chat/use-slash-catalog.ts'
 import { MicButton } from '../voice/MicButton.tsx'
+import { useT } from '../../lib/i18n.ts'
 
 /*
  * The Overview's glass prompt: one line that grows, a paperclip that attaches file paths, a
@@ -20,6 +21,7 @@ export interface OverviewComposerProps {
 }
 
 export function OverviewComposer({ disabled, placeholder, onSubmit, className, draft }: OverviewComposerProps) {
+  const { t } = useT()
   const [value, setValue] = useState('')
   const [selected, setSelected] = useState(0)
   const [picking, setPicking] = useState(false)
@@ -117,7 +119,7 @@ export function OverviewComposer({ disabled, placeholder, onSubmit, className, d
           value={value}
           disabled={disabled}
           rows={1}
-          aria-label="Ask Hermes"
+          aria-label={t('chat.askLabel')}
           placeholder={placeholder ?? 'What would you like to make happen?'}
           onChange={event => setValue(event.target.value)}
           onKeyDown={event => {
@@ -160,7 +162,7 @@ export function OverviewComposer({ disabled, placeholder, onSubmit, className, d
         />
         <div className="flex items-center gap-0.5 self-center">
           <span aria-hidden="true" className="mr-1.5 h-6 w-px bg-line" />
-          <button type="button" aria-label="Attach files" disabled={disabled || picking} onClick={() => void attach()} className="flex size-9 items-center justify-center rounded-lg text-fg-2 transition-colors duration-120 hover:bg-white/8 hover:text-fg disabled:cursor-not-allowed disabled:opacity-40">
+          <button type="button" aria-label={t('chat.attach')} disabled={disabled || picking} onClick={() => void attach()} className="flex size-9 items-center justify-center rounded-lg text-fg-2 transition-colors duration-120 hover:bg-white/8 hover:text-fg disabled:cursor-not-allowed disabled:opacity-40">
             <IconPaperclip size={17} />
           </button>
           <MicButton size={17} className="size-9" disabled={disabled} />

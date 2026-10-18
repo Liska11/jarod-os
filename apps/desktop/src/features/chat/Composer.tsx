@@ -4,6 +4,7 @@ import { Button } from '../../components/ui/button.tsx'
 import { Kbd } from '../../components/ui/primitives.tsx'
 import { cn } from '../../lib/cn.ts'
 import { useSlashCatalog } from './use-slash-catalog.ts'
+import { useT } from '../../lib/i18n.ts'
 
 export interface ComposerProps {
   disabled?: boolean
@@ -16,6 +17,7 @@ export interface ComposerProps {
 }
 
 export function Composer({ disabled, streaming, placeholder, autoFocus, onSubmit, onInterrupt, className }: ComposerProps) {
+  const { t } = useT()
   const [value, setValue] = useState('')
   const [selected, setSelected] = useState(0)
   const textarea = useRef<HTMLTextAreaElement>(null)
@@ -118,11 +120,11 @@ export function Composer({ disabled, streaming, placeholder, autoFocus, onSubmit
         />
         <div className="flex items-center gap-1.5 pb-0.5">
           {streaming && onInterrupt ? (
-            <Button variant="danger" size="icon-sm" aria-label="Stop" onClick={onInterrupt}>
+            <Button variant="danger" size="icon-sm" aria-label={t('chat.stop')} onClick={onInterrupt}>
               <IconPlayerStop size={14} />
             </Button>
           ) : (
-            <Button variant="primary" size="icon-sm" aria-label="Send" disabled={disabled || !value.trim()} onClick={() => void submit()}>
+            <Button variant="primary" size="icon-sm" aria-label={t('chat.send')} disabled={disabled || !value.trim()} onClick={() => void submit()}>
               <IconArrowUp size={15} />
             </Button>
           )}

@@ -6,6 +6,7 @@ import { $connection } from '../../store/gateway.ts'
 import { Composer } from './Composer.tsx'
 import { SessionList } from './SessionList.tsx'
 import { Transcript } from './Transcript.tsx'
+import { useT } from '../../lib/i18n.ts'
 
 const SUGGESTIONS = [
   "What's using the most CPU right now?",
@@ -15,6 +16,7 @@ const SUGGESTIONS = [
 ]
 
 export function ChatSurface() {
+  const { t } = useT()
   const chat = useStore($activeChat)
   const connection = useStore($connection)
   const online = connection === 'open'
@@ -40,7 +42,7 @@ export function ChatSurface() {
             <HermesMark size={36} />
             <div className="text-center">
               <div className="text-[18px] font-medium tracking-tight">Hermes</div>
-              <div className="mt-1 text-[13px] text-fg-3">Your computer, in conversation.</div>
+              <div className="mt-1 text-[13px] text-fg-3">{t('chat.hero')}</div>
             </div>
             <div className="grid w-full max-w-xl grid-cols-2 gap-2">
               {SUGGESTIONS.map(text => (

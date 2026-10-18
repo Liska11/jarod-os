@@ -54,8 +54,7 @@ Items identified and deliberately not done. Each survives the session here.
 
 - Connect `PluginPlatform` to the kernel's real loader through a `PluginHost`, and sign the shipped plugins.
 - Real memory / VRAM / disk measurement feeding `reportUsage`.
-- Two frontends on one profile at once: locking and concurrent-write behaviour of settings, memory and skills
-  (shared data directory today, untested under concurrency).
+- Two frontends on one profile at once: **covered** (`BEGIN IMMEDIATE` + `busy_timeout`, `jarod-core/tests/integration/sqlite-contention.test.ts`, 2026-10-18).
 
 ## Phase 7 - UI parity (status 2026-10-17)
 
