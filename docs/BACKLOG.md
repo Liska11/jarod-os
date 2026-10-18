@@ -22,6 +22,9 @@ Items identified and deliberately not done. Each survives the session here.
   transformers 5.20.1 and are clean. The spaCy model (`en-core-web-sm`, a URL requirement) cannot be audited by version.
 - 543 lint warnings (accepted debt).
 - 18 shell protocol tests skipped on Windows (no fake named pipe): restore coverage.
+- **E2 WebRTC/UDP proof: control at zero on this machine (2026-10-18).** `browser.lifecycle.engine.test.ts › PREUVE RÉSEAU WebRTC/UDP`
+  fails every time (it was the "intermittent" `integrations` failure): Chrome's WebRTC UDP never reaches a local witness, while QUIC does.
+  Not a leak, not a timeout; machine-side cause not found (see `docs/E2-VALIDATION.md` §6.1). Re-run on another machine.
 - **Rotation of `control-audit.jsonl`: DONE (2026-10-17).** `FileJournal` rotates to `<name>.1` (one older generation, replaced each time) once the file reaches 8 MiB (`DEFAULT_JOURNAL_LIMIT`), also at opening; a failed rotation is counted in `failures()` and never changes a decision. Tests: `host-control/tests/journal_rotation.rs`.
 - The Python client is more tolerant than the shell on pipe endpoints (the Rust host emits the strict form).
 - R2/R3 end-to-end in the real application to re-prove (disposable profile).

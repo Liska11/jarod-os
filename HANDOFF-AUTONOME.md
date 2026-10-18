@@ -74,3 +74,12 @@ Commits ajoutés : `846fee9` (chargement temporaire sans signature), `76ff0c2` (
 - **Plus de sujet autonome utile restant** : ce qui reste est soit à votre décision (signature, push, renommage), soit trop large (embarquer les embeddings, `cmd` dans le conteneur, métriques), soit non vérifiable sans application installée.
 - L'arbre est en avance de 36 commits sur `origin/feature/windows-port` (`git rev-list --count origin/feature/windows-port..HEAD`). Rien n'est poussé.
 
+
+## Mise à jour du 2026-10-18 (analyse et corrections)
+
+Commits : `16c22a9` (`useT` rend un `t` stable entre deux rendus, avec son test : les `useMemo`/`useEffect` qui dépendent de `t` ne se recalculent plus à chaque rendu), `992ffee` (`jarod-core/.work/` ignoré : les sorties des gates et des bancs peuvent contenir du texte de documents), puis ce lot (test UDP et documentation).
+
+- **L'échec « intermittent » de `npm run test:core` est identifié.** C'est `browser.lifecycle.engine.test.ts › PREUVE RÉSEAU WebRTC/UDP`, qui échoue maintenant **à chaque fois** sur cette machine : le contrôle (sans durcissement) ne voit plus aucun datagramme WebRTC. Ce n'est pas une fuite et ce n'est pas un délai ; la cause est sur la machine (diagnostic : `docs/E2-VALIDATION.md` §6.1). Le test échoue désormais avec un message qui y renvoie. **Non résolu** : à refaire sur une autre machine, ou ici une fois la cause trouvée.
+- **Profils jetables orphelins (défaut corrigé).** À la fermeture et au balayage, un `rmSync` récursif pouvait effacer le marqueur `owner.json` puis buter sur un fichier encore verrouillé par Chrome : le dossier restait SANS marqueur, donc plus rien n'avait le droit de le nettoyer (14 dossiers `jarod-e2-*` d'environ 20 Mo trouvés dans `%TEMP%`, supprimés après vérification qu'aucun processus ne les utilisait). `removeDisposableProfile` efface maintenant le marqueur en dernier ; test `test/browser-profile-removal.test.ts`. Après une suite complète : 0 dossier restant. C'était aussi la cause de l'échec intermittent du test « balayage au démarrage » sous charge.
+- `pnpm-lock.yaml` parasite à la racine (ne contenait que biome ; la racine est gérée par npm) : supprimé.
+- Lint : 616 avertissements (543 notés avant). Ceux qui pouvaient cacher un bug ont été relus (`${price}` dans les traductions : voulu ; `default` au milieu d'un `switch` : légal) ; le reste est de la dette de style.
