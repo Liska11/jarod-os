@@ -206,7 +206,7 @@ export function killProfileProcesses(profileDir: string): number {
   let pids: number[] = [];
   try {
     if (process.platform === "win32") {
-      const script = "Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -and $_.CommandLine.Contains($env:JAROD_PROFILE) -and $_.ProcessId -ne $PID } | ForEach-Object { $_.ProcessId }";
+      const script = "Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -and $_.CommandLine.IndexOf($env:JAROD_PROFILE, [StringComparison]::OrdinalIgnoreCase) -ge 0 -and $_.ProcessId -ne $PID } | ForEach-Object { $_.ProcessId }";
       const out = execFileSync("powershell", ["-NoProfile", "-NonInteractive", "-Command", script], { encoding: "utf8", timeout: 15_000, windowsHide: true, env: { ...process.env, JAROD_PROFILE: needle } });
       pids = out.split(/\r?\n/).map(Number).filter((n) => Number.isInteger(n) && n > 0);
     } else {

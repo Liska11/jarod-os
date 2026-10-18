@@ -299,6 +299,8 @@ describe.skipIf(!HAS)("E2 — cycle de vie, révocation, confinement CDP, nettoy
       expect(mine.length).toBeGreaterThan(1); // le navigateur et ses sous-processus
       const myDaemons = sessionDaemons(profile);
       expect(myDaemons.length).toBeGreaterThan(0); // le démon du moteur de CETTE session (le lanceur du venv et le processus qu'il lance)
+      // …et il porte le profil dans sa ligne de commande : l'arrêt par le profil le trouve même s'il démarre encore à la fermeture.
+      expect(myDaemons.filter((pid) => !mine.includes(pid))).toEqual([]);
       await host.close();
       await wait(1500);
       expect(processesMatching(profile)).toEqual([]);

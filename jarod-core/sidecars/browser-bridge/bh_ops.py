@@ -62,6 +62,24 @@ def sandbox_env() -> str:
     return name
 
 
+def mark_daemon_launch(subprocess_module, profile: Path) -> None:
+    """Le démon de browser-harness ne porte pas le profil dans sa ligne de commande (son état passe par l'environnement) : une session
+    fermée pendant qu'il démarrait le laissait tourner, introuvable. On ajoute au SEUL lancement du démon un argument inerte qui nomme
+    le profil (le démon ne lit pas ses arguments) : l'arrêt par le profil (`killProfileProcesses`) le trouve alors, comme le navigateur."""
+    original = subprocess_module.Popen
+    if getattr(original, "_jarod_marked", False):
+        return
+    daemon = [sys.executable, "-m", "browser_harness.daemon"]
+
+    def popen(args, *a, **kw):
+        if isinstance(args, list) and args == daemon:
+            args = [*args, f"--jarod-profile={profile}"]
+        return original(args, *a, **kw)
+
+    popen._jarod_marked = True  # type: ignore[attr-defined]
+    subprocess_module.Popen = popen
+
+
 def js_str(value: str) -> str:
     return json.dumps(value)
 
@@ -131,6 +149,8 @@ def main() -> None:
     sys.stdout = io.StringIO()  # la bibliothèque peut écrire : seule notre ligne JSON sort
     try:
         from browser_harness import admin, helpers  # noqa: E402  (après la validation de l'environnement)
+
+        mark_daemon_launch(admin.subprocess, Path(os.environ["JAROD_BROWSER_PROFILE"]).resolve())
 
         if op == "shutdown":
             admin.restart_daemon(name)
