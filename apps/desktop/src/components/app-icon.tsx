@@ -1,7 +1,7 @@
 import type { AppIconId } from '../shell/apps.ts'
 // Imported (not a `/brand/...` public URL) so Vite rewrites it relative to `base`; absolute public
 // paths resolve to the filesystem root under the packaged `file://` renderer.
-import hermesAvatarUrl from '../assets/brand/hermes-avatar.jpg'
+import hermesAvatarUrl from '../assets/brand/app-robot.png'
 import { cn } from '../lib/cn.ts'
 import { useT } from '../lib/i18n.ts'
 
