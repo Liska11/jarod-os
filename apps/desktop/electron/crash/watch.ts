@@ -64,7 +64,7 @@ export class CrashWatcher {
     try {
       fs.mkdirSync(dir, { recursive: true })
       this.watcher = fs.watch(dir, (_event, file) => {
-        if (file && file.endsWith('.ips')) {
+        if (file?.endsWith('.ips')) {
           setTimeout(() => this.readReport(path.join(dir, file)), SETTLE_MS).unref()
         }
       })

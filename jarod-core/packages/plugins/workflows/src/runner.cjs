@@ -173,17 +173,17 @@ onMessage(async (m) => {
     try {
       send({ t: "activated", ...(await activate(m)) });
     } catch (e) {
-      send({ t: "activate-failed", error: String((e && e.message) || e) });
+      send({ t: "activate-failed", error: String(e?.message || e) });
     }
   } else if (m.t === "call") {
     try {
       send({ t: "result", seq: m.seq, ok: true, value: await call(m) });
     } catch (e) {
-      send({ t: "result", seq: m.seq, ok: false, error: String((e && e.message) || e) });
+      send({ t: "result", seq: m.seq, ok: false, error: String(e?.message || e) });
     }
   } else if (m.t === "deactivate") {
     try {
-      await (mod && mod.deactivate ? mod.deactivate() : undefined);
+      await (mod?.deactivate ? mod.deactivate() : undefined);
     } catch (e) {
       send({ t: "log", text: `deactivate : ${e && e.message}` });
     }

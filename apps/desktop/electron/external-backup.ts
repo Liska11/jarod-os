@@ -398,7 +398,7 @@ export async function verifyExternal(folder: string, signal: AbortSignal, progre
     const abs = path.join(folder, ...file.path.split('/'))
     const stat = await fs.promises.lstat(abs).catch(() => null)
 
-    if (!stat || !stat.isFile()) throw new Error(`${file.path} manque ou n’est pas un fichier ordinaire`)
+    if (!stat?.isFile()) throw new Error(`${file.path} manque ou n’est pas un fichier ordinaire`)
     if (stat.size !== file.size) throw new Error(`${file.path} n’a plus sa taille d’origine`)
     if ((await hashFile(abs, signal)) !== file.sha256) throw new Error(`${file.path} est abîmé (empreinte différente)`)
     done += file.size

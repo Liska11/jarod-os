@@ -330,7 +330,7 @@ export class HarnessBackend implements BrowserBackend {
   constructor(private readonly o: HarnessOptions) {
     if (!isDisposableProfile(o.browser.profileDir)) throw new AdapterRefused(A, "le moteur n'accepte qu'un profil jetable");
     if (!/^http:\/\/127\.0\.0\.1:\d+$/.test(o.browser.cdpUrl)) throw new AdapterRefused(A, "le moteur n'accepte qu'un navigateur de bouclage");
-    if (!o.guard || !o.guard.healthy) throw new AdapterRefused(A, "le moteur exige une garde réseau saine (interception obligatoire)");
+    if (!o.guard?.healthy) throw new AdapterRefused(A, "le moteur exige une garde réseau saine (interception obligatoire)");
   }
 
   private call<T>(req: Record<string, unknown>): Promise<T> {
