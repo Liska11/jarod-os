@@ -35,8 +35,11 @@ public class DeviceVaultPlugin extends Plugin {
     private static final String ALIAS = "jarod-device-key-wrap";
     private static final String KEYSTORE = "AndroidKeyStore";
     private static final String TRANSFORM = "AES/GCM/NoPadding";
-    private static final int AUTHENTICATORS =
-        BiometricManager.Authenticators.BIOMETRIC_STRONG | BiometricManager.Authenticators.DEVICE_CREDENTIAL;
+    /** Android 11+: biometrics or the phone's PIN. Before: a Keystore key bound to each use takes biometrics only. */
+    private static final boolean PIN_TOO = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R;
+    private static final int AUTHENTICATORS = PIN_TOO
+        ? BiometricManager.Authenticators.BIOMETRIC_STRONG | BiometricManager.Authenticators.DEVICE_CREDENTIAL
+        : BiometricManager.Authenticators.BIOMETRIC_STRONG;
 
     private interface OnPass {
         void run(BiometricPrompt.AuthenticationResult result) throws Exception;
@@ -167,6 +170,8 @@ public class DeviceVaultPlugin extends Plugin {
         BiometricPrompt.PromptInfo.Builder b = new BiometricPrompt.PromptInfo.Builder()
             .setTitle(call.getString("title", "Jarod"))
             .setAllowedAuthenticators(AUTHENTICATORS);
+        // Without the PIN as an option, Android requires a way out of the prompt.
+        if (!PIN_TOO) b.setNegativeButtonText("Annuler");
         String subtitle = call.getString("subtitle");
         if (subtitle != null && !subtitle.isEmpty()) b.setSubtitle(subtitle);
         return b.build();
@@ -185,10 +190,15 @@ public class DeviceVaultPlugin extends Plugin {
             .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
             .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
             .setKeySize(256)
+            // One authentication per use: an unlocked phone left on a table opens nothing.
             .setUserAuthenticationRequired(true)
-            // 0 = one authentication per use: an unlocked phone left on a table opens nothing.
-            .setUserAuthenticationParameters(0, KeyProperties.AUTH_BIOMETRIC_STRONG | KeyProperties.AUTH_DEVICE_CREDENTIAL)
             .setInvalidatedByBiometricEnrollment(true);
+        if (PIN_TOO) {
+            spec.setUserAuthenticationParameters(0, KeyProperties.AUTH_BIOMETRIC_STRONG | KeyProperties.AUTH_DEVICE_CREDENTIAL);
+        } else {
+            // -1: authentication bound to each operation, through BiometricPrompt's CryptoObject.
+            spec.setUserAuthenticationValidityDurationSeconds(-1);
+        }
         if (strongBox) spec.setIsStrongBoxBacked(true);
         KeyGenerator gen = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, KEYSTORE);
         gen.init(spec.build());

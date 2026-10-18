@@ -1,6 +1,6 @@
 ext {
-    // 30: BiometricPrompt with a Keystore key usable by biometrics OR the device PIN (AUTH_DEVICE_CREDENTIAL).
-    minSdkVersion = 30
+    // 28 (Android 9). From 30 the device key also opens with the phone's PIN; before, biometrics only.
+    minSdkVersion = 28
     compileSdkVersion = 36
     targetSdkVersion = 36
     androidxActivityVersion = '1.11.0'
