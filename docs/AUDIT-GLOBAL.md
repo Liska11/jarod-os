@@ -252,3 +252,15 @@ Voir E2-VALIDATION §6 et §6.2. Commit `2a7d50a`.
 | Noyau, paquets touchés | bridge, cli, llm, mcp, rag, scheduler, automation, skills, tools, workflows : tous réussis ; integrations : 32 fichiers, 274 réussis (preuve UDP comprise) |
 | Portes non relancées | `tests/gates/webhooks-live.test.ts` exige `GATE_WEBHOOKS_LIVE` (refus volontaire sans elle, comme sur le dépôt principal) ; couvert par le typecheck |
 | Lancement des paquets | `pnpm -r` refuse les `node_modules` en jonction de ce worktree : chaque script de paquet a été lancé directement |
+
+## Validation après fusion des lots (A-06, A-07, A-08, A-11, voix, winget, machines distantes, e2e avec données)
+
+| Validation | Résultat |
+|---|---|
+| Types | shell (renderer et electron) et `pnpm -r typecheck` du noyau : code 0 |
+| Tests unitaires du shell | 165 fichiers, 1316 réussis, 3 ignorés |
+| Noyau, paquets touchés | contracts, storage, permissions, skills, memory, rag, llm, scheduler, tools, automation, mcp, workflows, bridge, integrations : tous réussis ; cli : 462 réussis et 1 échec attendu |
+| Lint (`biome lint`, dépôt entier) | 0 erreur ; 450 avertissements |
+| Noyau empaqueté (`bundle:core`) puis build du shell | code 0 |
+| e2e, Electron réel | 65 réussis ; 1 ignoré : `voice-turn-latency` (facultatif, demande un vrai modèle local) |
+| Fichiers temporaires | aucun dossier `jarod-e2e-*` laissé |
