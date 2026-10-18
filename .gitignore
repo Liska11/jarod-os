@@ -64,3 +64,6 @@ jarod-core/sidecars/uia-flaui/bin/
 
 # local lot gate state (the journal and the backlog are tracked)
 autonomy/lots.json
+
+# Gate and bench outputs of jarod-core (some hold text from the user's documents): local, never committed.
+jarod-core/.work/
