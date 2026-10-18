@@ -29,7 +29,7 @@ The switch is stored in `network-policy.json`, in the shell's config folder (`%A
 | The core's sockets: cloud models, messaging, MCP over HTTP, voice providers, OAuth | Same guard in the core's process. The file is checked on every connection (a `stat`; it is read again only when it changed), and watched so that open connections are closed when it changes. | `jarod-core/packages/kernel/src/network.ts`, `gateway/main.ts` |
 | Agent tools | The single tool gate (`executeGuardedTool`) refuses, before any approval request: `web_search`, `web_fetch`, `http_request`, `browser_*`, `connected_browser`, and the downloads of skills and Pinokio. The refusal is recorded in the audit log. | `agent.ts`, `toolVerdict` |
 | Programs Jarod cannot cut off from the network: `run_shell`, MCP servers | Refused while the switch is off, unless the person enables **Autoriser les commandes locales**. That exception does not isolate them: it is the person's informed choice. | `toolVerdict` |
-| Programs the shell launches | Python environments: `uv --offline`, so only a Python already on the machine works. Node.js: refused. `wsl --install` and `--list --online`: refused. winget installs (setup audit) and catalog installs: refused. | `ipc/environments.ts`, `ipc/vms.ts`, `ipc/system-audit.ts`, `ipc/catalog.ts` |
+| Programs the shell launches | Python environments: `uv --offline`, so only a Python already on the machine works. Node.js: refused. `wsl --install` and `--list --online`: refused. winget installs (setup audit), the confirmed winget upgrade of Système › Mises à jour, and catalog installs: refused. | `ipc/environments.ts`, `ipc/vms.ts`, `ipc/system-audit.ts`, `ipc/catalog.ts`, `winget-install.ts` |
 
 ## What stays allowed
 

@@ -1,10 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { wingetCommand } from './ipc/terminal.ts'
-import { NetworkPolicyService, setActiveNetworkPolicy } from './network.ts'
 import { parseWindowsUpdate, parseWinget, WU_SCRIPT } from './updates-check.ts'
-import fs from 'node:fs'
-import os from 'node:os'
-import path from 'node:path'
 
 // Real output of `winget upgrade --include-unknown` on a French Windows (2026-10-18).
 const WINGET_FR = `Nom                                        ID                                     Version  Disponible Source
@@ -17,28 +12,14 @@ Visual Studio Build Tools 2022             Microsoft.VisualStudio.2022.BuildTool
 describe('winget', () => {
   it('reads the table whatever the language of its headers, and ignores the summary line', () => {
     expect(parseWinget(WINGET_FR)).toEqual([
-      { name: 'Microsoft OLE DB Driver 19 pour SQL Server', id: 'Microsoft.SQLServer.OLEDBDriver', current: '19.4.2.0', available: '19.4.3', source: 'winget', restart: false, elevation: false },
-      { name: 'Visual Studio Build Tools 2022', id: 'Microsoft.VisualStudio.2022.BuildTools', current: '17.14.41', available: '17.14.42', source: 'winget', restart: false, elevation: false }
+      { name: 'Microsoft OLE DB Driver 19 pour SQL Server', id: 'Microsoft.SQLServer.OLEDBDriver', current: '19.4.2.0', available: '19.4.3', source: 'winget', repository: 'winget', restart: false, elevation: false },
+      { name: 'Visual Studio Build Tools 2022', id: 'Microsoft.VisualStudio.2022.BuildTools', current: '17.14.41', available: '17.14.42', source: 'winget', repository: 'winget', restart: false, elevation: false }
     ])
   })
 
   it('finds nothing in an answer without a table (no update, or an error text)', () => {
     expect(parseWinget('Aucune mise à niveau disponible.')).toEqual([])
     expect(parseWinget('')).toEqual([])
-  })
-
-  it('upgrades one package by its exact id, interactively, and never while the Internet is off', async () => {
-    expect(wingetCommand('Microsoft.VisualStudio.2022.BuildTools')).toEqual({ file: 'winget.exe', args: ['upgrade', '--id', 'Microsoft.VisualStudio.2022.BuildTools', '--exact'] })
-    expect(() => wingetCommand('--all')).toThrow()
-    expect(() => wingetCommand('a b')).toThrow()
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'jarod-upd-'))
-    const service = new NetworkPolicyService(dir)
-    service.load()
-    setActiveNetworkPolicy(service)
-    await service.set({ internet: false })
-    expect(() => wingetCommand('Git.Git')).toThrow(/Internet désactivé/)
-    setActiveNetworkPolicy(null as never)
-    fs.rmSync(dir, { recursive: true, force: true })
   })
 })
 

@@ -381,8 +381,6 @@ export interface TerminalCreateOptions {
   vm?: string
   /** A remote machine (docs/REMOTE-SSH.md): the tab runs `ssh` to it, host keys checked strictly (an unknown key fails). */
   ssh?: { host: string; port: number; user: string; identity?: string }
-  /** A winget package to upgrade (its id): the tab runs `winget upgrade --id <id> --exact`, interactive, for the person to follow. */
-  winget?: string
 }
 
 /** One entry of the install catalog (linux/catalog/*.json), with its state on this machine. */
@@ -1051,6 +1049,9 @@ export const IPC = {
   updatesState: 'herald-os:updates:state',
   updatesCheck: 'herald-os:updates:check',
   updatesOpenWindowsUpdate: 'herald-os:updates:open-windows-update',
+  updatesPrepareUpgrade: 'herald-os:updates:prepare-upgrade',
+  updatesUpgrade: 'herald-os:updates:upgrade',
+  updatesProgress: 'herald-os:updates:progress',
   // External backups (electron/external-backup.ts, electron/ipc/external-backup.ts).
   externalBackupState: 'herald-os:external-backup:state',
   externalBackupEstimate: 'herald-os:external-backup:estimate',

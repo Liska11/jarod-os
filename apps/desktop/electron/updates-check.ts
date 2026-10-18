@@ -6,8 +6,8 @@ import { writeFileAtomic } from './atomic-write.ts'
 /*
  * Checking for updates (docs/UPDATES.md), read-only. Windows and drivers: the Windows Update Agent API (Microsoft.Update.Session), whose
  * search installs nothing. Software: `winget upgrade`, which lists and installs nothing. Each category says whether it is up to date, has
- * updates, failed, is not supported here, or was not checked. Nothing is installed from here: Windows Update opens in Windows' own
- * Settings, a winget upgrade runs in a Terminal tab the person watches. Results are kept with their date and shown as old when offline.
+ * updates, failed, is not supported here, or was not checked. Nothing is installed by the check: Windows Update opens in Windows' own
+ * Settings, and one listed winget package can be upgraded after the person confirmed it (electron/winget-install.ts). Results are kept with their date and shown as old when offline.
  */
 
 export type UpdateCategory = 'windows' | 'drivers' | 'software'
@@ -20,6 +20,8 @@ export interface UpdateItem {
   current: string | null
   available: string | null
   source: 'Windows Update' | 'winget'
+  /** winget: the source the package comes from (`winget`, `msstore`, …), as its Source column says. */
+  repository?: string
   /** Windows Update: may ask for a restart (`RebootBehavior` 1 or 2). */
   restart: boolean
   /** Installing needs administrator rights. */
@@ -111,7 +113,9 @@ export function parseWinget(output: string): UpdateItem[] {
     const id = cell(line, 1)
 
     if (!/^[A-Za-z0-9][A-Za-z0-9.+_-]*$/.test(id)) continue
-    items.push({ name: cell(line, 0), id, current: cell(line, 2) || null, available: cell(line, 3) || null, source: 'winget', restart: false, elevation: false })
+    const repository = (starts.length > 4 ? cell(line, 4) : '') || 'winget'
+
+    items.push({ name: cell(line, 0), id, current: cell(line, 2) || null, available: cell(line, 3) || null, source: 'winget', repository, restart: false, elevation: false })
   }
 
   return items

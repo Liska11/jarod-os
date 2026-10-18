@@ -6,6 +6,7 @@
 |---|---|
 | `electron/updates-check.ts` | The checks |
 | `electron/ipc/updates-check.ts` | The screen's calls |
+| `electron/winget-install.ts` | Upgrading one listed winget package |
 | `src/features/system/UpdatesPanel.tsx` | The panel |
 
 ## Sources (official only)
@@ -34,23 +35,38 @@ The coverage is never presented as complete.
 
 ## Installing
 
-- **Nothing is installed automatically**, and there is no "update everything" button.
-- **Windows and drivers:** "Ouvrir Windows Update" opens Windows' own Settings page (`ms-settings:windowsupdate`). Windows shows its own prompts and handles restarts.
-- **Software:** "Mettre à jour…" on one row opens a Terminal tab running this command:
+- **Nothing is installed automatically**, and there is no "update everything" button: one program at a time, chosen by the person.
+- **Windows and drivers stay read-only:** "Ouvrir Windows Update" opens Windows' own Settings page (`ms-settings:windowsupdate`). Windows shows its own prompts and handles restarts.
+- **Software:** "Mettre à jour…" on one row upgrades that winget package from Jarod (`electron/winget-install.ts`):
 
-  ```
-  winget upgrade --id <id> --exact
-  ```
+  1. **Prepare** (`updates.prepareUpgrade`). Main checks that:
+     - the id, version and source are well formed (no option such as `--all`, no space, no shell character);
+     - the package is in the last check, at the version it listed, from the source it listed;
+     - Jarod's Internet is on.
 
-  - It is interactive: agreements and elevation are winget's own prompts, answered by the person.
-  - The id is checked: an id like `--all` is refused.
+     Main then returns a plan and a one-shot token (5 minutes, bound to that exact id, version and source).
+  2. **Confirm.** The panel shows the name, the **winget id**, the **version** (current → target), the **source**, and the exact command. It also says that the licence and the source's terms are accepted on the person's behalf, and that Windows may ask for administrator rights. Nothing runs before "Installer <id> <version>".
+  3. **Run** (`updates.upgrade(token)`):
+     - the token is spent (none, a spent one or an expired one is refused before anything else);
+     - the call goes through the control gate as `shell.winget.upgrade` (tier `mutate`, arguments exactly `id`, `version`, `source`; a plugin cannot reach it);
+     - the Internet is checked again (a refusal at this point is journalled as `denied-policy`);
+     - winget is started **with an argument array, without a shell**:
+
+       ```
+       winget upgrade --id <id> --exact --version <version> --source <source> --silent --disable-interactivity --accept-package-agreements --accept-source-agreements
+       ```
+
+       The agreements flags exist only in this confirmed command (`wingetUpgradeArgs` throws without the confirmation).
+     - The control journal (`control-audit.jsonl`) gets exactly one line: `shell.winget.upgrade`, source `updates`, reason `<id> <version> (<source>): <outcome> [code]`.
+- **Progress** is shown while it runs: phase (starting, downloading, verifying, installing), percentage when winget prints one, last line. One upgrade at a time.
+- **Result:**
+  - **terminé**;
+  - **redémarrage nécessaire** (`0x8A150109`, `0x8A15010B`, or a restart notice at the end of the output);
+  - **annulé** (`0x8A15010C`, e.g. elevation refused);
+  - **échec**, with the reason (package in use, disk full, hash mismatch, blocked by policy, …; an unknown code is shown with winget's last line).
+
+  A program that upgraded leaves the list.
 - **Jarod never restarts the computer.**
-
-## Offline
-
-- **While Jarod's Internet is off, no check runs:** the button is disabled, and main refuses the call too.
-- **The last results are shown with their date, marked "anciens".**
-- **Upgrading a program is refused** (`assertInternet`).
 
 ## Real verification (2026-10-18, this machine)
 
@@ -68,4 +84,13 @@ Nothing was installed.
 - the real French `winget` table;
 - the Windows / drivers split;
 - search only;
-- the upgrade command refused for a bad id and while offline.
+- `electron/winget-install.test.ts` (winget mocked):
+  - the argument array;
+  - refusal without a confirmation, and of a spent or expired one;
+  - invalid ids, versions and sources;
+  - refusal offline, including after the confirmation;
+  - packages, versions and sources that were not listed;
+  - exit codes and output read as success, restart needed, cancelled or failed;
+  - progress;
+  - the catalogue entry, and the journal lines through the gate.
+- `e2e/updates-upgrade.spec.ts`: the whole flow in the app with a scripted winget (`JAROD_WINGET_MOCK`, honoured only when `JAROD_OS_ISOLATED=1`). It covers the confirmation, progress, the result, the arguments received, the journal line, and the disabled button and refusal offline.

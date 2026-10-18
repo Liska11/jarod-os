@@ -8,8 +8,7 @@ import path from 'node:path'
 import { IPC, type TerminalCreateOptions, type TerminalHandle } from '../../shared/ipc.ts'
 import { terminalBin } from '../catalog/catalog.ts'
 import { log } from '../log.ts'
-import { assertInternet, assertUrl } from '../network.ts'
-import { WINGET_ID } from '../updates-check.ts'
+import { assertUrl } from '../network.ts'
 import { HOST, sshTool } from '../remote-machines.ts'
 import { loadCatalog } from './catalog.ts'
 import { normalizeUserPath } from './fs.ts'
@@ -162,7 +161,7 @@ export function registerTerminalIpc(getWindow: () => BrowserWindow | null): void
     }
 
     // A remote machine: `ssh` to it, the host key checked strictly (Settings confirms a new key's fingerprint first), within the Internet policy.
-    const ssh = options.ssh ? remoteCommand(options.ssh) : options.winget ? wingetCommand(options.winget) : null
+    const ssh = options.ssh ? remoteCommand(options.ssh) : null
     const args = process.platform === 'win32' ? [] : resolved ? ['-l', '-c', `${JSON.stringify(resolved)}; exec ${JSON.stringify(shell)} -l`] : ['-l']
     const child = pty.spawn(ssh ? ssh.file : vm ? 'wsl.exe' : shell, ssh ? ssh.args : vm ? ['-d', vm.name, '--cd', '~'] : args, {
       name: 'xterm-256color',
@@ -199,15 +198,6 @@ export function registerTerminalIpc(getWindow: () => BrowserWindow | null): void
   ipcMain.handle(IPC.terminalDispose, (_event, id: string) => {
     kill(id)
   })
-}
-
-/** The command of a tab upgrading one winget package: interactive, so winget's own prompts (agreements, elevation) are the person's. */
-export function wingetCommand(id: string): { file: string; args: string[] } {
-  if (!WINGET_ID.test(String(id))) throw new Error('identifiant de paquet winget invalide')
-
-  assertInternet(`la mise à jour de ${id}`)
-
-  return { file: 'winget.exe', args: ['upgrade', '--id', id, '--exact'] }
 }
 
 /** The `ssh` command of a remote tab, after checking every part (no option can slip in through a host or a user) and the Internet policy. */

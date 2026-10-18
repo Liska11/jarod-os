@@ -667,7 +667,7 @@ function registerCoreIpc(): void {
   registerVmsIpc()
   registerNetworkIpc(network)
   registerRemoteMachinesIpc(network)
-  registerUpdatesCheckIpc(shellConfigDir())
+  registerUpdatesCheckIpc(shellConfigDir(), backendGate)
   externalBackups.register()
   registerDataDiskIpc({ state: dataRoot, configDir: shellConfigDir(), stopBackend: () => backend.stop(), startBackend: () => void backend.start(), relaunch: () => relaunch(false) })
   registerNativeAppsIpc()
