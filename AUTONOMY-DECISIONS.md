@@ -82,3 +82,11 @@ Un sujet par commit local. Les arbitrages sont ici, un par section, pour revue �
 - **Décision** : balayage de tous les `spawnSync/execFileSync` non-test : un seul n'avait pas de délai (`rag/parser-worker.ts`, `taskkill`). Ajout de `timeout: 15_000`, comme les autres appels `taskkill` du dépôt.
 - **Tests** : `vitest packages/plugins/rag` 164 passés ; `tsc` propre. **Non testé en isolation** : un `taskkill` qui se bloque n'est pas reproductible sur demande ; la modification est une option d'appel d'une ligne.
 - **Annuler** : `git revert` du commit « fix(rag) ».
+
+## 11. Décisions du propriétaire (2026-10-18) et préparation du push
+- **Reçu** : délais conservés ; porte de lot conservée « pour l'instant » ; push à préparer (Firefox d'abord seulement si le lot en dépend) ; renommage global séparé, hors de ce lot.
+- **Dépendance Firefox ?** Non : l'extension (`jarod-core/sidecars/firefox-reader/`) n'est ni signée, ni installée, ni câblée dans l'application ni dans l'installateur ; aucun des commits ne la rend nécessaire au fonctionnement. La signature peut donc suivre le push sans le bloquer. (À vous de confirmer si vous préférez quand même signer d'abord.)
+- **Écart de compte** : l'arbre local est en avance de **30** commits sur `origin/feature/windows-port` (et non 13 : les 13 de cette session s'ajoutent à 17 de la session précédente, E2/Firefox/readRoots/audits). 104 fichiers, +8 379 / −1 053.
+- **Vérifié avant push** : balayage des lignes ajoutées (8 483) à la recherche de formes de clés (OpenAI/Anthropic, GitHub, AWS, Slack, bloc de clé privée, affectation de jeton longue) : **0 résultat** ; aucun binaire/archive/clé parmi les fichiers modifiés (`.exe .zip .xpi .db .pem .key`). Le dossier `jarod-core/.work/` (rapports de gates générés, non suivi) n'est pas commité.
+- **Fait** : rien n'est poussé. Commande à lancer par vous : `git push origin feature/windows-port` (aucune réécriture d'historique, avance simple).
+- **Renommage** : non lancé ; plan intact dans `docs/RENAME-PLAN-JAROD-OS.md`.

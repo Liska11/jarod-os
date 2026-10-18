@@ -58,3 +58,9 @@ Un seul sujet par commit ; chaque commit se défait par `git revert <sha>`.
 git log --oneline a676994..HEAD      # les 12 commits ci-dessus
 node scripts/autonomy/lot.mjs status # backlog lisible par machine
 ```
+
+## Mise à jour du 2026-10-18 — décisions reçues, push préparé (non exécuté)
+
+- Délais et porte de lot : conservés. Renommage global : séparé, non lancé.
+- **Push prêt, pas lancé.** L'arbre est en avance de **30** commits sur `origin/feature/windows-port` (les 13 ci-dessus + 17 de la session précédente), avance simple, 104 fichiers. Balayage des lignes ajoutées : aucune forme de clé ou de jeton ; aucun binaire. Le push ne dépend pas de la signature Firefox (extension non câblée ni distribuée). Commande : `git push origin feature/windows-port`.
+- Restent à vous : signature Firefox (peut suivre), puis le renommage dans son propre lot.
