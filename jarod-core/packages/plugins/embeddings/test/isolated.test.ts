@@ -9,6 +9,8 @@ import { afterEach, describe, expect, it } from "vitest";
 import { forkEmbeddingsSpawner, IsolatedEmbeddings, type EmbeddingsWorkerEvent } from "../src/isolated.js";
 
 const FAKE = join(dirname(fileURLToPath(import.meta.url)), "fixtures", "fake-embeddings-worker.mjs");
+// Le faux worker meurt avec 0xC0000005 ; hors Windows, un code de sortie ne garde que ses 8 bits de poids faible.
+const CRASH_CODE = process.platform === "win32" ? 3221225477 : 3221225477 & 0xff;
 const hosts: IsolatedEmbeddings[] = [];
 const dirs: string[] = [];
 
@@ -85,7 +87,7 @@ describe("hôte du worker d'embeddings isolé", () => {
     expect(existsSync(join(dir, "marker"))).toBe(true);
     expect(spawned()).toBe(2);
     expect(events).toHaveLength(1);
-    expect(events[0]).toMatchObject({ outcome: "restarted", code: 3221225477 });
+    expect(events[0]).toMatchObject({ outcome: "restarted", code: CRASH_CODE });
     expect(host.available).toBe(true);
   });
 

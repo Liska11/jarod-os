@@ -15,7 +15,7 @@
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { copyFileSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
-import { basename, join, resolve } from "node:path";
+import { join, resolve, win32 } from "node:path";
 
 export type QuarantineStatus = "quarantined" | "clean" | "infected" | "unscanned" | "tampered" | "promoted" | "deleted";
 
@@ -57,8 +57,10 @@ const ID = /^[0-9a-f]{64}$/;
 
 const sha256 = (bytes: Buffer): string => createHash("sha256").update(bytes).digest("hex");
 
+/** Le dernier segment du nom, `/` comme `\` étant des séparateurs sur tout système ; jamais `.` ni `..`. */
 function safeLabel(name: string): string {
-  return basename(name).replace(/[^\w.\- ]/g, "_").slice(0, 120) || "fichier";
+  const label = win32.basename(name).replace(/[^\w.\- ]/g, "_").slice(0, 120);
+  return label === "." || label === ".." || !label ? "fichier" : label;
 }
 
 /** L'analyseur de Windows (Defender), s'il est là. Lecture seule : `-DisableRemediation`, rien n'est supprimé. */

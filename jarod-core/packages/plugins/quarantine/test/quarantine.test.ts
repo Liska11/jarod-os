@@ -134,6 +134,16 @@ describe("plugin-quarantine", () => {
     expect(existsSync(join(dest, "evil.pdf"))).toBe(true);
   });
 
+  it("un nom réduit à « .. » ne désigne jamais le dossier parent", async () => {
+    const { svc, file } = setup(clean);
+    const r = svc.intake(file, { source: "download" });
+    svc.scan(r.id);
+    const dest = temp();
+    const out = await svc.promote(r.id, dest, "a/..");
+    expect(existsSync(join(dest, "fichier"))).toBe(true);
+    expect(out.replace(/\\/g, "/")).toContain("/fichier");
+  });
+
   it("l'audit ne contient que empreintes, tailles et statuts", async () => {
     const { svc, file, events } = setup(clean);
     const r = svc.intake(file, { source: "download", url: "https://exemple.test/x" });

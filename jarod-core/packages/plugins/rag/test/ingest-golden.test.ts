@@ -108,6 +108,22 @@ async function scenario(cfg: { chunkSize: number; chunkOverlap: number }): Promi
   return { stages, hits };
 }
 
+type Snapshot = Record<string, { stages: { rows: { doc_id: string; ord: number }[] }[] }>;
+
+/**
+ * La base trie les lignes sur le `doc_id` BRUT : celui d'un fichier indexé par dossier est un chemin absolu
+ * (`C:/…` sous Windows, `/tmp/…` ailleurs), qui ne se range pas au même endroit que les identifiants nommés.
+ * Les deux côtés sont donc rangés sur l'identifiant STABLE puis `ord` : même contenu exigé, ordre de la plateforme ignoré.
+ */
+function byStableOrder<T>(snapshot: T): T {
+  for (const scenario of Object.values(snapshot as Snapshot)) {
+    for (const stage of scenario.stages) {
+      stage.rows.sort((a, b) => (a.doc_id < b.doc_id ? -1 : a.doc_id > b.doc_id ? 1 : a.ord - b.ord));
+    }
+  }
+  return snapshot;
+}
+
 describe("ingestion : non-régression stricte face au code d'avant le lot A", () => {
   it("lignes de rag_chunks et résultats identiques à l'instantané (deux réglages de découpage)", async () => {
     const current = {
@@ -120,6 +136,6 @@ describe("ingestion : non-régression stricte face au code d'avant le lot A", ()
       return;
     }
     const golden = JSON.parse(readFileSync(FIXTURE, "utf8"));
-    expect(JSON.parse(JSON.stringify(current))).toEqual(golden);
+    expect(byStableOrder(JSON.parse(JSON.stringify(current)))).toEqual(byStableOrder(golden));
   });
 });

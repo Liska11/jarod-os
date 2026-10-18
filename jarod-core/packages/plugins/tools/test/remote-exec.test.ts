@@ -1,9 +1,9 @@
-import { mkdtempSync, readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { ToolCall } from "@jarod/contracts";
 import { DEFAULT_POLICY, type NetworkPolicy } from "@jarod/kernel/network";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import type { ToolContext } from "../src/registry.js";
 import {
   controlJournalSink,
@@ -69,6 +69,16 @@ async function setup(opts: { answer?: boolean; reply?: Partial<SshProcessOutcome
   };
   return { core, hosts, tool, ctx, commands, journal, asked, keyChecks, pc2: pc2! };
 }
+
+const dirs: string[] = [];
+const tempDir = (): string => {
+  const dir = mkdtempSync(join(tmpdir(), "jarod-rx-"));
+  dirs.push(dir);
+  return dir;
+};
+afterEach(() => {
+  for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true });
+});
 
 describe("remote_exec — off by default", () => {
   it("is registered in the real core but not offered to the model while no machine is enabled", async () => {
@@ -281,7 +291,7 @@ describe("remote_exec — timeout and output cap", () => {
 
 describe("remote_exec — control journal", () => {
   it("writes the attempt, the decision and the exit code as JSON lines in the shell's shape", async () => {
-    const dir = mkdtempSync(join(tmpdir(), "jarod-rx-"));
+    const dir = tempDir();
     const file = join(dir, "control-audit.jsonl");
     const { hosts, ctx } = await setup();
     const ssh = new SshService({ keyExists: () => true, transport: async () => reply({ exitCode: 0, stdout: "ok" }) });
@@ -322,7 +332,7 @@ describe("remote_exec — control journal", () => {
   });
 
   it("the sink rotates at its limit, keeping one older generation", () => {
-    const dir = mkdtempSync(join(tmpdir(), "jarod-rx-"));
+    const dir = tempDir();
     const file = join(dir, "j.jsonl");
     const sink = controlJournalSink(file, 200);
     const entry = { at: "x", client: "backend", cmd: "remote-exec", command: "remote_exec", tier: "destructive", source: "agent", surface: "backend", allowed: true, reason: "r", code: "ok", requestId: "rx-1" } as const;
