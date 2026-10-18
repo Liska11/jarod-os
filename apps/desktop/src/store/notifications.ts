@@ -77,6 +77,12 @@ export function notify(input: NotifyInput): HermesNotification {
   }
   const rest = $notifications.get().filter(n => n.id !== item.id)
   $notifications.set([item, ...rest].slice(0, MAX))
+
+  // An error shown to the person is also a problem to keep: the main process copies console errors to herald-os.log.
+  if (item.level === 'error') {
+    console.error(`[notify] ${item.title}${item.body ? `: ${item.body}` : ''}`)
+  }
+
   // Do not disturb: the bell still collects everything, nothing pops up or makes a sound.
   const quiet = Boolean($prefs.get().doNotDisturb)
 

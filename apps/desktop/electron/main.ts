@@ -33,6 +33,7 @@ import { locateRuntime, PINOKIO_URL, PinokioService } from './pinokio/service.ts
 import { registerSystemAuditIpc } from './ipc/system-audit.ts'
 import { AuditService } from './setup/service.ts'
 import { log, logTail } from './log.ts'
+import { installProblemLogging } from './problem-log.ts'
 import { migrateLegacyData, migrateShellConfig } from './migrate.ts'
 import { registerNotificationHistoryIpc } from './notifications-history.ts'
 import { osEnv } from './env.ts'
@@ -97,6 +98,8 @@ protocol.registerSchemesAsPrivileged([{ scheme: 'herald-plugin', privileges: { s
 // Electron shows a modal dialog for an uncaught main-process error and waits on it: the whole
 // shell, the Linux session included, would freeze behind a box nobody may see. Log it and go on.
 process.on('uncaughtException', error => log('main', `uncaught exception: ${error.stack ?? error.message}`))
+// The rest of what can go wrong reaches the same log: rejected promises here, every window's errors, failing IPC calls.
+installProblemLogging(app, ipcMain, log)
 
 for (const line of primary ? migrateLegacyData({ hermesHome: hermesHome(), appData: app.getPath('appData'), userData: app.getPath('userData') }) : []) {
   log('migrate', line)
