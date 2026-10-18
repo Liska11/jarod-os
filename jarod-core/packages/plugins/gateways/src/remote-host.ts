@@ -2,7 +2,7 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import type { AgentEvent, AgentHooks } from "@jarod/plugin-agent";
 import type { GatewayHub } from "./hub.js";
-import { type RemoteConfig, type RemoteDevice } from "@jarod/contracts";
+import { type Notification, type RemoteConfig, type RemoteDevice } from "@jarod/contracts";
 import { Emitter } from "@jarod/kernel/util";
 export type { RemoteConfig, RemoteDevice };
 import {
@@ -53,6 +53,29 @@ const HANDSHAKE_MS = 15_000;
 const TOUCH_MS = 60_000;
 /** Speech-to-text answers in this many characters at most, like a typed message. */
 const MAX_TEXT = 100_000;
+
+/** How many wake bumps are remembered, to say how many times the counter moved since a value. */
+const WAKE_LOG = 200;
+
+/**
+ * What a notification is about, for the phone's per-kind choices (finished tasks, reminders, alerts;
+ * approvals are their own event). Read from what the core already writes: a failure is an alert, a
+ * scheduled task or trigger is a task, unless it is named as a reminder.
+ */
+export type NotificationTopic = "task" | "reminder" | "alert" | "other";
+
+export function notificationTopic(n: Pick<Notification, "kind" | "title">): NotificationTopic {
+  if (n.kind === "error") return "alert";
+  if (/\b(rappel|reminder)/i.test(n.title)) return "reminder";
+  if (/^(Tâche|Déclencheur|Automation)/i.test(n.title)) return "task";
+  if (n.kind === "warning") return "alert";
+  return "other";
+}
+
+/** What a phone receives of a notification, pushed or listed. */
+function forPhone(n: Notification) {
+  return { id: n.id, kind: n.kind, topic: notificationTopic(n), title: n.title, body: n.body, createdAt: n.createdAt };
+}
 
 function sha256Hex(text: string): string {
   return createHash("sha256").update(text).digest("hex");
@@ -171,6 +194,8 @@ export class RemoteHost extends Emitter<{ status: RemoteStatus }> implements App
    * so a restart never makes it go back.
    */
   private wakeSeq = Date.now();
+  /** The last values the counter took, oldest first: only how many, never why. */
+  private wakeLog: number[] = [];
   private wakeWaiters = new Set<() => void>();
   /** Requests from the approval broker (`phone-approvals.ts`), offered to every app device. */
   private offers = new Map<string, { request: PhoneApproval; answer(ok: boolean): void }>();
@@ -182,10 +207,7 @@ export class RemoteHost extends Emitter<{ status: RemoteStatus }> implements App
     core.notifications.on("added", (n) => {
       for (const c of this.clients.values()) {
         if (!c.device) continue;
-        void this.push(c, {
-          event: "notification",
-          data: { id: n.id, kind: n.kind, title: n.title, body: n.body, createdAt: n.createdAt },
-        });
+        void this.push(c, { event: "notification", data: forPhone(n) });
       }
       this.bumpWake();
     });
@@ -194,6 +216,16 @@ export class RemoteHost extends Emitter<{ status: RemoteStatus }> implements App
   /** The wake counter, for the long-poll of `/m1/wake`. */
   wakeState(): number {
     return this.wakeSeq;
+  }
+
+  /**
+   * How many times the counter moved after `since` (at most the last 200). Kind-free like the counter
+   * itself: a notification and an approval count the same.
+   */
+  wakeCount(since: number): number {
+    let n = 0;
+    for (let i = this.wakeLog.length - 1; i >= 0 && this.wakeLog[i]! > since; i--) n++;
+    return n;
   }
 
   /** Resolves with the counter once it moves past `since`, or after `timeoutMs` with what it is then. */
@@ -212,6 +244,8 @@ export class RemoteHost extends Emitter<{ status: RemoteStatus }> implements App
 
   private bumpWake(): void {
     this.wakeSeq = Math.max(this.wakeSeq + 1, Date.now());
+    this.wakeLog.push(this.wakeSeq);
+    if (this.wakeLog.length > WAKE_LOG) this.wakeLog.shift();
     for (const wake of [...this.wakeWaiters]) wake();
   }
 
@@ -595,9 +629,7 @@ export class RemoteHost extends Emitter<{ status: RemoteStatus }> implements App
           return o.request;
         });
       case "notifications.list":
-        return core.notifications
-          .list(50)
-          .map((n) => ({ id: n.id, kind: n.kind, title: n.title, body: n.body, createdAt: n.createdAt }));
+        return core.notifications.list(50).map(forPhone);
       case "wake.register": {
         // A fresh wake token for this device, replacing the last one. It only ever opens `/m1/wake`,
         // which answers with a counter: no content. Only its hash is written down.

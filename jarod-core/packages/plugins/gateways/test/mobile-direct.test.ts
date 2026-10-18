@@ -644,8 +644,12 @@ describe("mobile bridge — notifications without content", () => {
       const { phone } = await pairPhone(r);
       r.core.notifications.add("success", "Tâche terminée", "Le rapport est prêt.");
       await phone.waitFor((e) => e.event === "notification" && e.data.title === "Tâche terminée");
-      const list = (await phone.rpc("notifications.list")).result as { title: string }[];
+      const list = (await phone.rpc("notifications.list")).result as { title: string; topic: string }[];
       expect(list.map((n) => n.title)).toContain("Tâche terminée");
+      // The topic travels inside the encrypted channel, for the phone's per-kind choices.
+      expect(list.find((n) => n.title === "Tâche terminée")?.topic).toBe("task");
+      r.core.notifications.add("error", "Plugin x en erreur", "");
+      await phone.waitFor((e) => e.event === "notification" && e.data.title === "Plugin x en erreur" && e.data.topic === "alert");
       phone.hangUp();
     } finally {
       await r.stop();
@@ -668,7 +672,7 @@ describe("mobile bridge — notifications without content", () => {
         fetch(`${r.base}/m1/wake?since=${since}&wait=${wait}`, { headers: t ? { authorization: `Bearer ${t}` } : {} });
       expect((await wake("", seq)).status).toBe(401);
       expect((await wake("pas-le-bon", seq)).status).toBe(401);
-      expect(await (await wake(token, seq)).json()).toEqual({ seq, news: false });
+      expect(await (await wake(token, seq)).json()).toEqual({ seq, news: false, count: 0 });
 
       // A long-poll in progress returns as soon as there is news, and says nothing of what it is.
       const pending = wake(token, seq, 5000);
@@ -676,8 +680,16 @@ describe("mobile bridge — notifications without content", () => {
       r.core.notifications.add("warning", "Rappel", "Contenu privé");
       const body = (await (await pending).json()) as Record<string, unknown>;
       expect(body.news).toBe(true);
-      expect(Object.keys(body).sort()).toEqual(["news", "seq"]);
+      expect(Object.keys(body).sort()).toEqual(["count", "news", "seq"]);
+      expect(body.count).toBe(1);
       expect(JSON.stringify(body)).not.toContain("Rappel");
+      expect(JSON.stringify(body)).not.toContain("reminder");
+
+      // Two more, of different kinds: only how many, from the same `since`.
+      r.core.notifications.add("error", "Tâche planifiée « x »", "Contenu privé");
+      r.core.notifications.add("info", "Autre", "Contenu privé");
+      const again = (await (await wake(token, seq)).json()) as Record<string, unknown>;
+      expect(again).toEqual({ seq: again.seq, news: true, count: 3 });
 
       // Revoking the phone kills its wake token too.
       r.bridge.revoke(stored.id);

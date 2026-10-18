@@ -424,8 +424,8 @@ export class MobileBridge {
       const wait = Number.isFinite(asked) ? Math.min(WAKE_POLL_MS, Math.max(0, asked)) : WAKE_POLL_MS;
       const seq = await this.core.remoteHost().waitForWake(since, wait);
       if (this.wakePolls.get(device.id) === res) this.wakePolls.delete(device.id);
-      // Only a counter: whether something happened, never what.
-      if (open) this.json(res, 200, { seq, news: seq > since });
+      // Only a counter: whether something happened and how many times, never what.
+      if (open) this.json(res, 200, { seq, news: seq > since, count: this.core.remoteHost().wakeCount(since) });
       return;
     }
     req.resume();
