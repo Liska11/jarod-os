@@ -2,7 +2,7 @@
 import heraldMarkUrl from '../assets/brand/herald-mark.png'
 import { cn } from '../lib/cn.ts'
 
-/** The Herald winged H, shared with the Herald mobile app. White on transparency; sized by height. */
+/** The Jarod-OS mark (the glowing core), a square dark tile with rounded corners; sized by height. */
 export function HeraldLogo({ height = 14, className }: { height?: number; className?: string }) {
-  return <img src={heraldMarkUrl} alt="Jarod-OS" height={height} style={{ height, width: 'auto' }} draggable={false} className={cn('shrink-0 select-none', className)} />
+  return <img src={heraldMarkUrl} alt="Jarod-OS" height={height} style={{ height, width: height, borderRadius: Math.round(height * 0.22) }} draggable={false} className={cn('shrink-0 select-none object-cover', className)} />
 }
