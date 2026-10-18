@@ -18,6 +18,6 @@
   },
   "dependencies": {
     "@jarod/contracts": "workspace:*",
-    "cordis": "4.0.0-rc.10"
+    "cordis": "4.0.0-rc.11"
   }
 }

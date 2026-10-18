@@ -18,7 +18,7 @@
     "@jarod/contracts": "workspace:*",
     "@jarod/kernel": "workspace:*",
     "better-sqlite3-multiple-ciphers": "13.0.3",
-    "cordis": "4.0.0-rc.10",
-    "zod": "^4.6.5"
+    "cordis": "4.0.0-rc.11",
+    "zod": "^4.6.7"
   }
 }

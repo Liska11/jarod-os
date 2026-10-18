@@ -16,7 +16,7 @@
   },
   "dependencies": {
     "@jarod/kernel": "workspace:*",
-    "cordis": "4.0.0-rc.10"
+    "cordis": "4.0.0-rc.11"
   },
   "devDependencies": {
     "better-sqlite3-multiple-ciphers": "13.0.3",
