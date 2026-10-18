@@ -932,6 +932,8 @@ export const fr: Record<MessageKey, string> = {
   'settings.devices.pair.code': 'code',
   'settings.devices.pair.ready': 'Code d’association prêt',
   'settings.devices.pair.show': 'Afficher un code',
+  'settings.devices.pair.qr': 'Scannez avec l’appareil photo du téléphone : la page s’ouvre avec le code déjà rempli. Le téléphone doit être sur le même réseau.',
+  'settings.devices.pair.qrAria': 'QR code pour associer un téléphone',
   'settings.devices.never': 'jamais',
   'settings.devices.phone.removed': 'Téléphone retiré',
   'settings.devices.revoke': 'Révoquer',

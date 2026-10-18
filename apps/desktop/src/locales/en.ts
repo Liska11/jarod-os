@@ -934,6 +934,8 @@ export const en = {
   'settings.devices.pair.code': 'code',
   'settings.devices.pair.ready': 'Pairing code ready',
   'settings.devices.pair.show': 'Show a code',
+  'settings.devices.pair.qr': 'Scan with the phone’s camera: the page opens with the code filled in. The phone must be on the same network.',
+  'settings.devices.pair.qrAria': 'QR code to pair a phone',
   'settings.devices.never': 'never',
   'settings.devices.phone.removed': 'Phone removed',
   'settings.devices.revoke': 'Revoke',
