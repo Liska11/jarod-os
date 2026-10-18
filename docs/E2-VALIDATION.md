@@ -58,7 +58,7 @@ Essais : `browser.lifecycle.engine.test.ts`.
 
 ## 6. Preuve réseau WebRTC / UDP
 
-Essai : `browser.lifecycle.engine.test.ts › PREUVE RÉSEAU WebRTC/UDP`. Un témoin UDP sur `127.0.0.1` compte chaque datagramme reçu ; un témoin TCP compte les connexions. La page tente STUN, TURN en UDP et en TCP, puis WebTransport.
+Essai : `browser.lifecycle.engine.test.ts › PREUVE RÉSEAU WebRTC/UDP`. Un témoin UDP sur l'adresse IPv4 de la route par défaut (celle où Chrome collecte son candidat d'hôte) compte chaque datagramme reçu ; un témoin TCP sur `127.0.0.1` compte les connexions. La page tente STUN, TURN en UDP et en TCP, puis WebTransport. Les mesures se font sans le bac à sable du service réseau de Chrome (§6.2) : un zéro sous durcissement est donc l'effet des drapeaux, pas de ce bac à sable ; une dernière mesure reprend le lancement exact de l'application.
 
 | Configuration | Datagrammes UDP reçus | Connexions TCP | Candidats ICE appris par la page |
 |---|---|---|---|
@@ -66,10 +66,13 @@ Essai : `browser.lifecycle.engine.test.ts › PREUVE RÉSEAU WebRTC/UDP`. Un té
 | filet réseau seul (proxy mort) | 10 | 0 | 2 |
 | drapeau WebRTC seul | 0 | 1 (TURN-TCP) | 0 |
 | **pile complète** (drapeaux + QUIC coupé + filet) | **0 (WebRTC), 0 (WebTransport)** | **0** | **0** |
+| **lancement de l'application** (pile complète + bac à sable de Chrome) | **0** | **0** | **0** |
 
-Le contrôle prouve que le témoin voit ce qui sortirait ; il montre aussi que le proxy mort ne couvre pas l'UDP (c'est le drapeau `disable_non_proxied_udp` qui le ferme) et que le drapeau ne couvre pas le TCP (c'est le filet).
+Mesuré le 2026-10-18 (deux exécutions identiques), Windows 11, `chromium-1243`. Le contrôle prouve que le témoin voit ce qui sortirait ; il montre aussi que le proxy mort ne couvre pas l'UDP (c'est le drapeau `disable_non_proxied_udp` qui le ferme) et que le drapeau ne couvre pas le TCP (c'est le filet).
 
-### 6.1 Contrôle à zéro (2026-10-18) : preuve non concluante sur la machine, pas une fuite
+Si le contrôle reste à zéro (aucune route par défaut, ou une machine qui bloque l'UDP de Chrome autrement), l'essai est **ignoré** avec la mesure et un renvoi à §6.2 (« preuve UDP non concluante »), jamais compté comme réussi.
+
+### 6.1 Contrôle à zéro (2026-10-18) : preuve non concluante sur la machine, pas une fuite (historique, cause trouvée en §6.2)
 
 Le 2026-10-18, sur la même machine et le même Chromium (`chromium-1243`), le contrôle WebRTC reçoit **0** datagramme (WebTransport : 6, TURN-TCP : 1 connexion, 2 candidats d'hôte), à chaque exécution, seul ou sous charge. L'essai échoue donc sur sa première assertion, avec un message qui renvoie ici. Ce que montre le diagnostic :
 
@@ -82,6 +85,22 @@ Le 2026-10-18, sur la même machine et le même Chromium (`chromium-1243`), le c
 Conclusion : quelque chose sur la machine a changé depuis le 2026-10-17 (interfaces Hyper-V/VirtualBox/APIPA, mise à jour de Windows ou logiciel réseau) et empêche l'UDP WebRTC de ce Chromium d'atteindre un témoin local. Les résultats « durcis » à zéro ne prouvent rien tant que le contrôle est à zéro ; le durcissement lui-même (les drapeaux) n'a pas changé. À refaire sur une autre machine, ou sur celle-ci une fois la cause trouvée. Les sondes utilisées ne sont pas dans le dépôt (scripts jetables).
 
 Après un redémarrage de la machine (même jour) : toujours 0, même message. Seul changement visible : l'adresse de l'interface Hyper-V (`172.20.x` → `172.26.x`), recréée à chaque démarrage. Un état passager du système est donc écarté ; piste suivante : désactiver une à une les interfaces virtuelles (Hyper-V/WSL, VirtualBox) et relancer l'essai — réglage réseau du système, à faire par l'utilisateur.
+
+### 6.2 Cause du contrôle à zéro (2026-10-18) et correction de l'essai
+
+Deux faits de la machine, mesurés avec des sondes jetables (Chrome lancé directement sur un profil temporaire, témoin UDP en Node) :
+
+1. **Le bac à sable du service réseau de Chrome sous Windows** (`NetworkServiceSandbox`, conteneur d'application) empêche à lui seul tout datagramme WebRTC de sortir : avec lui, 0 datagramme vers un témoin sur `192.168.1.42`, et aucun candidat `srflx` même vers un serveur STUN public, alors que Node, sur la même machine, reçoit la réponse de ce serveur. Avec `--disable-features=NetworkServiceSandbox` (ou `--no-sandbox`), le témoin reçoit les requêtes STUN. C'était la piste non essayée en §6.1. Ce qui l'a rendu actif entre le 2026-10-17 et le 2026-10-18 (essai de terrain de Chromium, mise à jour de Windows) n'est pas établi.
+2. **Windows refuse d'écrire vers `127.0.0.1` depuis un socket lié à une interface réseau** (`EADDRNOTAVAIL`), et WebRTC émet depuis de tels sockets (candidat d'hôte sur l'adresse de la route par défaut, ici `192.168.1.42`, plus une IPv6). Un témoin STUN/TURN-UDP sur `127.0.0.1` ne peut donc rien voir, bac à sable ou non.
+
+Correction (essai seulement, aucun changement du lancement de l'application) :
+
+- l'option de lancement `networkServiceSandbox` (vraie par défaut, jamais fixée par l'hôte de l'application) peut être mise à `false` par l'essai, comme `webrtcHardening` et `quicHardening` ; seul ce `false` ajoute `--disable-features=NetworkServiceSandbox` (vérifié par `browser-dedicated.test.ts`) ;
+- le témoin UDP écoute sur l'adresse de la route par défaut (`defaultRouteIPv4`, une socket UDP « connectée » vers `192.0.2.1` : aucune émission) ; STUN, TURN-UDP et WebTransport visent cette adresse ; TURN-TCP reste sur `127.0.0.1` ;
+- toutes les mesures du tableau se font sans ce bac à sable, ce qui rend la preuve plus exigeante (les drapeaux ferment l'UDP sans son aide), plus une mesure avec le lancement exact de l'application ;
+- contrôle à zéro malgré tout, ou pas de route par défaut : essai ignoré avec la raison (`ctx.skip`), vérifié en forçant le contrôle sous bac à sable (0 datagramme, 2 candidats, 1 connexion TURN-TCP → ignoré avec ce message).
+
+Constat de sécurité au passage : sur cette machine, le bac à sable de Chrome bloque déjà l'UDP WebRTC du navigateur de l'application ; ce n'est pas une garantie (dépend de la machine), le drapeau `disable_non_proxied_udp` reste la protection prouvée.
 
 ## 7. Autres preuves réseau (rappel)
 

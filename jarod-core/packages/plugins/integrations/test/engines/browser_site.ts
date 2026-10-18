@@ -96,12 +96,13 @@ fetch('/own-fetch').catch(()=>{});
     case "/form-witness":
       return html(`<form id="f" method="post" action="${W}/form"><input name="a" value="b"></form><script>document.getElementById('f').submit()</script>`);
     // WebRTC : STUN (UDP) et TURN (TCP) vers des témoins ; les candidats trouvés sont écrits dans la page (ce qu'une page peut apprendre de la machine).
+    // `uh` = adresse du témoin UDP : WebRTC émet depuis des sockets liés aux interfaces réseau, qui ne peuvent pas écrire vers 127.0.0.1 sous Windows.
     case "/rtc":
       return html(`<p>RTC-PAGE</p><pre id="cands">attente</pre>
 <script>
-var q=new URLSearchParams(location.search);var cands=[];
+var q=new URLSearchParams(location.search);var cands=[];var uh=q.get('uh')||'127.0.0.1';
 try{
-var pc=new RTCPeerConnection({iceServers:[{urls:'stun:127.0.0.1:'+q.get('udp')},{urls:'turn:127.0.0.1:'+q.get('tcp')+'?transport=tcp',username:'u',credential:'c'},{urls:'turn:127.0.0.1:'+q.get('udp')+'?transport=udp',username:'u',credential:'c'}]});
+var pc=new RTCPeerConnection({iceServers:[{urls:'stun:'+uh+':'+q.get('udp')},{urls:'turn:127.0.0.1:'+q.get('tcp')+'?transport=tcp',username:'u',credential:'c'},{urls:'turn:'+uh+':'+q.get('udp')+'?transport=udp',username:'u',credential:'c'}]});
 pc.createDataChannel('x');
 pc.onicecandidate=function(e){if(e.candidate)cands.push(e.candidate.candidate);document.getElementById('cands').textContent='CANDS:'+cands.length+' '+cands.join(' | ')};
 pc.onicegatheringstatechange=function(){document.getElementById('cands').textContent='STATE:'+pc.iceGatheringState+' CANDS:'+cands.length+' '+cands.join(' | ')};
@@ -109,7 +110,7 @@ pc.createOffer().then(function(o){return pc.setLocalDescription(o)});
 }catch(e){document.getElementById('cands').textContent='ERR:'+e}
 </script>`);
     case "/wt":
-      return html(`<p id="wt">WT-PAGE</p><script>var q=new URLSearchParams(location.search);try{var t=new WebTransport('https://127.0.0.1:'+q.get('udp')+'/wt');t.ready.then(function(){document.getElementById('wt').textContent+=' READY'},function(e){document.getElementById('wt').textContent+=' FAILED'})}catch(e){document.getElementById('wt').textContent+=' ERR'}</script>`);
+      return html(`<p id="wt">WT-PAGE</p><script>var q=new URLSearchParams(location.search);try{var t=new WebTransport('https://'+(q.get('uh')||'127.0.0.1')+':'+q.get('udp')+'/wt');t.ready.then(function(){document.getElementById('wt').textContent+=' READY'},function(e){document.getElementById('wt').textContent+=' FAILED'})}catch(e){document.getElementById('wt').textContent+=' ERR'}</script>`);
     // Pages pour les lectures ponctuelles (extension Firefox) : éléments permis, éléments de formulaire, éditable, cadre.
     case "/readable":
       return html(`<h1 id="titre">Titre lisible</h1><p id="note" class="note">NOTE-CONVENUE</p><div id="autre-zone">AUTRE-ZONE-NON-DEMANDEE</div>
@@ -179,6 +180,8 @@ export async function startTestSite(witnessPort = 0): Promise<TestSite> {
 }
 
 export interface UdpWitness {
+  /** Adresse IPv4 d'écoute. */
+  host: string;
   port: number;
   /** Datagrammes reçus (STUN, TURN, QUIC, DNS… tout ce qui arrive en UDP). */
   packets: number;
@@ -186,14 +189,35 @@ export interface UdpWitness {
   close(): Promise<void>;
 }
 
-/** Témoin UDP sur 127.0.0.1 : compte chaque datagramme reçu, quel qu'en soit le contenu. */
-export async function startUdpWitness(): Promise<UdpWitness> {
+/**
+ * The IPv4 address of the default-route interface, the one Chrome gathers WebRTC host candidates on; null without a route.
+ * A connected UDP socket only asks the kernel for a route: no datagram is sent.
+ */
+export async function defaultRouteIPv4(): Promise<string | null> {
+  const sock = createSocket("udp4");
+  try {
+    await new Promise<void>((resolve, reject) => {
+      sock.once("error", reject);
+      sock.connect(9, "192.0.2.1", () => resolve());
+    });
+    const address = sock.address().address;
+    return address && address !== "0.0.0.0" && !address.startsWith("127.") ? address : null;
+  } catch {
+    return null;
+  } finally {
+    sock.close();
+  }
+}
+
+/** Témoin UDP (127.0.0.1 par défaut) : compte chaque datagramme reçu, quel qu'en soit le contenu. */
+export async function startUdpWitness(host = "127.0.0.1"): Promise<UdpWitness> {
   const sock = createSocket("udp4");
   const w = { packets: 0 };
   sock.on("message", () => void w.packets++);
-  await new Promise<void>((r) => sock.bind(0, "127.0.0.1", r));
+  await new Promise<void>((r) => sock.bind(0, host, r));
   const port = sock.address().port;
   return {
+    host,
     port,
     get packets() {
       return w.packets;

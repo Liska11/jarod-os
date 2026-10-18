@@ -18,7 +18,7 @@ import {
   sweepStaleSessions,
 } from "../../src/index.js";
 import { ROOT } from "./helpers.js";
-import { startTestSite, startUdpWitness, startWitness, type TestSite, type UdpWitness, type Witness } from "./browser_site.js";
+import { defaultRouteIPv4, startTestSite, startUdpWitness, startWitness, type TestSite, type UdpWitness, type Witness } from "./browser_site.js";
 
 const PYTHON = join(ROOT, "engines", "browser-harness", "Scripts", "python.exe");
 const BRIDGE = join(ROOT, "jarod-core", "sidecars", "browser-bridge", "bh_ops.py");
@@ -65,10 +65,12 @@ describe.skipIf(!HAS)("E2 — cycle de vie, révocation, confinement CDP, nettoy
   let site: TestSite;
   let witness: Witness;
   let udp: UdpWitness;
+  let routeIp: string | null;
 
   beforeAll(async () => {
     witness = await startWitness();
-    udp = await startUdpWitness();
+    routeIp = await defaultRouteIPv4();
+    udp = await startUdpWitness(routeIp ?? "127.0.0.1");
     site = await startTestSite(witness.port);
   }, 60_000);
 
@@ -100,13 +102,19 @@ describe.skipIf(!HAS)("E2 — cycle de vie, révocation, confinement CDP, nettoy
   const ticks = () => site.hits.filter((h) => h.path === "/tick" || h.path === "/tickimg").length;
 
   // ── 6. UDP / WebRTC ─────────────────────────────────────────────────────────────────────────────────────
-  it("PREUVE RÉSEAU WebRTC/UDP : le témoin UDP reçoit des datagrammes sans durcissement (contrôle) et ZÉRO avec — STUN, TURN-UDP, TURN-TCP et WebTransport", async () => {
-    const run = async (o: { hard: boolean; backstop: boolean }, path: "rtc" | "wt") => {
-      const s = await startGuardedSession({ chromeBin: CHROME, python: PYTHON, bridge: BRIDGE, policy: LOCAL, proxyBackstop: o.backstop, webrtcHardening: o.hard, quicHardening: o.hard });
+  it("PREUVE RÉSEAU WebRTC/UDP : le témoin UDP reçoit des datagrammes sans durcissement (contrôle) et ZÉRO avec — STUN, TURN-UDP, TURN-TCP et WebTransport", async (ctx) => {
+    // Two machine facts make the witness blind if ignored (docs/E2-VALIDATION.md §6.2):
+    // - WebRTC sends from sockets bound to a network interface, and Windows refuses those writes towards 127.0.0.1 (EADDRNOTAVAIL):
+    //   the UDP witness listens on the default-route address, where Chrome gathers its host candidate;
+    // - on some Windows machines Chrome's network-service sandbox alone drops every WebRTC datagram: the measurements below run
+    //   without it, so a zero under hardening is the flags' doing, not the sandbox's. A last run uses the app's exact launch.
+    if (!routeIp) ctx.skip("preuve UDP non concluante : aucune interface IPv4 avec une route par défaut, le témoin ne verrait rien (docs/E2-VALIDATION.md §6.2)");
+    const run = async (o: { hard: boolean; backstop: boolean; appSandbox?: boolean }, path: "rtc" | "wt") => {
+      const s = await startGuardedSession({ chromeBin: CHROME, python: PYTHON, bridge: BRIDGE, policy: LOCAL, proxyBackstop: o.backstop, webrtcHardening: o.hard, quicHardening: o.hard, networkServiceSandbox: o.appSandbox === true });
       try {
         witness.reset();
         udp.reset();
-        const id = await s.backend.openTab(site.url("localhost", `/${path}?udp=${udp.port}&tcp=${witness.port}`));
+        const id = await s.backend.openTab(site.url("localhost", `/${path}?udp=${udp.port}&uh=${udp.host}&tcp=${witness.port}`));
         await wait(5000);
         const text = (await s.backend.readPage(id)).text.replace(/\s+/g, " ");
         return { udp: udp.packets, tcp: witness.connections, candidates: Number(/CANDS:(\d+)/.exec(text)?.[1] ?? 0) };
@@ -115,11 +123,11 @@ describe.skipIf(!HAS)("E2 — cycle de vie, révocation, confinement CDP, nettoy
       }
     };
     const control = await run({ hard: false, backstop: false }, "rtc");
-    const controlWt = await run({ hard: false, backstop: false }, "wt");
-    // Le contrôle PROUVE que le témoin voit ce qui sortirait : sans lui, un zéro ne dirait rien. S'il est à zéro, c'est la MACHINE
-    // qui ne laisse pas sortir l'UDP WebRTC de Chrome, pas une fuite : la preuve n'est pas concluante ici (docs/E2-VALIDATION.md §6.1).
-    expect(control.udp, "contrôle WebRTC : aucun datagramme STUN/TURN-UDP n'atteint le témoin sur cette machine, preuve non concluante (docs/E2-VALIDATION.md §6.1)").toBeGreaterThan(0);
+    // Le contrôle PROUVE que le témoin voit ce qui sortirait : sans lui, un zéro ne dirait rien. S'il reste à zéro, la machine ne laisse
+    // sortir aucun UDP WebRTC de Chrome même sans bac à sable : la preuve est déclarée NON CONCLUANTE (ignorée, avec la mesure), jamais réussie.
+    if (control.udp === 0) ctx.skip(`preuve UDP non concluante : contrôle WebRTC à 0 datagramme vers ${udp.host} (candidats : ${control.candidates}, TURN-TCP : ${control.tcp}) — docs/E2-VALIDATION.md §6.2`);
     expect(control.candidates).toBeGreaterThan(0);
+    const controlWt = await run({ hard: false, backstop: false }, "wt");
     expect(controlWt.udp).toBeGreaterThan(0);
     // Le filet (proxy mort) seul NE couvre PAS l'UDP : mesuré, c'est pourquoi le drapeau existe.
     const proxyOnly = await run({ hard: false, backstop: true }, "rtc");
@@ -128,12 +136,15 @@ describe.skipIf(!HAS)("E2 — cycle de vie, révocation, confinement CDP, nettoy
     // Le drapeau seul ferme l'UDP et ne laisse apprendre aucune adresse de la machine ; le TCP (TURN) est fermé par le filet.
     const flagOnly = await run({ hard: true, backstop: false }, "rtc");
     expect(flagOnly).toMatchObject({ udp: 0, candidates: 0 });
-    // La pile complète, telle que l'application la lance.
+    // La pile complète des durcissements, sans le bac à sable de Chrome : zéro.
     const full = await run({ hard: true, backstop: true }, "rtc");
     expect(full).toEqual({ udp: 0, tcp: 0, candidates: 0 });
     const fullWt = await run({ hard: true, backstop: true }, "wt");
     expect(fullWt).toMatchObject({ udp: 0, tcp: 0 });
-  }, 280_000);
+    // Et telle que l'application la lance (bac à sable compris) : zéro aussi.
+    const app = await run({ hard: true, backstop: true, appSandbox: true }, "rtc");
+    expect(app).toEqual({ udp: 0, tcp: 0, candidates: 0 });
+  }, 320_000);
 
   // ── 4. Révocation pendant une opération, requêtes d'arrière-plan comprises ─────────────────────────────
   it("révocation d'un DOMAINE pendant une opération en cours : l'opération est interrompue, les requêtes d'arrière-plan de la page s'arrêtent net, navigateur et profil sont détruits", async () => {

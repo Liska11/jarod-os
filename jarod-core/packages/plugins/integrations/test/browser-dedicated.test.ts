@@ -45,6 +45,12 @@ describe("navigateur dédié : arguments", () => {
     expect(args.find((a) => a.startsWith("--proxy-bypass-list="))).toBe("--proxy-bypass-list=<-loopback>;exemple.org;*.exemple.org");
     expect(proxyBackstopArgs([])).toContain("--proxy-bypass-list=<-loopback>");
   });
+
+  it("le bac à sable du service réseau de Chrome reste en place par défaut ; seul un `false` explicite (mesures de la preuve UDP) le retire", () => {
+    expect(args.some((a) => a.includes("NetworkServiceSandbox"))).toBe(false);
+    expect(browserArgs(userData, { networkServiceSandbox: true }).some((a) => a.includes("NetworkServiceSandbox"))).toBe(false);
+    expect(browserArgs(userData, { networkServiceSandbox: false })).toContain("--disable-features=NetworkServiceSandbox");
+  });
 });
 
 describe("navigateur dédié : aucune voie vers le profil quotidien", () => {

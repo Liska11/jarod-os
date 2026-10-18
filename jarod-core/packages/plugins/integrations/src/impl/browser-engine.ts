@@ -45,6 +45,12 @@ export interface LaunchOptions {
   webrtcHardening?: boolean;
   /** Pas de QUIC/HTTP3 (WebTransport compris). Vrai par défaut ; faux seulement pour la mesure de CONTRÔLE. */
   quicHardening?: boolean;
+  /**
+   * Chrome's own network-service sandbox (Windows AppContainer). True by default and never turned off by the app. False only for the
+   * UDP proof's measurements: on some Windows machines this sandbox alone stops every WebRTC datagram, which would leave the proof's
+   * control at zero and the proof silent (docs/E2-VALIDATION.md §6.2). The proof then shows the hardening flags work without it.
+   */
+  networkServiceSandbox?: boolean;
 }
 
 /** Règles de contournement du proxy mort : les domaines permis (et leurs sous-domaines), le bouclage implicite retiré. */
@@ -57,7 +63,7 @@ export function proxyBackstopArgs(allowDomains: string[]): string[] {
  * Les arguments du navigateur jetable : UN SEUL dossier de données, celui que Jarod vient de créer ; point d'entrée DevTools sur le bouclage et un port
  * choisi par le système ; rien qui désigne un autre profil, ni un tuyau, ni une adresse publique.
  */
-export function browserArgs(userData: string, opts: Pick<LaunchOptions, "headless" | "quicHardening" | "webrtcHardening" | "allowDomains">): string[] {
+export function browserArgs(userData: string, opts: Pick<LaunchOptions, "headless" | "quicHardening" | "webrtcHardening" | "allowDomains" | "networkServiceSandbox">): string[] {
   return [
     `--user-data-dir=${userData}`,
     "--remote-debugging-port=0",
@@ -72,6 +78,7 @@ export function browserArgs(userData: string, opts: Pick<LaunchOptions, "headles
     "--password-store=basic",
     ...(opts.quicHardening === false ? [] : ["--disable-quic"]),
     ...(opts.webrtcHardening === false ? [] : ["--force-webrtc-ip-handling-policy=disable_non_proxied_udp", "--webrtc-ip-handling-policy=disable_non_proxied_udp"]),
+    ...(opts.networkServiceSandbox === false ? ["--disable-features=NetworkServiceSandbox"] : []),
     ...(opts.allowDomains ? proxyBackstopArgs(opts.allowDomains) : []),
     "about:blank",
   ];
@@ -421,6 +428,8 @@ export interface GuardedSessionOptions {
   onBlock?: (b: { host: string; resourceType: string }) => void;
   webrtcHardening?: boolean;
   quicHardening?: boolean;
+  /** See `LaunchOptions.networkServiceSandbox`: false only for the UDP proof's measurements. */
+  networkServiceSandbox?: boolean;
 }
 
 export interface GuardedSession {
@@ -439,7 +448,7 @@ export interface GuardedSession {
  */
 export async function startGuardedSession(o: GuardedSessionOptions): Promise<GuardedSession> {
   if (o.policy.allowDomains.length === 0) throw new AdapterRefused(A, "liste blanche vide : la session E2 ne démarre pas");
-  const browser = await launchDisposableBrowser({ chromeBin: o.chromeBin, headless: o.headless, webrtcHardening: o.webrtcHardening, quicHardening: o.quicHardening, ...(o.proxyBackstop === false ? {} : { allowDomains: o.policy.allowDomains }) });
+  const browser = await launchDisposableBrowser({ chromeBin: o.chromeBin, headless: o.headless, webrtcHardening: o.webrtcHardening, quicHardening: o.quicHardening, networkServiceSandbox: o.networkServiceSandbox, ...(o.proxyBackstop === false ? {} : { allowDomains: o.policy.allowDomains }) });
   let ending: Promise<void> | null = null;
   let holder: { guard: NetworkGuard; backend: HarnessBackend } | null = null;
   const end = (why: string): Promise<void> => {
