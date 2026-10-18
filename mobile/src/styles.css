@@ -221,6 +221,55 @@ button.icon.rec {
 .sheet small {
   color: var(--fg-3);
 }
+.sheet h2 {
+  margin: 4px 0 0;
+  font-size: 15px;
+}
+
+/* "Quoi de neuf": the PC's notifications, read over the encrypted channel. */
+.news-button {
+  position: relative;
+}
+.news-button .badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 9px;
+  background: var(--danger);
+  color: #fff;
+  font-size: 11px;
+  line-height: 18px;
+  font-weight: 700;
+}
+.news-item {
+  display: flex;
+  gap: 10px;
+  padding: 8px;
+  border-radius: 10px;
+}
+.news-item.unread {
+  background: var(--accent-soft);
+}
+.news-item .mark {
+  width: 20px;
+  text-align: center;
+}
+.news-item.alert .mark {
+  color: var(--danger);
+}
+.news-item.task .mark {
+  color: var(--ok);
+}
+.news-item p {
+  margin: 2px 0;
+  font-size: 13.5px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 .switch {
   display: flex;
   gap: 12px;

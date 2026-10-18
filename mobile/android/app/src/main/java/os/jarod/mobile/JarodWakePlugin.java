@@ -9,7 +9,10 @@ import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
-/** Starts and stops the closed-app watch (`WakeService`). The wake token is content-free by design. */
+/**
+ * Starts and stops the closed-app watch (`WakeService`). The wake token is content-free by design.
+ * Once started, the watch also comes back by itself after a restart of the phone (`BootReceiver`).
+ */
 @CapacitorPlugin(name = "JarodWake")
 public class JarodWakePlugin extends Plugin {
 
@@ -41,9 +44,23 @@ public class JarodWakePlugin extends Plugin {
             .putLong("seq", call.getLong("seq", 0L))
             .putString("title", call.getString("title", "Jarod a du nouveau"))
             .putString("text", call.getString("text", "Ouvrez l’appli pour voir."))
+            .putBoolean("notify", call.getBoolean("notify", true))
             .apply();
         WakeService.stop(ctx);
         WakeService.start(ctx);
+        call.resolve();
+    }
+
+    /**
+     * Whether the closed-app notification is shown at all. The wake carries no kind, so the phone's
+     * per-kind choices can only say "nothing" (every kind off) or "something".
+     */
+    @PluginMethod
+    public void configure(PluginCall call) {
+        getContext().getSharedPreferences(WakeService.PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .putBoolean("notify", call.getBoolean("notify", true))
+            .apply();
         call.resolve();
     }
 

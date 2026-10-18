@@ -15,7 +15,10 @@ interface DeviceVaultPlugin {
 
 /** The closed app's watch (native, `WakeService.java`): asks the PC "anything new?", shows no content. */
 interface WakePlugin {
-  start(o: { urls: string[]; token: string; seq: number; title: string; text: string }): Promise<void>
+  /** Also comes back by itself after the phone restarts (`BootReceiver.java`), until stopped. */
+  start(o: { urls: string[]; token: string; seq: number; title: string; text: string; notify?: boolean }): Promise<void>
+  /** `notify: false` keeps the watch quiet: every kind of notification is off on this phone. */
+  configure(o: { notify: boolean }): Promise<void>
   stop(): Promise<void>
   status(): Promise<{ running: boolean }>
 }
@@ -47,7 +50,7 @@ export const vault: DeviceVaultPlugin = isNative ? NativeVault : devVault
 
 export const wake: WakePlugin = isNative
   ? NativeWake
-  : { start: async () => {}, stop: async () => {}, status: async () => ({ running: false }) }
+  : { start: async () => {}, configure: async () => {}, stop: async () => {}, status: async () => ({ running: false }) }
 
 const NativeLaunch = registerPlugin<LaunchPlugin>('JarodLaunch')
 

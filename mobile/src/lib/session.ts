@@ -1,6 +1,7 @@
 import { b64uDecode, type CryptoKeyPair, exportKeyPair, generateKeyPair, importKeyPair } from '@jarod-protocol'
 import { type ChannelOptions, type JarodChannel, openChannel } from './channel.ts'
 import { isNative, vault, wake } from './native.ts'
+import { anyOn, loadPrefs, type NotifyPrefs, savePrefs, saveSeen } from './news.ts'
 import type { PairingLink } from './pairing-link.ts'
 import { addressOrder, forgetPc, type PairedPc, savePc } from './pairing-store.ts'
 
@@ -66,7 +67,16 @@ export async function setWatch(pc: PairedPc, channel: JarodChannel | null, on: b
     return
   }
   const { token, seq } = await channel.rpc<{ token: string; seq: number }>('wake.register')
-  await wake.start({ urls: addressOrder(pc), token, seq, title: 'Jarod a du nouveau', text: 'Ouvrez l’appli pour voir.' })
+  await wake.start({ urls: addressOrder(pc), token, seq, title: 'Jarod a du nouveau', text: 'Ouvrez l’appli pour voir.', notify: anyOn(loadPrefs()) })
+}
+
+/**
+ * The per-kind choices: kept on the phone, applied to its own notifications, and passed to the
+ * closed-app watch only as "show something or not" (the wake cannot tell kinds apart).
+ */
+export async function setNotifyPrefs(prefs: NotifyPrefs): Promise<void> {
+  savePrefs(prefs)
+  await wake.configure({ notify: anyOn(prefs) }).catch(() => {})
 }
 
 /** Forgets the PC: tells it (if it can still be reached), stops the watch, wipes the key. */
@@ -79,5 +89,7 @@ export async function forget(channel: JarodChannel | null): Promise<void> {
   channel?.close()
   await wake.stop().catch(() => {})
   await vault.wipe().catch(() => {})
+  // The next PC's news starts unread; the choices are the owner's and stay.
+  saveSeen(0)
   forgetPc()
 }

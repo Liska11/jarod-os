@@ -4,9 +4,10 @@ import { Markdown } from '../components/Markdown.tsx'
 import type { JarodChannel, PushedEvent } from '../lib/channel.ts'
 import { applyEvent, type Conversation, describeArgs, fromHistory, type StoredMessage } from '../lib/chat-model.ts'
 import { vault } from '../lib/native.ts'
+import { badge, loadPrefs, loadSeen, mergeNews, type NewsItem, type NotifyPrefs, saveSeen, seenUpTo, TOPICS, type Topic, toNewsItem, unreadCount } from '../lib/news.ts'
 import { allowNotifications, notifyLocal } from '../lib/notify.ts'
 import type { PairedPc } from '../lib/pairing-store.ts'
-import { forget, setWatch } from '../lib/session.ts'
+import { forget, setNotifyPrefs, setWatch } from '../lib/session.ts'
 import { type Recording, startRecording } from '../lib/voice.ts'
 
 interface SessionRow {
@@ -43,6 +44,8 @@ interface Props {
 
 const LINK_LABEL: Record<Link, string> = { online: 'connecté', connecting: 'connexion…', offline: 'hors ligne' }
 
+const TOPIC_MARK: Record<Topic, string> = { task: '✓', reminder: '⏰', alert: '⚠', approval: '✋', other: '•' }
+
 export function ChatScreen({ pc, channel, link, subscribe, onLock, onPcChanged, onForgotten }: Props) {
   const [sessions, setSessions] = useState<SessionRow[]>([])
   const [conv, setConv] = useState<Conversation | null>(null)
@@ -54,8 +57,30 @@ export function ChatScreen({ pc, channel, link, subscribe, onLock, onPcChanged, 
   const [heard, setHeard] = useState('')
   const [recording, setRecording] = useState<Recording | null>(null)
   const [deciding, setDeciding] = useState('')
+  const [prefs, setPrefs] = useState<NotifyPrefs>(loadPrefs)
+  const [news, setNews] = useState<NewsItem[]>([])
+  const [seenAt, setSeenAt] = useState(loadSeen)
+  const [newsOpen, setNewsOpen] = useState(false)
   const bottom = useRef<HTMLDivElement>(null)
   const sessionRef = useRef<string>('')
+  // Read by the event handler, which is subscribed once.
+  const prefsRef = useRef(prefs)
+  prefsRef.current = prefs
+
+  /** A notification drawn by the phone, if the owner wants this kind (and the app is not on screen). */
+  const tell = (topic: Topic, title: string, body: string) => {
+    if (document.hidden && prefsRef.current[topic]) void notifyLocal(title, body)
+  }
+
+  // While "Quoi de neuf" is open, what arrives is seen.
+  useEffect(() => {
+    if (!newsOpen) return
+    setSeenAt(at => {
+      const next = seenUpTo(news, at)
+      if (next !== at) saveSeen(next)
+      return next
+    })
+  }, [newsOpen, news])
 
   const call = async <T,>(method: string, params?: Record<string, unknown>): Promise<T | undefined> => {
     if (!channel) {
@@ -94,6 +119,9 @@ export function ChatScreen({ pc, channel, link, subscribe, onLock, onPcChanged, 
       // Requests offered while the app was closed (the wake told us something waits). An older PC does not know the method.
       const waiting = await channel.rpc<Approval[]>('approvals.pending').catch(() => [] as Approval[])
       if (waiting.length) setApprovals(a => addApprovals(a, waiting))
+      const listed = await channel.rpc<Record<string, unknown>[]>('notifications.list').catch(() => [] as Record<string, unknown>[])
+      const items = (Array.isArray(listed) ? listed : []).map(toNewsItem).filter((n): n is NewsItem => n !== null)
+      if (items.length) setNews(n => mergeNews(n, items))
       if (pc.watch && (await allowNotifications())) await setWatch(pc, channel, true).catch(() => {})
     })()
     // biome-ignore lint/correctness/useExhaustiveDependencies: on each new channel
@@ -102,19 +130,21 @@ export function ChatScreen({ pc, channel, link, subscribe, onLock, onPcChanged, 
   useEffect(
     () =>
       subscribe(e => {
-        const hidden = document.hidden
         if (e.event === 'agent') {
           setConv(c => (c ? applyEvent(c, e.data) : c))
-          if (e.data.type === 'done' && hidden) void notifyLocal('Jarod a répondu', 'Ouvrez l’appli pour lire la réponse.')
+          if (e.data.type === 'done') tell('task', 'Jarod a répondu', 'Ouvrez l’appli pour lire la réponse.')
         } else if (e.event === 'approval') {
           setApprovals(a => addApprovals(a, [e.data as unknown as Approval]))
-          if (hidden) void notifyLocal('Jarod demande votre accord', String((e.data.call as { name?: string })?.name ?? 'Une action'))
+          tell('approval', 'Jarod demande votre accord', String((e.data.call as { name?: string })?.name ?? 'Une action'))
         } else if (e.event === 'approval-cancelled') {
           // Answered elsewhere (the PC or another phone), timed out or stopped: the card goes.
           const gone = String(e.data.id ?? '')
           setApprovals(a => a.filter(x => x.id !== gone))
         } else if (e.event === 'notification') {
-          if (hidden) void notifyLocal(String(e.data.title ?? 'Jarod'), String(e.data.body ?? ''))
+          const n = toNewsItem(e.data)
+          if (!n) return
+          setNews(list => mergeNews(list, [n]))
+          tell(n.topic, n.title || 'Jarod', n.body)
         }
       }),
     [subscribe]
@@ -196,6 +226,14 @@ export function ChatScreen({ pc, channel, link, subscribe, onLock, onPcChanged, 
   }
 
   const current = sessions.find(s => s.id === conv?.sessionId)
+  const unread = unreadCount(news, seenAt)
+
+  const choose = async (topic: Topic, on: boolean) => {
+    if (on && !(await allowNotifications())) return setError('Notifications refusées : autorisez-les dans les réglages du téléphone.')
+    const next = { ...prefs, [topic]: on }
+    setPrefs(next)
+    await setNotifyPrefs(next)
+  }
 
   return (
     <main className="chat">
@@ -209,7 +247,27 @@ export function ChatScreen({ pc, channel, link, subscribe, onLock, onPcChanged, 
             {pc.name} · {LINK_LABEL[link]}
           </span>
         </div>
-        <button type="button" className="icon" aria-label="Réglages" onClick={() => setSettings(s => !s)}>
+        <button
+          type="button"
+          className="icon news-button"
+          aria-label={unread ? `Quoi de neuf, ${unread} non lues` : 'Quoi de neuf'}
+          onClick={() => {
+            setNewsOpen(o => !o)
+            setDrawer(false)
+            setSettings(false)
+          }}
+        >
+          🔔{unread > 0 && <span className="badge">{badge(unread)}</span>}
+        </button>
+        <button
+          type="button"
+          className="icon"
+          aria-label="Réglages"
+          onClick={() => {
+            setSettings(s => !s)
+            setNewsOpen(false)
+          }}
+        >
           ⚙
         </button>
       </header>
@@ -236,6 +294,25 @@ export function ChatScreen({ pc, channel, link, subscribe, onLock, onPcChanged, 
         </nav>
       )}
 
+      {newsOpen && (
+        <section className="sheet news" aria-label="Quoi de neuf">
+          <h2>Quoi de neuf</h2>
+          {!news.length && <p className="muted">{channel ? 'Rien de neuf sur le PC.' : 'Pas de connexion au PC : la liste vient quand il répond.'}</p>}
+          {news.map(n => (
+            <article key={n.id} className={`news-item ${n.topic} ${n.createdAt > seenAt ? 'unread' : ''}`}>
+              <span className="mark" aria-hidden="true">
+                {TOPIC_MARK[n.topic]}
+              </span>
+              <div>
+                <b>{n.title}</b>
+                {n.body && <p>{n.body}</p>}
+                <small>{new Date(n.createdAt).toLocaleString()}</small>
+              </div>
+            </article>
+          ))}
+        </section>
+      )}
+
       {settings && (
         <section className="sheet">
           <label className="switch">
@@ -254,6 +331,17 @@ export function ChatScreen({ pc, channel, link, subscribe, onLock, onPcChanged, 
               <small>Le téléphone demande au PC « du nouveau ? », sans jamais recevoir le contenu. Notification permanente « Jarod veille ».</small>
             </span>
           </label>
+          <h2>Notifications</h2>
+          <p className="fine">Choix gardés sur ce téléphone. Appli fermée, la veille ne sait pas de quoi il s’agit : elle se tait seulement si tout est décoché.</p>
+          {TOPICS.map(t => (
+            <label key={t.topic} className="switch">
+              <input type="checkbox" checked={prefs[t.topic]} onChange={e => void choose(t.topic, e.target.checked)} />
+              <span>
+                {t.label}
+                <small>{t.hint}</small>
+              </span>
+            </label>
+          ))}
           <button type="button" className="ghost wide" onClick={onLock}>
             Verrouiller
           </button>
