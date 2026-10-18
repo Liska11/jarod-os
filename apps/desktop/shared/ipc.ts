@@ -999,6 +999,13 @@ export const IPC = {
   dataDiskDrives: 'herald-os:data-disk:drives',
   /** Make a folder the Jarod disk (copying the data in when asked), then restart. */
   dataDiskApply: 'herald-os:data-disk:apply',
+  // Backups on the Jarod disk (electron/backups.ts, electron/ipc/backups.ts).
+  backupsState: 'herald-os:backups:state',
+  backupsCreate: 'herald-os:backups:create',
+  backupsSettings: 'herald-os:backups:settings',
+  backupsRemove: 'herald-os:backups:remove',
+  /** Put a backup back (the current state is kept aside), then restart. */
+  backupsRestore: 'herald-os:backups:restore',
 
   prefsGet: 'herald-os:prefs:get',
   prefsSet: 'herald-os:prefs:set',

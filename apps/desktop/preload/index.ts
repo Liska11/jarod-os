@@ -1,3 +1,4 @@
+import type { BackupActionResult, BackupsState } from '../shared/backups.ts'
 import type { DataDiskApplyResult, DataDiskState, DriveInfo } from '../shared/data-disk.ts'
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import {
@@ -343,6 +344,14 @@ const api = {
     drives: (): Promise<DriveInfo[]> => ipcRenderer.invoke(IPC.dataDiskDrives),
     /** Make `root` the Jarod disk (copying the data and workspace in with `move`); Jarod-OS restarts on success. */
     apply: (root: string, move: boolean): Promise<DataDiskApplyResult> => ipcRenderer.invoke(IPC.dataDiskApply, root, move)
+  },
+  backups: {
+    state: (): Promise<BackupsState> => ipcRenderer.invoke(IPC.backupsState),
+    create: (): Promise<BackupActionResult> => ipcRenderer.invoke(IPC.backupsCreate),
+    settings: (daily: boolean, keep: number): Promise<BackupsState> => ipcRenderer.invoke(IPC.backupsSettings, daily, keep),
+    remove: (id: string): Promise<BackupActionResult> => ipcRenderer.invoke(IPC.backupsRemove, id),
+    /** Put a backup back (with the workspace too when asked); Jarod-OS restarts on success. */
+    restore: (id: string, withWorkspace: boolean): Promise<BackupActionResult> => ipcRenderer.invoke(IPC.backupsRestore, id, withWorkspace)
   },
   systemAudit: {
     /** The system audit: the saved report, or the one running since startup. */

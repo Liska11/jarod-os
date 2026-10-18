@@ -32,6 +32,7 @@ import { broadcastPinokioState, openElsewhere, registerPinokioIpc } from './ipc/
 import { locateRuntime, PINOKIO_URL, PinokioService } from './pinokio/service.ts'
 import { registerSystemAuditIpc } from './ipc/system-audit.ts'
 import { registerDataDiskIpc } from './ipc/data-disk.ts'
+import { BackupService } from './ipc/backups.ts'
 import { applyDataRoot } from './data-root.ts'
 import { MEDIA_SCHEME_PRIVILEGES, registerMediaIpc } from './ipc/media.ts'
 import { registerNativeAppsIpc } from './ipc/native-apps.ts'
@@ -124,6 +125,7 @@ for (const line of primary && !osEnv('CONFIG_DIR') ? migrateShellConfig(process.
 }
 
 const backend = new BackendManager(coreLocation)
+const backups = new BackupService({ stopBackend: () => backend.stop(), startBackend: () => void backend.start(), relaunch: () => relaunch(false) })
 // The Pinokio engine (ADR-022): started on demand by its window or the agent's tools, stopped on quit.
 // The system audit runs in the background once main is ready, then is reused from its JSON (electron/setup).
 const systemAudit = new AuditService({ configDir: shellConfigDir(), log: message => log('audit', message) })
@@ -621,6 +623,7 @@ function registerCoreIpc(): void {
   registerEditIpc(() => webViews)
   registerPinokioIpc(pinokio, () => webViews, () => (panels ? panels.mainWindow() : mainWindow))
   registerSystemAuditIpc(systemAudit)
+  backups.register()
   registerDataDiskIpc({ state: dataRoot, configDir: shellConfigDir(), stopBackend: () => backend.stop(), startBackend: () => void backend.start(), relaunch: () => relaunch(false) })
   registerNativeAppsIpc()
   registerWindowEmbeds()
@@ -784,7 +787,8 @@ app.whenReady().then(async () => {
   applyVoiceHotkey(voicePrefs.enabled ? voicePrefs.hotkey : '', () => BrowserWindow.getAllWindows())
   // The backend is told where the control server listens, so wait for it (a port on Windows).
   await Promise.race([osControl?.ready, new Promise(resolve => setTimeout(resolve, 3000))])
-  void backend.start()
+  // The daily backup of the Jarod disk, when due, copies the data before the core starts.
+  void backups.dailyBeforeStart(() => void backend.start())
 })
 
 // GPU, utility and other helper processes: Chromium recovers by itself (a GPU that keeps crashing falls back to software); keep a trace.

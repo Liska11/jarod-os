@@ -10,6 +10,7 @@ import { sendPrompt } from '../../../store/chat.ts'
 import { useSystemStats } from '../../../store/system.ts'
 import { showPage } from '../../../store/windows.ts'
 import { DataDiskPicker } from '../../setup/DataDiskPicker.tsx'
+import { BackupsBlock } from './BackupsBlock.tsx'
 import { SectionTitle, SettingsBlock, SettingsGroup, SettingsRow } from './shared.tsx'
 
 export function StorageSection() {
@@ -34,6 +35,8 @@ export function StorageSection() {
           <DataDiskPicker />
         </GlassCard>
       </SettingsBlock>
+
+      <BackupsBlock />
 
       <SettingsGroup title={t('storage.disks')}>
         {(stats?.disks ?? []).length === 0 && <SettingsRow icon={<IconDeviceFloppy />} label={t('storage.disks')} description={t('storage.reading')} keywords={t('storage.diskKw')} />}
