@@ -22,6 +22,7 @@ if (!sdk) {
 }
 // local.properties is git-ignored: it only says where the SDK is on this machine.
 writeFileSync(join(android, 'local.properties'), `sdk.dir=${sdk.replace(/\\/g, '\\\\').replace(/:/g, '\\:')}\n`)
-const wrapper = process.platform === 'win32' ? 'gradlew.bat' : './gradlew'
+// A full path: cmd.exe does not look in the working directory for it.
+const wrapper = process.platform === 'win32' ? `"${join(android, 'gradlew.bat')}"` : './gradlew'
 const run = spawnSync(wrapper, process.argv.slice(2), { cwd: android, stdio: 'inherit', shell: process.platform === 'win32' })
 process.exit(run.status ?? 1)

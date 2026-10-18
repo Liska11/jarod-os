@@ -155,6 +155,7 @@ then, in another terminal, `JAROD_BRIDGE=http://127.0.0.1:10493 npm --prefix mob
 - Desktop: Réglages › Appareils shows the app's QR code (tab «Appli Jarod», the browser's stays available) and says for each phone whether it is the app or the browser page.
 - App: pairing by QR (decoded in the app) or link, `jarod://pair` links opened by the camera, device key wrapped by the Android Keystore with biometric unlock, auto-lock after 5 minutes away, chat with streamed replies, history, voice messages, approvals of phone-started runs (biometric to accept), local notifications while connected, WakeService for the closed app, no cloud backup, `FLAG_SECURE` (no screenshots).
 - Verified end to end in a browser against a real local kernel (`dev-phone-pc.ts`): pairing, unlock, streamed reply, approval shown with its arguments and refused.
+- Debug APK built with `npm run apk:debug` (minSdk 30, targetSdk 36, ~9.5 MB, no Firebase / Play-services code inside). The extra permissions it lists (`RECEIVE_BOOT_COMPLETED`, `WAKE_LOCK`, `SCHEDULE_EXACT_ALARM`, `USE_FINGERPRINT`) come from `@capacitor/local-notifications` and `androidx.biometric`.
 
 **Left to do**
 
