@@ -18,6 +18,8 @@ export const PHASES = {
   // Phase 2 (famille A). HERALD_OS_DEV_UNSIGNED est figé par le contrat c8 (renommer un nom de variable d'un contrat v1 est une v2) :
   // il garde son nom partout. Les fichiers `manual` gardent l'ancien nom À CÔTÉ du nouveau (listes de retrait, contrat c5, tests du repli).
   env: {
+    // Appliquée au commit 767c73d ; les lignes de compatibilité ajoutées ensuite nomment volontairement l'ancien préfixe.
+    applied: "767c73d",
     rules: [[/HERALD_OS_(?!DEV_UNSIGNED)/g, "JAROD_OS_"]],
     manual: [
       "contracts/v1/c5-control-env-names.schema.json",
@@ -34,6 +36,7 @@ export const PHASES = {
       "jarod-core/packages/kernel/test/legacy-env.test.ts",
     ],
   },
+
 };
 
 const covered = (file, list) => list.some((p) => (p.endsWith("/") ? file.startsWith(p) : file === p));
@@ -54,21 +57,52 @@ export function plan(phase) {
     } catch {
       continue;
     }
-    let next = text;
     let count = 0;
-    for (const [re, to] of def.rules) next = next.replace(re, () => (count++, to));
+    // `to` est une chaîne fixe ou une fonction (pour les règles à groupes) ; le compte suit chaque remplacement.
+    const applyRaw = (s) => def.rules.reduce((t, [re, to]) => t.replace(re, (...m) => (count++, typeof to === "function" ? to(...m) : to)), s);
+    // Portions protégées remplacées par des jetons opaques le temps des règles, puis remises à l'identique.
+    const applyRules = (s) => {
+      if (!def.protect) return applyRaw(s);
+      const kept = [];
+      const masked = def.protect.reduce((t, re) => t.replace(re, (m) => `\u0000${kept.push(m) - 1}\u0000`), s);
+      return applyRaw(masked).replace(/\u0000(\d+)\u0000/g, (_m, i) => kept[Number(i)]);
+    };
+    let next;
+    if (def.skipLine) {
+      // Lignes protégées (données de l'utilisateur, contrats figés, héritage) : laissées telles quelles, relevées si une règle y aurait joué.
+      const eol = text.includes("\r\n") ? "\r\n" : "\n";
+      next = text
+        .split(eol)
+        .map((line, i) => {
+          if (!def.skipLine.test(line)) return applyRules(line);
+          if (def.rules.some(([re]) => new RegExp(re.source, re.flags.replace("g", "")).test(line))) skipped.push(`${f}:${i + 1}: ${line.trim().slice(0, 150)}`);
+          return line;
+        })
+        .join(eol);
+    } else {
+      next = applyRules(text);
+    }
     if (count) out.push({ file: f, count, next });
   }
   return out;
 }
 
+/** Les lignes protégées où une règle aurait joué, relevées par le dernier `plan` : à relire à la main. */
+export const skipped = [];
+
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const phase = process.argv[2];
   const write = process.argv.includes("--write");
+  if (write && PHASES[phase]?.applied) {
+    console.error(`la phase « ${phase} » est déjà appliquée (${PHASES[phase].applied}) : la relancer effacerait les lignes de compatibilité ajoutées depuis`);
+    process.exit(1);
+  }
   const changes = plan(phase);
   for (const c of changes) {
     if (write) writeFileSync(resolve(root, c.file), c.next);
     console.log(`${String(c.count).padStart(4)}  ${c.file}`);
   }
   console.log(`${write ? "écrit" : "à blanc"} : ${changes.length} fichiers, ${changes.reduce((s, c) => s + c.count, 0)} remplacements`);
+  if (skipped.length && process.argv.includes("--skipped")) for (const s of skipped) console.log(`  protégée  ${s}`);
+  if (skipped.length) console.log(`${skipped.length} ligne(s) protégée(s) où une règle aurait joué (--skipped pour les lister)`);
 }

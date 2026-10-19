@@ -30,7 +30,7 @@ prompt running (it now aborts on drop). `wire.rs` also changed: while a request 
 connection is still read, so a disconnect is noticed and further requests are queued within bounds
 (64 lines, 4 MiB).
 
-The spike binary's window is its own console: `herald-host-spike … --approve-on-console` prints what is about to
+The spike binary's window is its own console: `jarod-host-spike … --approve-on-console` prints what is about to
 happen to stderr and reads one line from stdin; only `y` or `yes` is a yes, EOF is a no
 (`the_console_is_the_approval_window_and_only_a_typed_yes_is_a_yes`). The real window is a `Prompter` for the
 Tauri/Electron UI of phase 7; nothing else in the host changes when it exists.
@@ -73,4 +73,4 @@ where told, and on a polite stop removes its token file and exits. That is the p
 functional parity of the whole app on the new host (chat, settings, apps, onboarding) is phase 7.
 
 Limits: the supervisor is Windows-only for process-tree control; a restart does not carry the kernel's session
-state (the kernel owns its own persistence); `herald-supervise` is a development command, not a service.
+state (the kernel owns its own persistence); `jarod-supervise` is a development command, not a service.

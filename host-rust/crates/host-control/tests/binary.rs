@@ -13,7 +13,7 @@ use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 
-const BIN: &str = env!("CARGO_BIN_EXE_herald-host-spike");
+const BIN: &str = env!("CARGO_BIN_EXE_jarod-host-spike");
 
 fn scratch(name: &str) -> PathBuf {
     let dir = std::env::temp_dir().join(format!("host-control-bin-{name}-{}", std::process::id()));

@@ -11,12 +11,12 @@
 //! by hand; a real host keeps the backend token in memory and hands it to its child.
 //!
 //! ```text
-//! herald-host-spike --journal <control-audit.jsonl> --token-dir <dir> [--surface panel|backend] [--approve-on-console]
+//! jarod-host-spike --journal <control-audit.jsonl> --token-dir <dir> [--surface panel|backend] [--approve-on-console]
 //! ```
 
 #[cfg(not(windows))]
 fn main() {
-    eprintln!("herald-host-spike: the spike's transport is the Windows named pipe; refusing to serve");
+    eprintln!("jarod-host-spike: the spike's transport is the Windows named pipe; refusing to serve");
     std::process::exit(2);
 }
 
@@ -32,7 +32,7 @@ fn main() {
 
 #[cfg(windows)]
 fn refuse(message: impl std::fmt::Display) -> ! {
-    eprintln!("herald-host-spike: refusing to serve: {message}");
+    eprintln!("jarod-host-spike: refusing to serve: {message}");
     std::process::exit(2);
 }
 
@@ -154,7 +154,7 @@ async fn run() -> i32 {
             0
         }
         closed = running.closed() => {
-            eprintln!("herald-host-spike: the door closed by itself ({}); not staying up", closed.err().map(|e| e.to_string()).unwrap_or_default());
+            eprintln!("jarod-host-spike: the door closed by itself ({}); not staying up", closed.err().map(|e| e.to_string()).unwrap_or_default());
 
             1
         }

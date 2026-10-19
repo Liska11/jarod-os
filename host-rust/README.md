@@ -21,7 +21,7 @@ in the app, the kernel or the bridge calls it, and it is not packaged.
 | `gate` | validation, approval, capability spend, a ticket that ends a request exactly once | `HostControlGate.submit` |
 | `wire` | JSON lines over any byte stream, 1 MB line limit, idle timeout | `os-control.ts`, `json-lines.ts` |
 | `pipe` (Windows) | the named pipe, created **with** an explicit protected DACL, read back off the live object | `os-control.ts` + `pipe-security.ts` (PowerShell) |
-| `bin/herald-host-spike` | assembles all of it, refuses to start on any missing prerequisite | `main.ts` |
+| `bin/jarod-host-spike` | assembles all of it, refuses to start on any missing prerequisite | `main.ts` |
 
 The spike executes nothing (a no-op executor answers what the gate authorises) and has no approval
 channel, so `mutate` and `destructive` commands are refused with `denied-policy`. The tokens go to files

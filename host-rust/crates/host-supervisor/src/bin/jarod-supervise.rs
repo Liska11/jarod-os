@@ -1,7 +1,7 @@
-//! `herald-supervise`: the supervisor as a command, for the host's scripts and for tests.
+//! `jarod-supervise`: the supervisor as a command, for the host's scripts and for tests.
 //!
 //! ```text
-//! herald-supervise --name <n> --ready-prefix <p> [--ready-timeout-ms N] [--grace-ms N] [--max-restarts N]
+//! jarod-supervise --name <n> --ready-prefix <p> [--ready-timeout-ms N] [--grace-ms N] [--max-restarts N]
 //!                  [--cwd <dir>] [--allow NAME]... [--set K=V]... [--grant NAME=V]... -- <program> [args…]
 //! ```
 //!
@@ -13,7 +13,7 @@
 
 #[cfg(not(windows))]
 fn main() {
-    eprintln!("herald-supervise: the supervisor's process tree control is Windows-only for now");
+    eprintln!("jarod-supervise: the supervisor's process tree control is Windows-only for now");
     std::process::exit(2);
 }
 
@@ -25,7 +25,7 @@ async fn main() {
 
 #[cfg(windows)]
 fn refuse(message: impl std::fmt::Display) -> ! {
-    eprintln!("herald-supervise: refusing to run: {message}");
+    eprintln!("jarod-supervise: refusing to run: {message}");
     std::process::exit(2);
 }
 

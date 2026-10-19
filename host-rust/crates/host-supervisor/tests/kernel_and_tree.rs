@@ -71,7 +71,7 @@ fn wait_until(what: &str, timeout: Duration, mut condition: impl FnMut() -> bool
     }
 }
 
-const SUPERVISE: &str = env!("CARGO_BIN_EXE_herald-supervise");
+const SUPERVISE: &str = env!("CARGO_BIN_EXE_jarod-supervise");
 
 fn supervise(args: &[&str]) -> Command {
     let mut command = Command::new(SUPERVISE);
