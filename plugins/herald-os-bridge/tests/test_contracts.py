@@ -211,7 +211,7 @@ def test_a_tcp_endpoint_is_refused_by_the_client(plugin, monkeypatch):
 
 
 def _journal(isolated_home):
-    path = isolated_home / "herald-os" / "audit.jsonl"
+    path = isolated_home / "jarod-os" / "audit.jsonl"
     return path.read_text(encoding="utf-8").strip().splitlines() if path.exists() else []
 
 

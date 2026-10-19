@@ -43,7 +43,7 @@ async function openSystem(target: Page): Promise<void> {
 }
 
 const journal = () => {
-  const file = path.join(shell.root, 'hermes', 'herald-os', 'control-audit.jsonl')
+  const file = path.join(shell.root, 'hermes', 'jarod-os', 'control-audit.jsonl')
 
   return existsSync(file)
     ? readFileSync(file, 'utf8')

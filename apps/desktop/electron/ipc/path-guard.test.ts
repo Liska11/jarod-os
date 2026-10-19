@@ -92,6 +92,14 @@ describe('protectedRoots', () => {
     expect(elsewhere).toContain('D:\\jarod')
     expect(elsewhere).not.toContain('C:\\Users\\Sam\\AppData\\Local\\Jarod-OS')
   })
+
+  it('protects the shell state folder under its Jarod-OS name and its older name alike (rename, phase 5)', () => {
+    for (const roots of [protectedRoots(winHome, 'win32', winEnv), protectedRoots('/home/sam', 'linux', {})]) {
+      expect(roots.some(root => /[\\/]hermes[\\/]jarod-os$|[\\/]\.hermes[\\/]jarod-os$/.test(root))).toBe(true)
+      expect(roots.some(root => /[\\/]hermes[\\/]herald-os$|[\\/]\.hermes[\\/]herald-os$/.test(root))).toBe(true)
+    }
+    expect(() => assertReadablePath('C:\\Users\\Sam\\AppData\\Local\\hermes\\jarod-os\\audit.jsonl', winHome, 'win32', winEnv)).toThrow('protected location')
+  })
 })
 
 describe('hasDecoyComponent', () => {

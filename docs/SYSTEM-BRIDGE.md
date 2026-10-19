@@ -61,7 +61,7 @@ The list is extended (never shortened) in the policy file. The built-in list is
 
 ## Policy file
 
-`$HERMES_HOME/herald-os/permissions.yaml`
+`$HERMES_HOME/jarod-os/permissions.yaml`
 
 ```yaml
 version: 1
@@ -76,7 +76,7 @@ protected_paths:
 
 ## Audit log
 
-Every tool invocation appends one JSON line to `$HERMES_HOME/herald-os/audit.jsonl`:
+Every tool invocation appends one JSON line to `$HERMES_HOME/jarod-os/audit.jsonl`:
 `{ts, tool, tier, action, args, decision, ok, error}`. Arguments are truncated; no file contents are
 logged.
 

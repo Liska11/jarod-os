@@ -27,7 +27,7 @@ These are the guarantees Jarod-OS aims for. Breaking one of them is a vulnerabil
   your approval; `destructive` tools need approval on every call. Protected paths (`~/.ssh`,
   `~/.gnupg`, keychains, browser cookies, `$HERMES_HOME/.env`, `$HERMES_HOME/auth.json`, system
   folders) are refused before any prompt. Every call is appended to
-  `$HERMES_HOME/herald-os/audit.jsonl`. See [docs/SYSTEM-BRIDGE.md](docs/SYSTEM-BRIDGE.md).
+  `$HERMES_HOME/jarod-os/audit.jsonl`. See [docs/SYSTEM-BRIDGE.md](docs/SYSTEM-BRIDGE.md).
 - **The backend is local.** `hermes serve` listens on 127.0.0.1 only, behind a random token that
   changes on every launch. The Electron main process adds the token to REST calls.
 - **The control socket is private.** The socket the agent uses to operate the interface (the

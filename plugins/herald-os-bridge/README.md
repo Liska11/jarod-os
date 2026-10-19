@@ -13,7 +13,7 @@ plugin.yaml          manifest: name, version, tools, supported platforms
 bridge/
   tools.py           tool schemas and handlers (TOOL_SPECS)
   permissions.py     tiers, protected paths, the approval gate
-  audit.py           one JSON line per call in $HERMES_HOME/herald-os/audit.jsonl
+  audit.py           one JSON line per call in $HERMES_HOME/jarod-os/audit.jsonl
   crash.py           crash report summaries for system_logs (macOS .ips, Linux core dumps; Windows reads WER events in host/windows.py)
   ui.py              client for the shell's control socket, a Unix socket or loopback TCP on Windows (the `os_ui` tool)
   util.py            shared helpers (data folder, JAROD_OS_* settings)

@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://jarod-os.invalid/contracts/v1/c3-bridge-audit-entry.schema.json",
   "title": "Bridge audit entry (one line of audit.jsonl)",
-  "description": "The bridge's journal under `$HERMES_HOME/herald-os/audit.jsonl`: one line per tool invocation, every key always present. Arguments whose NAME contains password, passphrase, secret, token or psk are written as `[redacted]` (an empty or null value is written as is). The field set is closed: no token, capability or nonce field exists. `decision` is an open vocabulary (allowed, approved, delegated, denied, blocked, protected, policy_denied today) and is not frozen.",
+  "description": "The bridge's journal under `$HERMES_HOME/jarod-os/audit.jsonl` (`herald-os` before the Jarod-OS rename, copied once and left in place): one line per tool invocation, every key always present. Arguments whose NAME contains password, passphrase, secret, token or psk are written as `[redacted]` (an empty or null value is written as is). The field set is closed: no token, capability or nonce field exists. `decision` is an open vocabulary (allowed, approved, delegated, denied, blocked, protected, policy_denied today) and is not frozen.",
   "type": "object",
   "required": [
     "ts",

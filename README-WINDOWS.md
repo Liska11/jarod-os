@@ -57,7 +57,7 @@ hermes setup      # pick a model provider, if you have not yet
 Hermes keeps its data in `%LOCALAPPDATA%\hermes` (that is `HERMES_HOME`), its code in
 `%LOCALAPPDATA%\hermes\hermes-agent` and the `hermes` launcher in `%LOCALAPPDATA%\hermes\bin`. Jarod
 OS follows the same place, so the plugin link, the settings and the audit log
-(`%LOCALAPPDATA%\hermes\herald-os\audit.jsonl`) all sit next to Hermes's own files. If you set the
+(`%LOCALAPPDATA%\hermes\jarod-os\audit.jsonl`) all sit next to Hermes's own files. If you set the
 `HERMES_HOME` environment variable, both use that instead.
 
 ## 2. Run Jarod-OS from source
@@ -126,7 +126,7 @@ Things to know:
   Windows Developer Mode or an elevated terminal; that was not tried).
 - The first build downloads Electron and the NSIS and appx tooling; later ones reuse the cache.
 - The appx installs under `C:\Program Files\WindowsApps`, which other processes (Hermes's Python)
-  cannot read, so the app copies the bridge plugin to `%HERMES_HOME%\herald-os\bridge-plugin` and
+  cannot read, so the app copies the bridge plugin to `%HERMES_HOME%\jarod-os\bridge-plugin` and
   links that. The NSIS install links the plugin from its own `resources` folder.
 - A packaged Jarod-OS links and enables the bridge plugin itself at first start, the way
   `npm run bootstrap` does for a checkout.
@@ -205,6 +205,6 @@ What is different from macOS and Jarod-OS Linux, honestly:
   `-ExecutionPolicy Bypass`; run `scripts\*.ps1` the same way.
 - **The Terminal app is blank.** It needs ConPTY (Windows 10 1809 or later). `npm install` ships
   node-pty's Windows binaries; if it was installed with scripts disabled, run `npm rebuild node-pty`.
-- **See what the agent did.** `%LOCALAPPDATA%\hermes\herald-os\audit.jsonl`, one JSON line per call:
+- **See what the agent did.** `%LOCALAPPDATA%\hermes\jarod-os\audit.jsonl`, one JSON line per call:
   `{ts, tool, tier, action, decision, ok, summary, error, args}`. The app's own log is
   `%LOCALAPPDATA%\hermes\logs\jarod-os.log` (it was `herald-os.log` before; the app renames it on first start).

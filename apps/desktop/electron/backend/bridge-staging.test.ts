@@ -43,7 +43,7 @@ describe('staging for appx installs', () => {
   })
 
   it('treats a link into WindowsApps as another copy of the app', () => {
-    const bundled = 'C:\\Users\\sam\\AppData\\Local\\hermes\\herald-os\\bridge-plugin'
+    const bundled = 'C:\\Users\\sam\\AppData\\Local\\hermes\\jarod-os\\bridge-plugin'
 
     expect(bridgeLinkPlan({ kind: 'link', target: 'C:\\Program Files\\WindowsApps\\Old_1.0.0.0\\app\\resources\\herald-os-bridge', exists: true }, bundled)).toBe('replace')
   })

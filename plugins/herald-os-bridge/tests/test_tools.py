@@ -58,7 +58,7 @@ def test_mkdir_applies_after_approval_and_audits(plugin, tmp_path, monkeypatch, 
     result = json.loads(tools.handle_system_files({"action": "mkdir", "path": str(target)}))
     assert result["success"], result
     assert target.is_dir()
-    audit_lines = (isolated_home / "herald-os" / "audit.jsonl").read_text().strip().splitlines()
+    audit_lines = (isolated_home / "jarod-os" / "audit.jsonl").read_text().strip().splitlines()
     entry = json.loads(audit_lines[-1])
     assert entry["tool"] == "system_files" and entry["decision"] == "approved" and entry["ok"] is True
 

@@ -424,7 +424,7 @@ and you can allow them for the session or always. `destructive` tools (stopping 
 files to the Trash) ask every time. Some locations, such as `~/.ssh`, your keychains and Hermes's
 own credentials, are always refused.
 
-Settings > Privacy shows the policy and the audit log (`~/.hermes/herald-os/audit.jsonl`). Hermes's
+Settings > Privacy shows the policy and the audit log (`~/.hermes/jarod-os/audit.jsonl`). Hermes's
 own terminal tool keeps following Hermes's approval settings.
 
 Pick up where you left off is off until you turn it on from the Overview. It reads names and dates
@@ -437,8 +437,8 @@ and words it must leave out, such as a client's name.
 
 | What | Where |
 | --- | --- |
-| Jarod-OS preferences | `~/.hermes/herald-os/prefs.json` (edit them in Settings) |
-| Audit log, control socket | `~/.hermes/herald-os/` |
+| Jarod-OS preferences | `~/.hermes/jarod-os/prefs.json` (edit them in Settings) |
+| Audit log, control socket | `~/.hermes/jarod-os/` |
 | Log file | `~/.hermes/logs/jarod-os.log` |
 | Hermes config, memories, sessions, credentials | `~/.hermes/`, managed by Hermes |
 

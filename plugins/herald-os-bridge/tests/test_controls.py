@@ -48,7 +48,7 @@ def test_names_that_look_like_options_are_refused(plugin):
 def test_the_audit_log_never_keeps_a_password(plugin, isolated_home):
     audit = _mod(plugin, "audit")
     audit.record(tool="system_control", tier="mutate", action="wifi_connect", args={"ssid": "Home", "password": "hunter22"}, decision="approved", ok=True)
-    line = (isolated_home / "herald-os" / "audit.jsonl").read_text().strip().splitlines()[-1]
+    line = (isolated_home / "jarod-os" / "audit.jsonl").read_text().strip().splitlines()[-1]
     entry = json.loads(line)
     assert entry["args"] == {"ssid": "Home", "password": "[redacted]"}
     assert "hunter22" not in line

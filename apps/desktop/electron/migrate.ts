@@ -93,6 +93,42 @@ function moveProfile(from: string, to: string, moved: string[]): void {
   moveIfMissing(from, to, moved)
 }
 
+/** Left in the older folder: the app regenerates its plugin copy, it is never carried over. */
+const NOT_COPIED = new Set(['bridge-plugin'])
+
+/**
+ * Jarod-OS rename, phase 5 (docs/RENAME-PLAN-JAROD-OS.md): the shell's folder in the Hermes home is `jarod-os`. The older `herald-os`
+ * is COPIED, never moved, so an earlier version still finds its data. Once: nothing happens when the new folder exists. The copy goes
+ * into a temporary folder renamed into place, so the shell and the bridge (plugins/herald-os-bridge/bridge/util.py, `data_dir`)
+ * starting together cannot both write it: whoever renames second throws its copy away.
+ */
+function copyIntoNewName(from: string, to: string, moved: string[]): void {
+  if (!exists(from) || exists(to) || fs.lstatSync(from).isSymbolicLink()) {
+    return
+  }
+
+  const partial = `${to}.partial-${process.pid}`
+
+  try {
+    fs.cpSync(from, partial, { recursive: true, errorOnExist: false, force: false, filter: source => !NOT_COPIED.has(path.relative(from, source).split(path.sep)[0] ?? '') })
+    fs.writeFileSync(path.join(partial, '.copied-from-herald-os'), `${new Date().toISOString()}\n`)
+
+    try {
+      fs.renameSync(partial, to)
+    } catch (error) {
+      if (exists(to)) {
+        return // Another process got there first: its copy stands.
+      }
+
+      throw error
+    }
+
+    moved.push(`copied ${from} -> ${to} (the older folder is left as it was)`)
+  } finally {
+    fs.rmSync(partial, { recursive: true, force: true })
+  }
+}
+
 /**
  * Carries data over from the pre-rename "Hermes OS" locations: the shell's folder in the Hermes home
  * (prefs, permission policy, audit log) and the Chromium profile (local storage, web-window logins).
@@ -110,6 +146,7 @@ export function migrateLegacyData(locations: LegacyLocations): string[] {
   }
 
   attempt(() => mergeInto(path.join(locations.hermesHome, 'hermes-os'), path.join(locations.hermesHome, 'herald-os'), moved))
+  attempt(() => copyIntoNewName(path.join(locations.hermesHome, 'herald-os'), path.join(locations.hermesHome, 'jarod-os'), moved))
   attempt(() => moveProfile(path.join(locations.appData, 'Hermes OS'), locations.userData, moved))
 
   for (const name of PARTITIONS) {

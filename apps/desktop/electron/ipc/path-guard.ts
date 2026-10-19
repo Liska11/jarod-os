@@ -91,6 +91,8 @@ export function protectedRoots(home: string, platform: NodeJS.Platform = process
       lib.join(roaming, 'gnupg'),
       // Machine-wide cryptographic material (DPAPI machine keys, catalog stores).
       lib.join(programData, 'Microsoft', 'Crypto'),
+      lib.join(hermes, 'jarod-os'),
+      // Its name before the Jarod-OS rename: the copy leaves it in place, with the same audit log and policy in it.
       lib.join(hermes, 'herald-os'),
       lib.join(hermes, 'vault'),
       jarodData,
@@ -106,6 +108,7 @@ export function protectedRoots(home: string, platform: NodeJS.Platform = process
   return [
     path.posix.join(home, '.ssh'),
     path.posix.join(home, 'Library', 'Keychains'),
+    path.posix.join(hermes, 'jarod-os'),
     path.posix.join(hermes, 'herald-os'),
     path.posix.join(hermes, 'vault'),
     env.JAROD_OS_DATA?.trim() || path.posix.join(home, '.jarod-os'),

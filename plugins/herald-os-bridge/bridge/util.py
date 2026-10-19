@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import subprocess
 import sys
+from datetime import datetime, timezone
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping, Sequence
@@ -162,21 +164,50 @@ def os_env(name: str) -> str:
     return ""
 
 
+#: Left in the older folder when it is copied: the app regenerates its plugin copy.
+_NOT_COPIED = ("bridge-plugin",)
+
+
+def _copy_into_new_name(old: Path, new: Path) -> None:
+    """Copy ``old`` to ``new`` once, through a temporary folder renamed into place; ``old`` is left as it was.
+
+    The shell does the same at launch (apps/desktop/electron/migrate.ts): whoever renames second throws its copy away, so the two
+    starting together cannot both write the new folder, and nothing already there is overwritten."""
+    if new.exists() or not old.is_dir() or old.is_symlink():
+        return
+    partial = new.with_name(f"{new.name}.partial-{os.getpid()}")
+    try:
+        shutil.copytree(old, partial, ignore=lambda folder, names: [n for n in names if Path(folder) == old and n in _NOT_COPIED])
+        (partial / ".copied-from-herald-os").write_text(datetime.now(timezone.utc).isoformat() + "\n", encoding="utf-8")
+        try:
+            partial.rename(new)
+        except OSError:
+            if not new.exists():
+                raise
+    except OSError:
+        pass
+    finally:
+        shutil.rmtree(partial, ignore_errors=True)
+
+
 def data_dir() -> Path:
-    """``$HERMES_HOME/herald-os``. Files still in the pre-rename ``hermes-os`` folder are moved over
-    first (the shell does the same at launch; whichever runs first wins, neither overwrites)."""
-    path = hermes_home() / "herald-os"
+    """``$HERMES_HOME/jarod-os`` since the Jarod-OS rename (phase 5). The folder it had before, ``herald-os``, is COPIED in once
+    (never moved: an earlier version still finds its data); files still in the older ``hermes-os`` folder are first moved into
+    ``herald-os`` as before. The shell does the same at launch; whichever runs first wins, neither overwrites."""
+    path = hermes_home() / "jarod-os"
+    herald = hermes_home() / "herald-os"
     legacy = hermes_home() / "hermes-os"
     if legacy.is_dir() and not legacy.is_symlink():
         try:
-            path.mkdir(parents=True, exist_ok=True)
+            herald.mkdir(parents=True, exist_ok=True)
             for entry in legacy.iterdir():
-                target = path / entry.name
+                target = herald / entry.name
                 if not target.exists():
                     entry.rename(target)
             legacy.rmdir()
         except OSError:
             pass
+    _copy_into_new_name(herald, path)
     return path
 
 

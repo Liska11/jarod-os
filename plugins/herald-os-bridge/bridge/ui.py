@@ -29,7 +29,7 @@ import socket
 import threading
 from typing import Any
 
-from .util import control_env, hermes_home
+from .util import control_env, data_dir, hermes_home
 
 DEFAULT_TIMEOUT = 12.0
 # A Windows named pipe: one name, no host, no port. No TCP endpoint exists: the shell never listens.
@@ -49,13 +49,19 @@ class ShellUnavailable(RuntimeError):
 
 
 def shared_endpoint() -> tuple[str, str]:
-    """A shell attached to a backend it did not start writes ``herald-os/control.json`` (0600) instead."""
-    try:
-        with open(hermes_home() / "herald-os" / "control.json", encoding="utf-8") as handle:
-            data = json.load(handle)
-    except (OSError, ValueError):
-        return "", ""
-    return str(data.get("socket") or ""), str(data.get("token") or "")
+    """A shell attached to a backend it did not start writes ``jarod-os/control.json`` (0600) instead.
+
+    A shell from before the Jarod-OS rename writes it under ``herald-os``: read when the new file is not there."""
+    for folder in (data_dir(), hermes_home() / "herald-os"):
+        try:
+            with open(folder / "control.json", encoding="utf-8") as handle:
+                data = json.load(handle)
+        except FileNotFoundError:
+            continue
+        except (OSError, ValueError):
+            return "", ""
+        return str(data.get("socket") or ""), str(data.get("token") or "")
+    return "", ""
 
 
 def control_endpoint() -> tuple[str, str]:

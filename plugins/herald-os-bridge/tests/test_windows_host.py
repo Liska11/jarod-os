@@ -606,7 +606,7 @@ def test_credential_stores_and_ssh_keys_are_refused_regardless_of_case(plugin, m
 def test_the_audit_trail_lives_in_the_hermes_home_in_the_documented_format(plugin, isolated_home):
     audit = _mod(plugin, "audit")
     audit.record(tool="system_kill_process", tier="destructive", action=None, args={"pid": 12, "password": "hunter2"}, decision="approved", ok=True, summary="terminate x")
-    line = (isolated_home / "herald-os" / "audit.jsonl").read_text(encoding="utf-8").splitlines()[-1]
+    line = (isolated_home / "jarod-os" / "audit.jsonl").read_text(encoding="utf-8").splitlines()[-1]
     entry = json.loads(line)
     assert list(entry) == ["ts", "tool", "tier", "action", "decision", "ok", "summary", "error", "requestId", "args"]
     assert entry["args"] == {"pid": 12, "password": "[redacted]"}

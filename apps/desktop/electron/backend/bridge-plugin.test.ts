@@ -77,7 +77,7 @@ describe('ensureBridgePlugin', () => {
     await ensureBridgePlugin(failing, resources)
     // It stops at the first failure, and the second start tries again.
     expect(fs.readFileSync(calls, 'utf8').trim().split('\n')).toEqual(['plugins enable herald-os-bridge', 'plugins enable herald-os-bridge'])
-    expect(fs.existsSync(path.join(root, 'hermes', 'herald-os', 'bridge-enabled'))).toBe(false)
+    expect(fs.existsSync(path.join(root, 'hermes', 'jarod-os', 'bridge-enabled'))).toBe(false)
   })
 
   it('does nothing without a bundled copy (development)', async () => {

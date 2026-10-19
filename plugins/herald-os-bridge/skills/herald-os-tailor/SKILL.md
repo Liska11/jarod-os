@@ -14,7 +14,7 @@ font", "add a shortcut for Obsidian", "do this every time I log in".
 
 Ground rules:
 
-- Change settings through `os_ui` commands, never by editing `~/.hermes/herald-os/prefs.json`
+- Change settings through `os_ui` commands, never by editing `~/.hermes/jarod-os/prefs.json`
   while the shell runs (it rewrites that file).
 - Say what you changed and how to undo it in one sentence ("Switched to Dusk; say 'use the
   ocean theme' to go back").
