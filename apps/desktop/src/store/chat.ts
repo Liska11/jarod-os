@@ -1,4 +1,4 @@
-import type { GatewayEvent, SessionCreateResult, SessionResumeResult } from '@herald-os/client'
+import type { GatewayEvent, SessionCreateResult, SessionResumeResult } from '@jarod-os/client'
 import { atom, computed, map } from 'nanostores'
 import { appendSystem, appendUser, type ChatState, emptyChat, fromTranscript, reduceChatEvent } from '../lib/chat-model.ts'
 import { $env, $prefs } from './backend.ts'

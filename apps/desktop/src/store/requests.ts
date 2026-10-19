@@ -1,4 +1,4 @@
-import type { ApprovalRequestParams, ClarifyRequestParams, SecretRequestParams, ServerRequest, SudoRequestParams } from '@herald-os/client'
+import type { ApprovalRequestParams, ClarifyRequestParams, SecretRequestParams, ServerRequest, SudoRequestParams } from '@jarod-os/client'
 import { atom } from 'nanostores'
 import { LEGACY_EXPIRE_EVENTS, LEGACY_REQUEST_EVENTS, legacyRequestFromEvent } from '../lib/legacy-requests.ts'
 import { gatewayRequest, onAnyGatewayEvent, onGatewayEvent, onServerRequest } from './gateway.ts'

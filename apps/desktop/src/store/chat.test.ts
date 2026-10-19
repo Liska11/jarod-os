@@ -1,4 +1,4 @@
-import type { GatewayEvent } from '@herald-os/client'
+import type { GatewayEvent } from '@jarod-os/client'
 import { atom } from 'nanostores'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 

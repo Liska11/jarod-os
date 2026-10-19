@@ -7,7 +7,7 @@ import {
   reconnectBackoffDelayMs,
   type RpcMethods,
   type ServerRequestHandler
-} from '@herald-os/client'
+} from '@jarod-os/client'
 import { atom } from 'nanostores'
 import { gatewayProtocols } from '../lib/ws-auth.ts'
 import { $backend } from './backend.ts'

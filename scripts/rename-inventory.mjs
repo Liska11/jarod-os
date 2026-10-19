@@ -14,6 +14,9 @@ import { fileURLToPath } from "node:url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
+/** L'outillage du renommage nomme forcément l'ancien nom : il n'est jamais compté. */
+export const TOOLING = ["scripts/rename-inventory.mjs", "scripts/rename-baseline.mjs", "jarod-core/tests/repo/rename-baseline.json", "jarod-core/tests/repo/rename-guard.test.ts"];
+
 export const FAMILIES = [
   ["herald (toutes casses)", "-i", "herald"],
   ["herald-os", "", "herald-os"],
@@ -29,7 +32,7 @@ export const FAMILIES = [
 
 /** `git grep -c` (lecture seule) : { fichier: nombre de lignes }, {} si rien. */
 export function countByFile(pattern, flags = "") {
-  const args = ["grep", "-c", "-I", "--untracked", "-E", ...(flags ? [flags] : []), "-e", pattern, "--", ".", ":(exclude)scripts/rename-inventory.mjs"];
+  const args = ["grep", "-c", "-I", "--untracked", "-E", ...(flags ? [flags] : []), "-e", pattern, "--", ".", ...TOOLING.map((f) => `:(exclude)${f}`)];
   let out = "";
   try {
     out = execFileSync("git", args, { cwd: root, encoding: "utf8", maxBuffer: 64 << 20 });

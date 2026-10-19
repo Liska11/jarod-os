@@ -1,4 +1,4 @@
-import type { Usage } from '@herald-os/client'
+import type { Usage } from '@jarod-os/client'
 import { t } from './i18n.ts'
 
 /*

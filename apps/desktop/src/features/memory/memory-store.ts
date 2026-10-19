@@ -1,4 +1,4 @@
-import type { SessionListRow } from '@herald-os/client'
+import type { SessionListRow } from '@jarod-os/client'
 import { atom } from 'nanostores'
 import type { DirEntry } from '../../../shared/ipc.ts'
 import { rest } from '../../lib/rest.ts'

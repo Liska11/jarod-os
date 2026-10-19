@@ -1,4 +1,4 @@
-import type { GatewayEvent, SubagentEventPayload, ToolCompletePayload, ToolStartPayload } from '@herald-os/client'
+import type { GatewayEvent, SubagentEventPayload, ToolCompletePayload, ToolStartPayload } from '@jarod-os/client'
 import { atom, computed, map } from 'nanostores'
 import { type ChatState, lastTurnFailed } from '../lib/chat-model.ts'
 import { systemFilesOutputs } from '../lib/file-ops.ts'

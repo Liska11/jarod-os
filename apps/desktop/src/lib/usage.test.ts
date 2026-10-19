@@ -1,4 +1,4 @@
-import type { UsageModel } from '@herald-os/client'
+import type { UsageModel } from '@jarod-os/client'
 import { describe, expect, it } from 'vitest'
 import { formatDollars, formatTokens, limitAlertKey, planNote, planPercent, summariseUsage } from './usage.ts'
 

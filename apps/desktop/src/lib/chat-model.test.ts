@@ -1,4 +1,4 @@
-import type { GatewayEvent } from '@herald-os/client'
+import type { GatewayEvent } from '@jarod-os/client'
 import { describe, expect, it } from 'vitest'
 import { type AssistantMessage, appendSystem, appendUser, type ChatState, emptyChat, fromTranscript, lastTurnFailed, reduceChatEvent, type ToolMessage } from './chat-model.ts'
 

@@ -1,4 +1,4 @@
-import type { BillingStateResult, UsageModel } from '@herald-os/client'
+import type { BillingStateResult, UsageModel } from '@jarod-os/client'
 import { atom } from 'nanostores'
 import { type AnalyticsResponse, limitAlertKey, planPercent, summariseUsage, type UsageSummary } from '../lib/usage.ts'
 import { rest } from '../lib/rest.ts'

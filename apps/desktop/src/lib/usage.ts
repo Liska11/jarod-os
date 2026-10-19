@@ -1,4 +1,4 @@
-import type { UsageModel } from '@herald-os/client'
+import type { UsageModel } from '@jarod-os/client'
 import { t } from './i18n.ts'
 
 /** The parts of `GET /api/analytics/usage` Jarod-OS shows (Hermes's own token accounting per session). */

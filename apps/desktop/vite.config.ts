@@ -12,7 +12,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
-      '@herald-os/client': fileURLToPath(new URL('../../packages/hermes-client/src/index.ts', import.meta.url))
+      '@jarod-os/client': fileURLToPath(new URL('../../packages/hermes-client/src/index.ts', import.meta.url))
     },
     // The upstream snapshot lives outside this package; React must resolve to one copy.
     dedupe: ['react', 'react-dom']

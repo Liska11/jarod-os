@@ -1,4 +1,4 @@
-import type { SubagentEventPayload } from '@herald-os/client'
+import type { SubagentEventPayload } from '@jarod-os/client'
 import { atom } from 'nanostores'
 import { onAnyGatewayEvent } from './gateway.ts'
 

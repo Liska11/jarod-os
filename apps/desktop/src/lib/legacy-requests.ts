@@ -1,4 +1,4 @@
-import type { ServerRequest } from '@herald-os/client'
+import type { ServerRequest } from '@jarod-os/client'
 
 /**
  * Compatibility with Hermes runtimes before the server->client request contract (<= 0.21.0):

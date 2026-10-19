@@ -1,9 +1,9 @@
-# @herald-os/client
+# @jarod-os/client
 
 How Jarod-OS talks to a Hermes backend (`hermes serve`). It is source-only (no build step) and
 consumed by `apps/desktop` through a Vite alias.
 
-`import { ... } from '@herald-os/client'` gives you:
+`import { ... } from '@jarod-os/client'` gives you:
 
 - upstream's `JsonRpcGatewayClient`, event hub, reconnect backoff, slash-command parser and fuzzy
   ranking (`src/index.ts`);

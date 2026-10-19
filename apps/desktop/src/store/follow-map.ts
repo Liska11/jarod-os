@@ -1,4 +1,4 @@
-import type { ToolCompletePayload } from '@herald-os/client'
+import type { ToolCompletePayload } from '@jarod-os/client'
 
 /** Tools that mean Hermes is building something the Studio can show (code, commands). */
 export function isBuildActivity(name: string | undefined): boolean {

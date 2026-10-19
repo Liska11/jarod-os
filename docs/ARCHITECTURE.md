@@ -40,7 +40,7 @@ flowchart LR
     Bridge[herald-os-bridge plugin]
     Serve --> Agent --> Bridge
   end
-  Renderer -->|"WebSocket JSON-RPC (@herald-os/client)"| Gateway
+  Renderer -->|"WebSocket JSON-RPC (@jarod-os/client)"| Gateway
   Main -->|"REST with session token"| Gateway
   Renderer -.->|same protocol| Serve
   Bridge -->|"request_tool_approval"| Serve

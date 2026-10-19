@@ -1,4 +1,4 @@
-import type { ToolCompletePayload, ToolStartPayload } from '@herald-os/client'
+import type { ToolCompletePayload, ToolStartPayload } from '@jarod-os/client'
 import { $env, $prefs } from './backend.ts'
 import { $activeChatId, $chats } from './chat.ts'
 import { followCommandFor, isBuildActivity } from './follow-map.ts'
