@@ -1,6 +1,18 @@
 # Plan de renommage global JAROD-OS (plan seulement, rien n'est renommé par ce document)
 
-Statut : **préparé le 2026-10-17, à décider par l'humain.** Aucune des phases ci-dessous n'est lancée. Ce plan complète la section « Renommage JAROD-OS / jarod-sandbox » de `docs/BACKLOG.md`, qui dit ce qui est déjà fait.
+Statut : **préparé le 2026-10-17 ; lancé le 2026-10-19 sur décision de l'humain** (« renomme tout en Jarod-OS, le dossier de travail aussi »). Ce plan complète la section « Renommage JAROD-OS / jarod-sandbox » de `docs/BACKLOG.md`, qui dit ce qui est déjà fait.
+
+### Décisions du 2026-10-19 (§6)
+
+1. Chantier lancé. Le dépôt de travail est désormais `D:\Jarod-OS` (le disque D: est celui de Jarod-OS).
+2. Noms cibles : variables `JAROD_OS_*` (l'ancien `HERALD_OS_*` reste lu en repli), paquets `@jarod-os/*` (déjà le scope de `mobile` et `pinokio-runtime`).
+3. Partitions `persist:herald-*` : **noms gardés** (aucune donnée touchée ; ces noms ne sont visibles de personne).
+4. Canaux de mise à jour : aucun retrait ; les anciens noms restent lus (phase 6 non lancée).
+5. Retrait des replis (phase 6) : non décidé, rien n'est retiré.
+6. Attribution à Herald OS : inchangée.
+7. Un commit local par phase (jamais de push) : chaque phase s'annule seule par `git revert`.
+
+Phase 0 faite : `scripts/rename-inventory.mjs` (inventaire par famille, lecture seule) et `jarod-core/tests/repo/rename-guard.test.ts` (attributions intactes ; cliquet par fichier contre `rename-baseline.json`, qui ne fait que baisser).
 
 ## 1. État vérifié
 
