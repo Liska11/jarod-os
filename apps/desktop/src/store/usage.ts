@@ -48,7 +48,7 @@ export async function loadUsage(): Promise<UsageSnapshot> {
 }
 
 const ALERT_AT = 90
-const ALERT_KEY = 'herald-os.usage.alerted'
+const ALERT_KEY = 'jarod-os.usage.alerted'
 const CHECK_MS = 15 * 60_000
 
 /** One notification per billing period once the plan passes 90%; it offers, it never stops anything. */

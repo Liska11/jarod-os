@@ -20,8 +20,8 @@ Jarod-OS is running but something misbehaves.
 - **A theme does not change everything.** On a Mac, Jarod-OS recolours itself and Hermes's skin;
   macOS apps keep their own look. On Jarod-OS Linux, GTK apps pick up a new theme when they next
   start, and Obsidian needs its own theme setting.
-- **Hermes's command line stopped following the theme.** Jarod-OS only selects its `herald-os`
-  skin when you have not picked another one. Run `/skin herald-os` in Hermes to go back to it.
+- **Hermes's command line stopped following the theme.** Jarod-OS only selects its `jarod-os`
+  skin when you have not picked another one (its older `herald-os` skin counts as its own). Run `/skin jarod-os` in Hermes to go back to it.
 - **Something is unreadable in a light theme.** Switch back with "use the ocean theme" and tell us
   which screen it was.
 

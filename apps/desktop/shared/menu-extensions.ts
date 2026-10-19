@@ -37,7 +37,8 @@ export const MENU_GROUPS = ['install', 'remove', 'update', 'style', 'trigger', '
 
 const MAX_ENTRIES = 50
 const MAX_ARGS = 64
-const ACTION_KEYS = ['herald-os', 'exec', 'url', 'command'] as const
+// `jarod-os` since the Jarod-OS rename; `herald-os`, the key a menu.json written before it uses, is read the same way.
+const ACTION_KEYS = ['jarod-os', 'herald-os', 'exec', 'url', 'command'] as const
 
 const slug = (text: string) =>
   text
@@ -86,7 +87,7 @@ export function parseMenuExtensions(value: unknown): MenuExtensions {
     const keys = ACTION_KEYS.filter(key => entry[key] !== undefined)
 
     if (keys.length !== 1) {
-      errors.push(`"${label}" needs exactly one of "herald-os", "exec", "url" or "command"`)
+      errors.push(`"${label}" needs exactly one of "jarod-os", "exec", "url" or "command"`)
 
       return
     }
@@ -94,9 +95,10 @@ export function parseMenuExtensions(value: unknown): MenuExtensions {
     let action: MenuExtensionAction | null = null
     const key = keys[0]
 
-    if (key === 'herald-os' || key === 'exec') {
+    if (key === 'jarod-os' || key === 'herald-os' || key === 'exec') {
       const argv = argvOf(entry[key])
-      action = argv ? { kind: key, argv } : null
+      // A command entry, under its Jarod-OS key or the key menu.json used before the rename: the same action.
+      action = argv ? { kind: key === 'exec' ? 'exec' : 'herald-os', argv } : null
 
       if (!action) {
         errors.push(`"${label}": "${key}" is a list of words, like ["launch", "obsidian"]`)

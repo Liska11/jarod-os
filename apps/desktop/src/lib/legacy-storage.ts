@@ -1,31 +1,49 @@
 type KeyValueStorage = Pick<Storage, 'length' | 'key' | 'getItem' | 'setItem' | 'removeItem'>
 
-const LEGACY_PREFIX = 'hermes-os.'
-const PREFIX = 'herald-os.'
+/** The prefix the shell saves its local settings under since the Jarod-OS rename (docs/RENAME-PLAN-JAROD-OS.md, phase 5). */
+export const STORAGE_PREFIX = 'jarod-os.'
 
-/** Moves shell settings saved under the pre-rename `hermes-os.` prefix; a value already saved under the new name wins. */
+/**
+ * Older prefixes, newest first. `herald-os.` is COPIED and kept, so an earlier version still finds its settings; `hermes-os.` (from
+ * before the Herald OS name) is moved, as it always was. Either way a value already saved under the current prefix wins.
+ */
+const OLDER: ReadonlyArray<{ prefix: string; keep: boolean }> = [
+  { prefix: 'herald-os.', keep: true },
+  { prefix: 'hermes-os.', keep: false }
+]
+
+/** Carries shell settings saved under an older prefix over to the current one; returns how many keys were carried. */
 export function migrateLegacyStorage(storage: KeyValueStorage): number {
-  const legacy: string[] = []
+  let carried = 0
 
-  for (let index = 0; index < storage.length; index++) {
-    const key = storage.key(index)
+  for (const { prefix, keep } of OLDER) {
+    const keys: string[] = []
 
-    if (key?.startsWith(LEGACY_PREFIX)) {
-      legacy.push(key)
+    for (let index = 0; index < storage.length; index++) {
+      const key = storage.key(index)
+
+      if (key?.startsWith(prefix)) {
+        keys.push(key)
+      }
+    }
+
+    for (const key of keys) {
+      const next = STORAGE_PREFIX + key.slice(prefix.length)
+
+      if (storage.getItem(next) === null) {
+        storage.setItem(next, storage.getItem(key) ?? '')
+        carried++
+      } else if (!keep) {
+        carried++ // Moved before, or already there: the older key goes all the same.
+      }
+
+      if (!keep) {
+        storage.removeItem(key)
+      }
     }
   }
 
-  for (const key of legacy) {
-    const next = PREFIX + key.slice(LEGACY_PREFIX.length)
-
-    if (storage.getItem(next) === null) {
-      storage.setItem(next, storage.getItem(key) ?? '')
-    }
-
-    storage.removeItem(key)
-  }
-
-  return legacy.length
+  return carried
 }
 
 // Imported first by main.tsx: stores read their saved state while their modules load.

@@ -16,7 +16,7 @@ import { FieldLabel, GlyphTile, Hint, JobTile, SelectInput, TextArea, TextInput,
 
 type StepId = 'when' | 'gather' | 'deliver'
 
-const NOTIFY_KEY = (id: string) => `herald-os.automation-notify.${id}`
+const NOTIFY_KEY = (id: string) => `jarod-os.automation-notify.${id}`
 
 const readNotifyPref = (id: string): boolean => {
   try {

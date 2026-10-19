@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import { ipcMain, nativeImage } from 'electron'
 import { type HeraldOSPrefs, IPC } from '../../shared/ipc.ts'
-import { HERALD_SKIN, type ThemeSpec } from '../../shared/theme.ts'
+import { skinToSelect, type ThemeSpec } from '../../shared/theme.ts'
 import type { BackendManager } from '../backend/manager.ts'
 import { events } from '../events/bus.ts'
 import { log } from '../log.ts'
@@ -28,8 +28,11 @@ export async function selectHermesSkin(backend: BackendManager): Promise<void> {
   const saved = await backend.rest<{ display?: { skin?: unknown } }>({ method: 'GET', path: '/api/config', query: { include_defaults: false } })
   const skin = typeof saved?.display?.skin === 'string' ? saved.display.skin : ''
 
-  if (skin === '' || skin === 'default') {
-    await backend.rest({ method: 'PUT', path: '/api/config', body: { config: { display: { skin: HERALD_SKIN } } } })
+  // None, the default, or the skin of ours from before the Jarod-OS rename: point Hermes at the one the theme now writes.
+  const next = skinToSelect(skin)
+
+  if (next) {
+    await backend.rest({ method: 'PUT', path: '/api/config', body: { config: { display: { skin: next } } } })
   }
 }
 

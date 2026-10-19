@@ -52,7 +52,7 @@ function openNotifications(): void {
   openSurface('main')
 }
 
-const UPDATE_KEY = 'herald-os.update-available'
+const UPDATE_KEY = 'jarod-os.update-available'
 
 interface UpdateAvailable {
   /** What is pending, e.g. "Jarod-OS, 192 packages, 3 apps". */

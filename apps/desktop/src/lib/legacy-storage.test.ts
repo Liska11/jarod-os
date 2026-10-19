@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { migrateLegacyStorage } from './legacy-storage.ts'
+import { migrateLegacyStorage, STORAGE_PREFIX } from './legacy-storage.ts'
 
 function memoryStorage(entries: Record<string, string>) {
   const data = new Map(Object.entries(entries))
@@ -17,22 +17,49 @@ function memoryStorage(entries: Record<string, string>) {
 }
 
 describe('migrateLegacyStorage', () => {
-  it('moves hermes-os. keys to herald-os. and leaves other keys alone', () => {
+  it('saves the shell settings under the Jarod-OS prefix (rename, phase 5)', () => {
+    expect(STORAGE_PREFIX).toBe('jarod-os.')
+  })
+
+  it('moves hermes-os. keys to the current prefix and leaves other keys alone', () => {
     const storage = memoryStorage({ 'hermes-os.panels': '{"today":true}', 'hermes-os.a11y.text-size': 'large', other: '1' })
 
     expect(migrateLegacyStorage(storage)).toBe(2)
-    expect(Object.fromEntries(storage.data)).toEqual({ other: '1', 'herald-os.panels': '{"today":true}', 'herald-os.a11y.text-size': 'large' })
+    expect(Object.fromEntries(storage.data)).toEqual({ other: '1', 'jarod-os.panels': '{"today":true}', 'jarod-os.a11y.text-size': 'large' })
   })
 
-  it('keeps a value already saved under the new name', () => {
-    const storage = memoryStorage({ 'hermes-os.panels': 'old', 'herald-os.panels': 'new' })
+  it('COPIES herald-os. keys to the current prefix and keeps them, for an earlier version', () => {
+    const storage = memoryStorage({ 'herald-os.panels': '{"today":true}', 'herald-os.notify.approvals': 'false' })
+
+    expect(migrateLegacyStorage(storage)).toBe(2)
+    expect(Object.fromEntries(storage.data)).toEqual({
+      'herald-os.panels': '{"today":true}',
+      'herald-os.notify.approvals': 'false',
+      'jarod-os.panels': '{"today":true}',
+      'jarod-os.notify.approvals': 'false'
+    })
+  })
+
+  it('keeps a value already saved under the new name, whatever the older one says', () => {
+    const storage = memoryStorage({ 'hermes-os.panels': 'oldest', 'herald-os.a11y.text-size': 'old', 'jarod-os.panels': 'new', 'jarod-os.a11y.text-size': 'new' })
 
     migrateLegacyStorage(storage)
 
-    expect(Object.fromEntries(storage.data)).toEqual({ 'herald-os.panels': 'new' })
+    expect(storage.data.get('jarod-os.panels')).toBe('new')
+    expect(storage.data.get('jarod-os.a11y.text-size')).toBe('new')
   })
 
-  it('does nothing when there is nothing to move', () => {
-    expect(migrateLegacyStorage(memoryStorage({ 'herald-os.panels': 'x' }))).toBe(0)
+  it('copies once: a herald-os. value changed later by an earlier version does not overwrite the Jarod-OS one', () => {
+    const storage = memoryStorage({ 'herald-os.panels': 'first' })
+
+    migrateLegacyStorage(storage)
+    storage.setItem('herald-os.panels', 'changed by an earlier version')
+    migrateLegacyStorage(storage)
+
+    expect(storage.data.get('jarod-os.panels')).toBe('first')
+  })
+
+  it('does nothing when there is nothing older', () => {
+    expect(migrateLegacyStorage(memoryStorage({ 'jarod-os.panels': 'x' }))).toBe(0)
   })
 })

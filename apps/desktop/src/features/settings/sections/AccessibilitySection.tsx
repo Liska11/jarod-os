@@ -15,8 +15,8 @@ import { errorText, markSaved, readLocalFlag, SectionTitle, SettingsGroup, Setti
 
 export type TextSize = 'small' | 'default' | 'large'
 
-const TEXT_SIZE_KEY = 'herald-os.a11y.text-size'
-const CONTRAST_KEY = 'herald-os.a11y.high-contrast'
+const TEXT_SIZE_KEY = 'jarod-os.a11y.text-size'
+const CONTRAST_KEY = 'jarod-os.a11y.high-contrast'
 const TEXT_SIZES: { id: TextSize; label: MessageKey; px: string }[] = [
   { id: 'small', label: 'accessibility.textSize.small', px: '12px' },
   { id: 'default', label: 'accessibility.textSize.default', px: '13px' },

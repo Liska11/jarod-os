@@ -8,15 +8,15 @@ import { setCrashHelpEnabled, setCrashMuted } from '../../../store/crashes.ts'
 import { errorText, InlineNote, markSaved, readLocalFlag, SectionTitle, SettingsGroup, SettingsRow, writeLocal } from './shared.tsx'
 
 /*
- * Notification preferences are shell-side flags in localStorage (`herald-os.notify.*`). The
+ * Notification preferences are shell-side flags in localStorage (`jarod-os.notify.*`). The
  * notification store does not read them yet; see the page report for the proposed wiring.
  */
 
 export const NOTIFY_KEYS = {
-  toolCompletions: 'herald-os.notify.tool-completions',
-  approvals: 'herald-os.notify.approvals',
-  taskUpdates: 'herald-os.notify.task-updates',
-  nativeWhenUnfocused: 'herald-os.notify.native-unfocused'
+  toolCompletions: 'jarod-os.notify.tool-completions',
+  approvals: 'jarod-os.notify.approvals',
+  taskUpdates: 'jarod-os.notify.task-updates',
+  nativeWhenUnfocused: 'jarod-os.notify.native-unfocused'
 } as const
 
 type NotifyKey = keyof typeof NOTIFY_KEYS

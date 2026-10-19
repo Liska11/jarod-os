@@ -1,6 +1,6 @@
 import { atom } from 'nanostores'
 import type { HeraldOSPrefs } from '../../shared/ipc.ts'
-import { type ColorScheme, HERALD_SKIN, schemeOf, themeColorsFromSkin, themeFromPixels, themeSlug, type ThemeSummary } from '../../shared/theme.ts'
+import { type ColorScheme, isOurSkin, schemeOf, themeColorsFromSkin, themeFromPixels, themeSlug, type ThemeSummary } from '../../shared/theme.ts'
 import { $prefs, applyPrefsToDocument, updatePrefs } from './backend.ts'
 import { $gatewayReady, onGatewayEvent } from './gateway.ts'
 import { isMainSurface } from './shell.ts'
@@ -93,7 +93,7 @@ let lastSkinSignature = ''
 
 /** Hermes's skin changed (or the gateway reconnected): restyle Jarod-OS when the person asked for that. */
 async function followSkin(skin: { name?: string; colors?: Record<string, string> } | null | undefined): Promise<void> {
-  if (!skin || !$prefs.get().followHermesSkin || !skin.name || skin.name === HERALD_SKIN) {
+  if (!skin || !$prefs.get().followHermesSkin || !skin.name || isOurSkin(skin.name)) {
     return
   }
 

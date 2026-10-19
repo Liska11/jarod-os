@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { contrast, hermesSkinYaml, luminance, mix, paletteVars, parseHex, schemeOf, terminalColors, themeColorsFromSkin, themeFromPixels, themeSlug, toHex, type ThemeColors, validateTheme, wallpaperTint } from './theme.ts'
+import { contrast, HERALD_SKIN, hermesSkinYaml, isOurSkin, luminance, mix, paletteVars, parseHex, schemeOf, terminalColors, themeColorsFromSkin, themeFromPixels, themeSlug, skinToSelect, toHex, type ThemeColors, validateTheme, wallpaperTint } from './theme.ts'
 
 const OCEAN: ThemeColors = { bg: '#04113f', bg2: '#0a2a96', surface: '#0b1c5a', fg: '#e9eefb', fg_dim: '#9fb0dc', accent: '#4d92ff', accent_strong: '#5296ff', border_active: '#4d92ff', border_inactive: '#1c2c66', urgent: '#ff6b6b', ok: '#36e6a6', warn: '#f2c25e' }
 const PAPER: ThemeColors = { ...OCEAN, bg: '#f4f1ea', bg2: '#ebe5d8', surface: '#ffffff', fg: '#25221c', fg_dim: '#6b6456', accent: '#b4532a', accent_strong: '#9c4522' }
@@ -119,9 +119,25 @@ describe('Hermes skins', () => {
   it('writes a skin Hermes can load', () => {
     const yaml = hermesSkinYaml('Herald Ocean', OCEAN)
 
-    expect(yaml).toContain('name: herald-os')
+    expect(yaml).toContain('name: jarod-os')
     expect(yaml).toContain('  ui_accent: "#4d92ff"')
     expect(yaml).toContain('  status_bar_bg: "#0a2a96"')
+  })
+
+  it('the skin is jarod-os since the rename, and the older herald-os counts as ours (rename, phase 5)', () => {
+    expect(HERALD_SKIN).toBe('jarod-os')
+    expect(isOurSkin('jarod-os')).toBe(true)
+    expect(isOurSkin('herald-os')).toBe(true)
+    expect(isOurSkin('ares')).toBe(false)
+    expect(isOurSkin(undefined)).toBe(false)
+  })
+
+  it('points Hermes at the Jarod-OS skin when none, the default or the older one of ours is set, never over a choice of the person', () => {
+    expect(skinToSelect('')).toBe('jarod-os')
+    expect(skinToSelect('default')).toBe('jarod-os')
+    expect(skinToSelect('herald-os')).toBe('jarod-os')
+    expect(skinToSelect('jarod-os')).toBeNull()
+    expect(skinToSelect('ares')).toBeNull()
   })
 
   it('reads a Hermes skin back into Herald colours', () => {

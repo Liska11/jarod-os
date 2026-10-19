@@ -154,7 +154,7 @@ command, a program to start, a web address, or a Jarod-OS command.
 ```json
 {
   "entries": [
-    { "label": "Notes", "hint": "Obsidian", "icon": "notes", "herald-os": ["launch", "obsidian"] },
+    { "label": "Notes", "hint": "Obsidian", "icon": "notes", "jarod-os": ["launch", "obsidian"] },
     { "label": "Back up photos", "group": "trigger", "exec": ["rsync", "-a", "~/Pictures/", "/mnt/backup/Pictures/"] },
     { "label": "Standup doc", "icon": "world", "url": "https://docs.example.com/standup" },
     { "label": "Missions", "command": "page.open", "args": { "name": "missions" } }

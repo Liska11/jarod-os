@@ -554,7 +554,7 @@ export function groupTools(names: string[], contextKey = ''): Omit<ConnectionToo
 
 /* ---- Allowed folders (local only; Hermes has no per-connection folder scope yet) ----------- */
 
-const FOLDER_KEY = (id: string) => `herald-os.connections.folders.${id}`
+const FOLDER_KEY = (id: string) => `jarod-os.connections.folders.${id}`
 
 export function readFolders(id: string): string[] {
   try {

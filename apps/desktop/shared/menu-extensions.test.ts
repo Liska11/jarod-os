@@ -2,6 +2,28 @@ import { describe, expect, it } from 'vitest'
 import { parseMenuExtensions } from './menu-extensions.ts'
 
 describe('parseMenuExtensions', () => {
+  it('reads a command entry under the Jarod-OS key, and under its older key alike (rename, phase 5)', () => {
+    const { entries, errors } = parseMenuExtensions({
+      entries: [
+        { label: 'Notes', 'jarod-os': ['launch', 'obsidian'] },
+        { label: 'Old notes', 'herald-os': ['launch', 'obsidian'] }
+      ]
+    })
+
+    expect(errors).toEqual([])
+    expect(entries.map(entry => entry.action)).toEqual([
+      { kind: 'herald-os', argv: ['launch', 'obsidian'] },
+      { kind: 'herald-os', argv: ['launch', 'obsidian'] }
+    ])
+  })
+
+  it('an entry naming both command keys is one action too many', () => {
+    const { entries, errors } = parseMenuExtensions({ entries: [{ label: 'Twice', 'jarod-os': ['a'], 'herald-os': ['b'] }] })
+
+    expect(entries).toEqual([])
+    expect(errors[0]).toMatch(/exactly one of "jarod-os"/)
+  })
+
   it('reads every kind of entry', () => {
     const { entries, errors } = parseMenuExtensions({
       entries: [

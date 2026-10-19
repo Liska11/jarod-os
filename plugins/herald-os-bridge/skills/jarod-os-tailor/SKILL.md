@@ -149,7 +149,7 @@ Write it with `write_file`, keeping any entries already there:
 ```json
 {
   "entries": [
-    { "label": "Notes", "hint": "Obsidian", "icon": "notes", "herald-os": ["launch", "obsidian"] },
+    { "label": "Notes", "hint": "Obsidian", "icon": "notes", "jarod-os": ["launch", "obsidian"] },
     { "label": "Back up photos", "group": "trigger", "exec": ["rsync", "-a", "~/Pictures/", "/mnt/backup/Pictures/"] },
     { "label": "Standup doc", "icon": "world", "url": "https://docs.example.com/standup" },
     { "label": "Missions", "command": "page.open", "args": { "name": "missions" } }
