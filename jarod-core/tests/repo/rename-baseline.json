@@ -501,7 +501,7 @@
  "scripts/link-bridge.ps1": 7,
  "scripts/link-bridge.test.ps1": 13,
  "scripts/make-icons.py": 7,
- "scripts/migrate-hermes-config.py": 10,
+ "scripts/migrate-hermes-config.py": 9,
  "scripts/pipe-dacl.ps1": 15,
  "scripts/probe-pipe-acl.mjs": 2,
  "scripts/sync-upstream.ps1": 2,
