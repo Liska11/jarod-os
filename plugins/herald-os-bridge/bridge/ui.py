@@ -1,7 +1,7 @@
 """Client for the Jarod-OS control socket: the agent's way to run commands in the shell's UI.
 
 The Electron shell hands the backend its endpoint and a per-launch token through
-``HERALD_OS_CONTROL_SOCKET`` and ``HERALD_OS_CONTROL_TOKEN``. The endpoint is a Unix socket path on
+``JAROD_OS_CONTROL_SOCKET`` and ``JAROD_OS_CONTROL_TOKEN``. The endpoint is a Unix socket path on
 macOS and Linux, and ``pipe://<name>`` on Windows: the shell's own named pipe, opened by the owner
 rather than a port anything on the machine can dial. Every request carries the token; replies are
 single JSON objects.

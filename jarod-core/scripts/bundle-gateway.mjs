@@ -33,6 +33,8 @@ const plugins = readdirSync(pluginsDir, { withFileTypes: true })
   .map((p) => ({ dir: p.dir, name: p.pkg.jarod.plugin, pkg: p.pkg.name, order: p.pkg.jarod.order ?? 100, entry: join(pluginsDir, p.dir, "src", "index.ts") }));
 const slash = (p) => p.split("\\").join("/");
 const entrySource = [
+  // Premier : les variables encore posées sous leur ancien nom sont adoptées avant que les plugins ne lisent process.env (renommage, phase 2).
+  `import "@jarod/kernel/legacy-env-adopt";`,
   `import { setBundledPlugins } from "@jarod/kernel";`,
   ...plugins.map((p, i) => `import * as plugin${i} from ${JSON.stringify(slash(p.entry))};`),
   `setBundledPlugins([`,

@@ -3,7 +3,7 @@
 `jarod-core/` est le **noyau de Jarod-OS** : conversation, outils, mémoire, planifications, messageries. Le shell (`apps/desktop` : fenêtre, dock, pages Aperçu,
 Mémoire, Automatisations, Réglages…, dérivé de Herald OS) le démarre lui-même et lui parle comme à un `hermes serve` : la passerelle de ce dossier
 (`packages/cli/src/gateway/`) répond au protocole JSON-RPC / REST que le shell connaît. Jarod-OS n'a besoin ni de `jarod-cordis`, ni d'une installation de Jarod,
-ni de Hermes (Hermes reste possible en option : `HERALD_OS_BACKEND=hermes`). Origine du code : `PROVENANCE.md`.
+ni de Hermes (Hermes reste possible en option : `JAROD_OS_BACKEND=hermes`). Origine du code : `PROVENANCE.md`.
 
 ## Lancer
 
@@ -21,9 +21,9 @@ npm run dev --workspace apps/desktop             # le shell lance ce noyau
 |---|---|---|
 | `JAROD_OS_DATA` | `%LOCALAPPDATA%\Jarod-OS` (Linux : `~/.local/share/jarod-os`) | données du noyau : `profile\` (base chiffrée, fournisseurs, mémoire, planifications) et `herald-home\` (fichiers du shell) |
 | `JAROD_WORKSPACE` | `Documents\Jarod-OS` | dossier de travail de TOUTES les conversations ; les outils fichiers de Jarod s'y confinent |
-| `HERALD_OS_BACKEND` | `jarod` si le noyau est présent, sinon `hermes` | choix du backend |
-| `HERALD_OS_JAROD_CORE` | (emplacement par défaut) | dossier contenant un `gateway.mjs` compilé à utiliser à la place |
-| `HERALD_OS_BACKEND_URL` + `HERALD_OS_BACKEND_TOKEN` | non défini | se brancher sur un backend déjà lancé (passerelle de développement, par exemple) |
+| `JAROD_OS_BACKEND` | `jarod` si le noyau est présent, sinon `hermes` | choix du backend |
+| `JAROD_OS_JAROD_CORE` | (emplacement par défaut) | dossier contenant un `gateway.mjs` compilé à utiliser à la place |
+| `JAROD_OS_BACKEND_URL` + `JAROD_OS_BACKEND_TOKEN` | non défini | se brancher sur un backend déjà lancé (passerelle de développement, par exemple) |
 
 ### Profil
 

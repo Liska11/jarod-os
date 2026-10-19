@@ -53,7 +53,7 @@ class ToolSpec:
 
 def bridge_enabled() -> bool:
     """``herald_os.bridge.enabled`` in config.yaml (default on; the pre-rename ``hermes_os`` section is
-    still read). ``HERALD_OS_BRIDGE_DISABLED=1`` turns the bridge off for one process."""
+    still read). ``JAROD_OS_BRIDGE_DISABLED=1`` turns the bridge off for one process."""
     if os_env("BRIDGE_DISABLED") == "1":
         return False
     try:
@@ -846,7 +846,7 @@ SYSTEM_OS_SCHEMA = _schema(
     required=("action",),
 )
 
-HERALD_OS_BIN = "herald-os"
+JAROD_OS_BIN = "herald-os"
 _LONG_RUNNING_OS_ACTIONS = frozenset({"install_app", "install_webapp", "remove_app", "update", "catalog_install", "catalog_remove", "plugin_add", "plugin_update"})
 _CATALOG_ID = re.compile(r"^[a-z0-9][a-z0-9-]{0,63}$")
 _PLUGIN_ID = re.compile(r"^[a-z0-9][a-z0-9-]{1,47}$")
@@ -1022,7 +1022,7 @@ def system_os_handler(args: dict[str, Any], **_: Any) -> str:
         return fail(str(exc))
     tier = SYSTEM_OS_TIERS[action]
     timeout = _OS_TIMEOUT_LONG if action in _LONG_RUNNING_OS_ACTIONS else _OS_TIMEOUT_SHORT
-    argv = [HERALD_OS_BIN, *cli_args]
+    argv = [JAROD_OS_BIN, *cli_args]
 
     def execute() -> dict[str, Any]:
         result = run(argv, timeout=timeout)

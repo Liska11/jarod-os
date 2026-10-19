@@ -28,8 +28,13 @@ class ExecResult:
 #: approval gate in the tool layer. These names are filtered from every child (``child_env``); the
 #: subset the bridge itself reads is also removed from this process (``control_env``) — the gateway's
 #: session token belongs to the Hermes runtime sharing this process and is only filtered, not taken.
+#: Contract c5 (contracts/v1) is additive only: each rename ADDS its names and keeps the older ones, so a token exported under
+#: any name the shell has ever used is still filtered. ``JAROD_OS_*`` joined on 2026-10-19 (Jarod-OS rename, phase 2).
 CONTROL_ENV_NAMES = frozenset(
     {
+        "JAROD_OS_CONTROL_TOKEN",
+        "JAROD_OS_CONTROL_SOCKET",
+        "JAROD_OS_CLI_TOKEN",
         "HERALD_OS_CONTROL_TOKEN",
         "HERALD_OS_CONTROL_SOCKET",
         "HERMES_OS_CONTROL_TOKEN",
@@ -57,14 +62,14 @@ def child_env(env: Mapping[str, str] | None = None) -> dict[str, str]:
 def control_env(name: str) -> str:
     """Read one control-plane variable and take it out of this process's environment.
 
-    ``HERALD_OS_<name>`` with the pre-rename ``HERMES_OS_<name>`` fallback, the value remembered for
-    later calls. Removing it from ``os.environ`` is what makes the guarantee hold for every way a
-    child can be started, including the platform shell handlers (``os.startfile``, ShellExecute,
-    ``open -a``) that take no environment argument at all."""
-    key = f"HERALD_OS_{name}"
+    ``JAROD_OS_<name>``, falling back to the older ``HERALD_OS_<name>`` then ``HERMES_OS_<name>`` (the newest name set wins),
+    the value remembered for later calls. EVERY name is removed from ``os.environ``, the ones not used too: removing them is what
+    makes the guarantee hold for every way a child can be started, including the platform shell handlers (``os.startfile``,
+    ShellExecute, ``open -a``) that take no environment argument at all."""
+    key = f"{ENV_PREFIXES[0]}{name}"
     if key not in _TAKEN:
         value = ""
-        for candidate in (key, f"HERMES_OS_{name}"):
+        for candidate in (f"{prefix}{name}" for prefix in ENV_PREFIXES):
             found = os.environ.pop(candidate, "")
             if found and not value:
                 value = found
@@ -142,9 +147,19 @@ def hermes_home() -> Path:
         return Path.home() / ".hermes"
 
 
+#: Prefixes an OS setting is read under, newest first: ``JAROD_OS_`` since the Jarod-OS rename (2026-10-19), then the
+#: names it had before (``HERALD_OS_``, then ``HERMES_OS_``), still read. ``HERALD_OS_DEV_UNSIGNED`` is not read through here:
+#: contract c8 fixes that name.
+ENV_PREFIXES = ("JAROD_OS_", "HERALD_OS_", "HERMES_OS_")
+
+
 def os_env(name: str) -> str:
-    """``HERALD_OS_<name>``, falling back to the pre-rename ``HERMES_OS_<name>``."""
-    return os.environ.get(f"HERALD_OS_{name}") or os.environ.get(f"HERMES_OS_{name}") or ""
+    """``JAROD_OS_<name>``, falling back to the older ``HERALD_OS_<name>`` then ``HERMES_OS_<name>``: the newest name set wins."""
+    for prefix in ENV_PREFIXES:
+        value = os.environ.get(f"{prefix}{name}")
+        if value:
+            return value
+    return ""
 
 
 def data_dir() -> Path:

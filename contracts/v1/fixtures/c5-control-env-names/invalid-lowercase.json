@@ -1,4 +1,7 @@
 [
+  "jarod_os_control_token",
+  "jarod_os_control_socket",
+  "jarod_os_cli_token",
   "herald_os_control_token",
   "herald_os_control_socket",
   "hermes_os_control_token",

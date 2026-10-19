@@ -4,9 +4,19 @@
 # with); otherwise runs in an ephemeral uv environment so the user's Hermes venv is never modified.
 set -euo pipefail
 
+# Variables renamed with Jarod-OS (2026-10-19): an older HERALD_OS_* still counts when JAROD_OS_* is unset (the new name wins).
+# HERALD_OS_DEV_UNSIGNED keeps its name (contract c8). Only names are handled here; no value is printed.
+for _old in $(compgen -e); do
+  case "$_old" in
+    HERALD_OS_DEV_UNSIGNED) ;;
+    HERALD_OS_*) _new="JAROD_OS_${_old#HERALD_OS_}"; [[ -n "${!_new+x}" ]] || export "$_new=${!_old}" ;;
+  esac
+done
+unset _old _new
+
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 HERMES_HOME="${HERMES_HOME:-$HOME/.hermes}"
-PY="${HERALD_OS_PYTHON:-$HERMES_HOME/hermes-agent/venv/bin/python}"
+PY="${JAROD_OS_PYTHON:-$HERMES_HOME/hermes-agent/venv/bin/python}"
 
 cd "$ROOT/plugins/herald-os-bridge/tests"
 # The CLI tests sit outside the plugin, so with no arguments both folders run; arguments (a file,

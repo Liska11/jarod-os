@@ -93,7 +93,7 @@ function journalFromEnv(env: NodeJS.ProcessEnv): RemoteExecJournal | null {
   const file = env.JAROD_CONTROL_JOURNAL?.trim();
   if (!file) return null;
   // The control token the shell gave this process never lands in its journal, even if a command quotes it.
-  return controlJournalSink(file, JOURNAL_LIMIT, () => [env.HERALD_OS_CONTROL_TOKEN ?? "", env.HERMES_OS_CONTROL_TOKEN ?? ""]);
+  return controlJournalSink(file, JOURNAL_LIMIT, () => [env.JAROD_OS_CONTROL_TOKEN ?? "", env.HERMES_OS_CONTROL_TOKEN ?? ""]);
 }
 
 // ── Host keys ────────────────────────────────────────────────────────────────

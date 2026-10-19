@@ -1,5 +1,5 @@
 // Start Electron on the app folder, optionally pointed at the Vite dev server. This replaces the
-// inline `HERALD_OS_DEV_SERVER=... electron .` of the dev script, which cmd.exe cannot parse.
+// inline `JAROD_OS_DEV_SERVER=... electron .` of the dev script, which cmd.exe cannot parse.
 //   node scripts/run-electron.mjs [--dev-server <url>]
 import { spawn } from 'node:child_process'
 import { createRequire } from 'node:module'
@@ -14,7 +14,7 @@ const flag = args.indexOf('--dev-server')
 const env = { ...process.env }
 
 if (flag !== -1) {
-  env.HERALD_OS_DEV_SERVER = args[flag + 1]
+  env.JAROD_OS_DEV_SERVER = args[flag + 1]
   args.splice(flag, 2)
 }
 

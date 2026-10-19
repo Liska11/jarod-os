@@ -76,7 +76,7 @@ const SUPERVISE: &str = env!("CARGO_BIN_EXE_herald-supervise");
 fn supervise(args: &[&str]) -> Command {
     let mut command = Command::new(SUPERVISE);
 
-    command.env("HERALD_OS_CONTRACTS_DIR", contracts_dir()).args(args).stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::piped());
+    command.env("JAROD_OS_CONTRACTS_DIR", contracts_dir()).args(args).stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::piped());
 
     command
 }
@@ -218,7 +218,7 @@ fn the_command_refuses_what_it_must_refuse() {
     // Without the contracts folder, the command does not run at all (no built-in copy of the C5 list).
     let mut no_contracts = Command::new(SUPERVISE);
 
-    no_contracts.env_remove("HERALD_OS_CONTRACTS_DIR").args(["--ready-prefix", "R", "--", "node.exe"]);
+    no_contracts.env_remove("JAROD_OS_CONTRACTS_DIR").args(["--ready-prefix", "R", "--", "node.exe"]);
 
     let output = no_contracts.output().unwrap();
 
@@ -288,7 +288,7 @@ async fn the_current_cordis_kernel_starts_under_the_rust_supervisor_and_stops_cl
     // workspace is visible to it.
     let contracts = Contracts::load(&contracts_dir()).unwrap();
     let names = control_env_names(&contracts).unwrap();
-    let parent: Vec<(String, String)> = std::env::vars().chain([("HERALD_OS_CONTROL_TOKEN".to_string(), "PARENT-CONTROL-TOKEN-0123456789".to_string())]).collect();
+    let parent: Vec<(String, String)> = std::env::vars().chain([("JAROD_OS_CONTROL_TOKEN".to_string(), "PARENT-CONTROL-TOKEN-0123456789".to_string())]).collect();
     let gateway_token = "gateway-token-minted-by-the-host-0123456789";
     let env = ChildEnv::new(&names)
         .inherit_allowlisted(&parent, WINDOWS_ESSENTIALS)

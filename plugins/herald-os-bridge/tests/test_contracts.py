@@ -140,8 +140,8 @@ def wire(plugin, monkeypatch):
         sent.append(json.loads(body))
         return (json.dumps(reply["value"]) + "\n").encode("utf-8")
 
-    monkeypatch.setenv("HERALD_OS_CONTROL_SOCKET", PIPE)
-    monkeypatch.setenv("HERALD_OS_CONTROL_TOKEN", TOKEN)
+    monkeypatch.setenv("JAROD_OS_CONTROL_SOCKET", PIPE)
+    monkeypatch.setenv("JAROD_OS_CONTROL_TOKEN", TOKEN)
     # Loading the plugin already read (and memoised) the empty environment; read it again.
     _mod(plugin, "util").forget_control_env()
     monkeypatch.setattr(ui, "_pipe_request", pipe_request)
@@ -197,8 +197,8 @@ def test_the_client_accepts_what_the_host_announces_and_refuses_everything_else(
 def test_a_tcp_endpoint_is_refused_by_the_client(plugin, monkeypatch):
     ui = _mod(plugin, "ui")
     for doc in [d for _, valid, d in _fixtures("c1-control-endpoint") if not valid and d.startswith(("tcp:", "http:"))]:
-        monkeypatch.setenv("HERALD_OS_CONTROL_SOCKET", doc)
-        monkeypatch.setenv("HERALD_OS_CONTROL_TOKEN", TOKEN)
+        monkeypatch.setenv("JAROD_OS_CONTROL_SOCKET", doc)
+        monkeypatch.setenv("JAROD_OS_CONTROL_TOKEN", TOKEN)
         ui_util = _mod(plugin, "util")
         ui_util.forget_control_env()
         with pytest.raises(ui.ShellUnavailable):
@@ -339,7 +339,7 @@ def test_no_child_inherits_any_named_variable(plugin, monkeypatch):
     for name in _read("fixtures", "c5-control-env-names", "valid-current.json"):
         monkeypatch.setenv(name, "secret-value")
     monkeypatch.setenv("HARMLESS", "kept")
-    env = util.child_env({"HERALD_OS_CONTROL_TOKEN": "smuggled", "EXTRA": "kept"})
+    env = util.child_env({"JAROD_OS_CONTROL_TOKEN": "smuggled", "EXTRA": "kept"})
     assert not set(env) & set(util.CONTROL_ENV_NAMES)
     assert env["HARMLESS"] == "kept" and env["EXTRA"] == "kept"
 

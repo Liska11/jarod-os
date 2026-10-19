@@ -11,7 +11,7 @@ import { shellConfigDir } from '../paths.ts'
 
 /*
  * First-run setup. On Windows (`desktop` mode) it is due until this install was set up once: the system audit, then
- * the accounts; `HERALD_OS_SKIP_SETUP=1` skips it (throwaway profiles, tests).
+ * the accounts; `JAROD_OS_SKIP_SETUP=1` skips it (throwaway profiles, tests).
  *
  * First-boot setup on the Jarod-OS image: the image's first boot made the account (no password)
  * and installed Hermes; the person names it, sets a password, joins Wi-Fi and signs in to Hermes.
@@ -25,7 +25,7 @@ const doneFile = () => path.join(configDir(), 'setup-done')
 export const nameFile = (): string => path.join(configDir(), 'name')
 
 export function setupState(): SetupState {
-  const image = fs.existsSync(FIRSTBOOT_DONE) || process.env.HERALD_OS_FORCE_SETUP === '1'
+  const image = fs.existsSync(FIRSTBOOT_DONE) || process.env.JAROD_OS_FORCE_SETUP === '1'
   let name = ''
 
   try {
@@ -37,7 +37,7 @@ export function setupState(): SetupState {
   const done = fs.existsSync(doneFile())
 
   if (process.platform === 'win32') {
-    return { needed: !done && process.env.HERALD_OS_SKIP_SETUP !== '1', mode: 'desktop', user: os.userInfo().username, name }
+    return { needed: !done && process.env.JAROD_OS_SKIP_SETUP !== '1', mode: 'desktop', user: os.userInfo().username, name }
   }
 
   return { needed: process.platform === 'linux' && image && !done, mode: 'image', user: os.userInfo().username, name }

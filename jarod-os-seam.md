@@ -10,7 +10,7 @@ Mesure en lecture seule, 2026-10-11. Question : si le shell de Herald garde son 
 ## La couture est un serveur local, pas du code partagé
 
 Herald parle à son moteur par un serveur sur `127.0.0.1` : WebSocket JSON-RPC (`/api/ws?token=…`) pour les sessions et le flux, REST (`/api/…`, jeton `X-Hermes-Session-Token`) pour le reste (`docs/ARCHITECTURE.md`, « Backend lifecycle »).
-Le mode **coexistence** existe déjà : `HERALD_OS_BACKEND_URL` + `HERALD_OS_BACKEND_TOKEN` (`electron/backend/coexist.ts`) font attacher le shell à un backend déjà lancé, sans le démarrer lui-même.
+Le mode **coexistence** existe déjà : `JAROD_OS_BACKEND_URL` + `JAROD_OS_BACKEND_TOKEN` (`electron/backend/coexist.ts`) font attacher le shell à un backend déjà lancé, sans le démarrer lui-même.
 Conséquence : un « Jarod gateway » (serveur Node dans le noyau de Jarod parlant ce protocole) se teste avec le shell de Herald **sans modifier le shell**.
 
 ## Ce que le shell appelle (≈ 45 points d'entrée et 30 types d'événement, contre 244 méthodes dans le contrat complet : ≈ 18 %)
@@ -95,7 +95,7 @@ Un serveur minimal dans le noyau de Jarod : `/api/status`, `/api/ws`, `session.c
 
 **Vérifié**
 - 30 tests verts, typecheck du paquet propre. Un test de bout en bout lance le **vrai noyau** (profil temporaire, base chiffrée, agent, outils) derrière la passerelle avec un faux fournisseur de modèle et un vrai client WebSocket. Casser volontairement l'accord (`isApproved` → toujours vrai) fait échouer deux tests : ils détectent bien l'erreur. Les tests ont aussi révélé un défaut réel, corrigé (un second `prompt.submit` refusé effaçait le tour en cours).
-- **Le vrai shell de Herald, sans aucune modification**, attaché par `HERALD_OS_BACKEND_URL` / `HERALD_OS_BACKEND_TOKEN` : il démarre et affiche « HERMES IS READY » ; une phrase tapée dans son champ de saisie arrive au noyau de Jarod et la réponse s'affiche en flux ; un outil sensible (`write_file`) fait apparaître la carte d'accord de Herald (« Allow once » / « Deny ») ; « Allow once » écrit le fichier, « Deny » ne l'écrit pas et le refus remonte dans la conversation. Les clics et la saisie sont des événements Chromium réels, dans la page seulement.
+- **Le vrai shell de Herald, sans aucune modification**, attaché par `JAROD_OS_BACKEND_URL` / `JAROD_OS_BACKEND_TOKEN` : il démarre et affiche « HERMES IS READY » ; une phrase tapée dans son champ de saisie arrive au noyau de Jarod et la réponse s'affiche en flux ; un outil sensible (`write_file`) fait apparaître la carte d'accord de Herald (« Allow once » / « Deny ») ; « Allow once » écrit le fichier, « Deny » ne l'écrit pas et le refus remonte dans la conversation. Les clics et la saisie sont des événements Chromium réels, dans la page seulement.
 
 **Ce que le shell a demandé sans l'obtenir au démarrage** (répondu 404 / -32601, consigné) : `usage.bars`, `billing.state`, **`client.capabilities`** (absente de ma liste statique : l'extraction par recherche de chaînes sous-estimait la couture), `GET /api/memory`, `/api/cron/jobs`, `/api/analytics/usage`, `/api/config/raw`, `/api/providers/oauth`. Le shell reste utilisable : ses pages concernées affichent « not reachable » ou vide.
 

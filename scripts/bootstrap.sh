@@ -7,9 +7,19 @@
 #   5. Report voice support.
 set -euo pipefail
 
+# Variables renamed with Jarod-OS (2026-10-19): an older HERALD_OS_* still counts when JAROD_OS_* is unset (the new name wins).
+# HERALD_OS_DEV_UNSIGNED keeps its name (contract c8). Only names are handled here; no value is printed.
+for _old in $(compgen -e); do
+  case "$_old" in
+    HERALD_OS_DEV_UNSIGNED) ;;
+    HERALD_OS_*) _new="JAROD_OS_${_old#HERALD_OS_}"; [[ -n "${!_new+x}" ]] || export "$_new=${!_old}" ;;
+  esac
+done
+unset _old _new
+
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 HERMES_HOME="${HERMES_HOME:-$HOME/.hermes}"
-HERALD_OS_HERMES_ROOT="${HERALD_OS_HERMES_ROOT:-${HERMES_OS_HERMES_ROOT:-}}"
+JAROD_OS_HERMES_ROOT="${JAROD_OS_HERMES_ROOT:-${HERMES_OS_HERMES_ROOT:-}}"
 OS="$(uname -s)"
 export PATH="$HOME/.local/bin:$PATH"
 
@@ -53,9 +63,9 @@ ln -s "$ROOT/plugins/herald-os-bridge" "$link"
 echo "==> Verifying Hermes runtime"
 HERMES_CMD=()
 HERMES_PY=""
-if [[ -n "$HERALD_OS_HERMES_ROOT" && -x "$HERALD_OS_HERMES_ROOT/venv/bin/python" ]]; then
-  echo "    HERALD_OS_HERMES_ROOT=$HERALD_OS_HERMES_ROOT"
-  HERMES_PY="$HERALD_OS_HERMES_ROOT/venv/bin/python"
+if [[ -n "$JAROD_OS_HERMES_ROOT" && -x "$JAROD_OS_HERMES_ROOT/venv/bin/python" ]]; then
+  echo "    JAROD_OS_HERMES_ROOT=$JAROD_OS_HERMES_ROOT"
+  HERMES_PY="$JAROD_OS_HERMES_ROOT/venv/bin/python"
 elif [[ -x "$HERMES_HOME/hermes-agent/venv/bin/python" ]]; then
   echo "    managed install: $HERMES_HOME/hermes-agent"
   HERMES_PY="$HERMES_HOME/hermes-agent/venv/bin/python"
@@ -70,7 +80,7 @@ else
   echo "      curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash" >&2
 fi
 [[ -n "$HERMES_PY" && ${#HERMES_CMD[@]} -eq 0 ]] && HERMES_CMD=("$HERMES_PY" -m hermes_cli.main)
-runtime_root="${HERALD_OS_HERMES_ROOT:-$HERMES_HOME/hermes-agent}"
+runtime_root="${JAROD_OS_HERMES_ROOT:-$HERMES_HOME/hermes-agent}"
 
 # From the runtime checkout, like the `hermes` entry point: an editable install does not map
 # top-level modules added after it was created.

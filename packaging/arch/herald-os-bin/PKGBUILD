@@ -1,7 +1,7 @@
 # Maintainer: Luke The Dev <252071647+iamlukethedev@users.noreply.github.com>
 #
 # Jarod-OS from the release tarball. Not on the AUR yet: build it from the repository with makepkg -si.
-# A local tarball builds too: HERALD_OS_TARBALL_URL=file:///path/herald-os-<v>-linux-x64.tar.gz makepkg -si --skipchecksums
+# A local tarball builds too: JAROD_OS_TARBALL_URL=file:///path/herald-os-<v>-linux-x64.tar.gz makepkg -si --skipchecksums
 
 pkgname=herald-os-bin
 _version=0.1.0-alpha.1
@@ -40,9 +40,9 @@ conflicts=('herald-os' 'herald-os-git')
 options=('!strip' '!debug')
 install=herald-os.install
 source=('herald-os-package.sh')
-source_x86_64=("herald-os-${_version}-x64.tar.gz::${HERALD_OS_TARBALL_URL:-$url/releases/download/v${_version}/herald-os-${_version}-linux-x64.tar.gz}")
-source_aarch64=("herald-os-${_version}-arm64.tar.gz::${HERALD_OS_TARBALL_URL:-$url/releases/download/v${_version}/herald-os-${_version}-linux-arm64.tar.gz}")
-# From the release's .sha256 files; a tarball of your own (HERALD_OS_TARBALL_URL) needs --skipchecksums.
+source_x86_64=("herald-os-${_version}-x64.tar.gz::${JAROD_OS_TARBALL_URL:-$url/releases/download/v${_version}/herald-os-${_version}-linux-x64.tar.gz}")
+source_aarch64=("herald-os-${_version}-arm64.tar.gz::${JAROD_OS_TARBALL_URL:-$url/releases/download/v${_version}/herald-os-${_version}-linux-arm64.tar.gz}")
+# From the release's .sha256 files; a tarball of your own (JAROD_OS_TARBALL_URL) needs --skipchecksums.
 sha256sums=('120a3b0922a8677c6790af4a93b04109030b5d7201bc85125b62031b152c247c')
 sha256sums_x86_64=('6f8f5aa3f14fb30f8987958baaf55242474c1d0b443358b58ada5a6bebad7456')
 sha256sums_aarch64=('41a58962cfb9212a314a51e9dfe376945f82d2fdb9d35202a03ac55dced14b06')

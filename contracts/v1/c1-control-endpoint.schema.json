@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://jarod-os.invalid/contracts/v1/c1-control-endpoint.schema.json",
   "title": "Control endpoint (what the backend is told to dial)",
-  "description": "`HERALD_OS_CONTROL_SOCKET`: `pipe://herald-os-<16 lowercase hex>` on Windows, or the absolute path of a unix socket ending in `herald-os/control.sock`. There is no TCP endpoint and there never will be one in v1. Producers emit this exact shape; the Python reader is deliberately more tolerant (`[A-Za-z0-9._-]{1,200}`) and a Rust host must emit the strict form.",
+  "description": "`JAROD_OS_CONTROL_SOCKET`: `pipe://herald-os-<16 lowercase hex>` on Windows, or the absolute path of a unix socket ending in `herald-os/control.sock`. There is no TCP endpoint and there never will be one in v1. Producers emit this exact shape; the Python reader is deliberately more tolerant (`[A-Za-z0-9._-]{1,200}`) and a Rust host must emit the strict form.",
   "type": "string",
   "oneOf": [
     {

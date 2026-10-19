@@ -1,3 +1,5 @@
+// Must stay the first import: old variable names are adopted before any module reads process.env.
+import { ADOPTED_LEGACY_ENV } from './legacy-env-adopt.ts'
 import { app, BrowserWindow, dialog, globalShortcut, ipcMain, Notification, protocol, screen, shell } from 'electron'
 import { randomBytes } from 'node:crypto'
 import fs from 'node:fs'
@@ -121,7 +123,7 @@ const networkSessions = electronNetworkSessions()
 
 // With the Jarod core as backend, the shell keeps its Hermes-style files (plugins, themes, audit, notes) in a home of its own, never in a Hermes install of this machine.
 // Left alone when the person set HERMES_HOME, or attached the shell to a backend they run themselves.
-if (!process.env.HERMES_HOME?.trim() && !process.env.HERALD_OS_BACKEND_URL?.trim() && selectBackend(process.env, resolveJarodCore({ ...coreLocation, env: process.env })) === 'jarod') {
+if (!process.env.HERMES_HOME?.trim() && !process.env.JAROD_OS_BACKEND_URL?.trim() && selectBackend(process.env, resolveJarodCore({ ...coreLocation, env: process.env })) === 'jarod') {
   process.env.HERMES_HOME = path.join(jarodDataDir(), 'herald-home')
 }
 
@@ -135,6 +137,10 @@ process.on('uncaughtException', error => log('main', `uncaught exception: ${erro
 // The rest of what can go wrong reaches the same log: rejected promises here, every window's errors, failing IPC calls.
 installProblemLogging(app, ipcMain, log)
 
+if (ADOPTED_LEGACY_ENV.length) {
+  log('env', `read under their old names (still accepted, the new name wins when both are set): ${ADOPTED_LEGACY_ENV.join(', ')}`)
+}
+
 if (dataRoot.kind !== 'default') {
   log('disk', dataRoot.kind === 'root' ? `Jarod-OS lives on ${dataRoot.root}` : dataRoot.kind === 'missing' ? `the Jarod disk ${dataRoot.root} is not reachable: using the default folders` : 'data folders set by the environment')
 }
@@ -143,7 +149,7 @@ for (const line of primary ? migrateLegacyData({ hermesHome: hermesHome(), appDa
   log('migrate', line)
 }
 
-// A folder chosen with HERALD_OS_CONFIG_DIR is the person's (or a test's): nothing is moved into it.
+// A folder chosen with JAROD_OS_CONFIG_DIR is the person's (or a test's): nothing is moved into it.
 for (const line of primary && !osEnv('CONFIG_DIR') ? migrateShellConfig(process.platform, legacyShellConfigDir(), shellConfigDir()) : []) {
   log('migrate', line)
 }

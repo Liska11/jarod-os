@@ -6,7 +6,7 @@
 //! ```
 //!
 //! The child's environment is the Windows essentials plus `--allow`ed names plus `--set` values; the
-//! control names of `c5-control-env-names` (loaded from the folder `HERALD_OS_CONTRACTS_DIR` names) are
+//! control names of `c5-control-env-names` (loaded from the folder `JAROD_OS_CONTRACTS_DIR` names) are
 //! never inherited and are given only with `--grant`. Prints one line per
 //! change (`STATE …`) and the child's own output, redacted, as `LOG <stream> <line>`. Closing its stdin
 //! (or Ctrl-C) stops the child politely and exits. If this process is killed, the Job Object ends the tree.

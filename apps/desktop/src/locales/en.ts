@@ -2787,9 +2787,9 @@ export const en = {
   'network.gatewaySocket': 'Gateway socket',
   'network.gatewaySocket.hint': 'JSON-RPC over WebSocket.',
   'network.runtimeCommand': 'Runtime command',
-  'network.using': 'Using {label} (HERALD_OS_BACKEND_URL)',
+  'network.using': 'Using {label} (JAROD_OS_BACKEND_URL)',
   'network.sharedGateway':
-    'Another app (Hermes Desktop, say) runs a Hermes gateway on this Hermes home (pid {pid}). That is fine: Hermes runs each scheduled job once and keeps one messaging gateway. To share its backend too, start Jarod-OS with HERALD_OS_BACKEND_URL and HERALD_OS_BACKEND_TOKEN.',
+    'Another app (Hermes Desktop, say) runs a Hermes gateway on this Hermes home (pid {pid}). That is fine: Hermes runs each scheduled job once and keeps one messaging gateway. To share its backend too, start Jarod-OS with JAROD_OS_BACKEND_URL and JAROD_OS_BACKEND_TOKEN.',
   'network.mcpGroup': 'MCP servers',
   'network.mcpGroup.hint': 'Model Context Protocol servers.',
   'network.loading': 'Loading\u2026',

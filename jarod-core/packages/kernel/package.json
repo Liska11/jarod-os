@@ -10,7 +10,9 @@
     "./find-on-path": "./src/find-on-path.ts",
     "./redact": "./src/redact.ts",
     "./secret": "./src/secret.ts",
-    "./network": "./src/network.ts"
+    "./network": "./src/network.ts",
+    "./legacy-env": "./src/legacy-env.ts",
+    "./legacy-env-adopt": "./src/legacy-env-adopt.ts"
   },
   "scripts": {
     "test": "vitest run",

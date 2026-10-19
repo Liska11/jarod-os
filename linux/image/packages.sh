@@ -9,6 +9,16 @@
 #                                        the shell is built from the repo, files under /usr/local
 set -euo pipefail
 
+# Variables renamed with Jarod-OS (2026-10-19): an older HERALD_OS_* still counts when JAROD_OS_* is unset (the new name wins).
+# HERALD_OS_DEV_UNSIGNED keeps its name (contract c8). Only names are handled here; no value is printed.
+for _old in $(compgen -e); do
+  case "$_old" in
+    HERALD_OS_DEV_UNSIGNED) ;;
+    HERALD_OS_*) _new="JAROD_OS_${_old#HERALD_OS_}"; [[ -n "${!_new+x}" ]] || export "$_new=${!_old}" ;;
+  esac
+done
+unset _old _new
+
 LINUX="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 MODE="${1:-}"
 case "$MODE" in
@@ -42,7 +52,7 @@ if [[ "$MODE" == "--dev" ]]; then
 fi
 dnf -y install --setopt=install_weak_deps=False "${PACKAGES[@]}"
 # The curated apps every install gets (omakase); Flatpaks and web apps are per user (firstboot.sh).
-if [[ "${HERALD_OS_OMAKASE:-1}" == "1" ]]; then
+if [[ "${JAROD_OS_OMAKASE:-1}" == "1" ]]; then
   mapfile -t OMAKASE < <(list "$LINUX/omakase/packages.txt")
   dnf -y install --skip-unavailable --setopt=install_weak_deps=False "${OMAKASE[@]}" || echo "WARNING: some omakase packages did not install"
 fi

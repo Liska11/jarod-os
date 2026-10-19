@@ -99,7 +99,7 @@ stores under `%APPDATA%` and `%LOCALAPPDATA%`, `%SystemRoot%`, `%ProgramFiles%`,
 and `%ProgramData%`, besides Hermes's own `.env` and `auth.json`. Opening a program or script with the
 default action is refused (it would run it); the kill tool refuses `System`, `lsass`, `csrss`,
 `svchost` and the other processes whose death takes the session down. The shell's control channel is a
-loopback TCP port (`tcp://127.0.0.1:<port>` in `HERALD_OS_CONTROL_SOCKET`), authenticated by the
+loopback TCP port (`tcp://127.0.0.1:<port>` in `JAROD_OS_CONTROL_SOCKET`), authenticated by the
 per-launch token like the Unix socket elsewhere.
 
 ## Tests

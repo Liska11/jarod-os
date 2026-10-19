@@ -123,7 +123,7 @@
       "schema": "c5-control-env-names.schema.json",
       "fixtures": "fixtures/c5-control-env-names",
       "source": [
-        "plugins/herald-os-bridge/bridge/util.py:31 (CONTROL_ENV_NAMES), :48 (child_env), :57 (control_env), :82 (take_control_env)",
+        "plugins/herald-os-bridge/bridge/util.py:33 (CONTROL_ENV_NAMES), :53 (child_env), :62 (control_env), :87 (take_control_env)",
         "apps/desktop/electron/backend/manager.ts:335-343 (what the shell exports)",
         "apps/desktop/electron/backend/jarod-core.ts:135-143"
       ],

@@ -66,7 +66,7 @@ Utilisateur
 
 | Donnée | Propriétaire | Où |
 |---|---|---|
-| Préférences du shell | main (`prefs.ts`) | `%APPDATA%\Jarod-OS\config\prefs.json` (ou `HERALD_OS_CONFIG_DIR`) |
+| Préférences du shell | main (`prefs.ts`) | `%APPDATA%\Jarod-OS\config\prefs.json` (ou `JAROD_OS_CONFIG_DIR`) |
 | Choix du disque | main (`data-root.ts`) | `config\data-location.json` |
 | Profil du noyau, conversations, mémoire, coffre | noyau (storage) | `JAROD_OS_DATA` (`data\`) |
 | Fichiers de travail | utilisateur | `JAROD_WORKSPACE` |

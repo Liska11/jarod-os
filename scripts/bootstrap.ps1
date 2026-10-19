@@ -5,11 +5,18 @@
 #      administrator rights or Developer Mode needed, unlike a symbolic link).
 #   4. Find the Hermes runtime, migrate pre-rename settings, enable the plugin and its toolset.
 #   5. Report voice support.
+# Variables renamed with Jarod-OS (2026-10-19): an older HERALD_OS_* still counts when JAROD_OS_* is unset (the new name wins).
+# HERALD_OS_DEV_UNSIGNED keeps its name (contract c8). Only names are handled here; no value is printed.
+Get-ChildItem Env: | Where-Object { $_.Name -like 'HERALD_OS_*' -and $_.Name -ne 'HERALD_OS_DEV_UNSIGNED' } | ForEach-Object {
+    $jarodName = 'JAROD_OS_' + $_.Name.Substring('HERALD_OS_'.Length)
+    if (-not (Test-Path "Env:$jarodName")) { Set-Item -Path "Env:$jarodName" -Value $_.Value }
+}
+
 $ErrorActionPreference = 'Stop'
 
 $Root = Split-Path -Parent $PSScriptRoot
 $HermesHome = if ($env:HERMES_HOME) { $env:HERMES_HOME } else { Join-Path $env:LOCALAPPDATA 'hermes' }
-$HermesRootOverride = if ($env:HERALD_OS_HERMES_ROOT) { $env:HERALD_OS_HERMES_ROOT } else { $env:HERMES_OS_HERMES_ROOT }
+$HermesRootOverride = if ($env:JAROD_OS_HERMES_ROOT) { $env:JAROD_OS_HERMES_ROOT } else { $env:HERMES_OS_HERMES_ROOT }
 
 function Write-Step($text) { Write-Host "==> $text" }
 function Write-Note($text) { Write-Host "    $text" }
@@ -89,7 +96,7 @@ $runtimeRoot = if ($HermesRootOverride) { $HermesRootOverride } else { Join-Path
 $venvPy = Join-Path $runtimeRoot 'venv/Scripts/python.exe'
 
 if ($HermesRootOverride -and (Test-Path $venvPy)) {
-    Write-Note "HERALD_OS_HERMES_ROOT=$HermesRootOverride"
+    Write-Note "JAROD_OS_HERMES_ROOT=$HermesRootOverride"
     $HermesPy = $venvPy
 } elseif (Test-Path (Join-Path $HermesHome 'hermes-agent/venv/Scripts/python.exe')) {
     Write-Note "managed install: $HermesHome\hermes-agent"

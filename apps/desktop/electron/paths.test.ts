@@ -35,8 +35,8 @@ describe('shellConfigDir', () => {
     expect(shellConfigDir('linux', {}, '/home/san')).toBe(path.join('/home/san', '.config', 'herald-os'))
   })
 
-  it('follows HERALD_OS_CONFIG_DIR when set', () => {
-    expect(shellConfigDir('win32', { HERALD_OS_CONFIG_DIR: 'D:\\Portable\\config' }, 'C:\\Users\\San')).toBe('D:\\Portable\\config')
+  it('follows JAROD_OS_CONFIG_DIR when set', () => {
+    expect(shellConfigDir('win32', { JAROD_OS_CONFIG_DIR: 'D:\\Portable\\config' }, 'C:\\Users\\San')).toBe('D:\\Portable\\config')
   })
 })
 

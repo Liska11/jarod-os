@@ -47,7 +47,7 @@ export function createMainWindow(prefs: HeraldOSPrefs, restore: { bounds: Rect; 
     titleBarStyle: 'hidden',
     // Jarod-OS is its own environment: launch fullscreen on its own Space. `simpleFullscreen`
     // keeps the menu bar hidden without the macOS fullscreen animation on every toggle.
-    // HERALD_OS_WINDOWED=1 is a developer escape hatch for automated runs and screenshots.
+    // JAROD_OS_WINDOWED=1 is a developer escape hatch for automated runs and screenshots.
     fullscreen: kiosk || (prefs.fullscreenOnLaunch && !osEnv('WINDOWED')),
     kiosk,
     simpleFullscreen: false,

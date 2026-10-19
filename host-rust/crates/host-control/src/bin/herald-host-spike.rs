@@ -1,6 +1,6 @@
 //! The spike host: the control boundary of `host_control`, served on a Windows named pipe.
 //!
-//! Fail closed, all of it: the contracts must load from `HERALD_OS_CONTRACTS_DIR`, two tokens must be
+//! Fail closed, all of it: the contracts must load from `JAROD_OS_CONTRACTS_DIR`, two tokens must be
 //! minted, the journal must open, the pipe must be created with its explicit DACL and that DACL must
 //! read back as asked. Any miss exits with status 2 before anything is announced. The endpoint is
 //! printed (one line, stdout) only once the door is open and verified.

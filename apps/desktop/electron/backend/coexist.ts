@@ -6,7 +6,7 @@ import path from 'node:path'
  * Sharing a Hermes home with another app (Hermes Desktop on Omarchy, a gateway the person runs).
  * Hermes itself keeps scheduled jobs to one run (each tick takes cron/.tick.lock) and messaging to one
  * gateway (gateway.pid), so a second backend is safe. To not run one at all, point Herald at the
- * backend already running: HERALD_OS_BACKEND_URL plus its token.
+ * backend already running: JAROD_OS_BACKEND_URL plus its token.
  */
 
 export interface AttachTarget {
@@ -18,7 +18,7 @@ const LOOPBACK = new Set(['127.0.0.1', 'localhost', '[::1]', '::1'])
 
 /** The running backend to use instead of starting one, or null. Loopback only: the token travels in the clear. */
 export function attachTarget(env: NodeJS.ProcessEnv = process.env, readFile: (file: string) => string = file => fs.readFileSync(file, 'utf8')): AttachTarget | null {
-  const raw = env.HERALD_OS_BACKEND_URL?.trim()
+  const raw = env.JAROD_OS_BACKEND_URL?.trim()
 
   if (!raw) {
     return null
@@ -29,22 +29,22 @@ export function attachTarget(env: NodeJS.ProcessEnv = process.env, readFile: (fi
   try {
     url = new URL(raw)
   } catch {
-    throw new Error(`HERALD_OS_BACKEND_URL is not a URL: ${raw}`)
+    throw new Error(`JAROD_OS_BACKEND_URL is not a URL: ${raw}`)
   }
 
   if (url.protocol !== 'http:' || !LOOPBACK.has(url.hostname)) {
-    throw new Error('HERALD_OS_BACKEND_URL must be an http:// address on this machine (127.0.0.1)')
+    throw new Error('JAROD_OS_BACKEND_URL must be an http:// address on this machine (127.0.0.1)')
   }
 
-  let token = env.HERALD_OS_BACKEND_TOKEN?.trim() ?? ''
+  let token = env.JAROD_OS_BACKEND_TOKEN?.trim() ?? ''
 
   if (!token) {
-    const file = env.HERALD_OS_BACKEND_TOKEN_FILE?.trim() || path.join(os.homedir(), '.config', 'herald-os', 'backend-token')
+    const file = env.JAROD_OS_BACKEND_TOKEN_FILE?.trim() || path.join(os.homedir(), '.config', 'herald-os', 'backend-token')
 
     try {
       token = readFile(file).trim()
     } catch {
-      throw new Error(`HERALD_OS_BACKEND_URL needs the backend's token: set HERALD_OS_BACKEND_TOKEN or write it to ${file}`)
+      throw new Error(`JAROD_OS_BACKEND_URL needs the backend's token: set JAROD_OS_BACKEND_TOKEN or write it to ${file}`)
     }
   }
 

@@ -58,7 +58,7 @@ function pathRuntime(extraDirs: string[]): BackendRuntime | null {
 
 /**
  * Ordered ladder. Each rung is validated before it is trusted; a failed read falls to the next.
- *   1. HERALD_OS_HERMES_ROOT (explicit developer override)
+ *   1. JAROD_OS_HERMES_ROOT (explicit developer override)
  *   2. $HERMES_HOME/hermes-agent managed install (what the official installer and `hermes update` maintain)
  *   3. `hermes` shim on PATH (+ the usual user bin dirs a GUI app does not inherit)
  */
@@ -66,7 +66,7 @@ export function resolveBackendRuntime(): BackendRuntime | null {
   const envRoot = osEnv('HERMES_ROOT')?.trim()
 
   if (envRoot) {
-    const runtime = checkoutRuntime(envRoot, 'env', `HERALD_OS_HERMES_ROOT (${envRoot})`)
+    const runtime = checkoutRuntime(envRoot, 'env', `JAROD_OS_HERMES_ROOT (${envRoot})`)
 
     if (runtime) {
       return runtime

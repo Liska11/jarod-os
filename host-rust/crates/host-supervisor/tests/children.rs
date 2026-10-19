@@ -45,6 +45,9 @@ fn parent_env() -> Vec<(String, String)> {
     // A parent that is carrying authority and a provider key, to prove none of it reaches the child.
     vars.push(("HERALD_OS_CONTROL_TOKEN".into(), "PARENT-CONTROL-TOKEN-0123456789".into()));
     vars.push(("herald_os_cli_token".into(), "PARENT-CLI-TOKEN-0123456789".into()));
+    // The names since the Jarod-OS rename (contract c5 lists both generations).
+    vars.push(("JAROD_OS_CONTROL_TOKEN".into(), "PARENT-JAROD-CONTROL-TOKEN-0123456789".into()));
+    vars.push(("jarod_os_cli_token".into(), "PARENT-JAROD-CLI-TOKEN-0123456789".into()));
     vars.push(("JAROD_GATEWAY_TOKEN".into(), "PARENT-GATEWAY-TOKEN-0123456789".into()));
     vars.push(("OPENAI_API_KEY".into(), "sk-parent-provider-key-0123456789".into()));
 
@@ -154,7 +157,7 @@ fn the_environment_probe_child_sees_no_control_name_it_was_not_granted() {
     let names: Vec<&String> = env.vars().keys().collect();
 
     assert!(names.iter().any(|n| n.as_str() == "JAROD_GATEWAY_TOKEN"), "the one granted name is there");
-    assert!(!names.iter().any(|n| n.eq_ignore_ascii_case("HERALD_OS_CONTROL_TOKEN") || n.eq_ignore_ascii_case("HERALD_OS_CLI_TOKEN")), "{names:?}");
+    assert!(!names.iter().any(|n| n.eq_ignore_ascii_case("HERALD_OS_CONTROL_TOKEN") || n.eq_ignore_ascii_case("HERALD_OS_CLI_TOKEN") || n.eq_ignore_ascii_case("JAROD_OS_CONTROL_TOKEN") || n.eq_ignore_ascii_case("JAROD_OS_CLI_TOKEN")), "{names:?}");
     assert!(!names.iter().any(|n| n.as_str() == "OPENAI_API_KEY"), "a provider key is not plumbing");
     assert_eq!(env.vars()["JAROD_GATEWAY_TOKEN"], "granted-gateway-token-0123456789", "the granted value, not the parent's");
 }
@@ -178,7 +181,7 @@ async fn a_real_child_gets_exactly_the_environment_it_was_built() {
 
     assert!(upper.contains(&"JAROD_GATEWAY_TOKEN".to_string()) && upper.contains(&"HOST_TEST_VALUE".to_string()) && upper.contains(&"SYSTEMROOT".to_string()), "{seen:?}");
 
-    for forbidden in ["HERALD_OS_CONTROL_TOKEN", "HERALD_OS_CLI_TOKEN", "HERMES_OS_CONTROL_TOKEN", "HERALD_OS_CONTROL_SOCKET", "OPENAI_API_KEY"] {
+    for forbidden in ["JAROD_OS_CONTROL_TOKEN", "JAROD_OS_CLI_TOKEN", "JAROD_OS_CONTROL_SOCKET", "HERALD_OS_CONTROL_TOKEN", "HERALD_OS_CLI_TOKEN", "HERMES_OS_CONTROL_TOKEN", "HERALD_OS_CONTROL_SOCKET", "OPENAI_API_KEY"] {
         assert!(!upper.contains(&forbidden.to_string()), "{forbidden} reached the child: {seen:?}");
     }
 

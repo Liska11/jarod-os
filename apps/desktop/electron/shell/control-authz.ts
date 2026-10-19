@@ -747,7 +747,7 @@ export interface ControlEndpointInput {
 export interface ControlEndpoint {
   /** How the bridge should reach the shell: a Windows named pipe, or a unix socket path. */
   kind: 'pipe' | 'unix'
-  /** What the backend is told to connect to (`HERALD_OS_CONTROL_SOCKET`). */
+  /** What the backend is told to connect to (`JAROD_OS_CONTROL_SOCKET`). */
   endpoint: string
   /** What the host itself listens on. */
   path: string

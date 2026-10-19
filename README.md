@@ -29,7 +29,7 @@ permission system you control.
 > is not an official Hermes or Nous Research product, and it is not affiliated with, sponsored by or
 > endorsed by Nous Research. Its builds ship their own agent, the **Jarod core** (`jarod-core/`), and can run
 > [Hermes Agent](https://github.com/NousResearch/hermes-agent), the open-source agent Nous Research publishes,
-> instead (`HERALD_OS_BACKEND=hermes`, or when a build has no core). Some install steps below still assume
+> instead (`JAROD_OS_BACKEND=hermes`, or when a build has no core). Some install steps below still assume
 > Hermes; on Windows, see [README-WINDOWS.md](README-WINDOWS.md#which-agent-runs).
 >
 > This derivative is not published yet: the release, CI and clone links below still point to the upstream
@@ -443,7 +443,7 @@ and words it must leave out, such as a client's name.
 | Hermes config, memories, sessions, credentials | `~/.hermes/`, managed by Hermes |
 
 A few options come from environment variables, mostly for development: starting windowed on macOS
-(`HERALD_OS_WINDOWED=1`), using a different Hermes checkout (`HERALD_OS_HERMES_ROOT`), or a
+(`JAROD_OS_WINDOWED=1`), using a different Hermes checkout (`JAROD_OS_HERMES_ROOT`), or a
 throwaway Hermes home (`HERMES_HOME=/tmp/herald-test`). [.env.example](.env.example) lists them
 all.
 
@@ -467,7 +467,7 @@ This writes an Apple Silicon DMG and zip to `apps/desktop/release/`. Before inst
   macOS ones it sends while you are in another app only work when the build is code-signed.
 - **The system tools plugin comes with the app.** On its first start the app links its copy into
   `~/.hermes/plugins` and enables it. A link from a checkout (`npm run bootstrap`) stays as it is.
-- **Hermes Agent is not bundled.** The app finds it as in development: `HERALD_OS_HERMES_ROOT`,
+- **Hermes Agent is not bundled.** The app finds it as in development: `JAROD_OS_HERMES_ROOT`,
   then `~/.hermes/hermes-agent`, then `hermes` on your PATH.
 
 ## Building a Linux release
@@ -529,7 +529,7 @@ does not change the shell's code. Moving the pin is described in [upstream/READM
 
 - **"No Hermes runtime found", or the boot screen never finishes.** Run `hermes doctor`. If Hermes
   lives somewhere other than `~/.hermes/hermes-agent` and is not on your PATH, start with
-  `HERALD_OS_HERMES_ROOT=/path/to/hermes-agent npm run dev`. The cause is usually in
+  `JAROD_OS_HERMES_ROOT=/path/to/hermes-agent npm run dev`. The cause is usually in
   `~/.hermes/logs/jarod-os.log`.
 - **macOS says Jarod-OS "is damaged" or "cannot be opened".** The build is not notarized yet: run
   `xattr -dr com.apple.quarantine "/Applications/Jarod-OS.app"` and open it again.
@@ -551,7 +551,7 @@ does not change the shell's code. Moving the pin is described in [upstream/READM
 - **The microphone does nothing on macOS.** Check System Settings > Privacy & Security >
   Microphone. In development the permission belongs to Electron (or your terminal); in a built
   release, to Jarod-OS.
-- **Stuck fullscreen on macOS.** `Cmd+Ctrl+F`, or start with `HERALD_OS_WINDOWED=1 npm run dev`.
+- **Stuck fullscreen on macOS.** `Cmd+Ctrl+F`, or start with `JAROD_OS_WINDOWED=1 npm run dev`.
 - **Still stuck?** Ask in #help on [Discord](https://discord.gg/RHyFZ7FX6E), or open an issue on
   GitHub.
 

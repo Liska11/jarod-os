@@ -27,10 +27,10 @@ fn scratch(name: &str) -> PathBuf {
 fn command(contracts: Option<&Path>, journal: &Path, tokens: &Path) -> Command {
     let mut command = Command::new(BIN);
 
-    command.env_remove("HERALD_OS_CONTRACTS_DIR");
+    command.env_remove("JAROD_OS_CONTRACTS_DIR");
 
     if let Some(contracts) = contracts {
-        command.env("HERALD_OS_CONTRACTS_DIR", contracts);
+        command.env("JAROD_OS_CONTRACTS_DIR", contracts);
     }
 
     command.arg("--journal").arg(journal).arg("--token-dir").arg(tokens).stdout(Stdio::piped()).stderr(Stdio::piped());

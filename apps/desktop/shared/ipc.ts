@@ -8,7 +8,7 @@ import type { ColorScheme, ThemeColors } from './theme.ts'
 export type BackendPhase = 'idle' | 'resolving' | 'starting' | 'ready' | 'restarting' | 'failed' | 'stopped'
 
 export interface BackendRuntime {
-  /** How the runtime was found: the Jarod core built into the app, env override, managed Hermes install, PATH shim, or a backend already running (HERALD_OS_BACKEND_URL). */
+  /** How the runtime was found: the Jarod core built into the app, env override, managed Hermes install, PATH shim, or a backend already running (JAROD_OS_BACKEND_URL). */
   kind: 'jarod' | 'env' | 'managed' | 'path' | 'attached'
   label: string
   /** Source checkout root when known (managed install / env override). */

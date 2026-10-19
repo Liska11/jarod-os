@@ -12,6 +12,16 @@
 # with `bash linux/vm/run-qemu.sh console`.
 set -euo pipefail
 
+# Variables renamed with Jarod-OS (2026-10-19): an older HERALD_OS_* still counts when JAROD_OS_* is unset (the new name wins).
+# HERALD_OS_DEV_UNSIGNED keeps its name (contract c8). Only names are handled here; no value is printed.
+for _old in $(compgen -e); do
+  case "$_old" in
+    HERALD_OS_DEV_UNSIGNED) ;;
+    HERALD_OS_*) _new="JAROD_OS_${_old#HERALD_OS_}"; [[ -n "${!_new+x}" ]] || export "$_new=${!_old}" ;;
+  esac
+done
+unset _old _new
+
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BUILD="$HERE/build"
 VERSION="${FEDORA_VERSION:-44}"
@@ -38,7 +48,7 @@ MEM="${MEM:-8192}"
 DISK_SIZE="${DISK_SIZE:-64G}"
 # Guest framebuffer. The Cocoa window shows guest pixels 1:1 with the Mac's device pixels, so the
 # default fills the main display's width and leaves room for the menu bar and title bar (72 points,
-# 144 pixels on Retina). Pair a Retina-sized guest with HERALD_OS_SCALE=2 in
+# 144 pixels on Retina). Pair a Retina-sized guest with JAROD_OS_SCALE=2 in
 # ~/.config/herald-os/session.env (and `scale 2` in ~/.config/niri/local.kdl) so text stays crisp.
 DISPLAY_RES="$(system_profiler SPDisplaysDataType 2>/dev/null | awk '/Main Display: Yes/{main=1} /Resolution:/{res=$2" "$4} main && res{print res; exit}')"
 [[ -n "$DISPLAY_RES" ]] || DISPLAY_RES="$(system_profiler SPDisplaysDataType 2>/dev/null | awk '/Resolution:/{print $2" "$4; exit}')"

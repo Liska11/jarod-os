@@ -4,16 +4,26 @@
 # exit ends the session (greetd starts a fresh one).
 set -u
 
+# Variables renamed with Jarod-OS (2026-10-19): an older HERALD_OS_* still counts when JAROD_OS_* is unset (the new name wins).
+# HERALD_OS_DEV_UNSIGNED keeps its name (contract c8). Only names are handled here; no value is printed.
+for _old in $(compgen -e); do
+  case "$_old" in
+    HERALD_OS_DEV_UNSIGNED) ;;
+    HERALD_OS_*) _new="JAROD_OS_${_old#HERALD_OS_}"; [[ -n "${!_new+x}" ]] || export "$_new=${!_old}" ;;
+  esac
+done
+unset _old _new
+
 export ELECTRON_OZONE_PLATFORM_HINT=wayland
 export MOZ_ENABLE_WAYLAND=1
 export QT_QPA_PLATFORM=wayland
 export GDK_BACKEND=wayland,x11
-export HERALD_OS_LINUX_SESSION=1
+export JAROD_OS_LINUX_SESSION=1
 # desktop (cage): the shell is one fullscreen kiosk window. panels (niri): menu bar, dock and the
-# Hermes window are separate windows the compositor places; HERALD_OS_KIOSK stays off.
-export HERALD_OS_SHELL_MODE="${HERALD_OS_SHELL_MODE:-desktop}"
-if [[ "$HERALD_OS_SHELL_MODE" == "desktop" ]]; then
-  export HERALD_OS_KIOSK=1
+# Hermes window are separate windows the compositor places; JAROD_OS_KIOSK stays off.
+export JAROD_OS_SHELL_MODE="${JAROD_OS_SHELL_MODE:-desktop}"
+if [[ "$JAROD_OS_SHELL_MODE" == "desktop" ]]; then
+  export JAROD_OS_KIOSK=1
 fi
 LOG_DIR="$HOME/.local/state/herald-os"
 mkdir -p "$LOG_DIR"
@@ -30,7 +40,7 @@ systemctl --user start xdg-desktop-portal.service 2>/dev/null || true
 
 # System services that belong to the session (panels mode only; cage has no room for them):
 # clipboard history, idle lock and display power, all as transient user units so they die with us.
-if [[ "$HERALD_OS_SHELL_MODE" == "panels" ]]; then
+if [[ "$JAROD_OS_SHELL_MODE" == "panels" ]]; then
   start_service() {
     local unit="$1"
     shift
@@ -60,7 +70,7 @@ fi
 
 # The shell is a source checkout run through its Electron (the dev VM), or a packaged build: the
 # release tarball in /opt/herald-os (Arch) or /usr/share/herald-os/app on the Jarod-OS image.
-APP="${HERALD_OS_APP:-}"
+APP="${JAROD_OS_APP:-}"
 if [[ -z "$APP" ]]; then
   for candidate in "$HOME/Herald-OS/apps/desktop" /opt/herald-os /usr/share/herald-os/app; do
     if [[ -f "$candidate/dist/electron/main.mjs" || -f "$candidate/resources/app.asar" ]]; then
@@ -75,7 +85,7 @@ if [[ -x "$APP/herald-os" && -f "$APP/resources/app.asar" ]]; then
   RUN=("$APP/herald-os")
 else
   # npm workspaces hoist Electron to the repo root; a standalone checkout keeps it under apps/desktop.
-  ELECTRON="${HERALD_OS_ELECTRON:-}"
+  ELECTRON="${JAROD_OS_ELECTRON:-}"
   if [[ -z "$ELECTRON" ]]; then
     for candidate in "$APP/node_modules/.bin/electron" "$APP/../../node_modules/.bin/electron"; do
       if [[ -x "$candidate" ]]; then
@@ -84,7 +94,7 @@ else
       fi
     done
   fi
-  if [[ -x "$ELECTRON" && ( -f "$APP/dist/electron/main.mjs" || -n "${HERALD_OS_DEV_SERVER:-}" ) ]]; then
+  if [[ -x "$ELECTRON" && ( -f "$APP/dist/electron/main.mjs" || -n "${JAROD_OS_DEV_SERVER:-}" ) ]]; then
     RUN=("$ELECTRON" "$APP")
   fi
 fi
@@ -92,20 +102,20 @@ fi
 # app-id niri window rules match on; Wayland explicitly (a stray DISPLAY would send Chromium to X11).
 unset DISPLAY
 flags=(--class=herald-os --ozone-platform=wayland)
-if [[ -n "${HERALD_OS_SOFTWARE_GPU:-}" ]]; then
+if [[ -n "${JAROD_OS_SOFTWARE_GPU:-}" ]]; then
   flags+=(--disable-gpu)
 fi
-# HiDPI under cage: the output is scale 1, so the shell zooms its page instead (HERALD_OS_ZOOM is
+# HiDPI under cage: the output is scale 1, so the shell zooms its page instead (JAROD_OS_ZOOM is
 # read by Electron main; forcing Chromium's device scale factor breaks Wayland buffer sizing).
 # Under niri the output scale in local.kdl handles it and the compositor script unsets the zoom.
-if [[ -n "${HERALD_OS_SCALE:-}" && "$HERALD_OS_SHELL_MODE" == "desktop" ]]; then
-  export HERALD_OS_ZOOM="${HERALD_OS_SCALE}"
+if [[ -n "${JAROD_OS_SCALE:-}" && "$JAROD_OS_SHELL_MODE" == "desktop" ]]; then
+  export JAROD_OS_ZOOM="${JAROD_OS_SCALE}"
 fi
-if [[ -n "${HERALD_OS_NO_SANDBOX:-}" ]]; then
+if [[ -n "${JAROD_OS_NO_SANDBOX:-}" ]]; then
   flags+=(--no-sandbox)
 fi
-if [[ -n "${HERALD_OS_REMOTE_DEBUG_PORT:-}" ]]; then
-  flags+=("--remote-debugging-port=${HERALD_OS_REMOTE_DEBUG_PORT}")
+if [[ -n "${JAROD_OS_REMOTE_DEBUG_PORT:-}" ]]; then
+  flags+=("--remote-debugging-port=${JAROD_OS_REMOTE_DEBUG_PORT}")
 fi
 
 if (( ${#RUN[@]} == 0 )); then
@@ -121,10 +131,10 @@ fi
 # The shell's children inherit its DevTools socket, so one still shutting down (the backend, after a
 # restart) would make the next shell's bind fail without a word.
 wait_for_debug_port() {
-  [[ -n "${HERALD_OS_REMOTE_DEBUG_PORT:-}" ]] || return 0
+  [[ -n "${JAROD_OS_REMOTE_DEBUG_PORT:-}" ]] || return 0
   local _
   for _ in $(seq 1 20); do
-    ss -Hltn "sport = :${HERALD_OS_REMOTE_DEBUG_PORT}" 2>/dev/null | grep -q . || return 0
+    ss -Hltn "sport = :${JAROD_OS_REMOTE_DEBUG_PORT}" 2>/dev/null | grep -q . || return 0
     sleep 0.5
   done
 }
@@ -138,7 +148,7 @@ while :; do
   if [[ $code -eq 0 ]]; then
     # niri outlives the programs it spawned, so it has to be told to end too; otherwise the session
     # would sit there without a menu bar or dock instead of greetd starting a fresh one.
-    if [[ "$HERALD_OS_SHELL_MODE" == "panels" ]]; then
+    if [[ "$JAROD_OS_SHELL_MODE" == "panels" ]]; then
       niri msg action quit --skip-confirmation >/dev/null 2>&1 || true
     fi
     exit 0

@@ -175,14 +175,14 @@ mod tests {
     use super::*;
 
     fn names() -> Vec<String> {
-        vec!["HERALD_OS_CONTROL_TOKEN".into(), "JAROD_GATEWAY_TOKEN".into()]
+        vec!["JAROD_OS_CONTROL_TOKEN".into(), "JAROD_GATEWAY_TOKEN".into()]
     }
 
     fn parent() -> Vec<(String, String)> {
         [
             ("PATH", "C:\\bin"),
             ("herald_os_control_token", "leak1"),
-            ("HERALD_OS_CONTROL_TOKEN", "leak2"),
+            ("JAROD_OS_CONTROL_TOKEN", "leak2"),
             ("JAROD_GATEWAY_TOKEN", "leak3"),
             ("OPENAI_API_KEY", "sk-key"),
             ("TEMP", "C:\\t"),
@@ -194,7 +194,7 @@ mod tests {
 
     #[test]
     fn an_allowlist_takes_only_what_it_names_and_never_a_control_name() {
-        let env = ChildEnv::new(&names()).inherit_allowlisted(&parent(), &["path", "TEMP", "HERALD_OS_CONTROL_TOKEN", "jarod_gateway_token"]);
+        let env = ChildEnv::new(&names()).inherit_allowlisted(&parent(), &["path", "TEMP", "JAROD_OS_CONTROL_TOKEN", "jarod_gateway_token"]);
 
         assert_eq!(env.vars().keys().cloned().collect::<Vec<_>>(), vec!["PATH".to_string(), "TEMP".to_string()]);
         assert!(!env.vars().values().any(|v| v.starts_with("leak") || v.starts_with("sk-")));
@@ -205,7 +205,7 @@ mod tests {
         let env = ChildEnv::new(&names()).inherit_all_except_control(&parent());
 
         assert!(env.vars().contains_key("OPENAI_API_KEY") && env.vars().contains_key("PATH"));
-        assert!(!env.vars().keys().any(|k| k.eq_ignore_ascii_case("HERALD_OS_CONTROL_TOKEN") || k.eq_ignore_ascii_case("JAROD_GATEWAY_TOKEN")));
+        assert!(!env.vars().keys().any(|k| k.eq_ignore_ascii_case("JAROD_OS_CONTROL_TOKEN") || k.eq_ignore_ascii_case("JAROD_GATEWAY_TOKEN")));
     }
 
     #[test]

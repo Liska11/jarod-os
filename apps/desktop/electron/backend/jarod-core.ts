@@ -7,7 +7,7 @@ import { osEnv } from '../env.ts'
 /*
  * The Jarod core: the backend Jarod-OS ships with (`jarod-core/` in this repository, compiled to one file by
  * `jarod-core/scripts/bundle-gateway.mjs`). It answers the same protocol as `hermes serve`, so the shell talks to it the
- * same way. Hermes stays available as an option: HERALD_OS_BACKEND=hermes, or no core in the build.
+ * same way. Hermes stays available as an option: JAROD_OS_BACKEND=hermes, or no core in the build.
  */
 
 export type BackendChoice = 'jarod' | 'hermes'
@@ -41,7 +41,7 @@ export interface CoreLocation {
 
 const nodeName = (platform: NodeJS.Platform): string => (platform === 'win32' ? 'node.exe' : 'node')
 
-/** The compiled core to run, or null when this build has none. HERALD_OS_JAROD_CORE=<folder holding gateway.mjs> overrides the search. */
+/** The compiled core to run, or null when this build has none. JAROD_OS_JAROD_CORE=<folder holding gateway.mjs> overrides the search. */
 export function resolveJarodCore(location: CoreLocation): JarodCore | null {
   const env = location.env ?? process.env
   const platform = location.platform ?? process.platform
@@ -84,7 +84,7 @@ export function resolveJarodCore(location: CoreLocation): JarodCore | null {
 }
 
 /**
- * Which backend to start. HERALD_OS_BACKEND=jarod|hermes decides when set (a forced `jarod` without a core is reported by the caller);
+ * Which backend to start. JAROD_OS_BACKEND=jarod|hermes decides when set (a forced `jarod` without a core is reported by the caller);
  * otherwise the Jarod core when this build has one, Hermes when it does not.
  */
 export function selectBackend(env: NodeJS.ProcessEnv, core: JarodCore | null): BackendChoice {

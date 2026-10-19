@@ -31,7 +31,7 @@ in `--token-dir` so the door can be driven by hand; a real host keeps the backen
 
 The host does not serve (exit status 2, nothing announced on stdout) when:
 
-- `HERALD_OS_CONTRACTS_DIR` is unset, the folder, an index entry, a schema or the golden matrix is missing, a
+- `JAROD_OS_CONTRACTS_DIR` is unset, the folder, an index entry, a schema or the golden matrix is missing, a
   schema does not compile, or the golden matrix does not validate against its own schema;
 - a token is missing, shorter than 22 characters, or the same as the other;
 - the journal cannot be opened;
@@ -53,7 +53,7 @@ cargo clippy --all-targets
 The binary, by hand:
 
 ```bash
-HERALD_OS_CONTRACTS_DIR=../contracts/v1 cargo run -- --journal /tmp/control-audit.jsonl --token-dir /tmp/jarod-tokens
+JAROD_OS_CONTRACTS_DIR=../contracts/v1 cargo run -- --journal /tmp/control-audit.jsonl --token-dir /tmp/jarod-tokens
 ```
 
 ## Conformance with the contracts

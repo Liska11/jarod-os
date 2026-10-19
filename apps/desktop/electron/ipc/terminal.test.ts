@@ -7,7 +7,7 @@ const { defaultShell } = await import('./terminal.ts')
 describe('defaultShell', () => {
   it('uses PowerShell on Windows even when a POSIX $SHELL leaked in from Git Bash', () => {
     expect(defaultShell('win32', { SHELL: '/usr/bin/bash' })).toBe('powershell.exe')
-    expect(defaultShell('win32', { HERALD_OS_SHELL: 'pwsh.exe' })).toBe('pwsh.exe')
+    expect(defaultShell('win32', { JAROD_OS_SHELL: 'pwsh.exe' })).toBe('pwsh.exe')
   })
 
   it('keeps $SHELL and the platform defaults elsewhere', () => {

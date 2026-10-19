@@ -25,9 +25,9 @@ describe('CrashPolicy', () => {
 })
 
 describe('safe mode', () => {
-  it('is on with the flag or HERALD_OS_SAFE_MODE=1', () => {
+  it('is on with the flag or JAROD_OS_SAFE_MODE=1', () => {
     expect(isSafeMode(['jarod', SAFE_MODE_FLAG], {})).toBe(true)
-    expect(isSafeMode(['jarod'], { HERALD_OS_SAFE_MODE: '1' })).toBe(true)
+    expect(isSafeMode(['jarod'], { JAROD_OS_SAFE_MODE: '1' })).toBe(true)
     expect(isSafeMode(['jarod'], {})).toBe(false)
   })
 

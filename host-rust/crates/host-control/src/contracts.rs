@@ -17,7 +17,15 @@ pub const MATRIX_CONTRACT: &str = "c2-authorization-matrix";
 pub const MATRIX_GOLDEN: &str = "valid-current.json";
 
 /// The environment variable that names the contracts folder (`contracts/v1`).
-pub const CONTRACTS_ENV: &str = "HERALD_OS_CONTRACTS_DIR";
+pub const CONTRACTS_ENV: &str = "JAROD_OS_CONTRACTS_DIR";
+/// Its name before the Jarod-OS rename (2026-10-19), still read when the new one is unset or empty.
+pub const LEGACY_CONTRACTS_ENV: &str = "HERALD_OS_CONTRACTS_DIR";
+
+/// The contracts folder named by the environment `get` reads: the new name first, then the old one; an empty value counts as
+/// unset. Taking the reader as an argument lets the tests check the order without touching the process environment.
+pub fn contracts_dir_from(get: impl Fn(&str) -> Option<std::ffi::OsString>) -> Option<std::ffi::OsString> {
+    [CONTRACTS_ENV, LEGACY_CONTRACTS_ENV].into_iter().find_map(|name| get(name).filter(|v| !v.is_empty()))
+}
 
 #[derive(Debug)]
 pub struct ContractsError(pub String);
@@ -157,12 +165,12 @@ pub struct Contracts {
 }
 
 impl Contracts {
-    /// The folder `HERALD_OS_CONTRACTS_DIR` names. Unset is an error: there is no built-in copy to fall
-    /// back on, on purpose.
+    /// The folder `JAROD_OS_CONTRACTS_DIR` names, or the older `HERALD_OS_CONTRACTS_DIR` when the new name is unset or empty
+    /// (the new name wins). Neither set is an error: there is no built-in copy to fall back on, on purpose.
     pub fn load_from_env() -> Result<Contracts, ContractsError> {
-        match std::env::var_os(CONTRACTS_ENV) {
-            Some(dir) if !dir.is_empty() => Contracts::load(Path::new(&dir)),
-            _ => fail(format!("{CONTRACTS_ENV} is not set: the contracts are loaded from disk and there is no built-in copy")),
+        match contracts_dir_from(|name| std::env::var_os(name)) {
+            Some(dir) => Contracts::load(Path::new(&dir)),
+            None => fail(format!("{CONTRACTS_ENV} is not set: the contracts are loaded from disk and there is no built-in copy")),
         }
     }
 

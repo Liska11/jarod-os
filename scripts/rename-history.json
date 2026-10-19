@@ -1,0 +1,30 @@
+{
+  "$comment": "Renommage Herald -> Jarod (docs/RENAME-PLAN-JAROD-OS.md) : ce que les phases ne réécrivent jamais. Attributions (§2), historique daté, amont, migrations passées, outillage du renommage. Préfixes de chemin (dossier terminé par /) ou chemins exacts, relatifs à la racine du dépôt.",
+  "paths": [
+    "LICENSE",
+    "NOTICE",
+    "jarod-core/licenses/",
+    "docs/THIRD-PARTY-NOTICES.md",
+    "jarod-herald-reuse.md",
+    "docs/DECISIONS.md",
+    "docs/BACKLOG.md",
+    "docs/RENAME-PLAN-JAROD-OS.md",
+    "docs/audit/",
+    "upstream/",
+    "jarod-core/upstream.json",
+    "linux/migrations/",
+    "ANALYSE-2026-10-12.md",
+    "ANALYSE-2026-10-13.md",
+    "AUTONOMY-DECISIONS.md",
+    "AUTONOMY-RESEARCH.md",
+    "HANDOFF.md",
+    "HANDOFF-AUTONOME.md",
+    "WINDOWS-PORT-NOTES.md",
+    "scripts/rename-inventory.mjs",
+    "scripts/rename-baseline.mjs",
+    "scripts/rename-apply.mjs",
+    "scripts/rename-history.json",
+    "jarod-core/tests/repo/rename-baseline.json",
+    "jarod-core/tests/repo/rename-guard.test.ts"
+  ]
+}

@@ -1,6 +1,6 @@
 // Client du moteur Pinokio (pinokiod, MIT) que Jarod-OS embarque (DECISIONS.md, ADR-022). Le shell le démarre à la demande et
 // annonce son adresse au cœur par JAROD_PINOKIO_URL (http://127.0.0.1:42000) ; s'il ne répond pas encore, le cœur demande au shell
-// de le démarrer par le socket de contrôle (commande `pinokio.start`, HERALD_OS_CONTROL_SOCKET + HERALD_OS_CONTROL_TOKEN).
+// de le démarrer par le socket de contrôle (commande `pinokio.start`, JAROD_OS_CONTROL_SOCKET + JAROD_OS_CONTROL_TOKEN).
 //
 // L'API est celle qu'utilise `pterm`, l'outil en ligne de commande de Pinokio : HTTP pour l'état (/apps/search, /apps/status,
 // /apps/logs, /info/apps), WebSocket JSON pour l'exécution (un script, `app.download`, `kernel.api.stop`). Le registre public des
@@ -32,8 +32,8 @@ export function pinokioUrl(env: NodeJS.ProcessEnv = process.env): string | null 
 
 /** Une requête `ui` au shell par son socket de contrôle (lignes JSON ; port TCP local sous Windows, socket Unix ailleurs). */
 export function askShell(command: string, env: NodeJS.ProcessEnv = process.env, timeoutMs = 120_000, args: Record<string, unknown> = {}): Promise<Record<string, unknown>> {
-  const endpoint = (env.HERALD_OS_CONTROL_SOCKET ?? env.HERMES_OS_CONTROL_SOCKET)?.trim();
-  const token = env.HERALD_OS_CONTROL_TOKEN ?? env.HERMES_OS_CONTROL_TOKEN;
+  const endpoint = (env.JAROD_OS_CONTROL_SOCKET ?? env.HERMES_OS_CONTROL_SOCKET)?.trim();
+  const token = env.JAROD_OS_CONTROL_TOKEN ?? env.HERMES_OS_CONTROL_TOKEN;
   if (!endpoint || !token) return Promise.reject(new Error("Jarod-OS n'a pas donné son socket de contrôle : lancez le moteur Pinokio depuis sa fenêtre."));
   return new Promise((resolve, reject) => {
     const tcp = /^tcp:\/\/([^:]+):(\d+)$/.exec(endpoint);

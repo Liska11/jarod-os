@@ -16,7 +16,7 @@ bridge/
   audit.py           one JSON line per call in $HERMES_HOME/herald-os/audit.jsonl
   crash.py           crash report summaries for system_logs (macOS .ips, Linux core dumps; Windows reads WER events in host/windows.py)
   ui.py              client for the shell's control socket, a Unix socket or loopback TCP on Windows (the `os_ui` tool)
-  util.py            shared helpers (data folder, HERALD_OS_* settings)
+  util.py            shared helpers (data folder, JAROD_OS_* settings)
   host/              HostAdapter per OS: darwin.py, linux.py, posix.py, windows.py (+ winps.py, the PowerShell scripts)
 skills/
   herald-os/         when to use these tools
@@ -36,4 +36,4 @@ hermes tools enable herald_os
 ```
 
 To switch the tools off without uninstalling, set `herald_os.bridge.enabled: false` in
-`~/.hermes/config.yaml`, or `HERALD_OS_BRIDGE_DISABLED=1` in the backend's environment for one run.
+`~/.hermes/config.yaml`, or `JAROD_OS_BRIDGE_DISABLED=1` in the backend's environment for one run.

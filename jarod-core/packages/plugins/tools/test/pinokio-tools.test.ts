@@ -166,7 +166,7 @@ describe("client helpers", () => {
     });
     await new Promise<void>((r) => server.listen(0, "127.0.0.1", () => r()));
     const port = (server.address() as { port: number }).port;
-    const reply = await askShell("pinokio.start", { HERALD_OS_CONTROL_SOCKET: `tcp://127.0.0.1:${port}`, HERALD_OS_CONTROL_TOKEN: "tok" });
+    const reply = await askShell("pinokio.start", { JAROD_OS_CONTROL_SOCKET: `tcp://127.0.0.1:${port}`, JAROD_OS_CONTROL_TOKEN: "tok" });
     server.close();
     expect(reply).toEqual({ ok: true, summary: "Pinokio engine ready" });
     expect(JSON.parse(seen[0] ?? "{}")).toEqual({ cmd: "ui", token: "tok", command: "pinokio.start", args: {}, source: "agent" });

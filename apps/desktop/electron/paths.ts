@@ -26,7 +26,7 @@ export function heraldOsDataDir(): string {
  * The shell's own settings: widget plugins, hook scripts, user themes, branding, menu entries, first-run state.
  * `~/.config/herald-os` on Linux and macOS, where the `herald-os` CLI and the docs expect it. On Windows it is
  * `%APPDATA%\Jarod-OS\config`, beside the app's other settings, rather than a Unix dot-folder in the home
- * (`migrateShellConfig` moves an old one over). HERALD_OS_CONFIG_DIR moves it anywhere (a portable install, tests).
+ * (`migrateShellConfig` moves an old one over). JAROD_OS_CONFIG_DIR moves it anywhere (a portable install, tests).
  */
 export function shellConfigDir(platform: NodeJS.Platform = process.platform, env: NodeJS.ProcessEnv = process.env, home: string = os.homedir()): string {
   const override = osEnv('CONFIG_DIR', env)?.trim()
@@ -47,7 +47,7 @@ export function legacyShellConfigDir(home: string = os.homedir()): string {
   return path.join(home, '.config', 'herald-os')
 }
 
-export const isDev = process.env.HERALD_OS_BUILD_MODE === 'development' || Boolean(osEnv('DEV_SERVER'))
+export const isDev = process.env.JAROD_OS_BUILD_MODE === 'development' || Boolean(osEnv('DEV_SERVER'))
 
 /**
  * The Windows AppUserModelID: the installed app's only when packaged. Any run from the checkout (dev server, `electron .`, the

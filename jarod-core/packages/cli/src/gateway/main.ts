@@ -3,6 +3,8 @@
 // et le sert comme un `hermes serve`. Écrit `HERMES_BACKEND_READY port=N` (la ligne que le shell sait lire) et un fichier
 // `gateway.json` (url + jeton, 0600 et restriction `icacls` sous Windows, effacé à l'arrêt) dans le dossier du profil ; Ctrl-C affiche ce que le shell a demandé sans l'obtenir.
 // Sortie : 2 = arguments invalides, 3 = démarrage refusé (profil déjà servi, port occupé) — jamais une pile Node brute.
+// Premier import : les variables encore posées sous leur ancien nom sont adoptées avant toute lecture de process.env (renommage, phase 2).
+import "@jarod/kernel/legacy-env-adopt";
 import { existsSync, realpathSync, statSync } from "node:fs";
 import { isAbsolute, join } from "node:path";
 import { assertOneaiChannel, bindLocalModelsEvents, bindUpdateEvents, bindVoiceEvents, closeAllApiServers, createHandlers, desktopKernelOf, HERMES_REGISTRY, RegistryClient, startRememberedApiServers } from "@jarod/bridge";

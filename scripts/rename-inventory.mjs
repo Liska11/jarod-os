@@ -15,7 +15,14 @@ import { fileURLToPath } from "node:url";
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 /** L'outillage du renommage nomme forcément l'ancien nom : il n'est jamais compté. */
-export const TOOLING = ["scripts/rename-inventory.mjs", "scripts/rename-baseline.mjs", "jarod-core/tests/repo/rename-baseline.json", "jarod-core/tests/repo/rename-guard.test.ts"];
+export const TOOLING = [
+  "scripts/rename-inventory.mjs",
+  "scripts/rename-baseline.mjs",
+  "scripts/rename-apply.mjs",
+  "scripts/rename-history.json",
+  "jarod-core/tests/repo/rename-baseline.json",
+  "jarod-core/tests/repo/rename-guard.test.ts",
+];
 
 export const FAMILIES = [
   ["herald (toutes casses)", "-i", "herald"],

@@ -1,7 +1,7 @@
 // Démonstration de l'essai : le VRAI noyau de Jarod sur un profil jetable, un FAUX fournisseur de modèle local (aucune clé, aucun réseau
 // externe) et la passerelle, dans un seul processus. À lancer avec `pnpm --filter @jarod/cli exec tsx src/gateway/demo.ts`, puis à
 // brancher au shell de Herald OS :
-//   HERALD_OS_BACKEND_URL=http://127.0.0.1:<port>  HERALD_OS_BACKEND_TOKEN=<jeton>
+//   JAROD_OS_BACKEND_URL=http://127.0.0.1:<port>  JAROD_OS_BACKEND_TOKEN=<jeton>
 // Le faux modèle répond en écho ; si le message contient « écris », il demande d'écrire un fichier (donc l'accord de l'utilisateur).
 import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { createServer } from "node:http";

@@ -82,16 +82,24 @@ export function matchesRule(rule: EventAutomation, event: HeraldEvent): boolean 
   })
 }
 
-/** Environment a hook script runs with: the event's name, time, JSON and each detail as its own variable. */
-export function hookEnv(event: HeraldEvent): Record<string, string> {
-  const env: Record<string, string> = {
-    HERALD_EVENT: event.name,
-    HERALD_EVENT_AT: new Date(event.at).toISOString(),
-    HERALD_EVENT_JSON: JSON.stringify(event)
-  }
+/**
+ * Prefixes a hook script sees its variables under. `JAROD_EVENT` since the Jarod-OS rename (2026-10-19); `HERALD_EVENT`, the name
+ * hooks already written use, is set too, with the same values, until the fallbacks are retired (docs/RENAME-PLAN-JAROD-OS.md, phase 6).
+ */
+export const HOOK_ENV_PREFIXES = ['JAROD_EVENT', 'HERALD_EVENT'] as const
 
-  for (const [key, value] of Object.entries(event.detail)) {
-    env[`HERALD_EVENT_${key.toUpperCase().replace(/[^A-Z0-9]+/g, '_')}`] = value
+/** Environment a hook script runs with: the event's name, time, JSON and each detail as its own variable, under each prefix. */
+export function hookEnv(event: HeraldEvent): Record<string, string> {
+  const env: Record<string, string> = {}
+
+  for (const prefix of HOOK_ENV_PREFIXES) {
+    env[prefix] = event.name
+    env[`${prefix}_AT`] = new Date(event.at).toISOString()
+    env[`${prefix}_JSON`] = JSON.stringify(event)
+
+    for (const [key, value] of Object.entries(event.detail)) {
+      env[`${prefix}_${key.toUpperCase().replace(/[^A-Z0-9]+/g, '_')}`] = value
+    }
   }
 
   return env

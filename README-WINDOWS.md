@@ -1,7 +1,7 @@
 # Jarod-OS on Windows (alpha)
 
 Jarod-OS is derived from Herald OS by Luke The Dev (MIT; see [NOTICE](NOTICE)). Only the name shown to the
-user, the executable and the installer identity changed; internal identifiers (`herald-os-bridge`, `HERALD_OS_*`,
+user, the executable and the installer identity changed; internal identifiers (`herald-os-bridge`, `JAROD_OS_*`,
 `window.heraldOS`, data folders under `herald-os`) keep their upstream names.
 
 Jarod-OS runs on Windows 10 and 11 as an **application**: the same window as on macOS, fullscreen
@@ -16,7 +16,7 @@ session.
   (`JAROD_OS_DATA` moves it) and conversations work in `Documents\Jarod-OS` (`JAROD_WORKSPACE`).
   From source, `npm run bundle:core` builds it into `jarod-core\dist\gateway`, where `npm run dev`
   finds it.
-- **Hermes Agent, if you prefer it** or when no core was built: set `HERALD_OS_BACKEND=hermes`, and
+- **Hermes Agent, if you prefer it** or when no core was built: set `JAROD_OS_BACKEND=hermes`, and
   install Hermes as in step 1. The system bridge described below is the Hermes side; the Jarod
   core has its own system tools.
 
@@ -80,10 +80,10 @@ automatically.
 
 | Setting | Effect |
 | --- | --- |
-| `$env:HERALD_OS_WINDOWED = '1'` | Start in a window instead of fullscreen. |
+| `$env:JAROD_OS_WINDOWED = '1'` | Start in a window instead of fullscreen. |
 | `F11` | Toggle fullscreen at any time. `Alt+F4` closes the window. |
-| `$env:HERALD_OS_SHELL = 'pwsh.exe'` | The shell the Terminal app starts (PowerShell 5.1 by default). |
-| `$env:HERALD_OS_HERMES_ROOT = 'C:\path\to\hermes-agent'` | Use another Hermes checkout. |
+| `$env:JAROD_OS_SHELL = 'pwsh.exe'` | The shell the Terminal app starts (PowerShell 5.1 by default). |
+| `$env:JAROD_OS_HERMES_ROOT = 'C:\path\to\hermes-agent'` | Use another Hermes checkout. |
 
 ## 3. Check that it all works
 

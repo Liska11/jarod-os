@@ -2,7 +2,7 @@
 
 > **Where these files live.** This page writes the shell's settings folder as `~/.config/herald-os`,
 > which is where it is on Linux and macOS. On Windows it is `%APPDATA%\Jarod-OS\config` (an older
-> `%USERPROFILE%\.config\herald-os` is moved there on the next start). `HERALD_OS_CONFIG_DIR` puts it
+> `%USERPROFILE%\.config\herald-os` is moved there on the next start). `JAROD_OS_CONFIG_DIR` puts it
 > anywhere else.
 
 ## Themes
@@ -230,9 +230,10 @@ in, tell me what is on my calendar".
 For chores that need no Hermes (a script, a sound, syncing a folder), drop an executable script into
 `~/.config/herald-os/hooks/<event>.d/`, where `<event>` is `login`, `wake`, `unlock`, `returned`,
 `battery-low`, `network-change`, `crash`, `theme-set`, `after-update`, `lock` or `sleep`. It runs
-with the event name as its first argument and in `HERALD_EVENT`, each detail in its own variable
-(`HERALD_EVENT_APP` for a crash, `HERALD_EVENT_PERCENT` for low battery, `HERALD_EVENT_WIFI` for a
-network change) and everything as JSON in `HERALD_EVENT_JSON`. Files ending in `.sample` are
+with the event name as its first argument and in `JAROD_EVENT`, each detail in its own variable
+(`JAROD_EVENT_APP` for a crash, `JAROD_EVENT_PERCENT` for low battery, `JAROD_EVENT_WIFI` for a
+network change) and everything as JSON in `JAROD_EVENT_JSON`. Hooks written before the Jarod-OS rename keep
+working: the same values are also set under the older `HERALD_EVENT` prefix. Files ending in `.sample` are
 skipped, and a hook gets two minutes.
 
 ```sh

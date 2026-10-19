@@ -12,6 +12,10 @@ Statut : **préparé le 2026-10-17 ; lancé le 2026-10-19 sur décision de l'hum
 6. Attribution à Herald OS : inchangée.
 7. Un commit local par phase (jamais de push) : chaque phase s'annule seule par `git revert`.
 
+Phase 1 faite : paquets `@jarod-os/desktop` et `@jarod-os/client`, lockfile régénéré (noms seulement).
+
+Phase 2 faite : variables `JAROD_OS_*` partout (`scripts/rename-apply.mjs env`, reproductible) ; l'ancien nom reste lu par une fonction unique par monde (`apps/desktop/shared/legacy-env.ts`, `jarod-core/packages/kernel/src/legacy-env.ts`, importées EN PREMIER par chaque point d'entrée, bundle compris), par `os_env`/`control_env` du pont Python (trois générations, toutes retirées de l'environnement), par `contracts_dir_from` côté Rust et par un bloc d'adoption en tête de chaque script autonome (bash, Python, PowerShell). Contrat c5 : trois noms AJOUTÉS (onze en tout, aucun retiré, règle v1). Le nom de la dérogation de signature du contrat c8 est gardé tel quel (le renommer serait une v2). Les scripts de hooks reçoivent les deux préfixes d'événement. Portes : shell 1 324, noyau complet, pont Python 448, Rust 16 suites (dont le noyau réel sous le superviseur).
+
 Phase 0 faite : `scripts/rename-inventory.mjs` (inventaire par famille, lecture seule) et `jarod-core/tests/repo/rename-guard.test.ts` (attributions intactes ; cliquet par fichier contre `rename-baseline.json`, qui ne fait que baisser).
 
 ## 1. État vérifié

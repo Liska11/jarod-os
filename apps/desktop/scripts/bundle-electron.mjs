@@ -15,7 +15,7 @@ const common = {
   minify: false,
   logLevel: 'info',
   define: {
-    'process.env.HERALD_OS_BUILD_MODE': JSON.stringify(dev ? 'development' : 'production')
+    'process.env.JAROD_OS_BUILD_MODE': JSON.stringify(dev ? 'development' : 'production')
   }
 }
 

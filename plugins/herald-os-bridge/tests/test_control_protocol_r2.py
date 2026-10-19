@@ -138,8 +138,8 @@ class R2Shell:
 @pytest.fixture(params=[LOCAL_KIND])
 def shell(request, monkeypatch, plugin):
     fake = R2Shell(request.param, "secret-token")
-    monkeypatch.setenv("HERALD_OS_CONTROL_SOCKET", fake.endpoint)
-    monkeypatch.setenv("HERALD_OS_CONTROL_TOKEN", "secret-token")
+    monkeypatch.setenv("JAROD_OS_CONTROL_SOCKET", fake.endpoint)
+    monkeypatch.setenv("JAROD_OS_CONTROL_TOKEN", "secret-token")
     _mod(plugin, "util").forget_control_env()
     yield fake
     fake.close()
@@ -185,8 +185,8 @@ def test_a_mutation_is_approved_by_the_shell_and_the_capability_is_spent_once(pl
 
 def test_a_refusal_is_final_and_changes_nothing(plugin, monkeypatch):
     fake = R2Shell(LOCAL_KIND, "secret-token", deny=True)
-    monkeypatch.setenv("HERALD_OS_CONTROL_SOCKET", fake.endpoint)
-    monkeypatch.setenv("HERALD_OS_CONTROL_TOKEN", "secret-token")
+    monkeypatch.setenv("JAROD_OS_CONTROL_SOCKET", fake.endpoint)
+    monkeypatch.setenv("JAROD_OS_CONTROL_TOKEN", "secret-token")
     _mod(plugin, "util").forget_control_env()
     try:
         ui = _mod(plugin, "ui")
@@ -240,8 +240,8 @@ def test_an_agent_mutation_shows_one_approval_and_the_host_is_the_one_asking(plu
     and reaching it here would be the second prompt R2.1 removes.
     """
     fake = R2Shell(LOCAL_KIND, "secret-token")
-    monkeypatch.setenv("HERALD_OS_CONTROL_SOCKET", fake.endpoint)
-    monkeypatch.setenv("HERALD_OS_CONTROL_TOKEN", "secret-token")
+    monkeypatch.setenv("JAROD_OS_CONTROL_SOCKET", fake.endpoint)
+    monkeypatch.setenv("JAROD_OS_CONTROL_TOKEN", "secret-token")
     util = _mod(plugin, "util")
     util.forget_control_env()
     tools = _mod(plugin, "tools")
@@ -276,8 +276,8 @@ def test_a_host_refusal_surfaces_as_a_tool_error_with_no_side_effect(plugin, mon
     the single question that was asked — and the mutation has not run, and is not retried.
     """
     fake = R2Shell(LOCAL_KIND, "secret-token", deny=True)
-    monkeypatch.setenv("HERALD_OS_CONTROL_SOCKET", fake.endpoint)
-    monkeypatch.setenv("HERALD_OS_CONTROL_TOKEN", "secret-token")
+    monkeypatch.setenv("JAROD_OS_CONTROL_SOCKET", fake.endpoint)
+    monkeypatch.setenv("JAROD_OS_CONTROL_TOKEN", "secret-token")
     _mod(plugin, "util").forget_control_env()
     tools = _mod(plugin, "tools")
     permissions = _mod(plugin, "permissions")
@@ -377,8 +377,8 @@ def test_an_agent_attempt_names_itself_once_across_every_request_it_makes(plugin
     journals readable together — and the shell never compares it to anything, so it authorises nothing.
     """
     fake = R2Shell(LOCAL_KIND, "secret-token")
-    monkeypatch.setenv("HERALD_OS_CONTROL_SOCKET", fake.endpoint)
-    monkeypatch.setenv("HERALD_OS_CONTROL_TOKEN", "secret-token")
+    monkeypatch.setenv("JAROD_OS_CONTROL_SOCKET", fake.endpoint)
+    monkeypatch.setenv("JAROD_OS_CONTROL_TOKEN", "secret-token")
     util = _mod(plugin, "util")
     util.forget_control_env()
     tools = _mod(plugin, "tools")

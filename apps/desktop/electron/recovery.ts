@@ -14,7 +14,7 @@ export const SAFE_MODE_FLAG = '--safe-mode'
 export const RECOVERY_SCHEME = 'jarod-recovery:'
 export type RecoveryAction = 'reload' | 'safe-mode' | 'normal-mode' | 'quit'
 
-/** `--safe-mode` on the command line, or HERALD_OS_SAFE_MODE=1. */
+/** `--safe-mode` on the command line, or JAROD_OS_SAFE_MODE=1. */
 export function isSafeMode(argv: readonly string[] = process.argv, env: NodeJS.ProcessEnv = process.env): boolean {
   return argv.includes(SAFE_MODE_FLAG) || osEnv('SAFE_MODE', env) === '1'
 }

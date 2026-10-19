@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 
 /** Variables that would let a test reach a real provider or the user's real profile: never inherited. */
-const STRIPPED = /^(OPENAI|ANTHROPIC|GROQ|GEMINI|GOOGLE|OPENROUTER|NOUS|ZAI|QWEN|MISTRAL|DEEPSEEK|XAI|TELEGRAM|DISCORD|SLACK|HF|HUGGING)[A-Z_]*(KEY|TOKEN)$|^HERALD_OS_BACKEND_(URL|TOKEN)$/i
+const STRIPPED = /^(OPENAI|ANTHROPIC|GROQ|GEMINI|GOOGLE|OPENROUTER|NOUS|ZAI|QWEN|MISTRAL|DEEPSEEK|XAI|TELEGRAM|DISCORD|SLACK|HF|HUGGING)[A-Z_]*(KEY|TOKEN)$|^JAROD_OS_BACKEND_(URL|TOKEN)$/i
 
 /** The prefix of every throwaway root; `global-setup.ts` checks that a run leaves none of its own behind. */
 export const ROOT_PREFIX = 'jarod-e2e-'
@@ -97,7 +97,7 @@ export async function launchShell(extraEnv: Record<string, string> = {}, options
   Object.assign(env, {
     // The Hermes home too: without it a test run wrote the app log, migrations and the bridge plugin link into the real one.
     HERMES_HOME: path.join(root, 'hermes'),
-    HERALD_OS_CONFIG_DIR: path.join(root, 'config'),
+    JAROD_OS_CONFIG_DIR: path.join(root, 'config'),
     JAROD_OS_DATA: path.join(root, 'data'),
     JAROD_WORKSPACE: path.join(root, 'workspace'),
     JAROD_OS_ISOLATED: '1',

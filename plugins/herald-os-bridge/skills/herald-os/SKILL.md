@@ -128,9 +128,9 @@ Jarod-OS notices these events: `login`, `wake`, `unlock`, `returned` (back after
   on the Automations page as "When I log in"; runs keep their history like scheduled ones.
 - Something that is not a Hermes task (a script, a sound, syncing a folder): a hook. Write an
   executable script into `~/.config/herald-os/hooks/<event>.d/` (any name; files ending in
-  `.sample` are ignored). It runs with the event as `$1` and `HERALD_EVENT`, its details as
-  `HERALD_EVENT_<NAME>` (for example `HERALD_EVENT_APP`), and everything as JSON in
-  `HERALD_EVENT_JSON`; it has two minutes. On Jarod-OS Linux, `herald-os hook list` shows them
+  `.sample` are ignored). It runs with the event as `$1` and `JAROD_EVENT`, its details as
+  `JAROD_EVENT_<NAME>` (for example `JAROD_EVENT_APP`), and everything as JSON in
+  `JAROD_EVENT_JSON`; it has two minutes. On Jarod-OS Linux, `herald-os hook list` shows them
   and `herald-os hook install <event> <script>` copies one in.
 
 ## Norms

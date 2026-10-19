@@ -18,7 +18,7 @@ describe('resolveJarodCore', () => {
     const gateway = path.join(resources, 'jarod-core', 'gateway.mjs')
     const execPath = path.join('C:', 'App', 'Jarod-OS.exe')
 
-    expect(resolveJarodCore({ packaged: true, resourcesPath: resources, platform: 'win32', env: { HERALD_OS_NODE: 'C:\\node\\node.exe' }, exists: present(gateway), execPath })).toEqual({
+    expect(resolveJarodCore({ packaged: true, resourcesPath: resources, platform: 'win32', env: { JAROD_OS_NODE: 'C:\\node\\node.exe' }, exists: present(gateway), execPath })).toEqual({
       dir: path.join(resources, 'jarod-core'),
       gateway,
       node: execPath,
@@ -28,7 +28,7 @@ describe('resolveJarodCore', () => {
 
   it('installed: the runtime is the shipped one even when PATH has another node', () => {
     const resources = path.join('/opt', 'jarod-os', 'resources')
-    const core = resolveJarodCore({ packaged: true, resourcesPath: resources, platform: 'linux', env: { HERALD_OS_NODE: '/usr/bin/node' }, exists: present(path.join(resources, 'jarod-core', 'gateway.mjs'), path.join(resources, 'jarod-core', 'node')) })
+    const core = resolveJarodCore({ packaged: true, resourcesPath: resources, platform: 'linux', env: { JAROD_OS_NODE: '/usr/bin/node' }, exists: present(path.join(resources, 'jarod-core', 'gateway.mjs'), path.join(resources, 'jarod-core', 'node')) })
 
     expect(core?.node).toBe(path.join(resources, 'jarod-core', 'node'))
   })
@@ -38,12 +38,12 @@ describe('resolveJarodCore', () => {
     const gateway = path.join('/repo', 'jarod-core', 'dist', 'gateway', 'gateway.mjs')
 
     expect(resolveJarodCore({ packaged: false, appPath, platform: 'linux', env: {}, exists: present(gateway) })).toEqual({ dir: path.dirname(gateway), gateway, node: 'node' })
-    expect(resolveJarodCore({ packaged: false, appPath, platform: 'win32', env: { HERALD_OS_NODE: 'C:\\node\\node.exe' }, exists: present(gateway) })?.node).toBe('C:\\node\\node.exe')
+    expect(resolveJarodCore({ packaged: false, appPath, platform: 'win32', env: { JAROD_OS_NODE: 'C:\\node\\node.exe' }, exists: present(gateway) })?.node).toBe('C:\\node\\node.exe')
   })
 
-  it('HERALD_OS_JAROD_CORE wins over the default place', () => {
+  it('JAROD_OS_JAROD_CORE wins over the default place', () => {
     const gateway = path.join('/custom', 'gateway.mjs')
-    const core = resolveJarodCore({ packaged: false, appPath: path.join('/repo', 'apps', 'desktop'), platform: 'linux', env: { HERALD_OS_JAROD_CORE: '/custom' }, exists: present(gateway) })
+    const core = resolveJarodCore({ packaged: false, appPath: path.join('/repo', 'apps', 'desktop'), platform: 'linux', env: { JAROD_OS_JAROD_CORE: '/custom' }, exists: present(gateway) })
 
     expect(core?.gateway).toBe(gateway)
   })
@@ -62,10 +62,10 @@ describe('selectBackend', () => {
     expect(selectBackend({}, null)).toBe('hermes')
   })
 
-  it('HERALD_OS_BACKEND decides when set, in any case; anything else is ignored', () => {
-    expect(selectBackend({ HERALD_OS_BACKEND: 'hermes' }, core)).toBe('hermes')
-    expect(selectBackend({ HERALD_OS_BACKEND: ' Jarod ' }, null)).toBe('jarod')
-    expect(selectBackend({ HERALD_OS_BACKEND: 'nonsense' }, core)).toBe('jarod')
+  it('JAROD_OS_BACKEND decides when set, in any case; anything else is ignored', () => {
+    expect(selectBackend({ JAROD_OS_BACKEND: 'hermes' }, core)).toBe('hermes')
+    expect(selectBackend({ JAROD_OS_BACKEND: ' Jarod ' }, null)).toBe('jarod')
+    expect(selectBackend({ JAROD_OS_BACKEND: 'nonsense' }, core)).toBe('jarod')
   })
 })
 

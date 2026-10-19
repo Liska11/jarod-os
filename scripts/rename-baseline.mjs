@@ -5,7 +5,7 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { countByFile } from "./rename-inventory.mjs";
+import { countByFile, TOOLING } from "./rename-inventory.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const file = resolve(root, "jarod-core/tests/repo/rename-baseline.json");
@@ -13,9 +13,7 @@ const allow = new Set(process.argv.flatMap((a, i, all) => (a === "--allow" && al
 
 const before = JSON.parse(readFileSync(file, "utf8"));
 const now = countByFile("herald", "-i");
-delete now["jarod-core/tests/repo/rename-baseline.json"];
-delete now["jarod-core/tests/repo/rename-guard.test.ts"];
-delete now["scripts/rename-baseline.mjs"];
+for (const f of TOOLING) delete now[f];
 
 const raised = Object.entries(now).filter(([f, n]) => n > (before[f] ?? 0) && !allow.has(f));
 if (raised.length) {

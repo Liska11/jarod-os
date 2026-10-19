@@ -197,7 +197,7 @@ export class BackendManager {
 
     if (selectBackend(process.env, core) === 'jarod') {
       if (!core) {
-        this.update({ phase: 'failed', error: 'HERALD_OS_BACKEND=jarod, but this build has no compiled Jarod core. Build it with `npm run bundle:core`, or unset HERALD_OS_BACKEND.' })
+        this.update({ phase: 'failed', error: 'JAROD_OS_BACKEND=jarod, but this build has no compiled Jarod core. Build it with `npm run bundle:core`, or unset JAROD_OS_BACKEND.' })
 
         return
       }
@@ -211,7 +211,7 @@ export class BackendManager {
       this.update({
         phase: 'failed',
         error:
-          'No backend found: this build has no Jarod core and no Hermes runtime was found. Install Hermes Agent (curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash) or set HERALD_OS_HERMES_ROOT.'
+          'No backend found: this build has no Jarod core and no Hermes runtime was found. Install Hermes Agent (curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash) or set JAROD_OS_HERMES_ROOT.'
       })
 
       return
@@ -258,7 +258,7 @@ export class BackendManager {
     }
   }
 
-  /** Use a backend that is already running (HERALD_OS_BACKEND_URL) instead of starting a second one. */
+  /** Use a backend that is already running (JAROD_OS_BACKEND_URL) instead of starting a second one. */
   private async attach(target: AttachTarget, attempt: number, generation: number): Promise<void> {
     this.token = target.token
     this.update({ runtime: { kind: 'attached', label: `the Hermes backend at ${target.baseUrl}`, command: [] }, phase: 'starting' })
@@ -340,7 +340,7 @@ export class BackendManager {
         HERMES_PARENT_PID: String(process.pid),
         HERMES_DESKTOP_READY_FILE: readyFile,
         PYTHONUNBUFFERED: '1',
-        ...(this.control ? { HERALD_OS_CONTROL_SOCKET: this.control.endpoint(), HERALD_OS_CONTROL_TOKEN: this.control.token } : {})
+        ...(this.control ? { JAROD_OS_CONTROL_SOCKET: this.control.endpoint(), JAROD_OS_CONTROL_TOKEN: this.control.token } : {})
       }
       delete env.ELECTRON_RUN_AS_NODE
     }

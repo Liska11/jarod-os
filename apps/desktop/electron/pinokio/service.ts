@@ -42,7 +42,7 @@ export interface RuntimeLocation {
   exists?: (file: string) => boolean
 }
 
-/** The bundled engine, or null when this build has none. HERALD_OS_PINOKIO_RUNTIME=<folder holding host.cjs> overrides. */
+/** The bundled engine, or null when this build has none. JAROD_OS_PINOKIO_RUNTIME=<folder holding host.cjs> overrides. */
 export function locateRuntime(location: RuntimeLocation): PinokioRuntime | null {
   const env = location.env ?? process.env
   const exists = location.exists ?? fs.existsSync
@@ -71,7 +71,7 @@ export function locateRuntime(location: RuntimeLocation): PinokioRuntime | null 
 }
 
 /**
- * The profile folder pinokiod sees as `~` (where it keeps `.pinokio/config.json`). HERALD_OS_PINOKIO_PROFILE points it
+ * The profile folder pinokiod sees as `~` (where it keeps `.pinokio/config.json`). JAROD_OS_PINOKIO_PROFILE points it
  * elsewhere, for tests and checks that must not touch the real settings or apps.
  */
 export function pinokioProfile(env: NodeJS.ProcessEnv = process.env): string {

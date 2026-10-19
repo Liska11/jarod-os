@@ -18,7 +18,7 @@ export function userThemesDir(): string {
 /** Theme folders shipped with Jarod-OS, first match wins (the same order as linux/bin/herald-os-theme). */
 function builtinThemeDirs(): string[] {
   const candidates = [
-    process.env.HERALD_OS_THEMES,
+    process.env.JAROD_OS_THEMES,
     // Packaged builds carry linux/themes as a resource; a checkout reads the repository copy.
     process.resourcesPath ? path.join(process.resourcesPath, 'themes') : undefined,
     path.resolve(app.getAppPath(), '..', '..', 'linux', 'themes'),

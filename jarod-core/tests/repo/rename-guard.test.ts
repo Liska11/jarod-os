@@ -23,7 +23,7 @@ function heraldByFile(): Record<string, number> {
   try {
     out = execFileSync(
       "git",
-      ["grep", "-c", "-I", "-i", "--untracked", "-e", "herald", "--", ".", ":(exclude)scripts/rename-inventory.mjs", ":(exclude)scripts/rename-baseline.mjs", ":(exclude)jarod-core/tests/repo/rename-baseline.json", ":(exclude)jarod-core/tests/repo/rename-guard.test.ts"],
+      ["grep", "-c", "-I", "-i", "--untracked", "-e", "herald", "--", ".", ":(exclude)scripts/rename-inventory.mjs", ":(exclude)scripts/rename-baseline.mjs", ":(exclude)scripts/rename-apply.mjs", ":(exclude)scripts/rename-history.json", ":(exclude)jarod-core/tests/repo/rename-baseline.json", ":(exclude)jarod-core/tests/repo/rename-guard.test.ts"],
       { cwd: repoRoot, encoding: "utf8", maxBuffer: 64 << 20 },
     );
   } catch (e) {

@@ -6,7 +6,17 @@
 #   herald-os-build            # after linux/dev/push.sh or herald-os-sync
 set -euo pipefail
 
-REPO="${HERALD_OS_REPO:-$HOME/Herald-OS}"
+# Variables renamed with Jarod-OS (2026-10-19): an older HERALD_OS_* still counts when JAROD_OS_* is unset (the new name wins).
+# HERALD_OS_DEV_UNSIGNED keeps its name (contract c8). Only names are handled here; no value is printed.
+for _old in $(compgen -e); do
+  case "$_old" in
+    HERALD_OS_DEV_UNSIGNED) ;;
+    HERALD_OS_*) _new="JAROD_OS_${_old#HERALD_OS_}"; [[ -n "${!_new+x}" ]] || export "$_new=${!_old}" ;;
+  esac
+done
+unset _old _new
+
+REPO="${JAROD_OS_REPO:-$HOME/Herald-OS}"
 export PATH="$HOME/.local/bin:$PATH"
 
 [[ -d "$REPO/apps/desktop" ]] || { echo "repo not found at $REPO (push it from the Mac: linux/dev/push.sh)" >&2; exit 1; }
@@ -77,7 +87,7 @@ if [[ -d "$REPO/linux/session" ]] && command -v sudo >/dev/null; then
   sudo cp -R "$REPO"/linux/catalog/. /usr/local/share/herald-os-linux/catalog/
 
   echo "==> one-shot migrations"
-  HERALD_OS_REPO="$REPO" bash "$REPO/linux/bin/herald-os-update" --migrate || echo "WARNING: a migration failed; see above"
+  JAROD_OS_REPO="$REPO" bash "$REPO/linux/bin/herald-os-update" --migrate || echo "WARNING: a migration failed; see above"
 fi
 
 echo "==> build complete: $REPO/apps/desktop/dist"

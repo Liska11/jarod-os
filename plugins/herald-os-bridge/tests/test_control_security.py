@@ -22,6 +22,9 @@ PLUGIN_DIR = Path(__file__).resolve().parents[1]
 BRIDGE_DIR = PLUGIN_DIR / "bridge"
 
 CONTROL_SECRETS = (
+    "JAROD_OS_CONTROL_TOKEN",
+    "JAROD_OS_CONTROL_SOCKET",
+    # The names before the Jarod-OS rename (2026-10-19): still filtered, a token exported under them must not travel either.
     "HERALD_OS_CONTROL_TOKEN",
     "HERALD_OS_CONTROL_SOCKET",
     "HERMES_OS_CONTROL_TOKEN",
@@ -33,7 +36,7 @@ GATEWAY_SECRETS = (
     "JAROD_GATEWAY_TOKEN",
 )
 
-PROBE = "HERALD_OS_TEST_MARKER"
+PROBE = "JAROD_OS_TEST_MARKER"
 
 
 def _mod(plugin, name):
@@ -43,8 +46,8 @@ def _mod(plugin, name):
 @pytest.fixture
 def shell_env(tmp_path, monkeypatch):
     """One control endpoint plus its token and the gateway's, exactly as the shell exports them."""
-    monkeypatch.setenv("HERALD_OS_CONTROL_SOCKET", "pipe://herald-os-5555")
-    monkeypatch.setenv("HERALD_OS_CONTROL_TOKEN", "token-that-must-not-travel")
+    monkeypatch.setenv("JAROD_OS_CONTROL_SOCKET", "pipe://herald-os-5555")
+    monkeypatch.setenv("JAROD_OS_CONTROL_TOKEN", "token-that-must-not-travel")
     monkeypatch.setenv("HERMES_DASHBOARD_SESSION_TOKEN", "gateway-secret-that-must-not-travel")
     monkeypatch.setenv(PROBE, "kept")
     return tmp_path
@@ -62,7 +65,7 @@ def test_the_probe_environment_is_really_there(shell_env):
     """Guards the guard: if the fixture stops exporting the secrets, the tests below prove nothing."""
     import os
 
-    assert os.environ["HERALD_OS_CONTROL_TOKEN"] == "token-that-must-not-travel"
+    assert os.environ["JAROD_OS_CONTROL_TOKEN"] == "token-that-must-not-travel"
 
 
 def test_child_process_never_inherits_the_control_secrets(plugin, shell_env):
@@ -98,8 +101,8 @@ def test_control_env_reads_once_and_scrubs_its_own_environment(plugin, shell_env
     util.forget_control_env()
     assert util.control_env("CONTROL_TOKEN") == "token-that-must-not-travel"
     assert util.control_env("CONTROL_SOCKET") == "pipe://herald-os-5555"
-    assert "HERALD_OS_CONTROL_TOKEN" not in os.environ
-    assert "HERALD_OS_CONTROL_SOCKET" not in os.environ
+    assert "JAROD_OS_CONTROL_TOKEN" not in os.environ
+    assert "JAROD_OS_CONTROL_SOCKET" not in os.environ
     assert util.control_env("CONTROL_TOKEN") == "token-that-must-not-travel"
 
 
@@ -112,8 +115,8 @@ def test_control_endpoint_uses_the_scrubbing_reader(plugin, shell_env):
     util.forget_control_env()
     path, token = ui.control_endpoint()
     assert (path, token) == ("pipe://herald-os-5555", "token-that-must-not-travel")
-    assert "HERALD_OS_CONTROL_TOKEN" not in os.environ
-    assert "HERALD_OS_CONTROL_SOCKET" not in os.environ
+    assert "JAROD_OS_CONTROL_TOKEN" not in os.environ
+    assert "JAROD_OS_CONTROL_SOCKET" not in os.environ
     # The gateway's token is Hermes's own and stays in this process; it is still filtered from every
     # child we start. `child_env` is the single place that decides what a child may see.
     assert not [name for name in util.CONTROL_ENV_NAMES if name in util.child_env()]
@@ -125,17 +128,58 @@ def test_control_env_keeps_the_legacy_prefix_working(plugin, monkeypatch):
 
     util = _mod(plugin, "util")
     util.forget_control_env()
+    monkeypatch.delenv("JAROD_OS_CONTROL_TOKEN", raising=False)
     monkeypatch.delenv("HERALD_OS_CONTROL_TOKEN", raising=False)
     monkeypatch.setenv("HERMES_OS_CONTROL_TOKEN", "legacy-token")
     assert util.control_env("CONTROL_TOKEN") == "legacy-token"
     assert "HERMES_OS_CONTROL_TOKEN" not in os.environ
 
 
+def test_control_env_reads_the_herald_name_and_scrubs_it(plugin, monkeypatch):
+    """The name before the Jarod-OS rename (``HERALD_OS_``) is still honoured when it is the only one set, and still scrubbed."""
+    import os
+
+    util = _mod(plugin, "util")
+    util.forget_control_env()
+    monkeypatch.delenv("JAROD_OS_CONTROL_TOKEN", raising=False)
+    monkeypatch.delenv("HERMES_OS_CONTROL_TOKEN", raising=False)
+    monkeypatch.setenv("HERALD_OS_CONTROL_TOKEN", "herald-token")
+    assert util.control_env("CONTROL_TOKEN") == "herald-token"
+    assert "HERALD_OS_CONTROL_TOKEN" not in os.environ
+
+
+def test_control_env_new_name_wins_and_every_generation_is_scrubbed(plugin, monkeypatch):
+    """All three generations set: the newest wins, and none of the three is left for a child to inherit."""
+    import os
+
+    util = _mod(plugin, "util")
+    util.forget_control_env()
+    monkeypatch.setenv("JAROD_OS_CONTROL_TOKEN", "jarod-token")
+    monkeypatch.setenv("HERALD_OS_CONTROL_TOKEN", "herald-token")
+    monkeypatch.setenv("HERMES_OS_CONTROL_TOKEN", "hermes-token")
+    assert util.control_env("CONTROL_TOKEN") == "jarod-token"
+    for name in ("JAROD_OS_CONTROL_TOKEN", "HERALD_OS_CONTROL_TOKEN", "HERMES_OS_CONTROL_TOKEN"):
+        assert name not in os.environ, name
+
+
+def test_os_env_reads_the_newest_name_set(plugin, monkeypatch):
+    """Ordinary settings (not control tokens): ``JAROD_OS_`` wins, ``HERALD_OS_`` then ``HERMES_OS_`` are still read."""
+    util = _mod(plugin, "util")
+    for prefix in util.ENV_PREFIXES:
+        monkeypatch.delenv(f"{prefix}BRIDGE_DISABLED", raising=False)
+    monkeypatch.setenv("HERMES_OS_BRIDGE_DISABLED", "hermes")
+    assert util.os_env("BRIDGE_DISABLED") == "hermes"
+    monkeypatch.setenv("HERALD_OS_BRIDGE_DISABLED", "herald")
+    assert util.os_env("BRIDGE_DISABLED") == "herald"
+    monkeypatch.setenv("JAROD_OS_BRIDGE_DISABLED", "jarod")
+    assert util.os_env("BRIDGE_DISABLED") == "jarod"
+
+
 def test_child_env_refuses_to_reintroduce_a_control_secret(plugin, shell_env):
     """A caller must not be able to opt the secret back in through the ``env=`` argument."""
     util = _mod(plugin, "util")
-    env = util.child_env({"HERALD_OS_CONTROL_TOKEN": "smuggled", PROBE: "override"})
-    assert "HERALD_OS_CONTROL_TOKEN" not in env
+    env = util.child_env({"JAROD_OS_CONTROL_TOKEN": "smuggled", PROBE: "override"})
+    assert "JAROD_OS_CONTROL_TOKEN" not in env
     assert env[PROBE] == "override"
     assert env["PATH"] == util.child_env()["PATH"]
 
@@ -175,7 +219,7 @@ def test_taking_the_control_env_leaves_nothing_to_inherit(plugin, shell_env):
     util = _mod(plugin, "util")
     ui = _mod(plugin, "ui")
     util.forget_control_env()
-    monkeypatch_names = ("HERALD_OS_CONTROL_SOCKET", "HERALD_OS_CONTROL_TOKEN")
+    monkeypatch_names = ("JAROD_OS_CONTROL_SOCKET", "JAROD_OS_CONTROL_TOKEN")
     assert [name for name in monkeypatch_names if name in os.environ] == list(monkeypatch_names)
 
     util.take_control_env()
@@ -193,7 +237,7 @@ def test_the_plugin_takes_the_control_env_when_it_is_imported(monkeypatch):
     import importlib.util
     import os
 
-    monkeypatch.setenv("HERALD_OS_CONTROL_TOKEN", "load-time-secret")
+    monkeypatch.setenv("JAROD_OS_CONTROL_TOKEN", "load-time-secret")
     name = "herald_os_bridge_load_probe"
     spec = importlib.util.spec_from_file_location(name, PLUGIN_DIR / "__init__.py", submodule_search_locations=[str(PLUGIN_DIR)])
     assert spec and spec.loader
@@ -202,7 +246,7 @@ def test_the_plugin_takes_the_control_env_when_it_is_imported(monkeypatch):
     sys.modules[name] = module
     try:
         spec.loader.exec_module(module)
-        assert "HERALD_OS_CONTROL_TOKEN" not in os.environ
+        assert "JAROD_OS_CONTROL_TOKEN" not in os.environ
         util = sys.modules[name + ".bridge.util"]
         assert util.control_env("CONTROL_TOKEN") == "load-time-secret"
     finally:

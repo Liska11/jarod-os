@@ -33,7 +33,7 @@ function service(options: { probe?: Awaited<ReturnType<typeof import('./service.
   const svc = new PinokioService({
     runtime: options.withRuntime === false ? null : runtime,
     execPath: 'Jarod-OS.exe',
-    env: { HERALD_OS_PINOKIO_PROFILE: path.join(os.tmpdir(), 'jarod-pinokio-none') },
+    env: { JAROD_OS_PINOKIO_PROFILE: path.join(os.tmpdir(), 'jarod-pinokio-none') },
     probe: async () => options.probe ?? null,
     spawnHost,
     onState: state => states.push(state),

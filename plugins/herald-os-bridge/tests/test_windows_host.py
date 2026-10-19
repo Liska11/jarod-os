@@ -61,7 +61,7 @@ def test_scripts_are_encoded_utf16_and_arguments_never_enter_the_source(winps):
     argv = winps.build_argv("'héllo'", r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe")
     assert argv[1:6] == ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-EncodedCommand"]
     decoded = base64.b64decode(argv[-1]).decode("utf-16-le")
-    assert "'héllo'" in decoded and "$env:HERALD_OS_ARGS" in decoded and "exit 1" in decoded
+    assert "'héllo'" in decoded and "$env:JAROD_OS_ARGS" in decoded and "exit 1" in decoded
 
 
 def test_every_script_fits_a_command_line(winps):

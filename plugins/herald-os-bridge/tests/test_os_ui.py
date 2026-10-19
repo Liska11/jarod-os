@@ -104,8 +104,8 @@ class FakeShell:
 @pytest.fixture(params=[LOCAL_KIND])
 def shell(request, monkeypatch, plugin):
     fake = FakeShell(request.param, "secret-token")
-    monkeypatch.setenv("HERALD_OS_CONTROL_SOCKET", fake.endpoint)
-    monkeypatch.setenv("HERALD_OS_CONTROL_TOKEN", "secret-token")
+    monkeypatch.setenv("JAROD_OS_CONTROL_SOCKET", fake.endpoint)
+    monkeypatch.setenv("JAROD_OS_CONTROL_TOKEN", "secret-token")
     tools = _mod(plugin, "tools")
     tools._UI_CATALOGUE.clear()
     yield fake
@@ -227,8 +227,8 @@ def test_system_open_editor_uses_the_first_installed_editor(plugin, shell, decis
 
 def test_without_shell_the_tool_explains(plugin, monkeypatch):
     tools = _mod(plugin, "tools")
-    monkeypatch.delenv("HERALD_OS_CONTROL_SOCKET", raising=False)
-    monkeypatch.delenv("HERALD_OS_CONTROL_TOKEN", raising=False)
+    monkeypatch.delenv("JAROD_OS_CONTROL_SOCKET", raising=False)
+    monkeypatch.delenv("JAROD_OS_CONTROL_TOKEN", raising=False)
     reply = json.loads(tools.handle_os_ui({"action": "state"}))
     assert reply["success"] is False and "control socket" in reply["error"]
 
@@ -238,16 +238,16 @@ def test_tcp_endpoint_is_refused_everywhere(plugin, isolated_home, monkeypatch):
     # this client will dial.
     ui = _mod(plugin, "ui")
     assert not hasattr(ui, "parse_tcp_endpoint")
-    monkeypatch.setenv("HERALD_OS_CONTROL_SOCKET", "tcp://127.0.0.1:5150")
-    monkeypatch.setenv("HERALD_OS_CONTROL_TOKEN", "t")
+    monkeypatch.setenv("JAROD_OS_CONTROL_SOCKET", "tcp://127.0.0.1:5150")
+    monkeypatch.setenv("JAROD_OS_CONTROL_TOKEN", "t")
     with pytest.raises(ui.ShellUnavailable):
         ui.control_endpoint()
 
 
 def test_shared_endpoint_follows_hermes_home(plugin, isolated_home, monkeypatch):
     ui = _mod(plugin, "ui")
-    monkeypatch.delenv("HERALD_OS_CONTROL_SOCKET", raising=False)
-    monkeypatch.delenv("HERALD_OS_CONTROL_TOKEN", raising=False)
+    monkeypatch.delenv("JAROD_OS_CONTROL_SOCKET", raising=False)
+    monkeypatch.delenv("JAROD_OS_CONTROL_TOKEN", raising=False)
     (isolated_home / "herald-os").mkdir()
     socket_file = isolated_home / "herald-os" / "control.sock"
     socket_file.write_text("", encoding="utf-8")
@@ -266,15 +266,15 @@ def test_pipe_endpoint_is_a_name_not_a_path(plugin):
 
 def test_a_pipe_endpoint_needs_no_socket_file(plugin, monkeypatch):
     ui = _mod(plugin, "ui")
-    monkeypatch.setenv("HERALD_OS_CONTROL_SOCKET", "pipe://herald-os-absent")
-    monkeypatch.setenv("HERALD_OS_CONTROL_TOKEN", "secret-token")
+    monkeypatch.setenv("JAROD_OS_CONTROL_SOCKET", "pipe://herald-os-absent")
+    monkeypatch.setenv("JAROD_OS_CONTROL_TOKEN", "secret-token")
     assert ui.control_endpoint() == ("pipe://herald-os-absent", "secret-token")
 
 
 def test_request_dials_the_pipe_and_carries_the_token(plugin, monkeypatch):
     ui = _mod(plugin, "ui")
-    monkeypatch.setenv("HERALD_OS_CONTROL_SOCKET", "pipe://herald-os-test")
-    monkeypatch.setenv("HERALD_OS_CONTROL_TOKEN", "secret-token")
+    monkeypatch.setenv("JAROD_OS_CONTROL_SOCKET", "pipe://herald-os-test")
+    monkeypatch.setenv("JAROD_OS_CONTROL_TOKEN", "secret-token")
     seen = []
 
     def exchange(path, body):
@@ -293,8 +293,8 @@ def test_a_pipe_that_never_answers_gives_up(plugin, monkeypatch):
     """A pipe read blocks without a timeout of its own, so the agent must not be able to wait on it
     forever."""
     ui = _mod(plugin, "ui")
-    monkeypatch.setenv("HERALD_OS_CONTROL_SOCKET", "pipe://herald-os-silent")
-    monkeypatch.setenv("HERALD_OS_CONTROL_TOKEN", "secret-token")
+    monkeypatch.setenv("JAROD_OS_CONTROL_SOCKET", "pipe://herald-os-silent")
+    monkeypatch.setenv("JAROD_OS_CONTROL_TOKEN", "secret-token")
     monkeypatch.setattr(ui, "_pipe_exchange", lambda path, body: time.sleep(30))
     started = time.monotonic()
     with pytest.raises(RuntimeError, match="did not answer"):

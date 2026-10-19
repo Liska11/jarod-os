@@ -7,14 +7,14 @@ describe('attachTarget', () => {
   })
 
   it('takes a loopback URL and a token from the environment or a file', () => {
-    expect(attachTarget({ HERALD_OS_BACKEND_URL: 'http://127.0.0.1:9119/', HERALD_OS_BACKEND_TOKEN: 'secret' })).toEqual({ baseUrl: 'http://127.0.0.1:9119', token: 'secret' })
-    expect(attachTarget({ HERALD_OS_BACKEND_URL: 'http://localhost:9119', HERALD_OS_BACKEND_TOKEN_FILE: '/x/token' }, file => (file === '/x/token' ? 'from-file\n' : ''))).toEqual({ baseUrl: 'http://localhost:9119', token: 'from-file' })
+    expect(attachTarget({ JAROD_OS_BACKEND_URL: 'http://127.0.0.1:9119/', JAROD_OS_BACKEND_TOKEN: 'secret' })).toEqual({ baseUrl: 'http://127.0.0.1:9119', token: 'secret' })
+    expect(attachTarget({ JAROD_OS_BACKEND_URL: 'http://localhost:9119', JAROD_OS_BACKEND_TOKEN_FILE: '/x/token' }, file => (file === '/x/token' ? 'from-file\n' : ''))).toEqual({ baseUrl: 'http://localhost:9119', token: 'from-file' })
   })
 
   it('refuses anything that would send the token off the machine', () => {
-    expect(() => attachTarget({ HERALD_OS_BACKEND_URL: 'http://10.0.0.5:9119', HERALD_OS_BACKEND_TOKEN: 't' })).toThrow(/this machine/)
-    expect(() => attachTarget({ HERALD_OS_BACKEND_URL: 'https://127.0.0.1:9119', HERALD_OS_BACKEND_TOKEN: 't' })).toThrow(/http/)
-    expect(() => attachTarget({ HERALD_OS_BACKEND_URL: 'http://127.0.0.1:9119' }, () => { throw new Error('missing') })).toThrow(/token/)
+    expect(() => attachTarget({ JAROD_OS_BACKEND_URL: 'http://10.0.0.5:9119', JAROD_OS_BACKEND_TOKEN: 't' })).toThrow(/this machine/)
+    expect(() => attachTarget({ JAROD_OS_BACKEND_URL: 'https://127.0.0.1:9119', JAROD_OS_BACKEND_TOKEN: 't' })).toThrow(/http/)
+    expect(() => attachTarget({ JAROD_OS_BACKEND_URL: 'http://127.0.0.1:9119' }, () => { throw new Error('missing') })).toThrow(/token/)
   })
 })
 

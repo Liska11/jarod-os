@@ -6,7 +6,7 @@ The switch is **Jarod's policy, not a disconnection**. It decides what Jarod-OS 
 
 ## The file
 
-The switch is stored in `network-policy.json`, in the shell's config folder (`%APPDATA%\Jarod-OS\config`, or `HERALD_OS_CONFIG_DIR`):
+The switch is stored in `network-policy.json`, in the shell's config folder (`%APPDATA%\Jarod-OS\config`, or `JAROD_OS_CONFIG_DIR`):
 
 ```json
 { "version": 1, "internet": false, "remoteMachines": true, "remoteHosts": ["100.64.0.7"], "localCommands": false }
@@ -64,7 +64,7 @@ A cloud model selected while the switch is off becomes unavailable:
 - **DNS**: the core resolves names through the system. A refused connection is stopped at `connect`, after the DNS lookup a socket may have made (for example `net.connect` with a host name). A name lookup can therefore still leave. No data from the conversation goes through it.
 - **UDP sockets** (`dgram`) of the core are not guarded. No feature of the core uses them to the outside today; the wake-word and voice plugins are local.
 - **Child processes** are not isolated. The policy refuses to launch them (as above); it does not confine them. Isolating them would need a firewall rule per program, which Jarod does not set without explicit permission.
-- **Hermes** (alternative backend): the guard is in the Jarod core. With `HERALD_OS_BACKEND=hermes`, only the shell's layers apply.
+- **Hermes** (alternative backend): the guard is in the Jarod core. With `JAROD_OS_BACKEND=hermes`, only the shell's layers apply.
 
 ## Tests
 

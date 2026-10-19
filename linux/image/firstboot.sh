@@ -10,6 +10,16 @@
 #   firstboot.sh          both, in order (the development VM's provisioner)
 set -euo pipefail
 
+# Variables renamed with Jarod-OS (2026-10-19): an older HERALD_OS_* still counts when JAROD_OS_* is unset (the new name wins).
+# HERALD_OS_DEV_UNSIGNED keeps its name (contract c8). Only names are handled here; no value is printed.
+for _old in $(compgen -e); do
+  case "$_old" in
+    HERALD_OS_DEV_UNSIGNED) ;;
+    HERALD_OS_*) _new="JAROD_OS_${_old#HERALD_OS_}"; [[ -n "${!_new+x}" ]] || export "$_new=${!_old}" ;;
+  esac
+done
+unset _old _new
+
 PHASE="${1:-all}"
 HERMES_USER="${HERMES_USER:-hermes}"
 STATE=/var/lib/herald-os
@@ -95,8 +105,8 @@ system_phase() {
 }
 
 apps_phase() {
-  step "Omakase apps (HERALD_OS_OMAKASE=0 to skip)"
-  if [[ "${HERALD_OS_OMAKASE:-1}" == "1" ]]; then
+  step "Omakase apps (JAROD_OS_OMAKASE=0 to skip)"
+  if [[ "${JAROD_OS_OMAKASE:-1}" == "1" ]]; then
     as_user herald-os-omakase install --flatpaks || echo "WARNING: omakase flatpaks incomplete"
     # Web apps need the shell's icon fetch; herald-os-session installs them on the first login.
   fi

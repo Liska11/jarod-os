@@ -65,10 +65,10 @@ Setup, session model and dev loop for Linux: `docs/LINUX.md`.
 
 `apps/desktop/electron/backend/manager.ts` owns the backend process; `jarod-core.ts` decides which one.
 
-1. **Choose.** `HERALD_OS_BACKEND=jarod|hermes` decides when set. Otherwise the Jarod core runs when
+1. **Choose.** `JAROD_OS_BACKEND=jarod|hermes` decides when set. Otherwise the Jarod core runs when
    the build has one (`<resources>/jarod-core` installed, `jarod-core/dist/gateway` in a checkout,
-   or `HERALD_OS_JAROD_CORE=<folder>`), and Hermes when it does not. `HERALD_OS_BACKEND_URL` and
-   `HERALD_OS_BACKEND_TOKEN` attach the shell to a backend someone else runs (`coexist.ts`).
+   or `JAROD_OS_JAROD_CORE=<folder>`), and Hermes when it does not. `JAROD_OS_BACKEND_URL` and
+   `JAROD_OS_BACKEND_TOKEN` attach the shell to a backend someone else runs (`coexist.ts`).
 2. **Start the Jarod core.** `node gateway.mjs --init --exit-on-stdin-close --workspace <folder>`,
    run by Jarod-OS's own executable in Node mode (`ELECTRON_RUN_AS_NODE=1`; installed), by a `node`
    shipped beside it when the build had to include one (`bundle-core.mjs` checks that the core's native
@@ -79,7 +79,7 @@ Setup, session model and dev loop for Linux: `docs/LINUX.md`.
    token (`JAROD_GATEWAY_TOKEN`). Its standard input stays open: closing it is how the shell stops
    it, the one clean stop on Windows, and the core closes its database first.
 3. **Or start Hermes.** Resolve a runtime through an ordered ladder (`resolve.ts`):
-   `HERALD_OS_HERMES_ROOT` -> `$HERMES_HOME/hermes-agent` managed install -> `hermes` on `PATH`,
+   `JAROD_OS_HERMES_ROOT` -> `$HERMES_HOME/hermes-agent` managed install -> `hermes` on `PATH`,
    each probed before use; then `hermes serve --host 127.0.0.1 --port 0` with
    `HERMES_DASHBOARD_SESSION_TOKEN`, `HERALD_OS=1` and `HERMES_HOME`.
 4. **Wait for it.** Read `HERMES_BACKEND_READY port=N` from stdout (both backends print it), then
@@ -97,7 +97,7 @@ Setup, session model and dev loop for Linux: `docs/LINUX.md`.
   exits at once (`single-instance.ts`) and the first comes to the front.
 - **A crashed window.** If the shell's page dies, it is reloaded once; a second crash within a
   minute shows a recovery page (Reload, Restart in safe mode, Quit) (`recovery.ts`).
-- **Safe mode.** `--safe-mode` (or `HERALD_OS_SAFE_MODE=1`) starts without widget plugins, hook
+- **Safe mode.** `--safe-mode` (or `JAROD_OS_SAFE_MODE=1`) starts without widget plugins, hook
   scripts and event automations; a badge under the menu bar leads back. Settings > About > Health
   shows it, the last crash and the settings folder.
 - **Settings files** are written atomically (`atomic-write.ts`), and the main window's place is
@@ -115,8 +115,8 @@ Jarod-OS ships Pinokio's engine (`pinokiod`, MIT) to install and run AI apps (AD
   front of every request and WebSocket.
 - The `pinokio` window (`src/features/pinokio`) shows its UI in a web view (`openPinokio` in
   `ipc/web.ts`); `pinokio.*` OS commands and the core's `pinokio_*` tools drive it.
-- `HERALD_OS_PINOKIO_PROFILE` gives the engine another `~` (its settings and home), for checks that
-  must not touch the real ones; `HERALD_OS_PINOKIO_RUNTIME` points at another build.
+- `JAROD_OS_PINOKIO_PROFILE` gives the engine another `~` (its settings and home), for checks that
+  must not touch the real ones; `JAROD_OS_PINOKIO_RUNTIME` points at another build.
 
 ## Wire contract
 
@@ -147,7 +147,7 @@ It runs in one of two modes, chosen by Electron main (`electron/shell/mode.ts`):
 | Mode | Used by | Windows |
 | --- | --- | --- |
 | `desktop` | macOS, Windows, Linux under `cage` | One fullscreen Electron window; the renderer's own window manager (`src/store/windows.ts`, `src/shell/wm/`) lays out every app inside it. |
-| `panels` | Linux under `niri` (`HERALD_OS_SHELL_MODE=panels`) | One Electron window per surface (menu bar, dock, main window, command bar, wallpaper, each floating app), tiled by the compositor. `src/shell/ShellRoot.tsx` picks what each window shows. |
+| `panels` | Linux under `niri` (`JAROD_OS_SHELL_MODE=panels`) | One Electron window per surface (menu bar, dock, main window, command bar, wallpaper, each floating app), tiled by the compositor. `src/shell/ShellRoot.tsx` picks what each window shows. |
 
 Code layout (details in [`apps/desktop/README.md`](../apps/desktop/README.md), conventions in
 [`apps/desktop/DESIGN.md`](../apps/desktop/DESIGN.md)): `src/shell` is the desktop chrome,
@@ -165,7 +165,7 @@ catalogue in `src/commands/`), so three callers drive the UI the same way:
 3. Hermes itself, through the bridge's `os_ui` tool. Electron main serves a JSON-lines Unix socket
    (`~/.hermes/herald-os/control.sock` in desktop mode, `$XDG_RUNTIME_DIR/herald-os/control.sock`
    in panels mode) and hands the backend its path and a per-launch token
-   (`HERALD_OS_CONTROL_SOCKET`, `HERALD_OS_CONTROL_TOKEN`). The socket is readable only by the
+   (`JAROD_OS_CONTROL_SOCKET`, `JAROD_OS_CONTROL_TOKEN`). The socket is readable only by the
    user (mode 0600) and refuses requests without the token. In panels mode it also serves the
    `herald-os` CLI that the compositor's hotkeys call; those commands need no token.
 

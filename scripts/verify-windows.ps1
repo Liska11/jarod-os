@@ -13,12 +13,19 @@ param(
     [int]$TimeoutSeconds = 90
 )
 
+# Variables renamed with Jarod-OS (2026-10-19): an older HERALD_OS_* still counts when JAROD_OS_* is unset (the new name wins).
+# HERALD_OS_DEV_UNSIGNED keeps its name (contract c8). Only names are handled here; no value is printed.
+Get-ChildItem Env: | Where-Object { $_.Name -like 'HERALD_OS_*' -and $_.Name -ne 'HERALD_OS_DEV_UNSIGNED' } | ForEach-Object {
+    $jarodName = 'JAROD_OS_' + $_.Name.Substring('HERALD_OS_'.Length)
+    if (-not (Test-Path "Env:$jarodName")) { Set-Item -Path "Env:$jarodName" -Value $_.Value }
+}
+
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 
 $Root = Split-Path -Parent $PSScriptRoot
 $HermesHome = if ($env:HERMES_HOME) { $env:HERMES_HOME } else { Join-Path $env:LOCALAPPDATA 'hermes' }
-$RuntimeRoot = if ($env:HERALD_OS_HERMES_ROOT) { $env:HERALD_OS_HERMES_ROOT } else { Join-Path $HermesHome 'hermes-agent' }
+$RuntimeRoot = if ($env:JAROD_OS_HERMES_ROOT) { $env:JAROD_OS_HERMES_ROOT } else { Join-Path $HermesHome 'hermes-agent' }
 $Py = Join-Path $RuntimeRoot 'venv\Scripts\python.exe'
 $AuditFile = Join-Path $HermesHome 'herald-os\audit.jsonl'
 $Results = New-Object System.Collections.Generic.List[object]

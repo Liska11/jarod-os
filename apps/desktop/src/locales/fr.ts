@@ -2785,9 +2785,9 @@ export const fr: Record<MessageKey, string> = {
   'network.gatewaySocket': 'Socket de la passerelle',
   'network.gatewaySocket.hint': 'JSON-RPC sur WebSocket.',
   'network.runtimeCommand': 'Commande du runtime',
-  'network.using': 'Utilise {label} (HERALD_OS_BACKEND_URL)',
+  'network.using': 'Utilise {label} (JAROD_OS_BACKEND_URL)',
   'network.sharedGateway':
-    'Une autre application (Hermes Desktop, par exemple) fait tourner une passerelle Hermes sur ce dossier Hermes (pid {pid}). Ce n\u2019est pas un probl\u00e8me : Hermes lance chaque t\u00e2che planifi\u00e9e une seule fois et ne garde qu\u2019une passerelle de messagerie. Pour partager aussi son backend, lancez Jarod-OS avec HERALD_OS_BACKEND_URL et HERALD_OS_BACKEND_TOKEN.',
+    'Une autre application (Hermes Desktop, par exemple) fait tourner une passerelle Hermes sur ce dossier Hermes (pid {pid}). Ce n\u2019est pas un probl\u00e8me : Hermes lance chaque t\u00e2che planifi\u00e9e une seule fois et ne garde qu\u2019une passerelle de messagerie. Pour partager aussi son backend, lancez Jarod-OS avec JAROD_OS_BACKEND_URL et JAROD_OS_BACKEND_TOKEN.',
   'network.mcpGroup': 'Serveurs MCP',
   'network.mcpGroup.hint': 'Serveurs Model Context Protocol.',
   'network.loading': 'Chargement\u2026',

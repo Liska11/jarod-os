@@ -29,7 +29,7 @@ stop|status|reset` manage it.
 Window size: QEMU shows guest pixels 1:1 with the Mac's device pixels. The framebuffer defaults to
 the main display's width and its height minus the menu and title bars (3024x1820 on a 14-inch
 MacBook Pro), so the window fills the screen; override with `GUEST_W`/`GUEST_H`. On Retina, set
-`HERALD_OS_SCALE=2` in `session.env` and `scale 2` in `~/.config/niri/local.kdl` so the desktop
+`JAROD_OS_SCALE=2` in `session.env` and `scale 2` in `~/.config/niri/local.kdl` so the desktop
 matches Mac apps in size. View -> Zoom To Fit in QEMU's menu still works (toggle it after boot;
 enabling it at launch makes the guest adopt the initial window size).
 
@@ -94,7 +94,7 @@ hermes config set model.default <model>  # a Portal model id, as in the Mac's co
 | Piece | Role |
 | --- | --- |
 | `/etc/greetd/config.toml` | Logs `hermes` in on VT1 and runs `herald-os-compositor`. Respawns when it exits. |
-| `herald-os-compositor` | Sets `XDG_*`, picks `WLR_RENDERER=pixman` when there is no GPU render node, sources `~/.config/herald-os/session.env`, then starts niri with the managed config. Without hardware GL (QEMU and Apple Virtualization without virgl) niri runs windowed inside `cage` (`herald-os-niri-nested`). `HERALD_OS_COMPOSITOR=cage` runs the Stage 1 kiosk instead. |
+| `herald-os-compositor` | Sets `XDG_*`, picks `WLR_RENDERER=pixman` when there is no GPU render node, sources `~/.config/herald-os/session.env`, then starts niri with the managed config. Without hardware GL (QEMU and Apple Virtualization without virgl) niri runs windowed inside `cage` (`herald-os-niri-nested`). `JAROD_OS_COMPOSITOR=cage` runs the Stage 1 kiosk instead. |
 | `herald-os-session` | Publishes `WAYLAND_DISPLAY` to systemd/D-Bus, starts PipeWire + portals and the session services below, runs Electron on Wayland (Ozone) as panels: the menu bar, dock and Hermes window are separate windows niri places. Restarts the shell on a crash (5 per minute), exits on a clean quit. |
 | `herald-os.desktop` | `wayland-sessions` entry so a normal greeter can also start Jarod-OS. |
 
@@ -105,11 +105,11 @@ macOS. A systemd unit comes with the Stage 2 broker.
 scripts need `sudo systemctl restart greetd`, because the running session loop keeps its old copy):
 
 ```
-HERALD_OS_SCALE=1.5                          # page zoom for HiDPI framebuffers (1.5 for 2048x1280, 2 for 2880x1800)
-HERALD_OS_DEV_SERVER=http://127.0.0.1:5180   # load the Vite dev server instead of dist/
-HERALD_OS_REMOTE_DEBUG_PORT=9333             # Chrome DevTools protocol for scripted checks
-HERALD_OS_NO_SANDBOX=1                       # if user namespaces are disabled
-HERALD_OS_APP=/path/to/apps/desktop          # alternate build location
+JAROD_OS_SCALE=1.5                          # page zoom for HiDPI framebuffers (1.5 for 2048x1280, 2 for 2880x1800)
+JAROD_OS_DEV_SERVER=http://127.0.0.1:5180   # load the Vite dev server instead of dist/
+JAROD_OS_REMOTE_DEBUG_PORT=9333             # Chrome DevTools protocol for scripted checks
+JAROD_OS_NO_SANDBOX=1                       # if user namespaces are disabled
+JAROD_OS_APP=/path/to/apps/desktop          # alternate build location
 ```
 
 ## Dev loop
@@ -119,7 +119,7 @@ HERALD_OS_APP=/path/to/apps/desktop          # alternate build location
   via `grim` into `linux/vm/build/shots/`.
 - **Inside the VM** (UTM share): `herald-os-sync`. Logs: `~/.local/state/herald-os/shell.log`,
   `journalctl -u greetd`, `journalctl --user -b`.
-- HMR: run `npm run dev:renderer` in an SSH session and set `HERALD_OS_DEV_SERVER` in
+- HMR: run `npm run dev:renderer` in an SSH session and set `JAROD_OS_DEV_SERVER` in
   `session.env`, then `herald-os-restart-shell`.
 
 Native modules must be installed on Linux, so the repo is copied (rsync) rather than used in place
@@ -188,7 +188,7 @@ Omarchy's `Super+C/X/V` copy, cut and paste; `herald-os keymap herald` restores 
   install gets: Firefox, Nautilus, Text Editor, LibreOffice, Loupe, Papers, Calculator, Calendar,
   VLC, developer tools, fonts; Obsidian, Spotify, LocalSend, VS Code, Signal from Flathub; and web
   apps (HEY, Google Calendar/Messages, WhatsApp, X, YouTube, ChatGPT, GitHub) as their own windows.
-  Provisioning installs it (`HERALD_OS_OMAKASE=0` to skip); `herald-os omakase install` re-syncs.
+  Provisioning installs it (`JAROD_OS_OMAKASE=0` to skip); `herald-os omakase install` re-syncs.
 - **Updates**: `herald-os update` pulls the repo on the chosen channel (`herald-os channel
   stable|edge`; both track `main` until releases exist), runs one-shot `linux/migrations/*.sh`
   (tracked in `/var/lib/herald-os/migrations`), upgrades the system (dnf on Fedora, pacman and the
@@ -275,7 +275,7 @@ makepkg -si            # downloads the release tarball for this architecture
 herald-os setup        # once per user: Hermes Agent and the bridge plugin
 ```
 
-`HERALD_OS_TARBALL_URL=file:///path/to/herald-os-<version>-linux-x64.tar.gz makepkg -si --skipchecksums`
+`JAROD_OS_TARBALL_URL=file:///path/to/herald-os-<version>-linux-x64.tar.gz makepkg -si --skipchecksums`
 packages a tarball you built yourself instead.
 
 The session needs niri (and a login screen such as greetd); the optional dependencies list what
@@ -322,8 +322,8 @@ Omarchy install on real hardware. Reports are welcome.
 **Sharing a Hermes home.** Omarchy's Hermes Desktop owns `~/.hermes` and runs its own backend and
 messaging gateway. A second backend from Jarod is safe (Hermes takes a lock for every cron tick and
 keeps one gateway per home), and Settings > Network says when another app's gateway is running. To
-not run a second backend at all, start Jarod with `HERALD_OS_BACKEND_URL=http://127.0.0.1:<port>`
-and the backend's token in `HERALD_OS_BACKEND_TOKEN` (or `~/.config/herald-os/backend-token`); Jarod
+not run a second backend at all, start Jarod with `JAROD_OS_BACKEND_URL=http://127.0.0.1:<port>`
+and the backend's token in `JAROD_OS_BACKEND_TOKEN` (or `~/.config/herald-os/backend-token`); Jarod
 then attaches to it and writes `~/.hermes/herald-os/control.json` (mode 0600) so the bridge plugin
 can still drive Jarod's UI.
 
@@ -332,7 +332,7 @@ can still drive Jarod's UI.
 - No calendar (`calendar.today` reports `unavailable`); Evolution Data Server integration is later.
 - QEMU has no GPU acceleration on macOS: niri runs nested inside cage, which renders with pixman,
   and Electron runs with `--disable-gpu`. UTM's Apple Virtualization backend gives virtio-gpu-gl.
-- Under the `HERALD_OS_COMPOSITOR=cage` kiosk, a launched app (Firefox, Nautilus) covers the shell
+- Under the `JAROD_OS_COMPOSITOR=cage` kiosk, a launched app (Firefox, Nautilus) covers the shell
   fullscreen and returns to it when closed; there is no switching between other apps' windows.
 - SELinux is permissive on the VM.
 - Apple Silicon Macs cannot boot this natively (no Asahi support for M4/M5); the VM is the target.

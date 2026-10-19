@@ -1,9 +1,19 @@
 #!/usr/bin/env bash
 # Entry point greetd runs as the session user: start the compositor with the Jarod-OS shell.
 #
-#   HERALD_OS_COMPOSITOR=niri (default)  niri manages every window; the shell runs as panels.
-#   HERALD_OS_COMPOSITOR=cage            Stage 1 kiosk: the shell is the only client.
+#   JAROD_OS_COMPOSITOR=niri (default)  niri manages every window; the shell runs as panels.
+#   JAROD_OS_COMPOSITOR=cage            Stage 1 kiosk: the shell is the only client.
 set -u
+
+# Variables renamed with Jarod-OS (2026-10-19): an older HERALD_OS_* still counts when JAROD_OS_* is unset (the new name wins).
+# HERALD_OS_DEV_UNSIGNED keeps its name (contract c8). Only names are handled here; no value is printed.
+for _old in $(compgen -e); do
+  case "$_old" in
+    HERALD_OS_DEV_UNSIGNED) ;;
+    HERALD_OS_*) _new="JAROD_OS_${_old#HERALD_OS_}"; [[ -n "${!_new+x}" ]] || export "$_new=${!_old}" ;;
+  esac
+done
+unset _old _new
 
 export XDG_SESSION_TYPE=wayland
 export XDG_CURRENT_DESKTOP=HeraldOS
@@ -11,7 +21,7 @@ export XDG_SESSION_DESKTOP=herald-os
 
 if ! ls /dev/dri/renderD* >/dev/null 2>&1; then
   export WLR_RENDERER=pixman
-  export HERALD_OS_SOFTWARE_GPU=1
+  export JAROD_OS_SOFTWARE_GPU=1
 fi
 
 # Optional per-machine overrides (compositor choice, output scale, dev server URL, extra flags).
@@ -21,13 +31,13 @@ if [[ -f "$HOME/.config/herald-os/session.env" ]]; then
   source "$HOME/.config/herald-os/session.env"
   set +a
 fi
-# Overrides written before the rename (HERMES_OS_*) still apply; everything below reads HERALD_OS_*.
+# Overrides written before the rename (HERMES_OS_*) still apply; everything below reads JAROD_OS_*.
 for legacy in "${!HERMES_OS_@}"; do
-  current="HERALD_OS_${legacy#HERMES_OS_}"
+  current="JAROD_OS_${legacy#HERMES_OS_}"
   [[ -n "${!current:-}" ]] || export "$current=${!legacy}"
 done
 
-COMPOSITOR="${HERALD_OS_COMPOSITOR:-niri}"
+COMPOSITOR="${JAROD_OS_COMPOSITOR:-niri}"
 
 # The compositor's own output is the only record of DRM/GPU/seat problems; keep the last run.
 LOG_DIR="$HOME/.local/state/herald-os"
@@ -36,27 +46,27 @@ exec >>"$LOG_DIR/compositor.log" 2>&1
 echo "$(date -Is) starting $COMPOSITOR (renderer=${WLR_RENDERER:-gpu})"
 
 if [[ "$COMPOSITOR" == "cage" ]] || ! command -v niri >/dev/null 2>&1; then
-  export HERALD_OS_SHELL_MODE=desktop
+  export JAROD_OS_SHELL_MODE=desktop
   exec cage -s -- "$(command -v herald-os-session)"
 fi
 
-export HERALD_OS_SHELL_MODE=panels
+export JAROD_OS_SHELL_MODE=panels
 
 # Machine-specific niri settings live in local.kdl (included last by the managed config).
-# HERALD_OS_SCALE applies to every connected output (and to the "winit" output used when niri is
+# JAROD_OS_SCALE applies to every connected output (and to the "winit" output used when niri is
 # nested, below); the file is only written when it is missing so hand edits survive.
 mkdir -p "$HOME/.config/niri"
 if [[ ! -f "$HOME/.config/niri/local.kdl" ]]; then
   {
     echo "// Machine-specific niri overrides. Jarod-OS never overwrites this file."
-    if [[ -n "${HERALD_OS_SCALE:-}" ]]; then
+    if [[ -n "${JAROD_OS_SCALE:-}" ]]; then
       for status in /sys/class/drm/card*-*/status; do
         [[ "$(cat "$status" 2>/dev/null)" == "connected" ]] || continue
         name="$(basename "$(dirname "$status")")"
         name="${name#card*-}"
-        printf 'output "%s" {\n    scale %s\n}\n' "$name" "$HERALD_OS_SCALE"
+        printf 'output "%s" {\n    scale %s\n}\n' "$name" "$JAROD_OS_SCALE"
       done
-      printf 'output "winit" {\n    scale %s\n}\n' "$HERALD_OS_SCALE"
+      printf 'output "winit" {\n    scale %s\n}\n' "$JAROD_OS_SCALE"
     fi
   } >"$HOME/.config/niri/local.kdl"
 fi
@@ -70,14 +80,14 @@ fi
 [[ -f "$HOME/.config/niri/outputs.kdl" ]] || echo "// Written by the Jarod-OS Display panel." >"$HOME/.config/niri/outputs.kdl"
 
 # The shell scales through the compositor under niri; do not also zoom the page.
-unset HERALD_OS_ZOOM
+unset JAROD_OS_ZOOM
 
 # niri drives displays through DRM and refuses software GL. A VM without 3D acceleration
 # (virtio-gpu reporting `-virgl`, as in QEMU/Apple Virtualization without virgl) therefore gets no
 # output at all. There, nest niri's windowed backend inside cage: cage owns the display with
 # software rendering, niri runs fullscreen inside it and still manages every window.
-# HERALD_OS_NIRI_NESTED=0|1 forces either way.
-nested="${HERALD_OS_NIRI_NESTED:-auto}"
+# JAROD_OS_NIRI_NESTED=0|1 forces either way.
+nested="${JAROD_OS_NIRI_NESTED:-auto}"
 if [[ "$nested" == "auto" ]]; then
   nested=0
   if [[ -n "${WLR_RENDERER:-}" ]]; then

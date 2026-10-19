@@ -295,7 +295,7 @@ describe("remote_exec — control journal", () => {
     const file = join(dir, "control-audit.jsonl");
     const { hosts, ctx } = await setup();
     const ssh = new SshService({ keyExists: () => true, transport: async () => reply({ exitCode: 0, stdout: "ok" }) });
-    const env = { JAROD_CONTROL_JOURNAL: file, HERALD_OS_CONTROL_TOKEN: "tok-0123456789abcdef" };
+    const env = { JAROD_CONTROL_JOURNAL: file, JAROD_OS_CONTROL_TOKEN: "tok-0123456789abcdef" };
     const tool = remoteExecTool({ hosts, ssh, env, hostKeyTrusted: async () => true, policy: () => DEFAULT_POLICY });
     expect(tool.available?.()).toBe(true);
     await tool.run({ machine: "pc2", command: "echo tok-0123456789abcdef" }, ctx);

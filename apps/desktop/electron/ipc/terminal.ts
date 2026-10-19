@@ -30,11 +30,11 @@ let ptyModule: PtyModule | null | undefined
 
 /**
  * The shell a Terminal tab starts. `$SHELL` wins on macOS and Linux; on Windows it is not a
- * Windows path when set (Git Bash exports it), so PowerShell is used unless HERALD_OS_SHELL names one.
+ * Windows path when set (Git Bash exports it), so PowerShell is used unless JAROD_OS_SHELL names one.
  */
 export function defaultShell(platform: NodeJS.Platform = process.platform, env: NodeJS.ProcessEnv = process.env): string {
   if (platform === 'win32') {
-    return env.HERALD_OS_SHELL?.trim() || 'powershell.exe'
+    return env.JAROD_OS_SHELL?.trim() || 'powershell.exe'
   }
 
   return env.SHELL || (platform === 'darwin' ? '/bin/zsh' : '/bin/bash')

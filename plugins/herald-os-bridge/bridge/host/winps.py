@@ -1,7 +1,7 @@
 """PowerShell plumbing for the Windows adapter: one runner and the scripts it runs.
 
 Every script is passed with ``-EncodedCommand`` (no quoting to get wrong) and receives its arguments
-as JSON in ``$env:HERALD_OS_ARGS``, parsed into ``$A``; user-supplied text is therefore never part of
+as JSON in ``$env:JAROD_OS_ARGS``, parsed into ``$A``; user-supplied text is therefore never part of
 the script source. Output is UTF-8 JSON (``ConvertTo-Json -Compress``) on stdout; a failure is one
 plain line on stderr and exit code 1. Windows PowerShell 5.1 is used because every supported Windows
 ships it."""
@@ -21,7 +21,7 @@ $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
 $A = $null
-if ($env:HERALD_OS_ARGS) { $A = $env:HERALD_OS_ARGS | ConvertFrom-Json }
+if ($env:JAROD_OS_ARGS) { $A = $env:JAROD_OS_ARGS | ConvertFrom-Json }
 try {
 """
 
@@ -60,7 +60,7 @@ def ps_text(script: str, args: Mapping[str, Any] | None = None, *, timeout: floa
     exe = powershell_exe()
     if exe is None:
         raise PowerShellError("Windows PowerShell was not found")
-    env = {"HERALD_OS_ARGS": json.dumps(args, ensure_ascii=False)} if args is not None else {}
+    env = {"JAROD_OS_ARGS": json.dumps(args, ensure_ascii=False)} if args is not None else {}
     result = run(build_argv(script, exe), timeout=timeout, env=env, encoding="utf-8")
     if result.code == 124:
         raise PowerShellError(f"PowerShell timed out after {timeout:g}s")

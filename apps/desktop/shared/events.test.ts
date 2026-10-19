@@ -30,10 +30,19 @@ describe('hookEnv', () => {
   it('gives hooks the event, its time, its JSON and each detail', () => {
     const env = hookEnv({ name: 'network-change', at: Date.parse('2026-10-06T07:00:00Z'), detail: { online: 'true', wifi: 'Home 5G', 'away-minutes': '3' } })
 
-    expect(env.HERALD_EVENT).toBe('network-change')
-    expect(env.HERALD_EVENT_AT).toBe('2026-10-06T07:00:00.000Z')
-    expect(env.HERALD_EVENT_WIFI).toBe('Home 5G')
-    expect(env.HERALD_EVENT_AWAY_MINUTES).toBe('3')
-    expect(JSON.parse(env.HERALD_EVENT_JSON).detail.online).toBe('true')
+    expect(env.JAROD_EVENT).toBe('network-change')
+    expect(env.JAROD_EVENT_AT).toBe('2026-10-06T07:00:00.000Z')
+    expect(env.JAROD_EVENT_WIFI).toBe('Home 5G')
+    expect(env.JAROD_EVENT_AWAY_MINUTES).toBe('3')
+    expect(JSON.parse(env.JAROD_EVENT_JSON).detail.online).toBe('true')
+  })
+
+  it('still sets the older HERALD_EVENT names, with the same values, for hooks written before the rename', () => {
+    const env = hookEnv({ name: 'network-change', at: Date.parse('2026-10-06T07:00:00Z'), detail: { wifi: 'Home 5G' } })
+
+    for (const suffix of ['', '_AT', '_JSON', '_WIFI']) {
+      expect(env[`HERALD_EVENT${suffix}`], suffix).toBe(env[`JAROD_EVENT${suffix}`])
+    }
+    expect(Object.keys(env).filter(k => !k.startsWith('JAROD_EVENT') && !k.startsWith('HERALD_EVENT'))).toEqual([])
   })
 })
