@@ -1,5 +1,5 @@
 /**
- * herald-plugin://sdk/widget.js: what a widget includes to talk to the shell. Everything goes
+ * jarod-plugin://sdk/widget.js (also served as herald-plugin://sdk/widget.js): what a widget includes to talk to the shell. Everything goes
  * through postMessage to the shell's frame host; the reply comes back with the same id.
  *
  *   herald.stats() · herald.notify(title, body) · herald.storage.get(key) / .set(key, value)

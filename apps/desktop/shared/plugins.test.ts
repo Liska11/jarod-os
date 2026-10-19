@@ -1,7 +1,18 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { allowed, describePermissions, grantCovers, pluginCsp, validateManifest } from './plugins.ts'
+import {
+  allowed,
+  describePermissions,
+  grantCovers,
+  handlePluginSchemes,
+  PLUGIN_SCHEME,
+  PLUGIN_SCHEMES,
+  pluginCsp,
+  pluginUrl,
+  privilegedPluginSchemes,
+  validateManifest
+} from './plugins.ts'
 
 const good = {
   id: 'weather-strip',
@@ -84,5 +95,44 @@ describe('permissions', () => {
     expect(pluginCsp('weather-strip', ['api.open-meteo.com'])).toContain('connect-src https://api.open-meteo.com')
     expect(pluginCsp('weather-strip', [])).toContain("connect-src 'none'")
     expect(pluginCsp('weather-strip', [])).toContain("default-src 'none'")
+  })
+})
+
+describe('plugin URL scheme (Jarod-OS rename, phase 3)', () => {
+  it('serves widgets from jarod-plugin:// and still answers the older herald-plugin://', () => {
+    expect(PLUGIN_SCHEME).toBe('jarod-plugin')
+    expect(PLUGIN_SCHEMES).toEqual(['jarod-plugin', 'herald-plugin'])
+  })
+
+  it('registers every scheme as privileged, with the same privileges', () => {
+    const entries = privilegedPluginSchemes()
+
+    expect(entries.map(e => e.scheme)).toEqual(['jarod-plugin', 'herald-plugin'])
+    for (const e of entries) {
+      expect(e.privileges).toEqual({ standard: true, secure: true, supportFetchAPI: true })
+    }
+  })
+
+  it('hands every scheme to the same handler, so an old page and a new one get the same files and the same checks', () => {
+    const seen: Array<[string, unknown]> = []
+    const handler = async () => new Response('x')
+
+    handlePluginSchemes({ handle: (scheme, fn) => seen.push([scheme, fn]) }, handler)
+
+    expect(seen.map(([s]) => s)).toEqual(['jarod-plugin', 'herald-plugin'])
+    expect(seen.every(([, fn]) => fn === handler)).toBe(true)
+  })
+
+  it('a page may load its own files and the SDK under either scheme, and nothing else', () => {
+    const csp = pluginCsp('weather-strip', [])
+
+    expect(csp).toContain('script-src jarod-plugin://weather-strip herald-plugin://weather-strip jarod-plugin://sdk herald-plugin://sdk')
+    expect(csp).toContain("style-src jarod-plugin://weather-strip herald-plugin://weather-strip 'unsafe-inline'")
+    expect(csp).toContain('font-src jarod-plugin://weather-strip herald-plugin://weather-strip')
+    expect(csp).not.toMatch(/jarod-plugin:\/\/(?!weather-strip|sdk)/)
+  })
+
+  it('the URL of a frame uses the new scheme', () => {
+    expect(pluginUrl('weather-strip', 'index.html')).toBe('jarod-plugin://weather-strip/index.html')
   })
 })

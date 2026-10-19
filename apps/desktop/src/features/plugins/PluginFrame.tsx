@@ -1,6 +1,6 @@
 import { useStore } from '@nanostores/react'
 import { useEffect, useRef } from 'react'
-import type { PluginMethod, PluginPlacement, PluginView } from '../../../shared/plugins.ts'
+import { type PluginMethod, type PluginPlacement, type PluginView, pluginUrl } from '../../../shared/plugins.ts'
 import { cn } from '../../lib/cn.ts'
 import { $prefs } from '../../store/backend.ts'
 
@@ -96,7 +96,7 @@ export function PluginFrame({ plugin, at, className, title, width, height }: { p
       ref={frame}
       // `at` tells the widget where it sits (herald.placement); the revision changes when its files
       // are saved, so the frame reloads.
-      src={`herald-plugin://${id}/${plugin.manifest.entry}?at=${at}&scheme=${scheme}&rev=${plugin.revision}`}
+      src={`${pluginUrl(id, plugin.manifest.entry)}?at=${at}&scheme=${scheme}&rev=${plugin.revision}`}
       sandbox="allow-scripts"
       title={title ?? plugin.manifest.name}
       className={cn('block border-0 bg-transparent', className)}

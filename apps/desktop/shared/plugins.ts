@@ -136,14 +136,45 @@ export function validateManifest(value: unknown, folder: string): { manifest: Pl
   return { manifest: errors.length ? null : manifest, errors }
 }
 
-/** The CSP a widget page runs under: its own files, and fetches only to the hosts it was granted. */
+/**
+ * The scheme widgets are served from. `jarod-plugin` since the Jarod-OS rename (docs/RENAME-PLAN-JAROD-OS.md, phase 3); the older
+ * `herald-plugin` stays registered and served by the same handler, because a plugin already installed may name it in its own HTML
+ * (`<script src="herald-plugin://sdk/widget.js">`). Retiring it is phase 6, on a person's decision.
+ */
+export const PLUGIN_SCHEME = 'jarod-plugin'
+export const PLUGIN_SCHEMES = [PLUGIN_SCHEME, 'herald-plugin'] as const
+
+const PLUGIN_SCHEME_PRIVILEGES = { standard: true, secure: true, supportFetchAPI: true } as const
+
+/** What `protocol.registerSchemesAsPrivileged` needs for the widget schemes: every one, the same privileges. */
+export function privilegedPluginSchemes(): Array<{ scheme: string; privileges: typeof PLUGIN_SCHEME_PRIVILEGES }> {
+  return PLUGIN_SCHEMES.map(scheme => ({ scheme, privileges: { ...PLUGIN_SCHEME_PRIVILEGES } }))
+}
+
+/** Gives every widget scheme the SAME handler: an old URL and a new one get the same files and the same checks. */
+export function handlePluginSchemes(
+  protocol: { handle(scheme: string, handler: (request: Request) => Promise<Response>): void },
+  handler: (request: Request) => Promise<Response>
+): void {
+  for (const scheme of PLUGIN_SCHEMES) {
+    protocol.handle(scheme, handler)
+  }
+}
+
+/** A widget file's URL, under the current scheme. */
+export function pluginUrl(id: string, file: string): string {
+  return `${PLUGIN_SCHEME}://${id}/${file}`
+}
+
+/** The CSP a widget page runs under: its own files (under either scheme), and fetches only to the hosts it was granted. */
 export function pluginCsp(id: string, hosts: readonly string[]): string {
-  const self = `herald-plugin://${id}`
+  const self = PLUGIN_SCHEMES.map(scheme => `${scheme}://${id}`).join(' ')
+  const sdk = PLUGIN_SCHEMES.map(scheme => `${scheme}://sdk`).join(' ')
   const connect = hosts.length ? hosts.map(host => `https://${host}`).join(' ') : "'none'"
 
   return [
     `default-src 'none'`,
-    `script-src ${self} herald-plugin://sdk`,
+    `script-src ${self} ${sdk}`,
     `style-src ${self} 'unsafe-inline'`,
     `img-src ${self} data: ${hosts.map(host => `https://${host}`).join(' ')}`.trim(),
     `font-src ${self}`,

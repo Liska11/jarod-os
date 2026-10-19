@@ -163,7 +163,7 @@ Omarchy's `Super+C/X/V` copy, cut and paste; `herald-os keymap herald` restores 
   <git-url>` clones one turned off; `herald-os plugin list | enable | disable | update | remove`
   manage them, and `enable` prints what the widget may do and asks at the terminal. Settings >
   Plugins does the same, and Hermes's `system_os plugin_*` actions can do everything except turn
-  one on. Each runs in a sandboxed frame served from `herald-plugin://<id>/`, under a Content
+  one on. Each runs in a sandboxed frame served from `jarod-plugin://<id>/`, under a Content
   Security Policy that allows only its own files and the hosts it was granted. The manual's
   [Make it yours](manual/make-it-yours.md#widgets) explains how to write one.
 - **The menu bar, the menu and branding.** `herald-os bar` shows, hides and moves menu-bar items

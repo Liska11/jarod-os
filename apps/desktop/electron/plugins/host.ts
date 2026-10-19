@@ -5,7 +5,7 @@ import { writeFileAtomic } from '../atomic-write.ts'
 import os from 'node:os'
 import path from 'node:path'
 import { IPC, type ShellCommand } from '../../shared/ipc.ts'
-import { allowed, grantCovers, pluginCsp, type PluginGrant, type PluginMethod, type PluginView, validateManifest } from '../../shared/plugins.ts'
+import { allowed, grantCovers, handlePluginSchemes, pluginCsp, type PluginGrant, type PluginMethod, type PluginView, validateManifest } from '../../shared/plugins.ts'
 import { log } from '../log.ts'
 import { hostPlatform } from '../platform/index.ts'
 import { PLUGIN_ACTIONS } from '../shell/host-actions.ts'
@@ -16,7 +16,7 @@ import { shellConfigDir } from '../paths.ts'
 
 /*
  * Widget plugins (ADR-019). Each lives in ~/.config/herald-os/plugins/<id>; the shell shows enabled
- * ones in sandboxed frames served from herald-plugin://<id>/ under a strict CSP, and answers their
+ * ones in sandboxed frames served from jarod-plugin://<id>/ under a strict CSP, and answers their
  * messages here, checking the manifest's permissions (the renderer checks too, but main decides).
  */
 
@@ -153,7 +153,7 @@ export class PluginHost {
       throw new Error('Give an https or ssh git URL')
     }
 
-    const staging = fs.mkdtempSync(path.join(os.tmpdir(), 'herald-plugin-'))
+    const staging = fs.mkdtempSync(path.join(os.tmpdir(), 'jarod-plugin-'))
 
     try {
       const cloned = await git(['clone', '--depth', '1', '--', url, staging])
@@ -338,9 +338,12 @@ export class PluginHost {
     return reply.result
   }
 
-  /** herald-plugin://<id>/<file>: an enabled plugin's own files, with its CSP; herald-plugin://sdk/widget.js. */
+  /**
+   * jarod-plugin://<id>/<file>: an enabled plugin's own files, with its CSP; jarod-plugin://sdk/widget.js. The older herald-plugin://
+   * gets the same handler (shared/plugins.ts, PLUGIN_SCHEMES): a plugin installed before the rename keeps working.
+   */
   registerProtocol(): void {
-    protocol.handle('herald-plugin', async request => {
+    handlePluginSchemes(protocol, async request => {
       const url = new URL(request.url)
       const id = url.hostname
 

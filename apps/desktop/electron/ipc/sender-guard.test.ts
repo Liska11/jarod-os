@@ -38,6 +38,7 @@ describe('checkSender', () => {
     expect(checkSender(event(top('http://127.0.0.1:5181/')), dev).ok).toBe(false)
     expect(checkSender(event(top(shellFile)), dev).ok).toBe(false)
     expect(checkSender(event(top('herald-plugin://widget/index.html')), packaged).ok).toBe(false)
+    expect(checkSender(event(top('jarod-plugin://widget/index.html')), packaged).ok).toBe(false)
   })
 
   it('refuses a subframe, even one that loads the shell page itself', () => {

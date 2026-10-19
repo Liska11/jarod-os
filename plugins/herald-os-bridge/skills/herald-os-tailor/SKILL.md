@@ -106,7 +106,7 @@ or in its own window. Make one when they want something to glance at: "a strip w
 <html>
   <head>
     <meta charset="utf-8" />
-    <script src="herald-plugin://sdk/widget.js"></script>
+    <script src="jarod-plugin://sdk/widget.js"></script>
     <script src="widget.js" defer></script>
   </head>
   <body style="margin: 0; font: 500 11px/24px system-ui; color: var(--herald-fg)">

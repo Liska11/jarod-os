@@ -6,6 +6,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { type ControlRunResult, type EnvInfo, type HeraldOSPrefs, IPC, type RestRequest, type ShellCommand, type WindowState } from '../shared/ipc.ts'
+import { privilegedPluginSchemes } from '../shared/plugins.ts'
 import { BackendManager } from './backend/manager.ts'
 import { jarodDataDir, resolveJarodCore, runDbSnapshot, selectBackend } from './backend/jarod-core.ts'
 import { CrashWatcher } from './crash/watch.ts'
@@ -127,9 +128,10 @@ if (!process.env.HERMES_HOME?.trim() && !process.env.JAROD_OS_BACKEND_URL?.trim(
   process.env.HERMES_HOME = path.join(jarodDataDir(), 'herald-home')
 }
 
-// Widget plugins load from herald-plugin://<id>/, the Player streams jarod-media:// (registered before the app is
+// Widget plugins load from jarod-plugin://<id>/ (and the older herald-plugin://, same handler), the Player streams jarod-media://
+// (registered before the app is
 // ready, in one call, as Electron requires).
-protocol.registerSchemesAsPrivileged([{ scheme: 'herald-plugin', privileges: { standard: true, secure: true, supportFetchAPI: true } }, MEDIA_SCHEME_PRIVILEGES])
+protocol.registerSchemesAsPrivileged([...privilegedPluginSchemes(), MEDIA_SCHEME_PRIVILEGES])
 
 // Electron shows a modal dialog for an uncaught main-process error and waits on it: the whole
 // shell, the Linux session included, would freeze behind a box nobody may see. Log it and go on.

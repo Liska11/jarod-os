@@ -11,6 +11,7 @@ Statut : **préparé le 2026-10-17 ; lancé le 2026-10-19 sur décision de l'hum
 5. Retrait des replis (phase 6) : non décidé, rien n'est retiré.
 6. Attribution à Herald OS : inchangée.
 7. Un commit local par phase (jamais de push) : chaque phase s'annule seule par `git revert`.
+8. Phase 3 : le tube Windows et le socket Unix du point de contrôle **gardent leurs noms**. Leur forme est figée par le contrat v1 `c1-control-endpoint` (motif exact, accepté strictement par l'hôte Rust) ; émettre le nouveau nom imposerait un contrat v2 sur une frontière de sécurité, sans rien de visible à gagner. Même traitement que la dérogation de signature du contrat c8.
 
 Phase 1 faite : paquets `@jarod-os/desktop` et `@jarod-os/client`, lockfile régénéré (noms seulement).
 

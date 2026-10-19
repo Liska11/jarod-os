@@ -108,7 +108,8 @@ A widget is a folder, `~/.config/herald-os/plugins/<id>/`, with a `manifest.json
   `run:page.open`. A command that changes something still asks you each time.
 - `hosts` are the websites it may fetch from, over HTTPS. It can reach nothing else.
 
-The page loads `<script src="herald-plugin://sdk/widget.js"></script>`, then its own script files
+The page loads `<script src="jarod-plugin://sdk/widget.js"></script>` (a widget written before the Jarod-OS rename
+may still say `herald-plugin://`: both are served), then its own script files
 (scripts written inline in the page are blocked). The SDK gives it:
 
 - `await herald.stats()`, `herald.notify(title, body)`, `herald.storage.get(key)` and
