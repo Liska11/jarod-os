@@ -15,7 +15,7 @@ Borrowed from the field (see `LANDSCAPE.md` for the source of each):
 - Whole-environment themes driven by Hermes skins; agent-authored themes (Omarchy).
 - Agent Task Manager: per-session resources, tokens, approvals, stop (OpenNeo).
 - Live "Hermes is acting" banner with Interrupt during GUI automation (SomaOS).
-- `herald-os-tailor` skill so Hermes can reconfigure Jarod-OS itself (Omarchy).
+- `jarod-os-tailor` skill so Hermes can reconfigure Jarod-OS itself (Omarchy).
 - `system_shortcut` tool over macOS Shortcuts / App Intents (Apple).
 
 Also planned:

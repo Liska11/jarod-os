@@ -71,4 +71,4 @@ def record(
     except Exception as exc:  # noqa: BLE001
         import sys
 
-        print(f"herald-os-bridge: audit write failed: {exc}", file=sys.stderr)
+        print(f"jarod-os-bridge: audit write failed: {exc}", file=sys.stderr)

@@ -53,7 +53,7 @@ Ranked by value to the "Hermes is the OS" thesis divided by cost, given the curr
 5. **Agent-as-co-user with a live "hands" indicator** (SomaOS). When the agent uses
    `computer_use`/browser tools, show a persistent banner with the current action and a big
    Interrupt button; never let GUI automation run without visible presence. Small UI, high trust.
-6. **The OS as an editable surface + tailoring skill** (Omarchy). A `herald-os-tailor` skill that
+6. **The OS as an editable surface + tailoring skill** (Omarchy). A `jarod-os-tailor` skill that
    teaches the agent how to change Jarod-OS itself: prefs, policy file, surfaces order, accent,
    default cwd, keybindings. Small (docs + skill).
 7. **Opt-in environment bundles** (vinOS). `herald os bundle dev` installs a curated set (VS Code,

@@ -70,7 +70,7 @@ npm run dev
 ```
 
 `npm run bootstrap` downloads the pinned upstream snapshot, installs the Node packages, fetches
-Electron, links `plugins\herald-os-bridge` into `%HERMES_HOME%\plugins` with a **junction** (it needs
+Electron, links the repository's `plugins\herald-os-bridge` into `%HERMES_HOME%\plugins` as `jarod-os-bridge` with a **junction** (it needs
 neither Developer Mode nor an administrator), then enables the plugin and the `herald_os` toolset and
 turns Hermes's tool search off so the system tools stay directly callable. It is safe to run again
 after every pull. It uses `scripts\bootstrap.ps1`; `npm run` picks it over the bash version

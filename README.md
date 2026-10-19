@@ -80,7 +80,7 @@ xattr -dr com.apple.quarantine "/Applications/Jarod-OS.app"
 ```
 
 Jarod-OS takes over the screen: `Cmd+Ctrl+F` leaves or re-enters fullscreen and `Cmd+Q` quits. On
-its first start it adds its system tools to Hermes (`~/.hermes/plugins/herald-os-bridge`). macOS asks
+its first start it adds its system tools to Hermes (`~/.hermes/plugins/jarod-os-bridge`). macOS asks
 for Screen Recording, Accessibility or Microphone access the first time a feature needs it: asking
 about the screen, typing an emoji into another app, or talking to Hermes.
 
@@ -189,7 +189,7 @@ macOS underneath handling the hardware and your Mac apps. It is the quickest way
 and where most of it is built.
 
 Jarod-OS does not fork Hermes. It runs a standard Hermes Agent install and adds its system
-abilities as a regular Hermes plugin, `herald-os-bridge`.
+abilities as a regular Hermes plugin, `jarod-os-bridge` (its folder in this repository is still `plugins/herald-os-bridge`).
 
 ## A look around
 
@@ -360,7 +360,7 @@ This is safe to re-run, and you should re-run it after every `git pull`. It:
 
 1. downloads the pinned Hermes gateway client the shell is compiled against (`upstream/`);
 2. installs the Node packages and downloads Electron;
-3. links the `herald-os-bridge` plugin into `~/.hermes/plugins` and enables it and its tools;
+3. links the bridge plugin into `~/.hermes/plugins` as `jarod-os-bridge` and enables it and its tools;
 4. migrates settings from the project's earlier name (Hermes OS), if you had it installed;
 5. reports which optional voice packages your Hermes install has.
 
@@ -534,7 +534,7 @@ does not change the shell's code. Moving the pin is described in [upstream/READM
 - **macOS says Jarod-OS "is damaged" or "cannot be opened".** The build is not notarized yet: run
   `xattr -dr com.apple.quarantine "/Applications/Jarod-OS.app"` and open it again.
 - **Hermes uses shell commands instead of its system tools.** `hermes plugins list` should show
-  `herald-os-bridge` as enabled; `hermes plugins enable herald-os-bridge` turns it on. From a
+  `jarod-os-bridge` as enabled; `hermes plugins enable jarod-os-bridge` turns it on. From a
   checkout, re-run `npm run bootstrap`; on Linux, `herald-os setup`. Then restart Jarod-OS.
 - **The VM's first boot fails or never finishes.** A failed step prints
   `==> Provisioning FAILED at line N`, and `bash linux/vm/run-qemu.sh console` shows where it

@@ -13,6 +13,47 @@ import { hermesHome, heraldOsDataDir } from '../paths.ts'
  * `herald-os setup` for the Linux packages.
  */
 
+/**
+ * The plugin's name in Hermes since the Jarod-OS rename (docs/RENAME-PLAN-JAROD-OS.md, phase 5), and the name its link had before.
+ * Two things keep their older names on purpose: the packaged resources folder (`herald-os-bridge`, which the Linux packages link by
+ * that name) and the toolset id (`herald_os`, which Linux setup enables and saved "always allow" rules are keyed by).
+ */
+export const BRIDGE_PLUGIN = 'jarod-os-bridge'
+const LEGACY_BRIDGE_PLUGIN = 'herald-os-bridge'
+const BRIDGE_TOOLSET = 'herald_os'
+const BRIDGE_NAMES = new Set([BRIDGE_PLUGIN, LEGACY_BRIDGE_PLUGIN])
+
+/** Whether `dir` holds this bridge, under either of its names (its plugin.yaml says so). */
+function isOurBridge(dir: string): boolean {
+  try {
+    const name = /^name:\s*["']?([\w-]+)/m.exec(fs.readFileSync(path.join(dir, 'plugin.yaml'), 'utf8'))?.[1]
+
+    return Boolean(name && BRIDGE_NAMES.has(name))
+  } catch {
+    return false
+  }
+}
+
+/**
+ * The link under the older name, once the new one is in place: Hermes would load the bridge twice (two plugins, the same tools).
+ * Only a LINK is removed, never what it points at, and only when it leads to this bridge or nowhere; a folder is the person's own.
+ */
+function retireLegacyLink(): void {
+  const legacy = path.join(hermesHome(), 'plugins', LEGACY_BRIDGE_PLUGIN)
+  const entry = readEntry(legacy)
+
+  if (entry.kind === 'folder') {
+    log('bridge', `${legacy} is a folder of your own; if it holds the bridge too, Hermes may load it twice`)
+
+    return
+  }
+
+  if (entry.kind === 'link' && (!entry.exists || isOurBridge(entry.target))) {
+    fs.rmSync(legacy, { force: true })
+    log('bridge', `removed the link under the older name ${legacy} (it led to ${entry.target}, which is left as it was)`)
+  }
+}
+
 export type PluginEntry = { kind: 'missing' } | { kind: 'link'; target: string; exists: boolean } | { kind: 'folder' }
 
 /** What to do with ~/.hermes/plugins/herald-os-bridge, given the app's own copy (pure; tested). */
@@ -136,14 +177,16 @@ export async function ensureBridgePlugin(runtime: BackendRuntime, resources: str
     return
   }
 
-  const link = path.join(hermesHome(), 'plugins', 'herald-os-bridge')
+  const link = path.join(hermesHome(), 'plugins', BRIDGE_PLUGIN)
 
   try {
     const entry = readEntry(link)
     const plan = bridgeLinkPlan(entry, bundled)
 
-    // A folder of the person's own, or a checkout's link: theirs to manage.
+    // A folder of the person's own, or a checkout's link: theirs to manage. The older link still goes: two bridges would load.
     if (plan === 'keep' && !(entry.kind === 'link' && path.resolve(entry.target) === path.resolve(bundled))) {
+      retireLegacyLink()
+
       return
     }
 
@@ -154,6 +197,9 @@ export async function ensureBridgePlugin(runtime: BackendRuntime, resources: str
       fs.symlinkSync(bundled, link, process.platform === 'win32' ? 'junction' : undefined)
       log('bridge', `${plan === 'create' ? 'linked' : 'relinked'} ${link} -> ${bundled}`)
     }
+
+    // Only once the new link stands: until then the older one is what keeps the bridge loaded.
+    retireLegacyLink()
   } catch (error) {
     log('bridge', `could not link the bridge plugin: ${error instanceof Error ? error.message : String(error)}`)
 
@@ -162,16 +208,17 @@ export async function ensureBridgePlugin(runtime: BackendRuntime, resources: str
 
   // Once: enable the plugin and its tools, and keep them directly callable (tool search would hide
   // them behind a lookup). The marker means it worked, so a failed try runs again on the next start
-  // and a person who turns the plugin off later is left alone.
-  const enabled = path.join(heraldOsDataDir(), 'bridge-enabled')
+  // and a person who turns the plugin off later is left alone. Its name carries the plugin's: the marker of
+  // the older name (copied with the rest of the folder) must not stop the renamed plugin from being enabled.
+  const enabled = path.join(heraldOsDataDir(), `${BRIDGE_PLUGIN}-enabled`)
 
   if (fs.existsSync(enabled)) {
     return
   }
 
   for (const args of [
-    ['plugins', 'enable', 'herald-os-bridge'],
-    ['tools', 'enable', 'herald_os'],
+    ['plugins', 'enable', BRIDGE_PLUGIN],
+    ['tools', 'enable', BRIDGE_TOOLSET],
     ['config', 'set', 'tools.tool_search.enabled', 'off']
   ]) {
     if (!(await hermes(runtime, args))) {

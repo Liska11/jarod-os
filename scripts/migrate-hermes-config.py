@@ -1,4 +1,4 @@
-"""Carry pre-rename "Hermes OS" settings in the Hermes config over to Herald OS. Idempotent.
+"""Carry the plugin settings of earlier names in the Hermes config over (Hermes OS, then Herald OS, then Jarod-OS). Idempotent.
 
 Run by scripts/bootstrap.sh with the Hermes runtime's own interpreter (it needs ``hermes_cli``):
 
@@ -72,7 +72,27 @@ def migrate(config: dict[str, Any]) -> dict[str, Any]:
         legacy = config.pop(OLD_TOOLSET)
         config.setdefault(NEW_TOOLSET, legacy)
 
+    _add_jarod_os_plugin_name(config)
     return config
+
+
+#: Jarod-OS rename, phase 5 (docs/RENAME-PLAN-JAROD-OS.md): the plugin's name. ADDED beside the older one, never in its place, so an
+#: earlier version still finds the plugin it knows (Hermes ignores an enabled name it cannot find). The toolset keeps its id,
+#: ``herald_os``: Linux setup enables it by that name and saved "always allow" rules (``plugin_rule:herald_os:*``) are keyed by it.
+JAROD_PLUGIN = "jarod-os-bridge"
+
+
+def _add_jarod_os_plugin_name(config: dict[str, Any]) -> None:
+    plugins = config.get("plugins")
+    if not isinstance(plugins, dict):
+        return
+    for key in ("enabled", "disabled"):
+        names = plugins.get(key)
+        if isinstance(names, list) and NEW_PLUGIN in names and JAROD_PLUGIN not in names:
+            names.insert(names.index(NEW_PLUGIN) + 1, JAROD_PLUGIN)
+    entries = plugins.get("entries")
+    if isinstance(entries, dict) and NEW_PLUGIN in entries:
+        entries.setdefault(JAROD_PLUGIN, copy.deepcopy(entries[NEW_PLUGIN]))
 
 
 def main() -> int:

@@ -37,7 +37,7 @@ flowchart LR
   subgraph hermes [Hermes runtime: optional backend]
     Serve["hermes serve (JSON-RPC + REST)"]
     Agent[AIAgent, tools, skills, memory]
-    Bridge[herald-os-bridge plugin]
+    Bridge[jarod-os-bridge plugin]
     Serve --> Agent --> Bridge
   end
   Renderer -->|"WebSocket JSON-RPC (@jarod-os/client)"| Gateway

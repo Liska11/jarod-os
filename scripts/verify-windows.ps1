@@ -97,10 +97,10 @@ try {
     Add-Result 'Hermes runtime' ($version.Code -eq 0 -and $versionLine -match 'Hermes') ("{0}  [{1}]" -f $versionLine, $RuntimeRoot)
 
     # 2. The bridge is linked and enabled.
-    $link = Join-Path $HermesHome 'plugins\herald-os-bridge'
+    $link = Join-Path $HermesHome 'plugins\jarod-os-bridge'
     $config = Join-Path $HermesHome 'config.yaml'
     $linked = Test-Path (Join-Path $link 'plugin.yaml')
-    $enabled = (Test-Path $config) -and ((Get-Content -Raw $config) -match 'herald-os-bridge')
+    $enabled = (Test-Path $config) -and ((Get-Content -Raw $config) -match 'jarod-os-bridge')
     Add-Result 'Bridge plugin' ($linked -and $enabled) ("linked={0} enabled={1} ({2}); run npm run bootstrap if not" -f $linked, $enabled, $link)
 
     # 3. Gateway: hermes serve, then tools.list over the JSON-RPC WebSocket.

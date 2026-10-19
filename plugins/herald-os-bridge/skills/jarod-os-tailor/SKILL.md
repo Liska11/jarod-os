@@ -1,5 +1,5 @@
 ---
-name: herald-os-tailor
+name: jarod-os-tailor
 description: Change Jarod-OS itself - make and switch themes, fonts and the wallpaper, widgets, the menu bar, control-menu entries, branding, keybindings, settings, routines and hooks
 metadata:
   hermes:
@@ -220,5 +220,5 @@ own `bind = …` line. Check the result with `hyprctl configerrors` after `hyprc
 - Something on a schedule: `automation.create args={"name": …, "schedule": "every weekday at 9am", "prompt": …}`.
 - Something each time an event happens ("every time I log in", "when the battery is low",
   "when Safari crashes"): `automation.create` with `"event"` (and `"match"`) instead of a schedule,
-  or a hook script for chores that need no Hermes. The `herald-os` skill lists the events and how
+  or a hook script for chores that need no Hermes. The `jarod-os` skill lists the events and how
   hooks run.

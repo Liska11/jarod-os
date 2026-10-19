@@ -1,7 +1,7 @@
 # System Bridge
 
 The system bridge is how Hermes acts on the computer. It is a Hermes plugin
-(`plugins/herald-os-bridge`) that registers a small toolset named `herald_os`. Every capability is
+(`plugins/herald-os-bridge`) that registers a small toolset named `herald_os` (the plugin itself is `jarod-os-bridge` in Hermes since the Jarod-OS rename; the toolset keeps its id, which saved "always allow" rules and Linux setup use). Every capability is
 an explicit tool with a typed schema, a permission tier, and an audit record. The model never gets
 unrestricted machine access.
 
@@ -41,8 +41,8 @@ for shell commands, because it is the same gate.
 
 ## Enabling
 
-`scripts/bootstrap.sh` links the plugin into `$HERMES_HOME/plugins/herald-os-bridge`, then runs
-`hermes plugins enable herald-os-bridge`, `hermes tools enable herald_os` (a saved platform toolset
+`scripts/bootstrap.sh` links the plugin into `$HERMES_HOME/plugins/jarod-os-bridge`, then runs
+`hermes plugins enable jarod-os-bridge`, `hermes tools enable herald_os` (a saved platform toolset
 list is authoritative upstream), and `hermes config set tools.tool_search.enabled off` so the tools
 are directly callable rather than deferred behind Hermes's tool-search bridge (see
 `DECISIONS.md`, ADR-010). Settings -> Privacy edits the policy file below and shows the audit log.

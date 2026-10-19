@@ -769,7 +769,7 @@ SYSTEM_LOGS_SCHEMA = _schema(
     "Diagnostics. action=log (default) reads the system log: minutes (default 10, max 240), level error|fault|any (default error), optional process name filter, limit (default 40, max 200); returns the most recent matching lines. "
     "action=crashes lists recent crashes of the user's programs (macOS crash reports, Linux core dumps), newest first. "
     "action=crash_report reads one crash: report = the report path from action=crashes (macOS) or the crashed pid (Linux); returns the exception, termination reason, app messages and the crashed thread's top frames (macOS) or coredumpctl's summary with the stack trace (Linux). "
-    "To explain a crash to the user, follow skill_view name=\"herald-os-bridge:diagnose-crash\". "
+    "To explain a crash to the user, follow skill_view name=\"jarod-os-bridge:diagnose-crash\". "
     "Read-only; can take several seconds.",
     {
         "action": _enum("log", "crashes", "crash_report", description="What to read (default log)."),
@@ -1051,9 +1051,9 @@ OS_UI_SCHEMA = _schema(
     "Prefer this over describing where things are: when the user asks to open, show, add, find or change something in Jarod-OS, do it and then say what you did. "
     "After using other tools whose result lives on a page (memory, cronjob, files), run page.open so the user sees it. Destructive commands (forget, delete, trash) ask the user for approval. "
     "When the user asks you to build, create or make something new (a website, app, landing page, store, game), do not write it yourself in a scratch or temporary folder: run command=build.start with args={\"goal\": \"<what they asked for>\"}. It creates a project folder, starts a session that builds it there and opens the Studio so they watch it happen; then just tell them it has started. "
-    "Changing Jarod-OS itself is different: for widgets, themes, fonts, the menu bar, control-menu entries, branding or keybindings, first read skill_view name=\"herald-os-bridge:herald-os-tailor\", which has the formats. "
+    "Changing Jarod-OS itself is different: for widgets, themes, fonts, the menu bar, control-menu entries, branding or keybindings, first read skill_view name=\"jarod-os-bridge:jarod-os-tailor\", which has the formats. "
     "A Jarod-OS widget is a folder in ~/.config/herald-os/plugins/<id> with a manifest.json; it is not a Hermes Desktop plugin or a build.start project, and the user turns it on in Settings > Plugins. "
-    "How to act as this computer's operating environment: skill_view name=\"herald-os-bridge:herald-os\".",
+    "How to act as this computer's operating environment: skill_view name=\"jarod-os-bridge:jarod-os\".",
     {
         "action": {"type": "string", "enum": ["run", "list", "state"], "description": "run a command, list the catalogue, or read the screen state"},
         "command": {"type": "string", "description": "Command id for action=run, e.g. page.open, memory.add, automation.pause"},

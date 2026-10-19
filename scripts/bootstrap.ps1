@@ -59,35 +59,10 @@ try {
     if ($LASTEXITCODE -ne 0) { Write-Note 'WARNING: could not download Electron; npm run dev will try again' }
 } finally { Pop-Location }
 
-Write-Step "Linking herald-os-bridge plugin into $HermesHome\plugins"
-$pluginsDir = Join-Path $HermesHome 'plugins'
-New-Item -ItemType Directory -Force -Path $pluginsDir | Out-Null
-$source = Join-Path $Root 'plugins/herald-os-bridge'
-
-function Test-Reparse($path) {
-    $item = Get-Item -LiteralPath $path -Force -ErrorAction SilentlyContinue
-    return ($null -ne $item) -and (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0)
-}
-
-# The pre-rename link points at a folder that no longer exists; remove it only when it is ours.
-$legacy = Join-Path $pluginsDir 'hermes-os-bridge'
-if ((Test-Reparse $legacy) -and (((Get-Item -LiteralPath $legacy -Force).Target | Out-String) -like "*$Root*")) {
-    (Get-Item -LiteralPath $legacy -Force).Delete()
-    Write-Note 'removed the pre-rename hermes-os-bridge link'
-}
-
-$link = Join-Path $pluginsDir 'herald-os-bridge'
-if (Test-Path -LiteralPath $link) {
-    if (Test-Reparse $link) {
-        (Get-Item -LiteralPath $link -Force).Delete()
-    } else {
-        # bootstrap.sh would delete it; a real folder here is somebody's own copy, so leave it.
-        Write-Note "WARNING: $link is a real folder, not a link; leaving it (delete it to link this checkout)"
-    }
-}
-if (-not (Test-Path -LiteralPath $link)) {
-    New-Item -ItemType Junction -Path $link -Target $source | Out-Null
-}
+Write-Step "Linking the bridge plugin (jarod-os-bridge) into $HermesHome\plugins"
+# scripts/link-bridge.ps1 (tested by scripts/link-bridge.test.ps1): the new link, and the older one removed only when it is ours.
+& (Join-Path $PSScriptRoot 'link-bridge.ps1') -HermesHome $HermesHome -Root $Root
+if ($LASTEXITCODE -ne 0) { throw 'linking the bridge plugin failed' }
 
 Write-Step 'Verifying Hermes runtime'
 $HermesPy = $null
@@ -130,7 +105,7 @@ if ($HermesCmd) {
 
     Write-Step 'Enabling the system bridge plugin and its toolset'
     # The override prompt is answered "no" (stdin closed): the bridge never replaces built-in tools.
-    $null = Invoke-Hermes @('plugins', 'enable', 'herald-os-bridge')
+    $null = Invoke-Hermes @('plugins', 'enable', 'jarod-os-bridge')
     $r = Invoke-Hermes @('tools', 'enable', 'herald_os')
     if ($r.Output) { Write-Note ($r.Output -split "`n" | Select-Object -Last 1) }
     Write-Note 'tools.tool_search.enabled = off (system tools stay directly callable)'

@@ -1,7 +1,7 @@
-# herald-os-bridge
+# jarod-os-bridge
 
 The Hermes plugin that lets Hermes act on the computer and drive the Jarod-OS interface. It is a
-regular out-of-tree plugin: Hermes loads it from `$HERMES_HOME/plugins/herald-os-bridge`, a link
+regular out-of-tree plugin: Hermes loads it from `$HERMES_HOME/plugins/jarod-os-bridge`, a link
 `npm run bootstrap` creates to this folder. Nothing in the Hermes core is patched.
 
 Tools, permission tiers, protected paths, the policy file and the audit log are documented in
@@ -21,7 +21,7 @@ bridge/
 skills/
   herald-os/         when to use these tools
   diagnose-crash/    how to explain a crash from its report
-  herald-os-tailor/  how to change Jarod-OS itself: themes, fonts, keybindings, settings
+  jarod-os-tailor/  how to change Jarod-OS itself: themes, fonts, keybindings, settings
 tests/               pytest suite: `npm run test:bridge` from the repository root
 ```
 
@@ -30,8 +30,8 @@ tests/               pytest suite: `npm run test:bridge` from the repository roo
 `npm run bootstrap` does all of this. Without it:
 
 ```bash
-ln -s "$PWD/plugins/herald-os-bridge" ~/.hermes/plugins/herald-os-bridge
-hermes plugins enable herald-os-bridge
+ln -s "$PWD/plugins/herald-os-bridge" ~/.hermes/plugins/jarod-os-bridge
+hermes plugins enable jarod-os-bridge
 hermes tools enable herald_os
 ```
 

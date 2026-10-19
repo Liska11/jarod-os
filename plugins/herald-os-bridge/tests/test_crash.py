@@ -96,7 +96,7 @@ def test_register_adds_both_skills(plugin):
             registered[name] = path
 
     plugin.register(Ctx())
-    assert set(registered) == {"herald-os", "diagnose-crash", "herald-os-tailor"}
+    assert set(registered) == {"jarod-os", "diagnose-crash", "jarod-os-tailor"}
     assert all(path.exists() for path in registered.values())
 
 
@@ -105,7 +105,7 @@ def test_tool_descriptions_point_to_the_skills(plugin):
     # descriptions are how Hermes finds them.
     tools = importlib.import_module(plugin.__name__ + ".bridge.tools")
     os_ui = tools.OS_UI_SCHEMA["description"]
-    assert 'skill_view name="herald-os-bridge:herald-os-tailor"' in os_ui and "widget" in os_ui
-    assert 'skill_view name="herald-os-bridge:herald-os"' in os_ui
-    assert 'skill_view name="herald-os-bridge:diagnose-crash"' in tools.SYSTEM_LOGS_SCHEMA["description"]
-    assert "widgets" in plugin.SKILLS["herald-os-tailor"]
+    assert 'skill_view name="jarod-os-bridge:jarod-os-tailor"' in os_ui and "widget" in os_ui
+    assert 'skill_view name="jarod-os-bridge:jarod-os"' in os_ui
+    assert 'skill_view name="jarod-os-bridge:diagnose-crash"' in tools.SYSTEM_LOGS_SCHEMA["description"]
+    assert "widgets" in plugin.SKILLS["jarod-os-tailor"]

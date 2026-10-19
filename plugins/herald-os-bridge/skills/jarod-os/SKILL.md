@@ -1,5 +1,5 @@
 ---
-name: herald-os
+name: jarod-os
 description: Act as the operating environment on this computer via the system bridge
 metadata:
   hermes:
@@ -104,10 +104,10 @@ preview of the site.
 | "Lock the screen" / "Sleep the display" | `system_control` action=lock_screen / sleep_display |
 | "Show recent system errors" | `system_logs` level=error minutes=10 |
 | "Why did Safari crash?" / "What crashed?" | `system_logs` action=crashes, then follow the `diagnose-crash` skill with action=crash_report report=... |
-| "Make me a calm green theme" / "Use a bigger font" / "Add a shortcut for…" | follow the `herald-os-tailor` skill (`theme.set`, `theme.generate`, a theme.json, `font.set`, niri's `local.kdl`) |
-| "Make me a widget that shows…" | follow the `herald-os-tailor` skill (a widget folder in `~/.config/herald-os/plugins/`); the person turns it on in Settings > Plugins, never you |
+| "Make me a calm green theme" / "Use a bigger font" / "Add a shortcut for…" | follow the `jarod-os-tailor` skill (`theme.set`, `theme.generate`, a theme.json, `font.set`, niri's `local.kdl`) |
+| "Make me a widget that shows…" | follow the `jarod-os-tailor` skill (a widget folder in `~/.config/herald-os/plugins/`); the person turns it on in Settings > Plugins, never you |
 | "Hide the Bluetooth icon" / "Use a 24-hour clock" / "Put the clock first" | `os_ui` run `bar.hide item=bluetooth` / `bar.clock hours=24` / `bar.move item=clock position=first` (`bar.layout` lists the items) |
-| "Add my backup script to the menu" | write `~/.config/herald-os/menu.json` (the `herald-os-tailor` skill has the format) |
+| "Add my backup script to the menu" | write `~/.config/herald-os/menu.json` (the `jarod-os-tailor` skill has the format) |
 | "Put our company logo in About" / "Use this photo on the lock screen" | `os_ui` run `branding.set logo=<path>` / `branding.set lock=<path>` (`name=` for the line under the logo) |
 | "Install Claude Code" / "Get me Steam" / "Set up a Windows VM" / "What can I install?" | `os_ui` run `software.install name=...` (or `software.list`); on Linux `system_os` action=catalog_list / catalog_install id=... does the same. Say why when an entry is unavailable (the listing gives the reason) |
 | "Use my local model" / "Run Hermes on Ollama" | `os_ui` run `software.local_model server=ollama` to list models, then again with `model=...` |

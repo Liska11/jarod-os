@@ -50,11 +50,12 @@ describe('ensureBridgePlugin', () => {
     const runtime = { kind: 'path' as const, label: 'test', command: fakeHermes(calls) }
 
     await ensureBridgePlugin(runtime, resources)
-    const link = path.join(root, 'hermes', 'plugins', 'herald-os-bridge')
+    const link = path.join(root, 'hermes', 'plugins', 'jarod-os-bridge')
     // Node resolves a junction's target with a trailing separator on Windows.
     expect(path.resolve(fs.readlinkSync(link))).toBe(path.join(resources, 'herald-os-bridge'))
+    // The plugin under its Jarod-OS name; the toolset keeps its id (shared with Linux and with saved "always allow" rules).
     expect(fs.readFileSync(calls, 'utf8').trim().split('\n')).toEqual([
-      'plugins enable herald-os-bridge',
+      'plugins enable jarod-os-bridge',
       'tools enable herald_os',
       'config set tools.tool_search.enabled off'
     ])
@@ -76,8 +77,85 @@ describe('ensureBridgePlugin', () => {
     await ensureBridgePlugin(failing, resources)
     await ensureBridgePlugin(failing, resources)
     // It stops at the first failure, and the second start tries again.
-    expect(fs.readFileSync(calls, 'utf8').trim().split('\n')).toEqual(['plugins enable herald-os-bridge', 'plugins enable herald-os-bridge'])
-    expect(fs.existsSync(path.join(root, 'hermes', 'jarod-os', 'bridge-enabled'))).toBe(false)
+    expect(fs.readFileSync(calls, 'utf8').trim().split('\n')).toEqual(['plugins enable jarod-os-bridge', 'plugins enable jarod-os-bridge'])
+    expect(fs.existsSync(path.join(root, 'hermes', 'jarod-os', 'jarod-os-bridge-enabled'))).toBe(false)
+  })
+
+  describe('the link under its name before the Jarod-OS rename (phase 5)', () => {
+    /** An app with its bundled copy, a fake Hermes, and an older `plugins/herald-os-bridge` set up by `make`. */
+    async function start(make: (legacy: string) => void) {
+      root = fs.mkdtempSync(path.join(os.tmpdir(), 'bridge-'))
+      const resources = path.join(root, 'Jarod-OS.app', 'Contents', 'Resources')
+      fs.mkdirSync(path.join(resources, 'herald-os-bridge'), { recursive: true })
+      fs.writeFileSync(path.join(resources, 'herald-os-bridge', 'plugin.yaml'), 'name: jarod-os-bridge\n')
+      process.env.HERMES_HOME = path.join(root, 'hermes')
+      const legacy = path.join(root, 'hermes', 'plugins', 'herald-os-bridge')
+      fs.mkdirSync(path.dirname(legacy), { recursive: true })
+      make(legacy)
+      const calls = path.join(root, 'calls.txt')
+      await ensureBridgePlugin({ kind: 'path' as const, label: 'test', command: fakeHermes(calls) }, resources)
+
+      return { legacy, calls }
+    }
+
+    /** A checkout of the bridge somewhere, as `bootstrap` used to link it. */
+    function checkout(name: string): string {
+      const dir = path.join(root, 'old-checkout', 'plugins', 'herald-os-bridge')
+      fs.mkdirSync(dir, { recursive: true })
+      fs.writeFileSync(path.join(dir, 'plugin.yaml'), `name: ${name}\n`)
+
+      return dir
+    }
+
+    it('removes an older link to the bridge, so Hermes does not load it twice, and leaves what it pointed at', async () => {
+      let target = ''
+      const { legacy } = await start(link => {
+        target = checkout('herald-os-bridge')
+        fs.symlinkSync(target, link, process.platform === 'win32' ? 'junction' : undefined)
+      })
+
+      expect(fs.existsSync(legacy)).toBe(false)
+      expect(fs.existsSync(path.join(target, 'plugin.yaml'))).toBe(true)
+      expect(fs.existsSync(path.join(root, 'hermes', 'plugins', 'jarod-os-bridge'))).toBe(true)
+    })
+
+    it('removes an older link that leads nowhere', async () => {
+      const { legacy } = await start(link => {
+        const gone = checkout('herald-os-bridge')
+        fs.symlinkSync(gone, link, process.platform === 'win32' ? 'junction' : undefined)
+        fs.rmSync(gone, { recursive: true, force: true })
+      })
+
+      expect(fs.existsSync(legacy)).toBe(false)
+    })
+
+    it("keeps an older link to something that is not the bridge: it is not this app's to remove", async () => {
+      const { legacy } = await start(link => {
+        fs.symlinkSync(checkout('somebody-elses-plugin'), link, process.platform === 'win32' ? 'junction' : undefined)
+      })
+
+      expect(fs.lstatSync(legacy).isSymbolicLink()).toBe(true)
+    })
+
+    it("keeps an older folder of the person's own", async () => {
+      const { legacy } = await start(folder => {
+        fs.mkdirSync(folder)
+        fs.writeFileSync(path.join(folder, 'plugin.yaml'), 'name: herald-os-bridge\n')
+      })
+
+      expect(fs.readFileSync(path.join(legacy, 'plugin.yaml'), 'utf8')).toBe('name: herald-os-bridge\n')
+    })
+
+    it('enables the renamed plugin once, even where the older one had been enabled before', async () => {
+      const { calls } = await start(() => {
+        // The marker of the older enabling, copied into the new folder by the phase-5 data copy.
+        fs.mkdirSync(path.join(root, 'hermes', 'jarod-os'), { recursive: true })
+        fs.writeFileSync(path.join(root, 'hermes', 'jarod-os', 'bridge-enabled'), '2026-10-01T00:00:00.000Z\n')
+      })
+
+      expect(fs.readFileSync(calls, 'utf8').trim().split('\n')[0]).toBe('plugins enable jarod-os-bridge')
+      expect(fs.existsSync(path.join(root, 'hermes', 'jarod-os', 'jarod-os-bridge-enabled'))).toBe(true)
+    })
   })
 
   it('does nothing without a bundled copy (development)', async () => {

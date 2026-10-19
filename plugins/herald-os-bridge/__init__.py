@@ -27,9 +27,9 @@ take_control_env()
 _SKILLS_DIR = Path(__file__).parent / "skills"
 # Skill name -> one-line description for the skills index.
 SKILLS: dict[str, str] = {
-    "herald-os": "How Hermes acts as the operating environment on this computer.",
+    "jarod-os": "How Hermes acts as the operating environment on this computer.",
     "diagnose-crash": "Explain why a program crashed from its crash report or core dump, and whether it is worth reporting.",
-    "herald-os-tailor": "Change Jarod-OS itself: Jarod-OS widgets (menu bar, Overview, their own window), themes, fonts, the wallpaper, the menu bar, control-menu entries, branding, keybindings, settings and routines.",
+    "jarod-os-tailor": "Change Jarod-OS itself: Jarod-OS widgets (menu bar, Overview, their own window), themes, fonts, the wallpaper, the menu bar, control-menu entries, branding, keybindings, settings and routines.",
 }
 
 
