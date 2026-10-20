@@ -97,6 +97,8 @@ export interface JarodSettings {
   mobile: { port: number }
   /** Approval requests also offered to the paired phone app; the first answer wins. */
   phoneApprovals: boolean
+  /** Cockpit, lot 4: the billion-context history compression proxy (loopback only), for the named providers. */
+  contextProxy: { enabled: boolean; url: string; providers: string[] }
   android: { timeoutMs: number }
   apiServer: { port: number; host: '127.0.0.1' | '0.0.0.0' }
   fallbacks: FallbackEntry[]

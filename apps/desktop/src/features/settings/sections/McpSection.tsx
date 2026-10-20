@@ -4,7 +4,7 @@ import { GlassButton, Pill, Toggle } from '../../../components/ui/glass.tsx'
 import { jarod } from '../../../lib/jarod.ts'
 import { useBackendData } from '../../../lib/use-async.ts'
 import { notify } from '../../../store/notifications.ts'
-import { describeServer, draftOf, draftProblems, emptyDraft, envNames, inputOf, type McpDraft, type McpServer } from './mcp-model.ts'
+import { CONTEXT_MODE_VERSION, contextModeDraft, describeServer, draftOf, draftProblems, emptyDraft, envNames, inputOf, type McpDraft, type McpServer } from './mcp-model.ts'
 import { reportEngineError } from './jarod-controls.tsx'
 import { isUnsupported } from './providers-model.ts'
 import { errorText, InlineNote, markSaved, SectionTitle, SettingsGroup, SettingsRow } from './shared.tsx'
@@ -109,6 +109,13 @@ export function McpSection() {
             {t('settings.devices.addMore')}
           </GlassButton>
         </SettingsRow>
+        {!names.includes('context-mode') && (
+          <SettingsRow icon={<IconPlug />} label={t('settings.mcp.contextMode')} description={t('settings.mcp.contextMode.hint', { version: CONTEXT_MODE_VERSION })} keywords="mcp context-mode output index">
+            <GlassButton size="sm" variant="secondary" disabled={busy} onClick={() => setEditing({ draft: contextModeDraft() })}>
+              {t('settings.mcp.contextMode.prefill')}
+            </GlassButton>
+          </SettingsRow>
+        )}
       </SettingsGroup>
     </>
   )

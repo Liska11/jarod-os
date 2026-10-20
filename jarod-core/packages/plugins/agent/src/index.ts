@@ -5,6 +5,9 @@
  */
 import type {} from "@jarod/plugin-llm";
 import { taskStatusTool } from "./tasks.js";
+import { outputTools } from "./outputs.js";
+import { artifactTools } from "./artifacts.js";
+import { videoTools } from "./video.js";
 import type {} from "@jarod/plugin-memory";
 import type {} from "@jarod/plugin-permissions";
 import type {} from "@jarod/plugin-persona";
@@ -45,6 +48,9 @@ export * from "./spill.js";
 export * from "./subagents.js";
 export * from "./supervisor.js";
 export * from "./tasks.js";
+export * from "./outputs.js";
+export * from "./artifacts.js";
+export * from "./video.js";
 
 declare module "cordis" {
   interface Context {
@@ -207,6 +213,12 @@ export function apply(ctx: Context, config: AgentConfig = {}): void {
   for (const t of sessionTools(runtime.sessions, runtime.messages)) tools.register(t);
   // Cockpit, lot 2 : l'agent relit ses propres actions et leurs preuves (lecture seule).
   tools.register(taskStatusTool(runtime.tasks));
+  // Cockpit, lot 3 : chercher et relire les sorties volumineuses gardées hors du contexte.
+  for (const t of outputTools(runtime.outputs)) tools.register(t);
+  // Cockpit, lot 5 : artefacts (enregistrer, lister) et export SVG d'un diagramme.
+  for (const t of artifactTools(runtime.artifacts)) tools.register(t);
+  // Cockpit, lot 7 : rendu vidéo HyperFrames, comme tâche (accord, annulation, preuve ffprobe, artefact).
+  for (const t of videoTools({ artifacts: runtime.artifacts })) tools.register(t);
   // Q18 : outils `state_*` (SANK-AI `kernel/session-state.js`, MIT), sur la table `session_state` (v18).
   for (const t of sessionStateTools(runtime.state)) tools.register(t);
   // Q18 : sous-agents non bloquants (SANK-AI `rlm-subagent`, MIT), lecture seule.

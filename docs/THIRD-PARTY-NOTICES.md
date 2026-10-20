@@ -37,7 +37,7 @@ n'est pas `integrated` (voir `docs/INTEGRATIONS.md`) ; la ligne existe pour la t
 | E2 | browser-use/browser-harness | MIT | permissive | copyright et texte MIT |
 | X1 | linshenkx/prompt-optimizer | AGPL-3.0-only | copyleft | texte AGPL-3.0 et avis de copyright d'origine |
 | X2 | harness/harness | Apache-2.0 | permissive | rejeté pour absence de cas d'usage, pas pour sa licence |
-| F1 | ranxianglei/billion-context | MIT | permissive | copyright et texte MIT ; détecté seulement (cockpit, 2026-10-20) |
+| F1 | ranxianglei/billion-context | MIT (+ clause d'attribution) | permissive | copyright et texte MIT ; CLAUSE ADDITIONNELLE : Jarod-OS utilise billion-context — https://github.com/ranxianglei/billion-context (proxy local, branché au transport par Réglages › Contexte, 2026-10-20) |
 | F2 | mksglu/context-mode | Elastic-2.0 | unknown | texte ELv2 ; usage personnel, jamais offert en service |
 | F3 | heygen-com/hyperframes | Apache-2.0 | permissive | NOTICE Apache-2.0 |
 | F4 | NationalSecurityAgency/ghidra | Apache-2.0 | permissive | NOTICE Apache-2.0 ; composants tiers de Ghidra listés dans sa distribution |

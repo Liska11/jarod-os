@@ -23,6 +23,7 @@ import type { Settings, SettingsService } from "@jarod/plugin-storage";
 import type { SkillRegistry } from "@jarod/plugin-skills";
 import { type Proof, type ToolContext, type ToolDef, type ToolRegistry, validateArgs } from "@jarod/plugin-tools";
 import type { TaskLedger } from "./tasks.js";
+import type { OutputStore } from "./outputs.js";
 import type { Attachment, Message, ToolCall } from "@jarod/contracts";
 import { redactText } from "@jarod/kernel/redact";
 import { activePolicy, toolVerdict } from "@jarod/kernel/network";
@@ -142,6 +143,8 @@ export interface AgentDeps {
   audit?: (entry: AuditEntry) => void;
   /** Cockpit, lot 2 : le registre des tâches (étapes, preuve, annulation) de chaque action passée par la porte unique. */
   tasks?: TaskLedger;
+  /** Cockpit, lot 3 : les sorties volumineuses gardées hors du contexte. */
+  outputs?: OutputStore;
   /** Garde unifié fail-closed (plugin-permissions) consulté avant chaque appel d'outil. Jarod-cordis. */
   gate?: ToolGate;
   /** SOUL.md du profil (plugin-persona). Q4 = A : non vide, il remplace le réglage `persona`. Jarod-cordis. */
@@ -639,7 +642,9 @@ ${project.text}`);
         }
       };
 
-      if (s.compactThreshold > 0) {
+      // Cockpit, lot 4 : quand billion-context compresse l'historique de ce fournisseur, Jarod ne compacte pas en plus (une seule autorité).
+      const proxied = s.contextProxy?.enabled === true && (s.contextProxy.providers ?? []).includes(cible.provider);
+      if (s.compactThreshold > 0 && !proxied) {
         const size = this.turns(sessionId).reduce((n, t) => n + turnSize(t), 0);
         if (size > s.compactThreshold) {
           emit({ type: "status", sessionId, status: "Compaction du contexte…" });
@@ -930,6 +935,7 @@ ${project.text}`);
       ...(this.d.audit ? { audit: this.d.audit } : {}),
       ...(this.d.gate ? { gate: this.d.gate } : {}),
       ...(this.d.tasks ? { tasks: this.d.tasks } : {}),
+      ...(this.d.outputs ? { outputs: this.d.outputs } : {}),
     });
   }
 
@@ -1167,7 +1173,7 @@ export async function executeGuardedTool(
   signal: AbortSignal,
   hooks: { approve(sessionId: string, call: ToolCall, toolDescription: string): Promise<boolean> },
   s: Settings,
-  extra: { vault?: VaultService; audit?: (entry: AuditEntry) => void; gate?: ToolGate; tasks?: TaskLedger } = {},
+  extra: { vault?: VaultService; audit?: (entry: AuditEntry) => void; gate?: ToolGate; tasks?: TaskLedger; outputs?: OutputStore } = {},
 ): Promise<{ content: string; isError: boolean }> {
   const tool = tools.get(call.name);
   if (!tool || s.disabledTools.includes(call.name)) {
@@ -1291,7 +1297,14 @@ export async function executeGuardedTool(
     if (decision) audit(decision, !failed);
     if (task) tasks!.finish(task.id, failed ? "failed" : "done", proof ? { proof } : {});
     const note = tool.verify && proof ? `\n\n[Vérification : ${PROOF_LABEL[proof.status]}] ${proof.evidence}` : "";
-    return { content: truncate(out, 50_000) + note, isError: failed };
+    // Cockpit, lot 3 : une sortie volumineuse reste hors du contexte (aperçu + référence), entière et cherchable ; la preuve reste visible.
+    let kept: string;
+    try {
+      kept = extra.outputs ? extra.outputs.keep(sessionId, call.name, out).content : truncate(out, 50_000);
+    } catch {
+      kept = truncate(out, 50_000);
+    }
+    return { content: kept + note, isError: failed };
   } catch (e) {
     if (decision) audit(decision, false);
     if (task) {

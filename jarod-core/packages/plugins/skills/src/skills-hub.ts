@@ -6,6 +6,7 @@ import { dirname, join, posix } from "node:path";
 import { withTimeout } from "@jarod/kernel/util";
 import { type GuardReport, scanSkillFiles } from "@jarod/plugin-permissions";
 import { parseFrontmatter, type SkillRegistry, skillId } from "./skills.js";
+import { BUNDLED_PACKS } from "./bundled/index.js";
 
 /**
  * Skills Hub: find and install third-party skills in the open Agent Skills format (a folder with a
@@ -48,7 +49,7 @@ export interface HubFile {
 
 export interface HubBundle {
   identifier: string;
-  source: "github" | "well-known" | "url";
+  source: "github" | "well-known" | "url" | "bundled";
   name: string;
   description: string;
   files: HubFile[];
@@ -88,7 +89,8 @@ export interface SkillsHubDeps {
 type Target =
   | { kind: "github"; repo: string; rest: string; ref?: string }
   | { kind: "well-known"; domain: string; skill: string }
-  | { kind: "url"; url: string };
+  | { kind: "url"; url: string }
+  | { kind: "bundled"; pack: string; skill: string };
 
 const sha256 = (b: Buffer) => createHash("sha256").update(b).digest("hex");
 
@@ -112,6 +114,9 @@ export function parseHubIdentifier(raw: string): Target {
       throw new Error("Une URL directe doit pointer vers un fichier SKILL.md.");
     return { kind: "url", url: id };
   }
+  // Cockpit, lot 3 : une skill EMBARQUÉE dans le code (provenance épinglée), sans réseau.
+  const bundled = /^bundled:([\w.-]+)\/([\w.-]+)$/.exec(id);
+  if (bundled) return { kind: "bundled", pack: bundled[1]!, skill: bundled[2]! };
   const wk = /^well-known:([a-z0-9.-]+\.[a-z]{2,})\/([\w.-]+)$/i.exec(id);
   if (wk) return { kind: "well-known", domain: wk[1]!.toLowerCase(), skill: wk[2]! };
   const gh = /^(?:github:|skills-sh\/|skills\.sh\/)?([\w.-]+\/[\w.-]+)\/(.+?)\/?$/.exec(id);
@@ -221,7 +226,9 @@ export class SkillsHubService {
   async fetchBundle(identifier: string): Promise<HubBundle> {
     const t = parseHubIdentifier(identifier);
     const bundle =
-      t.kind === "github"
+      t.kind === "bundled"
+        ? this.fromBundled(identifier, t)
+        : t.kind === "github"
         ? await this.fetchGithub(identifier, t)
         : t.kind === "well-known"
           ? await this.fetchWellKnown(identifier, t)
@@ -236,6 +243,30 @@ export class SkillsHubService {
     if (!skillMd) throw new Error("Pas de SKILL.md dans cette skill.");
     const { meta } = parseFrontmatter(skillMd.data.toString("utf8"));
     return { ...base, name: meta.name || fallbackName, description: meta.description || "" };
+  }
+
+  /** Cockpit, lot 3 : une skill embarquée — les fichiers viennent du code, la provenance du lot (dépôt, commit, licence). */
+  private fromBundled(identifier: string, t: { pack: string; skill: string }): HubBundle {
+    const pack = BUNDLED_PACKS[t.pack];
+    const skill = pack?.skills[t.skill];
+    if (!pack || !skill) throw new Error(`Skill embarquée inconnue : ${identifier}`);
+    const files: HubFile[] = Object.entries(skill.files).map(([path, text]) => ({ path, data: Buffer.from(text, "utf8") }));
+    files.push({ path: "LICENSE", data: Buffer.from(pack.licenseText, "utf8") });
+    return this.withMeta({ identifier, source: "bundled", repo: pack.repo, path: skill.origin, commit: pack.commit, files }, t.skill);
+  }
+
+  /** Les skills embarquées, avec leur provenance et si elles sont déjà installées. */
+  async bundled(): Promise<{ identifier: string; id: string; pack: string; repo: string; commit: string; license: string; name: string; description: string; installed: boolean }[]> {
+    const lock = await this.lock();
+    const out = [];
+    for (const [packId, pack] of Object.entries(BUNDLED_PACKS)) {
+      for (const id of Object.keys(pack.skills)) {
+        const identifier = `bundled:${packId}/${id}`;
+        const b = this.fromBundled(identifier, { pack: packId, skill: id });
+        out.push({ identifier, id, pack: packId, repo: pack.repo, commit: pack.commit, license: pack.license, name: b.name, description: b.description, installed: lock[id]?.identifier === identifier && Boolean(this.d.skills.get(id)) });
+      }
+    }
+    return out;
   }
 
   private async fetchUrl(identifier: string, url: string): Promise<HubBundle> {

@@ -15,6 +15,7 @@
  */
 import { type ConnectedBrowserSettings, connectedBrowserDomainProblem, DEFAULT_DOCKER, EcosystemFlags, ecosystemFlags, PermissionRule, type Settings, type ShellPolicy } from "@jarod/contracts";
 import { describeShellGuard } from "@jarod/plugin-agent";
+import { isLoopbackUrl } from "@jarod/plugin-llm";
 import { rulesWeakenings } from "@jarod/plugin-permissions";
 import { STT_DEFAULTS } from "@jarod/plugin-voice";
 import type { HandlerContext } from "./context.js";
@@ -551,6 +552,36 @@ const ENTRIES: Record<string, Entry> = {
             action: "Envoyer au téléphone",
           }
         : null,
+  },
+  // Cockpit, lot 4 — billion-context : proxy LOCAL de compression de l'historique, pour les fournisseurs nommés. Bouclage seulement ;
+  // l'allumer (ou y ajouter un fournisseur) fait transiter les conversations par un autre programme : confirmation native.
+  contextProxy: {
+    read: (s) => ({ ...s.contextProxy, providers: [...s.contextProxy.providers] }),
+    write: (v, current) => {
+      const o = record("contextProxy", v, ["enabled", "url", "providers"]);
+      const next = { ...current.contextProxy };
+      if (o.enabled !== undefined) next.enabled = o.enabled === true ? true : o.enabled === false ? false : bad("contextProxy.enabled", "booléen attendu");
+      if (o.url !== undefined) {
+        if (typeof o.url !== "string" || !isLoopbackUrl(o.url.trim())) bad("contextProxy.url", "adresse http de bouclage attendue (http://127.0.0.1:<port>), sans chemin");
+        next.url = String(o.url).trim().replace(/\/+$/, "");
+      }
+      if (o.providers !== undefined) {
+        if (!Array.isArray(o.providers) || o.providers.length > 32 || !o.providers.every((p) => typeof p === "string" && /^[a-z0-9-]{1,40}$/.test(p))) bad("contextProxy.providers", "liste d'identifiants de fournisseurs");
+        next.providers = [...new Set(o.providers as string[])].sort();
+      }
+      return { contextProxy: next };
+    },
+    confirm: (patch, current) => {
+      const n = patch.contextProxy;
+      if (!n?.enabled) return null;
+      const added = n.providers.filter((p) => !(current.contextProxy.enabled && current.contextProxy.providers.includes(p)));
+      if (!added.length && current.contextProxy.enabled && current.contextProxy.url === n.url) return null;
+      return {
+        message: "Faire passer les conversations par billion-context ?",
+        detail: `Les requêtes vers ${n.providers.join(", ") || "(aucun fournisseur)"} passeront par le programme local ${n.url} (billion-context), qui compresse l'historique puis transmet au fournisseur. Jarod ne compacte plus lui-même ces conversations. Lancez ce programme avec ses mises à jour automatiques coupées (ACP_AUTO_UPDATE=0).`,
+        action: "Passer par le proxy",
+      };
+    },
   },
   // Android : SEUL le délai se règle ici ; le programme adb se choisit dans la boîte native (`android-set-adb`).
   android: {

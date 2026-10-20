@@ -47,6 +47,22 @@ export function cockpitService(s: CockpitServices, host: ProbeHost = nodeProbeHo
         args: arr<string>(m.args),
         enabled: m.enabled !== false,
       })),
+    // Lot 4 : le réglage `contextProxy` et la santé du proxy, lue sur l'adresse de BOUCLAGE seulement (délai court).
+    contextProxy: async () => {
+      const c = s.settings?.get("contextProxy") as { enabled?: boolean; url?: string; providers?: string[] } | undefined;
+      if (!c?.enabled || typeof c.url !== "string") return undefined;
+      let healthy = false;
+      try {
+        const u = new URL(c.url);
+        if (u.protocol === "http:" && ["127.0.0.1", "localhost", "[::1]"].includes(u.hostname)) {
+          const res = await fetch(`${c.url.replace(/\/+$/, "")}/__bili/health`, { signal: AbortSignal.timeout(2000) });
+          healthy = res.ok && ((await res.json()) as { ok?: boolean }).ok === true;
+        }
+      } catch {
+        healthy = false;
+      }
+      return { enabled: true, url: c.url, providers: arr<string>(c.providers), healthy };
+    },
     // Sans porte de permissions, rien n'est présumé permis : « ask ».
     decide: (name) => {
       const d = gate?.decide(name);

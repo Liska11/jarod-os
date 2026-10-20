@@ -329,6 +329,14 @@ export interface McpServerConfig {
   headers?: Record<string, string>;
 }
 
+export interface ContextProxyConfig {
+  enabled: boolean;
+  /** `http://127.0.0.1:<port>` ou `http://localhost:<port>`. */
+  url: string;
+  /** Identifiants des fournisseurs dont les requêtes passent par le proxy. */
+  providers: string[];
+}
+
 export interface ProviderOverride {
   baseUrl?: string;
   /** User-curated model list (refreshed from the provider's /models endpoint). */
@@ -488,6 +496,13 @@ export interface Settings {
   autoTitle: boolean;
   /** History size (characters) above which older turns are summarized automatically; 0 = never. */
   compactThreshold: number;
+  /**
+   * Cockpit, lot 4 — billion-context : le proxy LOCAL de compression de l'historique, branché EXPLICITEMENT au transport (préfixe
+   * `/bili/` devant l'adresse du fournisseur), pour les fournisseurs nommés seulement. Éteint par défaut. Adresse de bouclage
+   * seulement (jamais d'interception TLS ni de certificat). Pour ces fournisseurs, la compaction automatique de Jarod se retire :
+   * une seule autorité compresse l'historique.
+   */
+  contextProxy: ContextProxyConfig;
   /**
    * Fenêtre du modèle actif, en jetons (0 = inconnue). Elle sert à refuser AVANT l'envoi : au-delà,
    * les messages les plus anciens sont écartés et l'utilisateur est prévenu, au lieu de découvrir le
@@ -678,6 +693,7 @@ export const DEFAULT_SETTINGS: Settings = {
   agentMode: "build",
   autoTitle: true,
   compactThreshold: 240_000,
+  contextProxy: { enabled: false, url: "http://127.0.0.1:8787", providers: [] },
   // Inconnue par défaut : le noyau n'invente aucune fenêtre, il garde son plafond d'historique.
   contextWindow: 0,
   // Éteint par défaut : une installation qui ne dit rien n'est jamais arrêtée en cours de conversation.

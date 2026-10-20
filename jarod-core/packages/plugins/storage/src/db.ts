@@ -520,6 +520,62 @@ export const MIGRATIONS: string[] = [
   /** H6/M7 — `started_at` : l'instant de la PRISE (`claim`). `updated_at` bouge aussi aux transitions de statut. */
   `ALTER TABLE jobs ADD COLUMN started_at INTEGER;`,
   `CREATE INDEX IF NOT EXISTS jobs_ref ON jobs(kind, ref, status, due_at);`,
+  /**
+   * Cockpit, lot 3 (context-mode) : les sorties d'outils VOLUMINEUSES restent hors du contexte, entières, dans la base (chiffrée quand
+   * elle l'est) : un aperçu et une référence entrent dans la conversation ; la recherche plein texte rend des extraits exacts (numéros
+   * de ligne). Découpées en fenêtres de lignes indexées FTS5. Effacées avec la conversation (par le runtime). Additive, rejouable.
+   */
+  `
+  CREATE TABLE IF NOT EXISTS tool_outputs (
+    id TEXT PRIMARY KEY,
+    session_id TEXT NOT NULL,
+    tool TEXT NOT NULL,
+    bytes INTEGER NOT NULL,
+    lines INTEGER NOT NULL,
+    sha256 TEXT NOT NULL,
+    preview_chars INTEGER NOT NULL,
+    text TEXT NOT NULL,
+    created_at INTEGER NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS tool_outputs_session ON tool_outputs(session_id, created_at);
+  CREATE TABLE IF NOT EXISTS tool_output_chunks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    output_id TEXT NOT NULL REFERENCES tool_outputs(id) ON DELETE CASCADE,
+    line_start INTEGER NOT NULL,
+    line_end INTEGER NOT NULL,
+    text TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS tool_output_chunks_output ON tool_output_chunks(output_id);
+  CREATE VIRTUAL TABLE IF NOT EXISTS tool_output_chunks_fts USING fts5(text, content='tool_output_chunks', content_rowid='id', tokenize='unicode61 remove_diacritics 2');
+  CREATE TRIGGER IF NOT EXISTS tool_output_chunks_ai AFTER INSERT ON tool_output_chunks BEGIN
+    INSERT INTO tool_output_chunks_fts(rowid, text) VALUES (new.id, new.text);
+  END;
+  CREATE TRIGGER IF NOT EXISTS tool_output_chunks_ad AFTER DELETE ON tool_output_chunks BEGIN
+    INSERT INTO tool_output_chunks_fts(tool_output_chunks_fts, rowid, text) VALUES ('delete', old.id, old.text);
+  END;
+  `,
+  /**
+   * Cockpit, lot 5 (et suivants) : les ARTEFACTS produits par l'agent — diagrammes, vidéos, analyses, rapports. Une ligne = un fichier
+   * de l'utilisateur (référencé, jamais copié), son empreinte au moment de l'enregistrement (un fichier modifié depuis se voit), sa
+   * source modifiable éventuelle et sa provenance (conversation, outil, tâche). Additive, rejouable.
+   */
+  `
+  CREATE TABLE IF NOT EXISTS artifacts (
+    id TEXT PRIMARY KEY,
+    session_id TEXT,
+    kind TEXT NOT NULL,
+    title TEXT NOT NULL,
+    path TEXT NOT NULL,
+    source_path TEXT,
+    mime TEXT NOT NULL,
+    bytes INTEGER NOT NULL,
+    sha256 TEXT NOT NULL,
+    origin TEXT NOT NULL,
+    meta TEXT NOT NULL DEFAULT '{}',
+    created_at INTEGER NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS artifacts_created ON artifacts(created_at);
+  `,
 ];
 
 const SQLITE_HEADER = "SQLite format 3\u0000";

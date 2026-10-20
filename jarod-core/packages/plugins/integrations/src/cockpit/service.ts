@@ -17,6 +17,8 @@ export interface CapabilityDeps {
   tools: ToolsView;
   skills: () => string[];
   mcpServers: () => ProbeContext["mcpServers"];
+  /** Lot 4 : le proxy de compression (réglage et santé), lu à chaque sonde. */
+  contextProxy?: () => Promise<ProbeContext["contextProxy"]>;
   /** La porte de permissions existante, pour un nom d'outil. */
   decide: (tool: string) => "allow" | "ask" | "deny";
   now?: () => number;
@@ -95,7 +97,8 @@ export class CapabilityService {
     if (!force && hit && this.now() - hit.at < PROBE_TTL_MS) return hit;
     let result: ProbeResult;
     try {
-      result = await e.probe(this.deps.host, { skills: this.deps.skills(), mcpServers: this.deps.mcpServers() });
+      const contextProxy = e.owner === "F1" ? await this.deps.contextProxy?.() : undefined;
+      result = await e.probe(this.deps.host, { skills: this.deps.skills(), mcpServers: this.deps.mcpServers(), ...(contextProxy ? { contextProxy } : {}) });
     } catch (err) {
       result = { state: "error", detail: `la sonde a échoué : ${(err as Error).message}` };
     }

@@ -63,9 +63,10 @@ export class ProviderRouter {
     const base = PROVIDERS.find((p) => p.id === id);
     if (!base) throw new ProviderError(`Fournisseur inconnu : ${id}`);
     const override = this.settings.get("providerOverrides")[id] ?? {};
+    const baseUrl = override.baseUrl || base.baseUrl;
     return {
       ...base,
-      baseUrl: override.baseUrl || base.baseUrl,
+      baseUrl,
       models: override.models?.length ? override.models : base.models,
     };
   }
@@ -103,7 +104,9 @@ export class ProviderRouter {
   }
 
   private directClient(id: string, keyIndex: number): ProviderClient {
-    const def = this.def(id);
+    const resolved = this.def(id);
+    // Cockpit, lot 4 : le transport seul passe par le proxy de compression ; `def()` (affiché, enregistré) garde l'adresse du fournisseur.
+    const def = { ...resolved, baseUrl: viaContextProxy(this.settings.get("contextProxy"), id, resolved.baseUrl, Boolean(resolved.local)) };
     const keys = this.apiKeys(id);
     const key = keys[keyIndex] ?? keys[0];
     if (!key && !def.local) {
@@ -124,4 +127,24 @@ export class ProviderRouter {
     this.settings.set("providerOverrides", overrides);
     return models;
   }
+}
+
+/** Cockpit, lot 4 : seule une adresse de bouclage peut servir de proxy de compression (rien ne part ailleurs par ce réglage). */
+export function isLoopbackUrl(raw: string): boolean {
+  try {
+    const u = new URL(raw);
+    return u.protocol === "http:" && ["127.0.0.1", "localhost", "[::1]"].includes(u.hostname) && (u.pathname === "/" || u.pathname === "") && !u.search && !u.hash;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Cockpit, lot 4 — billion-context, « option 3 » de son mode d'emploi : l'adresse du fournisseur, préfixée par `<proxy>/bili/`. Le proxy
+ * transmet au fournisseur d'origine (porté dans le chemin). Seulement si le réglage est allumé, le fournisseur nommé, l'adresse de
+ * bouclage, et jamais pour un fournisseur LOCAL (rien à compresser hors de la machine… et rien à faire transiter).
+ */
+export function viaContextProxy(cfg: { enabled: boolean; url: string; providers: string[] } | undefined, id: string, baseUrl: string, local: boolean): string {
+  if (!cfg?.enabled || local || !cfg.providers.includes(id) || !isLoopbackUrl(cfg.url) || !/^https:\/\//.test(baseUrl)) return baseUrl;
+  return `${cfg.url.replace(/\/+$/, "")}/bili/${baseUrl}`;
 }

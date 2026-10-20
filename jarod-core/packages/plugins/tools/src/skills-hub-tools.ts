@@ -46,7 +46,22 @@ export function skillHubTools(hub: SkillsHubService): ToolDef[] {
         }
         const query = typeof args.query === "string" ? args.query : "";
         if (!query.trim()) throw new Error("Donne `query` ou `inspect`.");
-        return describeHubResults(await hub.search(query, typeof args.limit === "number" ? args.limit : 10));
+        // Cockpit, lot 3 : les skills EMBARQUÉES (provenance épinglée, hors ligne) d'abord ; « embarquées » les liste toutes.
+        const words = query.toLowerCase().split(/\W+/).filter((w) => w.length > 2);
+        const all = /embarqu|bundled/i.test(query);
+        const local = (await hub.bundled()).filter((b) => all || words.some((w) => `${b.id} ${b.name} ${b.description}`.toLowerCase().includes(w)));
+        const localText = local.length
+          ? `Embarquées (hors ligne, ${local[0]!.repo}@${local[0]!.commit.slice(0, 7)}, ${local[0]!.license}) :\n${local.map((b) => `- \`${b.identifier}\` — ${b.description}${b.installed ? " (installée)" : ""}`).join("\n")}\n\n`
+          : "";
+        if (all) return localText || "Aucune skill embarquée.";
+        let remote: string;
+        try {
+          remote = describeHubResults(await hub.search(query, typeof args.limit === "number" ? args.limit : 10));
+        } catch (e) {
+          if (!localText) throw e;
+          remote = `Recherche publique impossible : ${(e as Error).message}`;
+        }
+        return localText + remote;
       },
     },
     {

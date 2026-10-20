@@ -22,6 +22,8 @@ import { PluginsSection } from './sections/PluginsSection.tsx'
 import { PlatformSection } from './sections/PlatformSection.tsx'
 import { CapabilitiesSection } from './sections/CapabilitiesSection.tsx'
 import { TasksSection } from './sections/TasksSection.tsx'
+import { ContextSection } from './sections/ContextSection.tsx'
+import { ArtifactsSection } from './sections/ArtifactsSection.tsx'
 import { DataSection } from './sections/DataSection.tsx'
 import { DevicesSection } from './sections/DevicesSection.tsx'
 import { DocumentsSection } from './sections/DocumentsSection.tsx'
@@ -69,6 +71,8 @@ const SECTIONS: { id: SectionId; label: string; icon: ComponentType<{ size?: num
   { id: 'network', label: 'Network', icon: IconWifi, view: NetworkSection },
   { id: 'capabilities', label: 'Capabilities', icon: IconRadar, view: CapabilitiesSection },
   { id: 'tasks', label: 'Tasks', icon: IconListCheck, view: TasksSection },
+  { id: 'context', label: 'Context', icon: IconArchive, view: ContextSection },
+  { id: 'artifacts', label: 'Artifacts', icon: IconFileSearch, view: ArtifactsSection },
   { id: 'platform', label: 'Platform', icon: IconShieldCheck, view: PlatformSection },
   { id: 'storage', label: 'Storage', icon: IconDatabase, view: StorageSection },
   { id: 'accessibility', label: 'Accessibility', icon: IconAccessible, view: AccessibilitySection },

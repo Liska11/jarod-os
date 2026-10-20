@@ -13,6 +13,8 @@ import type { CapabilityManifest, ProbeResult } from "./types.js";
 export interface ProbeContext {
   skills: string[];
   mcpServers: { name: string; command: string; args: string[]; enabled: boolean }[];
+  /** Lot 4 : le proxy de compression branché au transport (réglage `contextProxy`) et sa santé mesurée ; absent = non branché. */
+  contextProxy?: { enabled: boolean; url: string; providers: string[]; healthy: boolean };
 }
 
 export type Probe = (host: ProbeHost, ctx: ProbeContext) => Promise<ProbeResult>;
@@ -86,7 +88,7 @@ async function javaMajor(host: ProbeHost): Promise<{ file: string; major: number
   return m ? { file, major: Number(m[1]) } : null;
 }
 
-const MATT_SKILLS = ["tdd", "diagnosing-bugs", "code-review", "domain-modeling", "grill-me", "to-spec"];
+const MATT_SKILLS = ["diagnosing-bugs", "tdd", "code-review", "codebase-design", "to-spec", "handoff"];
 
 // ---- capacités ----
 
@@ -110,17 +112,20 @@ export const COCKPIT_INTEGRATIONS: CockpitIntegration[] = [
         intents: ["compresser l'historique", "réduire le contexte de la conversation"],
         owner: "F1",
         integration: "detection-only",
-        output: "état de l'installation",
+        output: "état du proxy et des fournisseurs qui y passent",
         risk: "read",
-        sideEffects: "aucun (détection)",
+        sideEffects: "aucun (détection) ; le transport, lui, passe par le proxy quand le réglage est allumé",
         locality: "local",
-        requires: ["commande bili"],
-        verification: "bili --version répond",
-        limits: ["pas encore branché au transport de Jarod"],
-        probe: async (host) => {
+        requires: ["proxy bili lancé en local (ACP_AUTO_UPDATE=0)", "Réglages › Contexte : proxy allumé, fournisseurs choisis"],
+        verification: "/__bili/health répond sur l'adresse de bouclage réglée",
+        limits: ["option « préfixe d'URL » seulement : jamais d'interception TLS ni de certificat", "fournisseurs distants nommés seulement", "Jarod ne compacte plus ces conversations (une seule autorité)"],
+        probe: async (host, ctx) => {
+          const p = ctx.contextProxy;
+          if (p?.enabled && p.providers.length && p.healthy) return { state: "available", detail: `proxy local ${p.url} en marche pour ${p.providers.join(", ")}` };
+          if (p?.enabled && p.providers.length) return { state: "degraded", detail: `réglage allumé, mais le proxy local ${p.url} ne répond pas : les requêtes de ${p.providers.join(", ")} échoueront`, missing: ["proxy bili en marche"] };
           const c = await cli(host, "bili", "billion-context");
           if (c.kind !== "ok") return c.result;
-          return { state: "installed-unconfigured", detail: "installé ; il s'utilise comme proxy local (URL de base du fournisseur), que Jarod ne configure pas encore", version: c.version, found: [c.file] };
+          return { state: "installed-unconfigured", detail: "installé ; il s'utilise comme proxy local (URL de base du fournisseur) : à allumer dans Réglages › Contexte", version: c.version, found: [c.file] };
         },
       },
     ],
@@ -143,7 +148,7 @@ export const COCKPIT_INTEGRATIONS: CockpitIntegration[] = [
         locality: "local",
         requires: ["commande context-mode", "serveur MCP « context-mode » déclaré et activé dans Jarod"],
         verification: "context-mode --version répond et le serveur MCP est déclaré",
-        limits: ["Jarod n'appelle ses outils qu'à travers le client MCP existant"],
+        limits: ["Jarod n'appelle ses outils qu'à travers le client MCP existant", "équivalent NATIF toujours actif : sorties volumineuses hors du contexte, output_search / output_read"],
         probe: async (host, ctx) => {
           const declared = ctx.mcpServers.some((s) => s.enabled && (s.name === "context-mode" || /context-mode/i.test([s.command, ...s.args].join(" "))));
           const c = await cli(host, "context-mode", "context-mode");
@@ -162,18 +167,19 @@ export const COCKPIT_INTEGRATIONS: CockpitIntegration[] = [
         ...base,
         id: "hyperframes.render-video",
         name: "Vidéo à partir de HTML",
-        description: "Produit une vidéo à partir d'une composition HTML.",
+        description: "Rend une composition HTML (projet HyperFrames) en vidéo locale, comme une tâche annulable, vérifiée et enregistrée en artefact.",
         categories: ["vidéo", "création"],
-        intents: ["créer une vidéo", "générer une vidéo à partir de html"],
+        intents: ["créer une vidéo", "générer une vidéo à partir de html", "rendre une vidéo"],
         owner: "F3",
-        integration: "detection-only",
+        tools: ["video_render"],
+        integration: "agent-tool",
         output: "état de l'installation",
         risk: "read",
         sideEffects: "aucun (détection)",
         locality: "local",
         requires: ["commande hyperframes", "FFmpeg"],
         verification: "hyperframes --version et ffmpeg -version répondent",
-        limits: ["rendu non lancé par Jarod au lot 1"],
+        limits: ["rendu local seulement (jamais cloud)", "preuve par ffprobe ; sans ffprobe, la vérification est dite impossible", "délai de 30 min"],
         probe: async (host) => {
           const c = await cli(host, "hyperframes", "HyperFrames");
           if (c.kind !== "ok") return c.result;
@@ -223,6 +229,7 @@ export const COCKPIT_INTEGRATIONS: CockpitIntegration[] = [
       {
         ...base,
         id: "diagram-design.draw",
+        tools: ["artifact_register", "diagram_export"],
         name: "Diagrammes",
         description: "Instructions pour concevoir des diagrammes clairs.",
         categories: ["diagramme", "création"],
@@ -235,7 +242,7 @@ export const COCKPIT_INTEGRATIONS: CockpitIntegration[] = [
         locality: "local",
         requires: ["skill diagram-design installé"],
         verification: "le skill figure dans les skills de Jarod",
-        limits: ["des instructions, pas un moteur de rendu"],
+        limits: ["skill embarquée : bundled:diagram-design/diagram-design (installation à la demande)", "export SVG par diagram_export ; PNG non disponible"],
         probe: async (_h, ctx) =>
           ctx.skills.includes("diagram-design") ? { state: "available", detail: "skill installé", found: ["diagram-design"] } : notInstalled("skill diagram-design"),
       },
@@ -259,7 +266,7 @@ export const COCKPIT_INTEGRATIONS: CockpitIntegration[] = [
         locality: "local",
         requires: MATT_SKILLS.map((s) => `skill ${s}`),
         verification: "les skills sélectionnés figurent dans les skills de Jarod",
-        limits: ["une sélection du dépôt"],
+        limits: ["une sélection du dépôt, embarquée : bundled:mattpocock/<skill> (installation à la demande, hors ligne)"],
         probe: async (_h, ctx) => {
           const found = MATT_SKILLS.filter((s) => ctx.skills.includes(s));
           const missing = MATT_SKILLS.filter((s) => !found.includes(s));
@@ -306,6 +313,7 @@ export const COCKPIT_INTEGRATIONS: CockpitIntegration[] = [
       {
         ...base,
         id: "artcraft.create",
+        tools: ["system_open"],
         name: "Création d'images et de vidéos (ArtCraft)",
         description: "Application séparée de création d'images et de vidéos ; la génération passe par des services distants.",
         categories: ["image", "vidéo", "création"],
@@ -318,7 +326,7 @@ export const COCKPIT_INTEGRATIONS: CockpitIntegration[] = [
         locality: "remote",
         requires: ["ArtCraft installé"],
         verification: "ArtCraft.exe présent",
-        limits: ["application externe", "génération distante : des données quittent la machine"],
+        limits: ["application externe : Jarod l'ouvre (system_open, accord et preuve d'ouverture), il ne la pilote pas", "génération distante : ce que vous y saisissez quitte la machine ; Jarod n'y envoie rien lui-même"],
         probe: async (host) => {
           const candidates = [host.env.LOCALAPPDATA && join(host.env.LOCALAPPDATA, "ArtCraft", "ArtCraft.exe"), host.env.ProgramFiles && join(host.env.ProgramFiles, "ArtCraft", "ArtCraft.exe")];
           const exe = candidates.find((c): c is string => Boolean(c && host.exists(c)));

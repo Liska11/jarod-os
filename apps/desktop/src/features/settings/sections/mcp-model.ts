@@ -38,6 +38,14 @@ export interface McpInput {
 
 export const emptyDraft = (): McpDraft => ({ name: '', type: 'stdio', url: '', command: '', args: '', env: '' })
 
+/**
+ * Cockpit, lot 3: context-mode (mksglu/context-mode, ELv2) as a Jarod MCP server, pinned to the version of the audited commit (b31c7ee = 1.0.169).
+ * Only a pre-filled form: nothing is added until the person saves it, and npx downloads the package from npm when the server first starts.
+ */
+export const CONTEXT_MODE_VERSION = '1.0.169'
+export const contextModeDraft = (): McpDraft => ({ name: 'context-mode', type: 'stdio', url: '', command: 'npx', args: `-y
+context-mode@${CONTEXT_MODE_VERSION}`, env: '' })
+
 export function draftOf(server: McpServer): McpDraft {
   return {
     name: server.name,

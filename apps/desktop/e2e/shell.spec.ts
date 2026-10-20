@@ -176,6 +176,25 @@ test.describe('tasks', () => {
   })
 })
 
+test.describe('context and artifacts', () => {
+  test('the context screen reads the real engine: outputs kept aside, proxy off by default', async () => {
+    await openSettings('Contexte')
+
+    await expect(page.getByRole('heading', { name: 'Contexte', level: 2 })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Grosses sorties d’outils', level: 3 })).toBeVisible()
+    await expect(page.getByText(/caractères économisés$/)).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Compression de l’historique (billion-context)', level: 3 })).toBeVisible()
+    await expect(page.getByText('Éteint', { exact: true })).toBeVisible()
+  })
+
+  test('the artifacts screen is empty on a fresh profile', async () => {
+    await openSettings('Artefacts')
+
+    await expect(page.getByRole('heading', { name: 'Artefacts', level: 2 })).toBeVisible()
+    await expect(page.getByText('Aucun artefact pour l’instant')).toBeVisible()
+  })
+})
+
 test.describe('permissions', () => {
   test('shell guard defaults to the workspace only', async () => {
     await openSettings('Agent et sécurité')

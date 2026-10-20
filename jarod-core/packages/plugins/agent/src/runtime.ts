@@ -12,6 +12,8 @@ import type { Attachment, ScheduleDelivery, SessionContext } from "@jarod/contra
 import type { CheckpointService, Db, EventStoreService, NotificationService, SettingsService } from "@jarod/plugin-storage";
 import type { AttachmentService, VaultService } from "@jarod/plugin-rag";
 import { TaskLedger, type TaskRecord } from "./tasks.js";
+import { OutputStore } from "./outputs.js";
+import { ArtifactStore } from "./artifacts.js";
 import type { ProviderRouter, RoutingService } from "@jarod/plugin-llm";
 import {
   type AnnotationService,
@@ -105,6 +107,10 @@ export class AgentRuntime {
   readonly gate: ToolGate | undefined;
   /** Cockpit, lot 2 : les actions passées par la porte unique (étapes, preuve, annulation) ; les finies vont au flux `tasks`. */
   readonly tasks: TaskLedger;
+  /** Cockpit, lot 3 : sorties d'outils volumineuses, hors du contexte, cherchables (table `tool_outputs`). */
+  readonly outputs: OutputStore;
+  /** Cockpit, lot 5 : les artefacts produits (diagrammes, vidéos, analyses, rapports), référencés avec leur empreinte. */
+  readonly artifacts: ArtifactStore;
   readonly commands = new CommandRegistry();
   readonly subagents = new SubagentsService();
   /** Q18 : état de travail par conversation (table `session_state`, v18). */
@@ -144,6 +150,8 @@ export class AgentRuntime {
     this.state = new SessionStateService(d.db);
     this.settings = d.settings;
     this.events = d.events;
+    this.outputs = new OutputStore(d.db);
+    this.artifacts = new ArtifactStore(d.db);
     this.tasks = new TaskLedger({
       store: {
         save: (t) => void this.events.append("tasks", t.status, t),
@@ -178,6 +186,7 @@ export class AgentRuntime {
     // are exactly what the user asked to delete.
     this.sessions.onDeleted = (id) => {
       this.events.forget(`session:${id}`);
+      this.outputs.forget(id);
       // Q18 : les sous-agents de cette conversation s'arrêtent avec elle.
       for (const c of this.rlm.of(id)) if (c.status === "running") this.subagents.cancel(c.id);
       // G4 : le plafond relevé pour cette conversation part avec elle.

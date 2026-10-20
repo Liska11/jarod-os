@@ -258,3 +258,13 @@ describe("outil de l'agent `capabilities`", () => {
     expect(out).not.toMatch(/delete_everything.*disponible/);
   });
 });
+
+describe("lot 4 : billion-context branché au transport", () => {
+  const proxy = (healthy: boolean) => async () => ({ enabled: true, url: "http://127.0.0.1:8787", providers: ["openai"], healthy });
+  it("allumé et en marche : disponible ; allumé mais muet : dégradé (les requêtes échoueront), jamais disponible", async () => {
+    expect((await service(fakeHost().host, { contextProxy: proxy(true) }).check("billion-context.compress-history")).state).toBe("available");
+    const down = await service(fakeHost().host, { contextProxy: proxy(false) }).check("billion-context.compress-history");
+    expect(down.state).toBe("degraded");
+    expect(down.detail).toMatch(/ne répond pas/);
+  });
+});

@@ -38,6 +38,9 @@ export const TOOLS: Readonly<Record<string, ToolClass>> = {
   // File 4d (SPECS-P5-AUTOMATION.md) : CRUD des règles « quand X alors Y ». lecture = aucun effet ;
   // écriture = persistant (une règle survit à la conversation et déclenche des exécutions) ;
   // `automation_run` exécute IMMÉDIATEMENT les actions (agent ou notification) → exécution.
+  // Cockpit, lot 5 : artefacts. Enregistrer = une ligne en base sur un fichier DÉJÀ écrit (confiné au dossier de travail) ; lister = lecture.
+  artifact_list: ro,
+  artifact_register: free("persistant", "référence un fichier du dossier de travail déjà écrit (empreinte en base) ; ne crée ni ne modifie aucun fichier"),
   automation_create: ask("persistant"),
   automation_delete: ask("persistant"),
   automation_get: ro,
@@ -57,7 +60,11 @@ export const TOOLS: Readonly<Record<string, ToolClass>> = {
   // Q19-4 : tout outil de plugin exige l'accord tant que l'UTILISATEUR ne l'a pas classé (`/plugin trust`) — y compris ce témoin de lecture.
   des_roll_dice: ask("lecture"),
   diff_numbered: ro,
+  // Cockpit, lot 5 : écrit un .svg dans le dossier de travail.
+  diagram_export: ask("fichiers"),
   edit_file: ask("fichiers"),
+  // Cockpit, lot 7 : lance `hyperframes render` (local) et écrit la vidéo dans le dossier de travail.
+  video_render: ask("exécution"),
   find_files: ro,
   http_request: ask("réseau"),
   list_dir: ro,
@@ -65,6 +72,9 @@ export const TOOLS: Readonly<Record<string, ToolClass>> = {
   local_model_server: ask("exécution"),
   memory_save: free("persistant", "bloqué en mode Plan (PERSISTENT_TOOLS), absent des sous-agents ; souvenir réversible (/memory)"),
   memory_search: ro,
+  // Cockpit, lot 3 : sorties volumineuses gardées hors du contexte, de la conversation en cours.
+  output_read: ro,
+  output_search: ro,
   present: free("envoi", "n'écrit que vers la passerelle d'ORIGINE de la conversation (`gatewayChatOf`), jamais vers une cible choisie par le modèle"),
   rag_index: free("persistant", "indexe un chemin confiné au dossier de travail (`resolveInWorkspace`) dans l'index local"),
   rag_search: ro,
