@@ -4,7 +4,7 @@
  * outil (`tool.run`) sont OBSERVÉS, jamais modifiés dans leur logique. Aucun modèle réel : un fournisseur scripté.
  *
  *   1. recensement : chaque outil et chaque commande du kernel est classé dans `effect-paths.ts` (un ajout non classé échoue) ;
- *   2. uniformité : pour LES 72 outils, un garde qui refuse ou une approbation refusée empêche l'exécution ;
+ *   2. uniformité : pour LES 74 outils, un garde qui refuse ou une approbation refusée empêche l'exécution ;
  *   3. points d'entrée : composer, tâche planifiée, message de passerelle → l'exécution est TOUJOURS précédée du garde ;
  *   4. les deux chemins qui n'y passaient pas sont corrigés et testés : sous-agents (Q19-1) et commandes `/` d'une passerelle (Q19-2) ;
  *   5. tripwires de source : les sites d'appel de `tool.run`, `executeGuardedTool`, `commands.execute`, `ipcMain.handle`.
@@ -105,12 +105,12 @@ const waitFor = async (ok: () => boolean, ms = 5_000) => {
 };
 
 describe("Q19 — 1. recensement des outils et des commandes", () => {
-  it("les 72 outils du registre (86 sous Windows, avec les 14 outils système) sont tous classés (et rien d'autre)", async () => {
+  it("les 74 outils du registre (88 sous Windows, avec les 14 outils système) sont tous classés (et rien d'autre)", async () => {
     const { core } = await boot();
     const names = core.tools.all().map((t: Any) => t.name).sort();
     const expected = Object.keys(TOOLS).filter((n) => process.platform === "win32" || !WINDOWS_ONLY.has(n));
     expect(names).toEqual(expected.sort());
-    expect(expected.length).toBe(process.platform === "win32" ? 86 : 72);
+    expect(expected.length).toBe(process.platform === "win32" ? 88 : 74);
   });
 
   it("un outil qui a un effet exige l'accord de l'utilisateur, ou dit pourquoi non", async () => {

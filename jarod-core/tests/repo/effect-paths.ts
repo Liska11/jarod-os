@@ -65,6 +65,9 @@ export const TOOLS: Readonly<Record<string, ToolClass>> = {
   edit_file: ask("fichiers"),
   // Cockpit, lot 7 : lance `hyperframes render` (local) et écrit la vidéo dans le dossier de travail.
   video_render: ask("exécution"),
+  // Cockpit, lot 6 : lancent un analyseur STATIQUE (Ghidra headless / REA) sur un fichier du dossier de travail ; la cible n'est jamais exécutée.
+  ghidra_analyze: ask("exécution"),
+  rea_static: ask("exécution"),
   find_files: ro,
   http_request: ask("réseau"),
   list_dir: ro,

@@ -99,9 +99,9 @@ describe("sondes (hôte simulé)", () => {
     const ok = fakeHost({ files: [...ghidraFiles, "C:\\bin\\java.exe"], texts: ghidraTexts, env: { GHIDRA_INSTALL_DIR: ghidraRoot }, answers: { "java.exe -version": { stderr: 'openjdk version "21.0.12.1" 2026-08-18 LTS' } } });
     const s = await service(ok.host).check("ghidra.static-analysis");
     expect(s.state).toBe("available");
-    expect(s.integration).toBe("detection-only");
-    expect(s.tools).toEqual([]);
-    // La sonde ne lance que java -version : jamais analyzeHeadless, jamais un binaire cible.
+    expect(s.integration).toBe("agent-tool");
+    expect(s.tools).toEqual(["ghidra_analyze"]);
+    // La SONDE ne lance que java -version : jamais analyzeHeadless, jamais un binaire cible (l'analyse réelle, elle, passe par l'outil ghidra_analyze).
     expect(ok.calls.every((c) => /java\.exe -version$/i.test(c))).toBe(true);
   });
 

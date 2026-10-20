@@ -8,6 +8,7 @@ import { taskStatusTool } from "./tasks.js";
 import { outputTools } from "./outputs.js";
 import { artifactTools } from "./artifacts.js";
 import { videoTools } from "./video.js";
+import { staticAnalysisTools } from "./static-analysis.js";
 import type {} from "@jarod/plugin-memory";
 import type {} from "@jarod/plugin-permissions";
 import type {} from "@jarod/plugin-persona";
@@ -51,6 +52,7 @@ export * from "./tasks.js";
 export * from "./outputs.js";
 export * from "./artifacts.js";
 export * from "./video.js";
+export * from "./static-analysis.js";
 
 declare module "cordis" {
   interface Context {
@@ -219,6 +221,8 @@ export function apply(ctx: Context, config: AgentConfig = {}): void {
   for (const t of artifactTools(runtime.artifacts)) tools.register(t);
   // Cockpit, lot 7 : rendu vidéo HyperFrames, comme tâche (accord, annulation, preuve ffprobe, artefact).
   for (const t of videoTools({ artifacts: runtime.artifacts })) tools.register(t);
+  // Cockpit, lot 6 : REA et Ghidra en analyse STATIQUE (la cible n'est jamais exécutée), comme tâches (accord, annulation, preuve, artefact).
+  for (const t of staticAnalysisTools({ artifacts: runtime.artifacts })) tools.register(t);
   // Q18 : outils `state_*` (SANK-AI `kernel/session-state.js`, MIT), sur la table `session_state` (v18).
   for (const t of sessionStateTools(runtime.state)) tools.register(t);
   // Q18 : sous-agents non bloquants (SANK-AI `rlm-subagent`, MIT), lecture seule.
