@@ -37,6 +37,16 @@ n'est pas `integrated` (voir `docs/INTEGRATIONS.md`) ; la ligne existe pour la t
 | E2 | browser-use/browser-harness | MIT | permissive | copyright et texte MIT |
 | X1 | linshenkx/prompt-optimizer | AGPL-3.0-only | copyleft | texte AGPL-3.0 et avis de copyright d'origine |
 | X2 | harness/harness | Apache-2.0 | permissive | rejeté pour absence de cas d'usage, pas pour sa licence |
+| F1 | ranxianglei/billion-context | MIT | permissive | copyright et texte MIT ; détecté seulement (cockpit, 2026-10-20) |
+| F2 | mksglu/context-mode | Elastic-2.0 | unknown | texte ELv2 ; usage personnel, jamais offert en service |
+| F3 | heygen-com/hyperframes | Apache-2.0 | permissive | NOTICE Apache-2.0 |
+| F4 | NationalSecurityAgency/ghidra | Apache-2.0 | permissive | NOTICE Apache-2.0 ; composants tiers de Ghidra listés dans sa distribution |
+| F5 | cathrynlavery/diagram-design | MIT | permissive | copyright et texte MIT |
+| F6 | mattpocock/skills | MIT | permissive | copyright et texte MIT |
+| F7 | boykopovar/AnyPS5 | GPL-2.0-only | copyleft | texte GPL-2.0 ; détecté seulement, rien n'est embarqué |
+| F8 | storytold/artcraft | MIT OR Apache-2.0 | unknown | double licence au choix ; application séparée, rien n'est embarqué |
+| F9 | morluto/rea | MIT | permissive | copyright et texte MIT |
+| F10 | usestrix/strix | Apache-2.0 | permissive | NOTICE Apache-2.0 ; détecté seulement |
 
 Autres composants cités par la mission : Darwinian Evolver (AGPL, utilisable y compris en runtime) : dépôt et
 licence à relever lors de son éventuel embarquement, puis à ajouter ici.

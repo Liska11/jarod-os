@@ -222,6 +222,7 @@ export function desktopKernelOf(app: JarodApp, where: { profile: string; dataRoo
     pluginHost?: DesktopKernel["pluginHost"];
     automation?: AutomationService;
     tools?: { sshHosts?: DesktopKernel["sshHosts"] };
+    integrations?: { capabilities?: DesktopKernel["capabilities"] };
     llm?: { engine: NonNullable<DesktopKernel["localEngine"]>["engine"]; localModels?: NonNullable<DesktopKernel["localEngine"]>["models"]; detectHardware(): ReturnType<NonNullable<DesktopKernel["localEngine"]>["hardware"]> };
     permissions?: PermissionsService;
     plugins?: PlatformSources["plugins"];
@@ -245,6 +246,7 @@ export function desktopKernelOf(app: JarodApp, where: { profile: string; dataRoo
     ...(k.pluginHost ? { pluginHost: k.pluginHost } : {}),
     ...(k.automation ? { automation: k.automation } : {}),
     ...(k.tools?.sshHosts ? { sshHosts: k.tools.sshHosts } : {}),
+    ...(k.integrations?.capabilities ? { capabilities: k.integrations.capabilities } : {}),
     ...(k.permissions ? { permissions: k.permissions } : {}),
     ...(platformPortOf(k) ? { platform: platformPortOf(k)! } : {}),
     ...(k.llm ? { localEngine: { engine: k.llm.engine, ...(k.llm.localModels ? { models: k.llm.localModels } : {}), hardware: () => k.llm!.detectHardware() } } : {}),
@@ -321,6 +323,7 @@ export async function openDesktopKernel(o: OpenKernelOptions): Promise<OpenedKer
     pluginHost?: DesktopKernel["pluginHost"];
     automation?: AutomationService;
     tools?: { sshHosts?: DesktopKernel["sshHosts"] };
+    integrations?: { capabilities?: DesktopKernel["capabilities"] };
     llm?: { engine: NonNullable<DesktopKernel["localEngine"]>["engine"]; localModels?: NonNullable<DesktopKernel["localEngine"]>["models"]; detectHardware(): ReturnType<NonNullable<DesktopKernel["localEngine"]>["hardware"]> };
     permissions?: PermissionsService;
     plugins?: PlatformSources["plugins"];
@@ -367,6 +370,7 @@ export async function openDesktopKernel(o: OpenKernelOptions): Promise<OpenedKer
     ...(k.pluginHost ? { pluginHost: k.pluginHost } : {}),
     ...(k.automation ? { automation: k.automation } : {}),
     ...(k.tools?.sshHosts ? { sshHosts: k.tools.sshHosts } : {}),
+    ...(k.integrations?.capabilities ? { capabilities: k.integrations.capabilities } : {}),
     ...(k.permissions ? { permissions: k.permissions } : {}),
     ...(platformPortOf(k) ? { platform: platformPortOf(k)! } : {}),
     ...(k.llm ? { localEngine: { engine: k.llm.engine, ...(k.llm.localModels ? { models: k.llm.localModels } : {}), hardware: () => k.llm!.detectHardware() } } : {}),

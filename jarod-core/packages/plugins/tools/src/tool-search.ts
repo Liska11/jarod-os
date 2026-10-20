@@ -28,6 +28,8 @@ export const CORE_TOOLS: ReadonlySet<string> = new Set([
   "todo",
   "ask_user",
   "present",
+  // Cockpit : ce que Jarod sait faire maintenant (registre vivant, lecture seule).
+  "capabilities",
   "tool_search",
 ]);
 

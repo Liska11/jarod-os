@@ -133,6 +133,23 @@ test.describe('platform', () => {
   })
 })
 
+test.describe('capabilities', () => {
+  test('the capabilities screen shows the ten integrations with a state measured by the real engine', async () => {
+    await openSettings('Capacités')
+
+    await expect(page.getByRole('heading', { name: 'Capacités', level: 2 })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Intégrations', level: 3 })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Outils de l’agent', level: 3 })).toBeVisible()
+
+    // The state depends on the machine (a probe really runs); the row and a known state are always there.
+    for (const name of ['Analyse statique de binaires (Ghidra)', 'Tests de sécurité applicative (Strix)', 'Diagrammes']) {
+      await expect(page.getByText(name, { exact: false }).first()).toBeVisible({ timeout: 30_000 })
+    }
+    await expect(page.getByRole('button', { name: 'Resonder Diagrammes' })).toBeVisible()
+    await expect(page.getByText(/^\d+ disponibles, \d+ bloqués$/)).toBeVisible()
+  })
+})
+
 test.describe('permissions', () => {
   test('shell guard defaults to the workspace only', async () => {
     await openSettings('Agent et sécurité')

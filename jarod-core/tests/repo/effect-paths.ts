@@ -44,6 +44,8 @@ export const TOOLS: Readonly<Record<string, ToolClass>> = {
   automation_list: ro,
   automation_run: ask("exécution"),
   automation_update: ask("persistant"),
+  // Cockpit, lot 1 : lit le registre vivant. `check` resonde : lance SEULEMENT le programme d'une intégration avec un argument de diagnostic constant.
+  capabilities: free("exécution", "sondes de diagnostic à arguments constants (--version, --help, -version, docker info), sans shell, délai de 8 s ; aucun argument venu du modèle, aucun fichier cible"),
   // File 4c (SPECS-P5-LSP.md) : diagnostics/navigation LSP. Le registre n'exige PAS d'accord
   // (dangerous absent) ; c'est LspManager qui en demande UN avant tout démarrage de serveur (G1).
   code_diagnostics: free("exécution", "démarrage d'un serveur de langage soumis à l'accord G1 de LspManager (porte ctx.approve) ; lecture seule une fois lancé"),

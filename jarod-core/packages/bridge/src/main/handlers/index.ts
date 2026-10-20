@@ -37,6 +37,7 @@ import { createRemoteHandlers } from "./remote.js";
 import { createSessionHandlers } from "./sessions.js";
 import { createSkillsHandlers } from "./skills.js";
 import { createToolsHandlers } from "./tools.js";
+import { createCapabilityHandlers } from "./capabilities.js";
 import { createSshHostHandlers } from "./ssh-hosts.js";
 import { createUpdateHandlers } from "./updates.js";
 import { createVaultHandlers } from "./vault.js";
@@ -77,6 +78,7 @@ export function createHandlers(ctx: HandlerContext): Record<string, OneaiHandler
     ...createSkillsHandlers(ctx),
     ...createRegistryHandlers(ctx),
     ...createToolsHandlers(ctx),
+    ...createCapabilityHandlers(ctx),
     ...createMcpHandlers(ctx),
     ...createVoiceHandlers(ctx),
     ...createWorkspaceHandlers(ctx, gate),

@@ -112,6 +112,9 @@ export const JAROD_INVOKE_CHANNELS = [
   // Écran « Plateforme » : instantané en lecture seule + approbation d'un outil MCP dont la description a changé.
   "platform-status",
   "mcp-approve-tool",
+  // Écran « Capacités » (cockpit, lot 1) : le registre vivant, en lecture seule ; resonder une capacité par son identifiant.
+  "capabilities-list",
+  "capabilities-check",
 ] as const;
 /**
  * `voice-state` (listening/recording/transcribing), `voice-transcript` (commande transcrite), `voice-error` ; `tool-approval-request`

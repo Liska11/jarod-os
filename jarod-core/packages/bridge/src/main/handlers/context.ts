@@ -39,6 +39,29 @@ export interface PlatformSnapshot {
 }
 
 /** Les services du kernel qu'atteignent les handlers (`app.agent`, `app.scheduler`…). */
+/** Une capacité du registre vivant (cockpit, lot 1), telle que plugin-integrations la rend : données sérialisables, sans secret. */
+export interface CapabilityRow {
+  id: string;
+  name: string;
+  description: string;
+  owner: string;
+  integration: "agent-tool" | "skill" | "detection-only" | "external-app";
+  state: "unknown" | "not-installed" | "installed-unconfigured" | "available" | "degraded" | "blocked-permission" | "error";
+  detail: string;
+  version?: string;
+  found?: string[];
+  missing?: string[];
+  risk: string;
+  locality: "local" | "remote" | "mixed";
+  requires: string[];
+  limits: string[];
+  tools: string[];
+  permissions: Record<string, "allow" | "ask" | "deny">;
+  experimental?: boolean;
+  checkedAt: number | null;
+  provenance?: { repo: string; license: string; pinned: string | null; status: string };
+}
+
 export interface DesktopKernel {
   agent: AgentRuntime;
   scheduler: Scheduler;
@@ -98,6 +121,8 @@ export interface DesktopKernel {
       onProgress?: (p: { done: number; total: number; docId: string | null }) => void;
     }): Promise<{ documents: number; chunks: number; missing: number; cancelled?: true }>;
   };
+  /** Registre vivant des capacités (plugin-integrations, port STRUCTUREL) ; absent = écran vide. */
+  capabilities?: { list(): Promise<CapabilityRow[]>; check(id: string): Promise<CapabilityRow> };
   /** Hôtes SSH déclarés (plugin-tools, port STRUCTUREL) ; absent = désactivé. */
   sshHosts?: SshHostsPort;
   /** Plugins utilisateur (plugin-workflows) : activation et confiance ; absent = désactivé. */

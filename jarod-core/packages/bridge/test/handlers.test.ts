@@ -1261,7 +1261,8 @@ describe("W8 handlers : carte et garde", () => {
     // Jarod-OS : 273 = 279 moins les 6 canaux du terminal intégré (`terminal-*`, node-pty écarté).
     // + 2 canaux du coffre (2026-10-18, Jarod-OS Sécurité › Secrets : vault-status, vault-revoke).
     // + 1 canal des commandes de l'agent sur une machine distante (2026-10-18 : ssh-host-exec-set, confirmation native).
-    expect(keys).toHaveLength(276);
+    // + 2 canaux de l'écran « Capacités » (2026-10-20, cockpit lot 1 : capabilities-list, capabilities-check).
+    expect(keys).toHaveLength(278);
     const hermes = keys.filter((k) => (HERMES_INVOKE_CHANNELS as readonly string[]).includes(k));
     expect(hermes).toHaveLength(207);
     expect(keys.filter((k) => !hermes.includes(k)).sort()).toEqual([...JAROD_INVOKE_CHANNELS].filter((k) => !k.startsWith("terminal-")).sort());

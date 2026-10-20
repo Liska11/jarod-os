@@ -33,7 +33,7 @@ const base: AdapterManifest = {
 describe("politique des adaptateurs", () => {
   it("tout le registre réel respecte la politique", () => {
     expect(() => assertAdapters(REGISTRY)).not.toThrow();
-    expect(REGISTRY).toHaveLength(24);
+    expect(REGISTRY).toHaveLength(34);
   });
 
   it("la licence est informative : le copyleft est classé, tracé, jamais rejeté", () => {
