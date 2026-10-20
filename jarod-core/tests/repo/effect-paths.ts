@@ -89,6 +89,8 @@ export const TOOLS: Readonly<Record<string, ToolClass>> = {
   subagent_cancel: free("agent", "n'arrête qu'un sous-agent de SA conversation"),
   subagent_list: ro,
   subagent_result: ro,
+  // Cockpit, lot 2 : relit les actions de la conversation et leurs preuves.
+  task_status: ro,
   tool_search: ro,
   user_profile: free("persistant", "bloqué en mode Plan (PERSISTENT_TOOLS), absent des sous-agents ; USER.md relu et corrigeable"),
   vault_list: ro,

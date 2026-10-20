@@ -1,5 +1,5 @@
 import { useStore } from '@nanostores/react'
-import { IconAccessible, IconApps, IconBell, IconCircleCheckFilled, IconPuzzle, IconDatabase, IconGauge, IconArchive, IconBolt, IconBrain, IconDeviceMobile, IconFileSearch, IconLock, IconMessages, IconPlug, IconShieldCog, IconSparkles, IconUserCircle, IconInfoCircle, IconKey, IconListDetails, IconMicrophone, IconPalette, IconPlayerPause, IconRobot, IconSettings, IconShield, IconShieldCheck, IconRadar, IconWifi } from '@tabler/icons-react'
+import { IconAccessible, IconApps, IconBell, IconCircleCheckFilled, IconPuzzle, IconDatabase, IconGauge, IconArchive, IconBolt, IconBrain, IconDeviceMobile, IconFileSearch, IconLock, IconMessages, IconPlug, IconShieldCog, IconSparkles, IconUserCircle, IconInfoCircle, IconKey, IconListDetails, IconMicrophone, IconPalette, IconPlayerPause, IconRobot, IconSettings, IconShield, IconShieldCheck, IconRadar, IconListCheck, IconWifi } from '@tabler/icons-react'
 import { type ComponentType, useEffect, useState } from 'react'
 import { GlassButton, PageHeader, SearchField } from '../../components/ui/glass.tsx'
 import { cn } from '../../lib/cn.ts'
@@ -21,6 +21,7 @@ import { ProvidersSection } from './sections/ProvidersSection.tsx'
 import { PluginsSection } from './sections/PluginsSection.tsx'
 import { PlatformSection } from './sections/PlatformSection.tsx'
 import { CapabilitiesSection } from './sections/CapabilitiesSection.tsx'
+import { TasksSection } from './sections/TasksSection.tsx'
 import { DataSection } from './sections/DataSection.tsx'
 import { DevicesSection } from './sections/DevicesSection.tsx'
 import { DocumentsSection } from './sections/DocumentsSection.tsx'
@@ -67,6 +68,7 @@ const SECTIONS: { id: SectionId; label: string; icon: ComponentType<{ size?: num
   { id: 'notifications', label: 'Notifications', icon: IconBell, view: NotificationsSection },
   { id: 'network', label: 'Network', icon: IconWifi, view: NetworkSection },
   { id: 'capabilities', label: 'Capabilities', icon: IconRadar, view: CapabilitiesSection },
+  { id: 'tasks', label: 'Tasks', icon: IconListCheck, view: TasksSection },
   { id: 'platform', label: 'Platform', icon: IconShieldCheck, view: PlatformSection },
   { id: 'storage', label: 'Storage', icon: IconDatabase, view: StorageSection },
   { id: 'accessibility', label: 'Accessibility', icon: IconAccessible, view: AccessibilitySection },

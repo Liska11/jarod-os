@@ -41,6 +41,8 @@ export interface SystemActDeps extends SystemToolDeps {
   launch?: Launcher;
   /** Des pid que `system_quit_app` ne fermera jamais, en plus du processus de Jarod et de son parent. */
   protectedPids?: readonly number[];
+  /** Cockpit, lot 2 : les attentes successives avant chaque constat de la preuve (défaut : 0,5 s, 1 s, 1,5 s, 2 s). */
+  verifyDelaysMs?: readonly number[];
 }
 
 // --- listes -----------------------------------------------------------------------------------------------
@@ -153,6 +155,22 @@ export function systemActTools(deps: SystemActDeps = {}): ToolDef[] {
   const roots = () => protectedRoots(env, home);
   const base = { source: "builtin" as const, audited: true, available: hasPs };
   const json = (v: unknown) => JSON.stringify(v);
+  // Cockpit, lot 2 : la preuve d'une action se constate en relisant le système, à quelques reprises (une fenêtre met un instant à paraître).
+  const delays = deps.verifyDelaysMs ?? [500, 1000, 1500, 2000];
+  const until = async <T>(probe: () => Promise<T | undefined>, signal?: AbortSignal): Promise<T | undefined> => {
+    for (const ms of delays) {
+      if (ms) await new Promise((r) => setTimeout(r, ms));
+      if (signal?.aborted) return undefined;
+      const v = await probe();
+      if (v !== undefined) return v;
+    }
+    return undefined;
+  };
+  const runningNow = async (signal?: AbortSignal) => parseRunningApps(await runner().json(S.RUNNING_APPS, undefined, { timeoutMs: 30_000, signal }));
+  const sameApp = (r: AppInfo, label: string) => {
+    const l = label.toLowerCase().replace(/\.exe$/, "");
+    return r.name.toLowerCase() === l || (r.path !== "" && programStem(r.path) === l);
+  };
 
   // Les applications du menu Démarrer, gardées 30 s (la lecture prend ≈ 0,6 s).
   let cache: { at: number; apps: AppInfo[] } | null = null;
@@ -288,6 +306,15 @@ export function systemActTools(deps: SystemActDeps = {}): ToolDef[] {
       ...base,
       name: "system_open",
       dangerous: true,
+      targetOf: (args) => str(args.app) || str(args.url) || str(args.path) || str(args.pane) || undefined,
+      // Preuve : une application lancée paraît parmi les applications ouvertes. Une adresse, un fichier ou un volet s'ouvre DANS une autre
+      // application (souvent déjà ouverte) : rien ne s'y observe de façon fiable, et la preuve le dit.
+      async verify(args, out, vctx) {
+        if (str(args.target) !== "app") return { status: "unverifiable", evidence: "ouvert dans une autre application : rien d'observable de façon fiable" };
+        const label = String((JSON.parse(out) as { opened?: unknown }).opened ?? str(args.app));
+        const hit = await until(async () => (await runningNow(vctx.signal)).find((r) => sameApp(r, label) || r.name.toLowerCase().includes(label.toLowerCase())), vctx.signal);
+        return hit ? { status: "verified", evidence: `${hit.name} ouverte (pid ${String(hit.pid)})` } : { status: "failed", evidence: `${label} n'apparaît pas parmi les applications ouvertes` };
+      },
       description: "Ouvre quelque chose pour l'utilisateur (un accord est demandé à chaque fois). target=app : lance une application par son nom (« Bloc-notes ») ; target=url : ouvre une adresse http(s) ou mailto dans le navigateur par défaut (ou dans l'application donnée) ; target=path : ouvre un fichier ou un dossier avec son application par défaut (ou celle donnée) — jamais un programme ou un script ; target=reveal : montre l'élément dans l'Explorateur ; target=editor : ouvre un dossier ou un fichier dans un éditeur de code (editor=auto prend le premier installé de VS Code, Cursor, Zed) ; target=settings : ouvre un volet des Paramètres Windows (pane=sound, wifi, display, privacy…).",
       parameters: {
         type: "object",
@@ -411,6 +438,17 @@ export function systemActTools(deps: SystemActDeps = {}): ToolDef[] {
       ...base,
       name: "system_quit_app",
       dangerous: true,
+      targetOf: (args) => str(args.name) || undefined,
+      // Preuve : plus aucun processus de l'application. Encore là après une fermeture POLIE n'est pas un échec : elle peut demander d'enregistrer.
+      async verify(args, out, vctx) {
+        const label = String((JSON.parse(out) as { app?: unknown }).app ?? str(args.name));
+        const names = [label, str(args.name)];
+        const gone = await until(async () => ((await runningNow(vctx.signal)).some((r) => names.some((n) => sameApp(r, n))) ? undefined : true), vctx.signal);
+        if (gone) return { status: "verified", evidence: `${label} n'est plus ouverte` };
+        return args.force === true
+          ? { status: "failed", evidence: `${label} est toujours ouverte après l'arrêt` }
+          : { status: "unverifiable", evidence: `${label} est encore ouverte : elle peut demander d'enregistrer avant de se fermer` };
+      },
       description: "Ferme une application (un accord est demandé à chaque fois). Par défaut poliment : sa fenêtre principale reçoit la demande de fermeture, l'application peut donc proposer d'enregistrer. Avec force=true elle est arrêtée net et le travail non enregistré est perdu. Refuse les processus du système, l'Explorateur et Jarod lui-même.",
       parameters: {
         type: "object",

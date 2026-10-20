@@ -33,6 +33,7 @@ export function vaultTools(): ToolDef[] {
     },
     {
       name: "http_request",
+      targetOf: (args) => (typeof args.url === "string" ? args.url : undefined),
       description:
         "Envoie une requête HTTP (GET, POST, PUT, PATCH, DELETE) et renvoie le statut et le corps de la réponse. Les en-têtes et le corps peuvent contenir {{secret:NOM}} : la valeur du coffre y est mise au dernier moment, seulement en https et vers un domaine permis pour ce secret, et elle est masquée dans la réponse.",
       parameters: {

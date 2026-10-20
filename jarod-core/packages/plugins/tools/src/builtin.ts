@@ -236,6 +236,8 @@ export function builtinTools(memory: MemoryService, localServer?: LlamaServerSup
     },
     {
       name: "read_file",
+      targetOf: (args) => (typeof args.path === "string" ? args.path : undefined),
+
       description:
         "Lit un fichier texte du dossier de travail. Pour un gros fichier, lis-le par morceaux avec offset (première ligne, à partir de 1) et limit (nombre de lignes).",
       parameters: {
@@ -257,6 +259,17 @@ export function builtinTools(memory: MemoryService, localServer?: LlamaServerSup
     },
     {
       name: "write_file",
+      targetOf: (args) => (typeof args.path === "string" ? args.path : undefined),
+      // Preuve : le fichier relu a exactement le contenu écrit.
+      async verify(args, _out, ctx) {
+        const file = resolveInWorkspace(ctx, args.path);
+        const want = Buffer.from(String(args.content), "utf8");
+        const got = await readFile(file).catch(() => null);
+        if (!got) return { status: "failed", evidence: `${relative(ctx.workspace!, file)} n'existe pas` };
+        return got.equals(want)
+          ? { status: "verified", evidence: `${relative(ctx.workspace!, file)} relu : ${got.length} octets, contenu identique` }
+          : { status: "failed", evidence: `${relative(ctx.workspace!, file)} relu : ${got.length} octets, contenu différent de celui écrit` };
+      },
       description: "Crée ou remplace un fichier texte dans le dossier de travail.",
       parameters: {
         type: "object",
@@ -274,6 +287,20 @@ export function builtinTools(memory: MemoryService, localServer?: LlamaServerSup
     },
     {
       name: "edit_file",
+      targetOf: (args) => (typeof args.path === "string" ? args.path : undefined),
+      // Preuve : le nouveau texte est présent et l'ancien a disparu (sauf s'il fait partie du nouveau).
+      async verify(args, _out, ctx) {
+        const file = resolveInWorkspace(ctx, args.path);
+        const text = await readFile(file, "utf8").catch(() => null);
+        if (text === null) return { status: "failed", evidence: "fichier illisible après modification" };
+        const oldText = String(args.old_text);
+        const newText = String(args.new_text);
+        const hasNew = text.includes(newText);
+        const oldGone = newText.includes(oldText) || !text.includes(oldText);
+        return hasNew && oldGone
+          ? { status: "verified", evidence: "fichier relu : le nouveau texte est présent, l'ancien a disparu" }
+          : { status: "failed", evidence: hasNew ? "fichier relu : l'ancien texte est toujours là" : "fichier relu : le nouveau texte est absent" };
+      },
       description: "Remplace une portion exacte et unique d'un fichier du dossier de travail.",
       parameters: {
         type: "object",
@@ -301,6 +328,7 @@ export function builtinTools(memory: MemoryService, localServer?: LlamaServerSup
     },
     {
       name: "run_shell",
+      targetOf: (args) => (typeof args.command === "string" ? args.command : undefined),
       description:
         "Exécute une commande shell dans le dossier de travail et renvoie sa sortie. Délai : 2 min par défaut (timeout_seconds, 600 max), la commande est ensuite arrêtée. Ne lance pas de serveur qui tourne indéfiniment. " +
         // Without this the model writes bash on Windows (`ls`, `cat`, `grep`), and every command fails.
@@ -367,6 +395,7 @@ export function builtinTools(memory: MemoryService, localServer?: LlamaServerSup
     },
     {
       name: "web_fetch",
+      targetOf: (args) => (typeof args.url === "string" ? args.url : undefined),
       description: "Télécharge une page web (http/https) et renvoie son texte.",
       parameters: { type: "object", properties: { url: { type: "string" } }, required: ["url"] },
       source: "builtin",

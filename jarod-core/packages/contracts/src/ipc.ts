@@ -115,6 +115,9 @@ export const JAROD_INVOKE_CHANNELS = [
   // Écran « Capacités » (cockpit, lot 1) : le registre vivant, en lecture seule ; resonder une capacité par son identifiant.
   "capabilities-list",
   "capabilities-check",
+  // Écran « Tâches » (cockpit, lot 2) : les actions de la porte unique (étapes, preuve) ; annuler une tâche vivante par son identifiant.
+  "tasks-list",
+  "task-cancel",
 ] as const;
 /**
  * `voice-state` (listening/recording/transcribing), `voice-transcript` (commande transcrite), `voice-error` ; `tool-approval-request`

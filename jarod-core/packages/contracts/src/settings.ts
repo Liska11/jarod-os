@@ -474,7 +474,7 @@ export interface Settings {
    * Relues à chaud par `plugin-permissions` (aucun redémarrage) ; tout affaiblissement passe par la
    * confirmation native de `set-jarod-settings`.
    */
-  permissionsRules: { tool: string; decision: "allow" | "ask" | "deny" }[];
+  permissionsRules: { tool: string; decision: "allow" | "ask" | "deny"; target?: string; expiresAt?: number }[];
   /**
    * Q19-4 — la confiance de l'UTILISATEUR envers les outils d'un plugin, seule source de « sans accord » : un outil de
    * plugin exige l'accord à chaque appel tant que l'utilisateur ne l'a pas classé ici (`/plugin trust`), et ce classement

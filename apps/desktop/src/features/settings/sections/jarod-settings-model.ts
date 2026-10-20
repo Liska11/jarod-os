@@ -10,6 +10,48 @@ export type Decision = 'allow' | 'ask' | 'deny'
 export interface PermissionRule {
   tool: string
   decision: Decision
+  /** Cockpit, lot 2: the rule only covers this target (a path, an app, an address; `*` = anything). */
+  target?: string
+  /** Cockpit, lot 2: a temporary rule stops applying at this instant (ms). */
+  expiresAt?: number
+}
+
+/** How a rule is named: its tool, and its target when it has one. Two rules never share a name. */
+export const ruleKey = (rule: PermissionRule): string => (rule.target ? `${rule.tool.trim()} → ${rule.target}` : rule.tool.trim())
+
+/** The durations offered for a new rule; `0` = permanent. */
+export const RULE_DURATIONS: readonly { hours: number; label: MessageKey }[] = [
+  { hours: 0, label: 'settings.agent.duration.permanent' },
+  { hours: 1, label: 'settings.agent.duration.hour' },
+  { hours: 8, label: 'settings.agent.duration.hours8' },
+  { hours: 24 * 7, label: 'settings.agent.duration.week' }
+]
+
+/** A target is optional; when given, short and without control characters (the engine checks again). */
+export function ruleTargetProblem(target: string): string | null {
+  const v = target.trim()
+
+  if (!v) {
+    return null
+  }
+
+  // eslint-disable-next-line no-control-regex
+  return v.length > 260 || /[\u0000-\u001f]/.test(v) ? t('validate.ruleTarget') : null
+}
+
+/** "until 14:30" for a temporary rule, "expired" once it has passed, null for a permanent one. */
+export function ruleExpiryText(rule: PermissionRule, now: number = Date.now()): string | null {
+  if (rule.expiresAt === undefined) {
+    return null
+  }
+
+  if (rule.expiresAt <= now) {
+    return t('settings.agent.rule.expired')
+  }
+
+  const when = new Date(rule.expiresAt).toLocaleString(dateLocale(), { weekday: 'short', hour: '2-digit', minute: '2-digit' })
+
+  return t('settings.agent.rule.until', { when })
 }
 
 export interface ShellGuard {
@@ -170,7 +212,7 @@ export function ruleListProblem(rules: readonly PermissionRule[]): string | null
   const seen = new Set<string>()
 
   for (const rule of rules) {
-    const tool = rule.tool.trim()
+    const tool = ruleKey(rule)
 
     if (seen.has(tool)) {
       return t('validate.ruleTwice', { tool })

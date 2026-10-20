@@ -51,6 +51,23 @@ export interface ToolDef {
    * serveurs déjà lancés. Une erreur dans le crochet ne fait jamais échouer l'écriture.
    */
   after?(file: string, ctx: ToolContext): Promise<string>;
+  /**
+   * Cockpit, lot 2 : la CIBLE de l'appel (un chemin, une application, une adresse, une commande), lue dans les arguments, pour les règles
+   * de permissions par cible. Sans effet de bord. Lever ou rendre une chaîne vide vaut « cible inconnue » : une règle ciblée deny ou ask
+   * s'applique alors telle quelle (fail-closed).
+   */
+  targetOf?(args: Record<string, unknown>): string | undefined;
+  /**
+   * Cockpit, lot 2 : la PREUVE de l'effet, constatée APRÈS une exécution réussie (un code de retour positif ne suffit pas). Lit seulement.
+   * `failed` rend l'appel en erreur ; `unverifiable` dit pourquoi on ne peut pas constater ; lever vaut `unverifiable`.
+   */
+  verify?(args: Record<string, unknown>, output: string, ctx: ToolContext): Promise<Proof>;
+}
+
+/** La preuve d'une action : constatée, en échec, ou impossible à constater — avec ce qui a été observé. */
+export interface Proof {
+  status: "verified" | "failed" | "unverifiable";
+  evidence: string;
 }
 
 export interface ToolInfo {

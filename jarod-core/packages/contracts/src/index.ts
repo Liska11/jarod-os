@@ -190,7 +190,14 @@ export interface EmbeddingsMetrics {
 // ── Permissions ─────────────────────────────────────────────────────────────────────────────────
 
 /** Une règle du garde unifié (portage SANK-AI `agent-host.mjs:36-56`) : `tool` = nom, segment (`fs` → `fs_*`) ou `*`. */
-export const PermissionRule = z.object({ tool: z.string().min(1), decision: z.enum(["allow", "ask", "deny"]) });
+// Cockpit, lot 2 : `target` (motif de cible, `*` = toute suite, casse et séparateurs de chemin ignorés) et `expiresAt` (autorisation
+// temporaire, en ms depuis l'époque ; échue, la règle ne joue plus). Les deux sont optionnels : une règle sans eux se lit comme avant.
+export const PermissionRule = z.object({
+  tool: z.string().min(1),
+  decision: z.enum(["allow", "ask", "deny"]),
+  target: z.string().min(1).max(260).optional(),
+  expiresAt: z.number().int().positive().optional(),
+});
 export type PermissionRule = z.infer<typeof PermissionRule>;
 export type PermissionDecision = PermissionRule["decision"];
 

@@ -4,6 +4,7 @@
  * pour les familles d'outils liées à l'agent, les commandes, les tâches planifiées.
  */
 import type {} from "@jarod/plugin-llm";
+import { taskStatusTool } from "./tasks.js";
 import type {} from "@jarod/plugin-memory";
 import type {} from "@jarod/plugin-permissions";
 import type {} from "@jarod/plugin-persona";
@@ -43,6 +44,7 @@ export * from "./skills-commands.js";
 export * from "./spill.js";
 export * from "./subagents.js";
 export * from "./supervisor.js";
+export * from "./tasks.js";
 
 declare module "cordis" {
   interface Context {
@@ -203,6 +205,8 @@ export function apply(ctx: Context, config: AgentConfig = {}): void {
   }
   // core.ts:634
   for (const t of sessionTools(runtime.sessions, runtime.messages)) tools.register(t);
+  // Cockpit, lot 2 : l'agent relit ses propres actions et leurs preuves (lecture seule).
+  tools.register(taskStatusTool(runtime.tasks));
   // Q18 : outils `state_*` (SANK-AI `kernel/session-state.js`, MIT), sur la table `session_state` (v18).
   for (const t of sessionStateTools(runtime.state)) tools.register(t);
   // Q18 : sous-agents non bloquants (SANK-AI `rlm-subagent`, MIT), lecture seule.

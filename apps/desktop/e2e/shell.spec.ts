@@ -150,6 +150,32 @@ test.describe('capabilities', () => {
   })
 })
 
+test.describe('tasks', () => {
+  test('the tasks screen reads the real task ledger, empty on a fresh profile', async () => {
+    await openSettings('Tâches')
+
+    await expect(page.getByRole('heading', { name: 'Tâches', level: 2 })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Actions récentes', level: 3 })).toBeVisible()
+    await expect(page.getByText('Aucune action pour l’instant')).toBeVisible()
+  })
+
+  test('a deny rule on one target, for one hour, is listed with its target and its deadline', async () => {
+    await openSettings('Agent et sécurité')
+
+    await page.getByPlaceholder('Nom d’outil, famille/* ou *').fill('system_open')
+    await page.getByPlaceholder('Cible (facultatif) : chemin, application, adresse ; * = n’importe quoi').fill('*steam*')
+    await page.locator('select[aria-label]').filter({ has: page.locator('option[value=deny]') }).selectOption('deny')
+    await page.getByLabel('Durée').selectOption('1')
+    await page.getByRole('button', { name: 'Ajouter la règle' }).click()
+
+    await expect(page.getByText('system_open → *steam*')).toBeVisible()
+    await expect(page.getByText(/^jusqu’à /)).toBeVisible()
+    // Not saved: the draft is discarded, nothing reaches the engine.
+    await page.getByRole('button', { name: 'Abandonner' }).click()
+    await expect(page.getByText('system_open → *steam*')).toHaveCount(0)
+  })
+})
+
 test.describe('permissions', () => {
   test('shell guard defaults to the workspace only', async () => {
     await openSettings('Agent et sécurité')

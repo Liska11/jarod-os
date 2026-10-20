@@ -11,6 +11,7 @@
 import type { Attachment, ScheduleDelivery, SessionContext } from "@jarod/contracts";
 import type { CheckpointService, Db, EventStoreService, NotificationService, SettingsService } from "@jarod/plugin-storage";
 import type { AttachmentService, VaultService } from "@jarod/plugin-rag";
+import { TaskLedger, type TaskRecord } from "./tasks.js";
 import type { ProviderRouter, RoutingService } from "@jarod/plugin-llm";
 import {
   type AnnotationService,
@@ -102,6 +103,8 @@ export class AgentRuntime {
   /** Remplacé par plugin-workflows (`attachPlugins`) ; l'agent le relit à chaque tour. */
   plugins: PluginHost;
   readonly gate: ToolGate | undefined;
+  /** Cockpit, lot 2 : les actions passées par la porte unique (étapes, preuve, annulation) ; les finies vont au flux `tasks`. */
+  readonly tasks: TaskLedger;
   readonly commands = new CommandRegistry();
   readonly subagents = new SubagentsService();
   /** Q18 : état de travail par conversation (table `session_state`, v18). */
@@ -141,6 +144,12 @@ export class AgentRuntime {
     this.state = new SessionStateService(d.db);
     this.settings = d.settings;
     this.events = d.events;
+    this.tasks = new TaskLedger({
+      store: {
+        save: (t) => void this.events.append("tasks", t.status, t),
+        load: () => this.events.list({ stream: "tasks", limit: 10_000 }).slice(-200).map((e) => e.data as TaskRecord),
+      },
+    });
     this.checkpoints = d.checkpoints;
     this.notifications = d.notifications;
     this.sessions = d.sessions;

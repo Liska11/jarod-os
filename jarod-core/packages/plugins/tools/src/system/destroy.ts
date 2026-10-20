@@ -151,6 +151,7 @@ export function systemDestroyTools(deps: SystemDestroyDeps = {}): ToolDef[] {
       ...base,
       name: "system_kill_process",
       dangerous: true,
+      targetOf: (args) => (args.pid != null ? `pid ${String(args.pid)}` : args.port != null ? `port ${String(args.port)}` : typeof args.name === "string" ? args.name : undefined),
       description: "Arrête un processus (un accord est demandé à chaque fois). L'identifier par pid, par le port TCP/UDP sur lequel il écoute (« tue ce qui écoute sur le port 3000 »), ou par nom (un seul processus doit correspondre, sauf all=true). Sans force : demande de fermeture de sa fenêtre principale ; avec force=true : arrêt immédiat, le travail non enregistré est perdu. Refuse les processus du système, l'Explorateur et Jarod lui-même.",
       parameters: {
         type: "object",

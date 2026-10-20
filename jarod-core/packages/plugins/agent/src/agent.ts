@@ -21,7 +21,8 @@ import type { RoutingService } from "@jarod/plugin-llm";
 import type { MessageService, SessionService } from "./sessions.js";
 import type { Settings, SettingsService } from "@jarod/plugin-storage";
 import type { SkillRegistry } from "@jarod/plugin-skills";
-import { type ToolRegistry, validateArgs } from "@jarod/plugin-tools";
+import { type Proof, type ToolContext, type ToolDef, type ToolRegistry, validateArgs } from "@jarod/plugin-tools";
+import type { TaskLedger } from "./tasks.js";
 import type { Attachment, Message, ToolCall } from "@jarod/contracts";
 import { redactText } from "@jarod/kernel/redact";
 import { activePolicy, toolVerdict } from "@jarod/kernel/network";
@@ -139,6 +140,8 @@ export interface AgentDeps {
   vault?: VaultService;
   /** Where the audit log goes (the event store's `audit` stream). */
   audit?: (entry: AuditEntry) => void;
+  /** Cockpit, lot 2 : le registre des tâches (étapes, preuve, annulation) de chaque action passée par la porte unique. */
+  tasks?: TaskLedger;
   /** Garde unifié fail-closed (plugin-permissions) consulté avant chaque appel d'outil. Jarod-cordis. */
   gate?: ToolGate;
   /** SOUL.md du profil (plugin-persona). Q4 = A : non vide, il remplace le réglage `persona`. Jarod-cordis. */
@@ -926,6 +929,7 @@ ${project.text}`);
       ...(this.d.vault ? { vault: this.d.vault } : {}),
       ...(this.d.audit ? { audit: this.d.audit } : {}),
       ...(this.d.gate ? { gate: this.d.gate } : {}),
+      ...(this.d.tasks ? { tasks: this.d.tasks } : {}),
     });
   }
 
@@ -1163,7 +1167,7 @@ export async function executeGuardedTool(
   signal: AbortSignal,
   hooks: { approve(sessionId: string, call: ToolCall, toolDescription: string): Promise<boolean> },
   s: Settings,
-  extra: { vault?: VaultService; audit?: (entry: AuditEntry) => void; gate?: ToolGate } = {},
+  extra: { vault?: VaultService; audit?: (entry: AuditEntry) => void; gate?: ToolGate; tasks?: TaskLedger } = {},
 ): Promise<{ content: string; isError: boolean }> {
   const tool = tools.get(call.name);
   if (!tool || s.disabledTools.includes(call.name)) {
@@ -1189,11 +1193,28 @@ export async function executeGuardedTool(
     audit("bloqué (mode Plan)");
     return { content: "Mode Plan : cet outil est désactivé (lecture seule).", isError: true };
   }
+  // Cockpit, lot 2 : la CIBLE de l'appel, pour les règles par cible. Un outil qui ne la dit pas, ou qui lève, donne une cible
+  // inconnue (null) : un deny ou ask ciblé s'applique alors tel quel (fail-closed).
+  let target: string | null = null;
+  try {
+    const t = tool.targetOf?.(call.args ?? {});
+    if (typeof t === "string" && t.trim()) target = t;
+  } catch {
+    target = null;
+  }
   // Jarod-cordis — garde unifié (PLAN §2 plugin-permissions) : `deny` bloque, `ask` exige l'accord
   // même pour un outil non sensible et même en approbation automatique ; défaut `deny` (fail-closed).
-  const verdict = extra.gate?.decide(call.name) ?? "deny";
+  const verdict = extra.gate?.decide(call.name, target) ?? "deny";
+  // Cockpit, lot 2 : une action à effet, une lecture auditée ou un appel soumis à accord devient une TÂCHE (étapes, preuve, annulation).
+  const tasks = extra.tasks && (tool.dangerous || tool.audited || verdict === "ask") ? extra.tasks : undefined;
+  const refusedTask = (summary: string, why: string) => {
+    if (!tasks) return;
+    const h = tasks.begin({ sessionId, tool: call.name, summary, ...(target !== null ? { target } : {}) });
+    tasks.finish(h.id, "refused", { error: why });
+  };
   if (verdict === "deny") {
     audit("refusé (règle)");
+    refusedTask(tool.description, "refusé par la politique de permissions");
     return { content: `Refusé par la politique de permissions : ${call.name}`, isError: true };
   }
   const invalid = validateArgs(tool.parameters, call.args);
@@ -1207,14 +1228,23 @@ export async function executeGuardedTool(
       if (typeof note === "string" && note.trim()) approvalText = note;
     } catch (e) {
       audit("refusé (règle)");
+      refusedTask(tool.description, (e as Error).message);
       return { content: `Refusé : ${(e as Error).message}`, isError: true };
     }
   }
+  const task = tasks?.begin({ sessionId, tool: call.name, summary: approvalText, ...(target !== null ? { target } : {}) }, signal);
+  // Le signal de la tâche suit celui du tour ET l'annulation de la tâche seule (écran Tâches).
+  const runSignal = task?.signal ?? signal;
+  const cancelled = () => {
+    if (task) tasks!.finish(task.id, "cancelled");
+    return { content: "Interrompu par l'utilisateur.", isError: true };
+  };
   let decision: AuditEntry["decision"] | null = null;
   // « Toujours autoriser » dispense l'accord de l'outil, jamais celui qu'impose une règle « demander » du garde, ni pour un outil de NEVER_ALWAYS (§ 23.2) : une entrée
   // déjà enregistrée pour lui est IGNORÉE (la demande est posée), non supprimée.
   const alwaysAllowed = (s.alwaysAllowTools ?? []).includes(call.name) && !NEVER_ALWAYS.has(call.name);
   if ((tool.dangerous && !s.autoApproveTools && !alwaysAllowed) || verdict === "ask") {
+    if (task) tasks!.step(task.id, "accord demandé", undefined, "awaiting-approval");
     // Un service d'approbation en erreur (rejet OU levée synchrone) REFUSE : l'outil ne tourne jamais sur une erreur (SPECS-P5-UI-PARITE.md § 13, FC4).
     let answer: Promise<boolean>;
     try {
@@ -1222,32 +1252,75 @@ export async function executeGuardedTool(
     } catch {
       answer = Promise.resolve(false);
     }
-    const ok = await awaitApproval(answer, signal);
-    if (signal.aborted) return { content: "Interrompu par l'utilisateur.", isError: true };
+    const ok = await awaitApproval(answer, runSignal);
+    if (runSignal.aborted) return cancelled();
     if (!ok) {
       audit("refusé");
+      if (task) tasks!.finish(task.id, "refused", { error: "refusé par l'utilisateur" });
       return { content: "L'utilisateur a refusé cette action.", isError: true };
     }
+    if (task) tasks!.step(task.id, "accordée", undefined, "running");
     decision = "accordé";
   } else if (tool.dangerous || tool.audited) {
     // `audited` : une lecture sans accord (outils système) qui laisse tout de même sa ligne dans le journal.
     decision = "automatique";
   }
   try {
+    if (task) tasks!.step(task.id, "exécution", undefined, "running");
     // Le contexte porte la porte d'approbation du cœur et le réglage du garde du shell : un outil
     // qui doit demander un accord nommé traverse la même porte au lieu d'en ouvrir une seconde.
-    const out = await tool.run(call.args, {
+    const ctx: ToolContext = {
       sessionId,
       workspace: s.workspace,
-      signal,
+      signal: runSignal,
       approve: hooks.approve,
       ...(s.shellGuard ? { shellGuard: s.shellGuard } : {}),
       ...(extra.vault ? { vault: extra.vault } : {}),
-    });
-    if (decision) audit(decision, true);
-    return { content: truncate(out, 50_000), isError: false };
+    };
+    const out = await tool.run(call.args, ctx);
+    if (task && tasks!.get(task.id)?.status === "cancelled") return cancelled();
+    // Cockpit, lot 2 : la preuve de l'effet, constatée APRÈS l'exécution. Un code de retour positif ne suffit pas.
+    let proof: Proof | undefined;
+    if (tool.verify) {
+      if (task) tasks!.step(task.id, "vérification", undefined, "verifying");
+      proof = await verifyEffect(tool.verify.bind(tool), call.args, out, ctx);
+    } else if (tool.dangerous) {
+      proof = { status: "unverifiable", evidence: "aucune vérification prévue pour cet outil" };
+    }
+    const failed = proof?.status === "failed";
+    if (decision) audit(decision, !failed);
+    if (task) tasks!.finish(task.id, failed ? "failed" : "done", proof ? { proof } : {});
+    const note = tool.verify && proof ? `\n\n[Vérification : ${PROOF_LABEL[proof.status]}] ${proof.evidence}` : "";
+    return { content: truncate(out, 50_000) + note, isError: failed };
   } catch (e) {
     if (decision) audit(decision, false);
+    if (task) {
+      if (tasks!.get(task.id)?.status === "cancelled") return cancelled();
+      tasks!.finish(task.id, "failed", { error: (e as Error).message });
+    }
     return { content: `Erreur : ${(e as Error).message}`, isError: true };
+  }
+}
+
+const PROOF_LABEL: Record<Proof["status"], string> = { verified: "constatée", failed: "ÉCHEC", unverifiable: "impossible" };
+
+/** La vérification d'un outil, bornée (15 s) ; une vérification qui lève ou dépasse le délai est dite impossible, jamais constatée. */
+async function verifyEffect(
+  verify: NonNullable<ToolDef["verify"]>,
+  args: Record<string, unknown>,
+  out: string,
+  ctx: ToolContext,
+): Promise<Proof> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    const timeout = new Promise<Proof>((resolve) => {
+      timer = setTimeout(() => resolve({ status: "unverifiable", evidence: "vérification sans réponse en 15 s" }), 15_000);
+    });
+    const p = await Promise.race([verify(args, out, ctx), timeout]);
+    return p && (p.status === "verified" || p.status === "failed" || p.status === "unverifiable") ? p : { status: "unverifiable", evidence: "vérification sans résultat" };
+  } catch (e) {
+    return { status: "unverifiable", evidence: `vérification impossible : ${(e as Error).message}` };
+  } finally {
+    if (timer) clearTimeout(timer);
   }
 }

@@ -96,6 +96,8 @@ function record(key: string, v: unknown, known: readonly string[]): Record<strin
 const MAX_FALLBACKS = 5;
 /** Plafond des règles de permissions de l'utilisateur : au-delà, c'est une liste qu'aucun écran ne peut montrer. */
 const MAX_PERMISSION_RULES = 200;
+/** Une autorisation temporaire dure au plus 30 jours : au-delà, c'est une règle permanente qui ne dit pas son nom. */
+const MAX_TEMPORARY_MS = 30 * 24 * 3_600_000;
 /** Un `tool` de règle : un nom d'outil, un segment de famille ou le joker `*`. Ni espace ni caractère de contrôle (AV2-008). */
 const ruleToolOk = (s: string): boolean => /^[A-Za-z0-9_./*-]+$/.test(s);
 
@@ -364,15 +366,21 @@ const ENTRIES: Record<string, Entry> = {
       if (v.length > MAX_PERMISSION_RULES) return bad("permissionsRules", `au plus ${MAX_PERMISSION_RULES} règles`);
       const seen = new Set<string>();
       const rules = v.map((raw, i) => {
-        const o = record(`permissionsRules[${i}]`, raw, ["tool", "decision"]);
+        const o = record(`permissionsRules[${i}]`, raw, ["tool", "decision", "target", "expiresAt"]);
         const parsed = PermissionRule.safeParse(o);
         if (!parsed.success) return bad(`permissionsRules[${i}]`, parsed.error.issues[0]!.message);
         const tool = parsed.data.tool.trim();
         if (tool !== parsed.data.tool || tool.length > 64) bad(`permissionsRules[${i}].tool`, "nom d'outil borné à 64 caractères, sans espace autour");
         if (!ruleToolOk(tool)) bad(`permissionsRules[${i}].tool`, "nom d'outil, segment de famille ou « * » (lettres, chiffres, . _ / -)");
-        if (seen.has(tool)) bad(`permissionsRules[${i}].tool`, `règle en double : ${tool} (l'ordre compte, un nom n'apparaît qu'une fois)`);
-        seen.add(tool);
-        return { tool, decision: parsed.data.decision };
+        // Cockpit, lot 2 : une cible (motif, `*` = toute suite) et une échéance (autorisation temporaire), optionnelles.
+        const target = parsed.data.target;
+        if (target !== undefined && (target !== target.trim() || /[\u0000-\u001f]/.test(target))) bad(`permissionsRules[${i}].target`, "cible sans espace autour ni caractère de contrôle");
+        const expiresAt = parsed.data.expiresAt;
+        if (expiresAt !== undefined && (expiresAt <= Date.now() || expiresAt > Date.now() + MAX_TEMPORARY_MS)) bad(`permissionsRules[${i}].expiresAt`, "échéance dans le futur, à 30 jours au plus");
+        const key = target === undefined ? tool : `${tool} sur ${target}`;
+        if (seen.has(key)) bad(`permissionsRules[${i}].tool`, `règle en double : ${key} (l'ordre compte, une règle n'apparaît qu'une fois)`);
+        seen.add(key);
+        return { tool, decision: parsed.data.decision, ...(target !== undefined ? { target } : {}), ...(expiresAt !== undefined ? { expiresAt } : {}) };
       });
       return { permissionsRules: rules };
     },
