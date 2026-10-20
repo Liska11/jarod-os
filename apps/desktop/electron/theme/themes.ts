@@ -3,8 +3,8 @@ import { writeFileAtomic } from '../atomic-write.ts'
 import os from 'node:os'
 import path from 'node:path'
 import { app } from 'electron'
-import type { HeraldOSPrefs } from '../../shared/ipc.ts'
-import { HERALD_SKIN, hermesSkinYaml, schemeOf, type ThemeSpec, type ThemeSummary, validateTheme } from '../../shared/theme.ts'
+import type { JarodOSPrefs } from '../../shared/ipc.ts'
+import { JAROD_SKIN, hermesSkinYaml, schemeOf, type ThemeSpec, type ThemeSummary, validateTheme } from '../../shared/theme.ts'
 import { log } from '../log.ts'
 import { hermesHome } from '../paths.ts'
 import { run } from '../platform/exec.ts'
@@ -98,7 +98,7 @@ export function findTheme(name: string): FoundTheme | null {
 }
 
 /** The shell's part of a theme: a hand-tuned preset, or colours the shell derives its palette from. */
-export function prefsForTheme(spec: ThemeSpec, dir: string): Partial<HeraldOSPrefs> {
+export function prefsForTheme(spec: ThemeSpec, dir: string): Partial<JarodOSPrefs> {
   const wallpaper = !spec.wallpaper || spec.wallpaper === 'default' ? undefined : path.resolve(dir, spec.wallpaper)
   const preset = spec.shell?.theme
 
@@ -222,7 +222,7 @@ export function writeHermesSkin(spec: ThemeSpec): void {
   try {
     const dir = path.join(hermesHome(), 'skins')
     fs.mkdirSync(dir, { recursive: true })
-    fs.writeFileSync(path.join(dir, `${HERALD_SKIN}.yaml`), hermesSkinYaml(spec.label || spec.name, spec.colors))
+    fs.writeFileSync(path.join(dir, `${JAROD_SKIN}.yaml`), hermesSkinYaml(spec.label || spec.name, spec.colors))
   } catch (error) {
     log('theme', `could not write the Hermes skin: ${(error as Error).message}`)
   }

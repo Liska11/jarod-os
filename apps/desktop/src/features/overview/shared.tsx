@@ -101,7 +101,7 @@ export function FileThumb({ path, size = 256, className }: { path: string; size?
     }
 
     let cancelled = false
-    window.heraldOS.fs
+    window.jarodOS.fs
       .thumbnail(path, size)
       .then(url => {
         thumbCache.set(path, url)

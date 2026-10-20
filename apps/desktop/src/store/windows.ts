@@ -133,7 +133,7 @@ export function showPage(page: PageId): void {
   // Panels mode: only the Hermes window renders pages; other surfaces ask it (and the compositor focuses it).
   if (isPanels && !isMainSurface) {
     relayToMain({ type: 'show-page', args: [page] })
-    window.heraldOS.shell.open('main').catch(() => undefined)
+    window.jarodOS.shell.open('main').catch(() => undefined)
 
     return
   }
@@ -183,7 +183,7 @@ export function openApp(appId: HermesAppId, options: { payload?: Record<string, 
 
   // Panels mode: floating Hermes apps are real compositor windows, one Electron window each.
   if (isPanels) {
-    window.heraldOS.shell.open(`window:${appId}`, options.payload ? { type: 'payload', payload: options.payload } : undefined).catch(() => undefined)
+    window.jarodOS.shell.open(`window:${appId}`, options.payload ? { type: 'payload', payload: options.payload } : undefined).catch(() => undefined)
 
     return `window:${appId}`
   }

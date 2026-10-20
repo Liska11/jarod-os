@@ -10,7 +10,7 @@ import { showPage } from './windows.ts'
 export const $crashes = atom<CrashReport[]>([])
 
 export async function loadCrashes(): Promise<CrashReport[]> {
-  const reports = (await window.heraldOS.crash?.recent().catch(() => [])) ?? []
+  const reports = (await window.jarodOS.crash?.recent().catch(() => [])) ?? []
   $crashes.set(reports)
 
   return reports

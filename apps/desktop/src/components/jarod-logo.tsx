@@ -6,7 +6,7 @@ import { cn } from '../lib/cn.ts'
  * The Jarod-OS mark: the glowing core, its edges fading to transparency so it blends into any background, with a soft blue halo
  * so it stands out. Square; sized by height.
  */
-export function HeraldLogo({ height = 14, className }: { height?: number; className?: string }) {
+export function JarodLogo({ height = 14, className }: { height?: number; className?: string }) {
   const glow = Math.max(4, Math.round(height * 0.18))
 
   return (

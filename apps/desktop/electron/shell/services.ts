@@ -1,12 +1,12 @@
 import { execFile, spawn } from 'node:child_process'
 import { BrowserWindow, ipcMain } from 'electron'
-import { type ClipboardEntry, type HeraldOsResult, IPC, type PowerAction } from '../../shared/ipc.ts'
+import { type ClipboardEntry, type JarodOsResult, IPC, type PowerAction } from '../../shared/ipc.ts'
 import { log } from '../log.ts'
 import { cliActionId, POWER_ACTIONS } from './host-actions.ts'
 import type { HostControlGate } from './host-control.ts'
 import { powerCommand } from './power.ts'
 
-function run(command: string, args: string[], input?: string, timeout = 60_000): Promise<HeraldOsResult> {
+function run(command: string, args: string[], input?: string, timeout = 60_000): Promise<JarodOsResult> {
   return new Promise(resolve => {
     const child = execFile(command, args, { timeout, maxBuffer: 8 * 1024 * 1024 }, (error, stdout, stderr) => {
       const code = error ? ((error as NodeJS.ErrnoException & { code?: number | string }).code === 'ENOENT' ? 127 : (child.exitCode ?? 1)) : 0
@@ -25,7 +25,7 @@ function run(command: string, args: string[], input?: string, timeout = 60_000):
  * started; a declared mutation is tiered and journalled like every other host action. Shared by the
  * window IPC below and by main's own preference path, so there is one route to the CLI, not two.
  */
-export async function runCliThroughGate(gate: HostControlGate, argv: string[], source: string): Promise<HeraldOsResult> {
+export async function runCliThroughGate(gate: HostControlGate, argv: string[], source: string): Promise<JarodOsResult> {
   const id = cliActionId(argv) ?? `cli.${String(argv[0] ?? '').trim()}`
   const gated = await gate.submitLocal({ client: 'ui', command: id, args: {}, source })
 
@@ -48,7 +48,7 @@ export async function runCliThroughGate(gate: HostControlGate, argv: string[], s
  * host catalogue declares, and every spawn is tiered and journalled like any other host action.
  */
 export function registerServiceIpc(gate: HostControlGate): void {
-  ipcMain.handle(IPC.shellHeraldOs, async (event, args: string[]): Promise<HeraldOsResult> => {
+  ipcMain.handle(IPC.shellJarodOs, async (event, args: string[]): Promise<JarodOsResult> => {
     if (process.platform !== 'linux') {
       return { code: 127, stdout: '', stderr: 'herald-os CLI is only available on Jarod-OS Linux' }
     }

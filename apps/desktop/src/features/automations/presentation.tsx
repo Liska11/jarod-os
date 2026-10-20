@@ -1,6 +1,6 @@
 import { IconDatabase, IconDownload, IconEye, IconFileText, IconRefresh, IconSunrise, type IconProps } from '@tabler/icons-react'
 import type React from 'react'
-import { type EventAutomation, type HeraldEventName } from '../../../shared/events.ts'
+import { type EventAutomation, type JarodEventName } from '../../../shared/events.ts'
 import { cn } from '../../lib/cn.ts'
 import { t, type MessageKey } from '../../lib/i18n.ts'
 import type { CronJob } from '../../lib/rest.ts'
@@ -14,8 +14,8 @@ import { joinList } from './cron-humanize.ts'
 
 type TablerIcon = React.ComponentType<IconProps>
 
-/** Each event's name in the catalogue. `HERALD_EVENTS` keeps its English label: the main process reports it. */
-const EVENT_KEY: Record<HeraldEventName, MessageKey> = {
+/** Each event's name in the catalogue. `JAROD_EVENTS` keeps its English label: the main process reports it. */
+const EVENT_KEY: Record<JarodEventName, MessageKey> = {
   login: 'automation.event.login',
   wake: 'automation.event.wake',
   sleep: 'automation.event.sleep',
@@ -30,7 +30,7 @@ const EVENT_KEY: Record<HeraldEventName, MessageKey> = {
 }
 
 /** 'When I log in', in the current language. */
-export function eventLabel(event: HeraldEventName): string {
+export function eventLabel(event: JarodEventName): string {
   return t(EVENT_KEY[event])
 }
 

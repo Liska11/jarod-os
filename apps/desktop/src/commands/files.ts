@@ -75,10 +75,10 @@ async function findFile(name: string): Promise<{ path: string; candidates: strin
 
   // Transcribers glue a stray "www." or "open" onto the name ("www.openhello.pdf").
   const query = text.replace(/^(?:https?:\/\/)?(?:www\.)/i, '').replace(/^open\s*/i, '')
-  let matches = await window.heraldOS.fs.find(query, 8)
+  let matches = await window.jarodOS.fs.find(query, 8)
 
   if (matches.length === 0 && query !== text) {
-    matches = await window.heraldOS.fs.find(text, 8)
+    matches = await window.jarodOS.fs.find(text, 8)
   }
 
   const files = matches.filter(m => m.kind === 'file')
@@ -135,7 +135,7 @@ export const filesCommands: readonly OsCommand[] = [
         return fail('Select a file in Files first.')
       }
 
-      await window.heraldOS.fs.openPath(target)
+      await window.jarodOS.fs.openPath(target)
 
       return ok(`Opened ${basename(target)} in its app`)
     }
@@ -150,7 +150,7 @@ export const filesCommands: readonly OsCommand[] = [
     run: async ({ path }) => {
       const home = await ensureHome()
       const target = expandHome(String(path), home) ?? String(path)
-      const entries = await window.heraldOS.fs.readDir(target).then(
+      const entries = await window.jarodOS.fs.readDir(target).then(
         () => true,
         () => false
       )

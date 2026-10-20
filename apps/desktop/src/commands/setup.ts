@@ -28,7 +28,7 @@ export const setupCommands: readonly OsCommand[] = [
     args: [],
     phrases: ['system check', 'check my computer', 'hardware audit'],
     run: async () => {
-      const report = await window.heraldOS.systemAudit.run()
+      const report = await window.jarodOS.systemAudit.run()
       const toFix = report.checks.filter(c => c.status === 'missing' || c.status === 'outdated')
 
       return ok(report.blocked ? 'A critical requirement is missing' : `System checked: ${toFix.length} item(s) to install or update`, {

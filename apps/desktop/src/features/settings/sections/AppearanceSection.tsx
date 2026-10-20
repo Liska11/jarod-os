@@ -33,7 +33,7 @@ export function AppearanceSection() {
 
   const chooseWallpaper = async () => {
     try {
-      const [path] = await window.heraldOS.fs.pickFiles({ directory: false, multiple: false })
+      const [path] = await window.jarodOS.fs.pickFiles({ directory: false, multiple: false })
 
       if (path) {
         await save({ wallpaper: `file://${path}` })
@@ -188,7 +188,7 @@ function ThemeTools() {
     setError(null)
 
     try {
-      const source = image ?? (await window.heraldOS.fs.pickFiles({ directory: false, multiple: false }))[0]
+      const source = image ?? (await window.jarodOS.fs.pickFiles({ directory: false, multiple: false }))[0]
 
       if (!source) {
         return
@@ -271,7 +271,7 @@ function FontSettings() {
 
   const loadFamilies = () => {
     if (families.length === 0) {
-      void window.heraldOS.fonts
+      void window.jarodOS.fonts
         .list()
         .then(setFamilies)
         .catch(() => undefined)

@@ -91,7 +91,7 @@ export function onSiteEvent(event: WebViewEvent): void {
 function bind(): void {
   if (!bound) {
     bound = true
-    window.heraldOS.web.onEvent(onSiteEvent)
+    window.jarodOS.web.onEvent(onSiteEvent)
   }
 }
 
@@ -104,7 +104,7 @@ export async function openSiteView(site: SiteId): Promise<void> {
   opening.add(site)
 
   try {
-    const id = await window.heraldOS.web.openSite(site)
+    const id = await window.jarodOS.web.openSite(site)
     patch(site, { id, loading: true })
   } catch (reason) {
     patch(site, { error: reason instanceof Error ? reason.message.replace(/^Error invoking remote method '[^']+': (Error: )?/, '') : String(reason) })

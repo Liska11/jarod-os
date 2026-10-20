@@ -1,4 +1,4 @@
-import { describeRule, EVENT_RULE_SCHEDULE, type EventAutomation, type HeraldEventName } from '../../shared/events.ts'
+import { describeRule, EVENT_RULE_SCHEDULE, type EventAutomation, type JarodEventName } from '../../shared/events.ts'
 import type { CronJob } from '../lib/rest.ts'
 import { type CronJobDraft, cronApi, errorText, isPaused } from '../features/automations/api.ts'
 import { $prefs, updatePrefs } from './backend.ts'
@@ -48,7 +48,7 @@ async function writeRules(next: EventAutomation[]): Promise<void> {
 }
 
 /** An automation that runs when `event` happens: a paused cron job (Hermes keeps its runs) plus the rule. */
-export async function createEventAutomation(draft: Omit<CronJobDraft, 'schedule'>, event: HeraldEventName, match?: Record<string, string>, profile?: string | null): Promise<CronJob> {
+export async function createEventAutomation(draft: Omit<CronJobDraft, 'schedule'>, event: JarodEventName, match?: Record<string, string>, profile?: string | null): Promise<CronJob> {
   const created = await cronApi.create({ ...draft, schedule: EVENT_RULE_SCHEDULE }, profile)
   await cronApi.pause(created)
   const cleanMatch = Object.fromEntries(Object.entries(match ?? {}).filter(([, value]) => value.trim()))

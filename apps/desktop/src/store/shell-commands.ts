@@ -1,7 +1,7 @@
 import type { CrashReport, ShellCommand } from '../../shared/ipc.ts'
 import { HERMES_APPS, type HermesAppId, PAGES, type PageId } from '../shell/apps.ts'
 import { composePrompt } from '../shell/surfaces/shell-utils.ts'
-import { runHeraldOsWithToast } from '../lib/herald-os-cli.ts'
+import { runJarodOsWithToast } from '../lib/herald-os-cli.ts'
 import { updatePrefs } from './backend.ts'
 import { openStoredSession, runSlash, sendPrompt } from './chat.ts'
 import { offerCrashHelp } from './crashes.ts'
@@ -27,7 +27,7 @@ const isPageId = (value: string | undefined): value is PageId => PAGES.some(page
 /** Style > Wallpaper: the Hermes window owns the file dialog because the overlay closes when it loses focus. */
 async function pickWallpaper(): Promise<void> {
   try {
-    const [wallpaper] = await window.heraldOS.fs.pickFiles({ multiple: false })
+    const [wallpaper] = await window.jarodOS.fs.pickFiles({ multiple: false })
 
     if (!wallpaper) {
       return
@@ -147,7 +147,7 @@ export function handleShellCommand(command: ShellCommand): void {
       const args = command.args ?? []
 
       if (args.length > 0) {
-        void runHeraldOsWithToast(args, command.text || args.join(' '))
+        void runJarodOsWithToast(args, command.text || args.join(' '))
       }
 
       return
@@ -173,13 +173,13 @@ export function handleShellCommand(command: ShellCommand): void {
     }
     case 'os': {
       // Retired in R3: a registry command is a host action, so it goes through the host gate
-      // (`window.heraldOS.control.run`), which checks the id against the catalogue, decides, records
+      // (`window.jarodOS.control.run`), which checks the id against the catalogue, decides, records
       // the attempt and runs it in this window. Main refuses to relay one here, so this branch is what
       // a surface that dispatches the historical `os` message locally still reaches — and it is gated.
       const id = command.args?.[0]
 
       if (id) {
-        void window.heraldOS.control.run(id, (command.payload as Record<string, unknown> | undefined) ?? {})
+        void window.jarodOS.control.run(id, (command.payload as Record<string, unknown> | undefined) ?? {})
       }
 
       return

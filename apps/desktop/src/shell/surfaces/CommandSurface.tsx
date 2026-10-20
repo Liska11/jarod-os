@@ -91,7 +91,7 @@ export function CommandSurface() {
 
       if (height > 0 && height !== lastHeight) {
         lastHeight = height
-        window.heraldOS.shell.resize(WINDOW_WIDTH, height).catch(() => undefined)
+        window.jarodOS.shell.resize(WINDOW_WIDTH, height).catch(() => undefined)
       }
     }
     const observer = new ResizeObserver(fit)

@@ -24,14 +24,14 @@ import {
   type ControlAction,
   type ControlRunResult,
   type CrashReport,
-  type HeraldOsResult,
+  type JarodOsResult,
   type IncomingNotification,
   type PowerAction,
   type DirEntry,
   type EditAction,
   type EnvInfo,
   type FilePreview,
-  type HeraldOSPrefs,
+  type JarodOSPrefs,
   type ImageInfo,
   type InstalledApp,
   IPC,
@@ -70,7 +70,7 @@ import {
 import type { BrandingPatch, BrandingView } from '../shared/branding.ts'
 import type { MenuExtensions } from '../shared/menu-extensions.ts'
 import type { PluginMethod, PluginView } from '../shared/plugins.ts'
-import type { HeraldEvent } from '../shared/events.ts'
+import type { JarodEvent } from '../shared/events.ts'
 import type { ThemeSpec, ThemeSummary } from '../shared/theme.ts'
 import type { AuditReport } from '../shared/system-audit.ts'
 
@@ -165,7 +165,7 @@ const api = {
   theme: {
     list: (): Promise<ThemeSummary[]> => ipcRenderer.invoke(IPC.themeList),
     /** Apply an installed theme everywhere; resolves with the new preferences. */
-    apply: (name: string): Promise<HeraldOSPrefs> => ipcRenderer.invoke(IPC.themeApply, name),
+    apply: (name: string): Promise<JarodOSPrefs> => ipcRenderer.invoke(IPC.themeApply, name),
     /** Save a theme into ~/.config/herald-os/themes (with its wallpaper image copied in). */
     save: (spec: ThemeSpec, imagePath?: string): Promise<string> => ipcRenderer.invoke(IPC.themeSave, spec, imagePath),
     /** A small PNG data URL of an image, to take theme colours from (null when it is not an image). */
@@ -235,7 +235,7 @@ const api = {
   },
   events: {
     /** Events Jarod-OS saw lately (login, wake, crash, low battery, …), newest first. */
-    recent: (): Promise<HeraldEvent[]> => ipcRenderer.invoke(IPC.eventsRecent)
+    recent: (): Promise<JarodEvent[]> => ipcRenderer.invoke(IPC.eventsRecent)
   },
   switches: {
     get: (): Promise<SwitchState> => ipcRenderer.invoke(IPC.switchesGet),
@@ -304,7 +304,7 @@ const api = {
     /** Wallpaper surface only: hand a rendered PNG frame to main for swaybg. */
     wallpaperFrame: (dataUrl: string): Promise<void> => ipcRenderer.invoke(IPC.shellWallpaperFrame, dataUrl),
     /** Run a `herald-os` CLI command from the shell (Linux; rejects elsewhere). */
-    heraldOs: (args: string[]): Promise<HeraldOsResult> => ipcRenderer.invoke(IPC.shellHeraldOs, args),
+    jarodOs: (args: string[]): Promise<JarodOsResult> => ipcRenderer.invoke(IPC.shellJarodOs, args),
     /** The person's control-menu entries from ~/.config/herald-os/menu.json. */
     menuExtensions: (): Promise<MenuExtensions> => ipcRenderer.invoke(IPC.menuExtensions),
     /** Start a menu.json entry's program (main reads it from the file; only the id crosses). */
@@ -449,10 +449,10 @@ const api = {
     action: (action: WmAction): Promise<void> => ipcRenderer.invoke(IPC.wmAction, action)
   },
   prefs: {
-    get: (): Promise<HeraldOSPrefs> => ipcRenderer.invoke(IPC.prefsGet),
-    set: (patch: Partial<HeraldOSPrefs>): Promise<HeraldOSPrefs> => ipcRenderer.invoke(IPC.prefsSet, patch),
+    get: (): Promise<JarodOSPrefs> => ipcRenderer.invoke(IPC.prefsGet),
+    set: (patch: Partial<JarodOSPrefs>): Promise<JarodOSPrefs> => ipcRenderer.invoke(IPC.prefsSet, patch),
     /** Preferences changed from another surface window. */
-    onChanged: (listener: (prefs: HeraldOSPrefs) => void): Unsubscribe => subscribe(IPC.prefsChanged, listener)
+    onChanged: (listener: (prefs: JarodOSPrefs) => void): Unsubscribe => subscribe(IPC.prefsChanged, listener)
   },
   osControl: {
     /** Main asks this window to run a registry command / list commands / report state. */
@@ -506,6 +506,6 @@ const api = {
   env: (): Promise<EnvInfo> => ipcRenderer.invoke(IPC.envInfo)
 }
 
-export type HeraldOSApi = typeof api
+export type JarodOSApi = typeof api
 
-contextBridge.exposeInMainWorld('heraldOS', api)
+contextBridge.exposeInMainWorld('jarodOS', api)

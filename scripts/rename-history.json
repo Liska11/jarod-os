@@ -10,6 +10,7 @@
     "docs/BACKLOG.md",
     "docs/RENAME-PLAN-JAROD-OS.md",
     "docs/audit/",
+    "docs/AUDIT-GLOBAL.md",
     "upstream/",
     "jarod-core/upstream.json",
     "linux/migrations/",

@@ -4,7 +4,7 @@
  * The command overlay (panels mode) and the control menu used to run a registry command by sending
  * `{ type: 'os', args: [id], payload }` to the Hermes window, which called `runCommand` directly:
  * nothing checked the id against the catalogue and nothing was written down. `handleShellCommand` now
- * hands such a message to the host gate (`window.heraldOS.control.run`) and runs nothing itself.
+ * hands such a message to the host gate (`window.jarodOS.control.run`) and runs nothing itself.
  */
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -23,12 +23,12 @@ vi.mock('./switches.ts', () => ({ $screensaverUp: { set: () => undefined } }))
 vi.mock('./surface.ts', () => ({ $applicationsOpen: { set: () => undefined }, openAsk: vi.fn(), toggleCommandBar: vi.fn() }))
 vi.mock('./web-windows.ts', () => ({ openWebWindow: vi.fn() }))
 vi.mock('./windows.ts', () => ({ openApp: vi.fn(), showPage: vi.fn() }))
-vi.mock('../lib/herald-os-cli.ts', () => ({ runHeraldOsWithToast: vi.fn() }))
+vi.mock('../lib/herald-os-cli.ts', () => ({ runJarodOsWithToast: vi.fn() }))
 vi.mock('../shell/surfaces/shell-utils.ts', () => ({ composePrompt: () => '' }))
 
 // `store/shell.ts` reads the surface from the preload at load time, so the bridge exists first.
 ;(globalThis as unknown as { window: unknown }).window = {
-  heraldOS: { control: { run: controlRun }, shell: { surface: 'main', mode: 'panels' } }
+  jarodOS: { control: { run: controlRun }, shell: { surface: 'main', mode: 'panels' } }
 }
 
 const { handleShellCommand } = await import('./shell-commands.ts')

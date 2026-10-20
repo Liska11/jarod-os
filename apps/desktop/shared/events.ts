@@ -4,10 +4,10 @@
  * and an automation is a paused Hermes cron job Jarod-OS fires when its event happens.
  */
 
-export type HeraldEventName = 'login' | 'wake' | 'sleep' | 'lock' | 'unlock' | 'returned' | 'battery-low' | 'network-change' | 'theme-set' | 'crash' | 'after-update'
+export type JarodEventName = 'login' | 'wake' | 'sleep' | 'lock' | 'unlock' | 'returned' | 'battery-low' | 'network-change' | 'theme-set' | 'crash' | 'after-update'
 
-export interface HeraldEvent {
-  name: HeraldEventName
+export interface JarodEvent {
+  name: JarodEventName
   /** Epoch ms. */
   at: number
   /** Short string facts about it (`app` for a crash, `percent` for low battery). */
@@ -16,7 +16,7 @@ export interface HeraldEvent {
 
 /** "When this happens, run that automation": the cron job stays paused and Jarod-OS fires it. */
 export interface EventAutomation {
-  event: HeraldEventName
+  event: JarodEventName
   jobId: string
   enabled: boolean
   /** Only when the event's details match, e.g. `{ app: "Safari" }` for crashes (case-insensitive). */
@@ -24,7 +24,7 @@ export interface EventAutomation {
 }
 
 export interface EventInfo {
-  name: HeraldEventName
+  name: JarodEventName
   /** "When I log in": how an automation reads. */
   label: string
   /** What the event's details are called, for hooks and matches. */
@@ -33,7 +33,7 @@ export interface EventInfo {
   automation: boolean
 }
 
-export const HERALD_EVENTS: readonly EventInfo[] = [
+export const JAROD_EVENTS: readonly EventInfo[] = [
   { name: 'login', label: 'When I log in', details: [], automation: true },
   { name: 'wake', label: 'When the computer wakes up', details: [], automation: true },
   { name: 'unlock', label: 'When I unlock the screen', details: [], automation: true },
@@ -47,10 +47,10 @@ export const HERALD_EVENTS: readonly EventInfo[] = [
   { name: 'sleep', label: 'When the computer goes to sleep', details: [], automation: false }
 ]
 
-export const HERALD_EVENT_NAMES: readonly HeraldEventName[] = HERALD_EVENTS.map(event => event.name)
+export const JAROD_EVENT_NAMES: readonly JarodEventName[] = JAROD_EVENTS.map(event => event.name)
 
-export function isEventName(value: unknown): value is HeraldEventName {
-  return typeof value === 'string' && (HERALD_EVENT_NAMES as readonly string[]).includes(value)
+export function isEventName(value: unknown): value is JarodEventName {
+  return typeof value === 'string' && (JAROD_EVENT_NAMES as readonly string[]).includes(value)
 }
 
 /**
@@ -59,8 +59,8 @@ export function isEventName(value: unknown): value is HeraldEventName {
  */
 export const EVENT_RULE_SCHEDULE = '0 0 1 1 *'
 
-export function eventLabel(name: HeraldEventName): string {
-  return HERALD_EVENTS.find(event => event.name === name)?.label ?? name
+export function eventLabel(name: JarodEventName): string {
+  return JAROD_EVENTS.find(event => event.name === name)?.label ?? name
 }
 
 /** "When a program crashes (Safari)". */
@@ -70,7 +70,7 @@ export function describeRule(rule: Pick<EventAutomation, 'event' | 'match'>): st
   return values.length ? `${eventLabel(rule.event)} (${values.join(', ')})` : eventLabel(rule.event)
 }
 
-export function matchesRule(rule: EventAutomation, event: HeraldEvent): boolean {
+export function matchesRule(rule: EventAutomation, event: JarodEvent): boolean {
   if (!rule.enabled || rule.event !== event.name) {
     return false
   }
@@ -89,7 +89,7 @@ export function matchesRule(rule: EventAutomation, event: HeraldEvent): boolean 
 export const HOOK_ENV_PREFIXES = ['JAROD_EVENT', 'HERALD_EVENT'] as const
 
 /** Environment a hook script runs with: the event's name, time, JSON and each detail as its own variable, under each prefix. */
-export function hookEnv(event: HeraldEvent): Record<string, string> {
+export function hookEnv(event: JarodEvent): Record<string, string> {
   const env: Record<string, string> = {}
 
   for (const prefix of HOOK_ENV_PREFIXES) {

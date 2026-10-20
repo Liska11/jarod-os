@@ -59,7 +59,7 @@ export function PluginsSection() {
     setAdding(true)
 
     try {
-      const added = await window.heraldOS.plugins.add(url.trim())
+      const added = await window.jarodOS.plugins.add(url.trim())
       setUrl('')
       notify({ title: t('plugins.installedToast', { name: added.manifest.name }), body: t('plugins.installedToast.body'), level: 'success' })
     } catch (error) {
@@ -101,7 +101,7 @@ export function PluginsSection() {
           </GlassButton>
         </SettingsRow>
         <SettingsRow icon={<IconFolder />} label={t('plugins.folder')} description={<span className="font-mono text-[11.5px]">~/.config/herald-os/plugins</span>} keywords="plugin folder files">
-          <GlassButton size="sm" variant="ghost" onClick={() => void attempt('native.failed.pluginsFolder', () => window.heraldOS.fs.openPath('~/.config/herald-os/plugins'))}>
+          <GlassButton size="sm" variant="ghost" onClick={() => void attempt('native.failed.pluginsFolder', () => window.jarodOS.fs.openPath('~/.config/herald-os/plugins'))}>
             {t('plugins.open')}
           </GlassButton>
         </SettingsRow>
@@ -121,7 +121,7 @@ function PluginRow({ plugin }: { plugin: PluginView }) {
     setBusy(true)
 
     try {
-      await window.heraldOS.plugins.setEnabled(manifest.id, enabled)
+      await window.jarodOS.plugins.setEnabled(manifest.id, enabled)
       markSaved()
     } catch (error) {
       notify({ title: t('plugins.toggleFailed', { name: manifest.name, state: enabled ? t('plugins.on') : t('plugins.off') }), body: errorText(error), level: 'error' })
@@ -135,7 +135,7 @@ function PluginRow({ plugin }: { plugin: PluginView }) {
     setBusy(true)
 
     try {
-      await (what === 'update' ? window.heraldOS.plugins.update(manifest.id) : window.heraldOS.plugins.remove(manifest.id))
+      await (what === 'update' ? window.jarodOS.plugins.update(manifest.id) : window.jarodOS.plugins.remove(manifest.id))
       notify({ title: what === 'update' ? t('plugins.updated', { name: manifest.name }) : t('plugins.removed', { name: manifest.name }), level: 'success' })
     } catch (error) {
       notify({ title: t('plugins.actionFailed', { name: manifest.name, action: what === 'update' ? t('plugins.updateAction') : t('plugins.removeAction') }), body: errorText(error), level: 'error' })

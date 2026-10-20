@@ -1,14 +1,14 @@
 import { useStore } from '@nanostores/react'
 import { IconLanguage, IconRobot } from '@tabler/icons-react'
 import { useEffect, useState } from 'react'
-import type { HeraldOSPrefs } from '../../../../shared/ipc.ts'
+import type { JarodOSPrefs } from '../../../../shared/ipc.ts'
 import { GlassButton } from '../../../components/ui/glass.tsx'
 import { engineAssistantName, useT } from '../../../lib/i18n.ts'
 import { $backend, $prefs, updatePrefs } from '../../../store/backend.ts'
 import { notify } from '../../../store/notifications.ts'
 import { errorText, markSaved, MenuDropdown, SettingsGroup, SettingsRow } from './shared.tsx'
 
-type Language = NonNullable<HeraldOSPrefs['language']>
+type Language = NonNullable<JarodOSPrefs['language']>
 
 /** General > Language and name: the interface language and what the assistant is called. */
 export function LanguageSettings() {
@@ -22,7 +22,7 @@ export function LanguageSettings() {
 
   useEffect(() => setName(prefs.assistantName ?? ''), [prefs.assistantName])
 
-  const save = async (patch: Partial<HeraldOSPrefs>) => {
+  const save = async (patch: Partial<JarodOSPrefs>) => {
     try {
       await updatePrefs(patch)
       markSaved()

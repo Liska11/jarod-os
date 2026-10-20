@@ -25,7 +25,7 @@ export const $catalog = atom<CatalogState>({ groups: [], loaded: false, error: n
 let loading: Promise<void> | null = null
 
 export function loadCatalog(): Promise<void> {
-  loading ??= window.heraldOS.catalog
+  loading ??= window.jarodOS.catalog
     .list()
     .then(groups => $catalog.set({ ...$catalog.get(), groups, loaded: true, error: null }))
     .catch((error: unknown) => $catalog.set({ ...$catalog.get(), loaded: true, error: error instanceof Error ? error.message : String(error) }))
@@ -66,7 +66,7 @@ export async function runCatalog(id: string, action: 'install' | 'remove'): Prom
   setBusy(id, action)
 
   try {
-    const result = await (action === 'install' ? window.heraldOS.catalog.install(id) : window.heraldOS.catalog.remove(id))
+    const result = await (action === 'install' ? window.jarodOS.catalog.install(id) : window.jarodOS.catalog.remove(id))
 
     if (result.ok) {
       const opened = entry?.method === 'link' && action === 'install'

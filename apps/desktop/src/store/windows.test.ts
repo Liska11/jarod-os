@@ -5,7 +5,7 @@ const screen = vi.hoisted(() => {
   const size = { innerWidth: 1600, innerHeight: 900 }
   const g = globalThis as unknown as { window: Record<string, unknown>; document: unknown }
   g.document = { documentElement: { dataset: { reduceMotion: 'true' } } }
-  g.window = Object.assign(size, { heraldOS: {}, addEventListener: () => undefined, removeEventListener: () => undefined, matchMedia: () => ({ matches: false, addEventListener: () => undefined, addListener: () => undefined }) })
+  g.window = Object.assign(size, { jarodOS: {}, addEventListener: () => undefined, removeEventListener: () => undefined, matchMedia: () => ({ matches: false, addEventListener: () => undefined, addListener: () => undefined }) })
 
   return size
 })

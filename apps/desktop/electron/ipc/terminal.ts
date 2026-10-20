@@ -168,7 +168,7 @@ export function registerTerminalIpc(getWindow: () => BrowserWindow | null): void
       cols: Math.max(2, options.cols),
       rows: Math.max(1, options.rows),
       cwd: environment && environmentsDir && !options.cwd ? path.join(environmentsDir, environment.name) : cwd,
-      env: { ...baseEnv, TERM: 'xterm-256color', COLORTERM: 'truecolor', TERM_PROGRAM: 'HeraldOS', LANG: process.env.LANG || 'en_US.UTF-8' }
+      env: { ...baseEnv, TERM: 'xterm-256color', COLORTERM: 'truecolor', TERM_PROGRAM: 'JarodOS', LANG: process.env.LANG || 'en_US.UTF-8' }
     })
     sessions.set(id, child)
     adopt(owner, id)

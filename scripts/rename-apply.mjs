@@ -37,6 +37,32 @@ export const PHASES = {
     ],
   },
 
+  // Dernière phase, Windows : les identifiants internes du shell (pont preload `window.heraldOS`, types, fonctions, canaux IPC
+  // `herald-os:*`). Identifiants EXACTS, jamais le mot « herald » : `herald-os` nu (commande Linux, dossier du socket c1, données),
+  // `herald-os-bridge` (dossier partagé avec Linux), `herald_os` (boîte à outils), `herald-plugin`, `HERALD_OS_*`, `HERALD_EVENT`
+  // et `HERALD_SANDBOX_BIN` (lectures de repli) ne sont pas touchés. Linux est hors périmètre : seuls ces dossiers sont parcourus.
+  ids: {
+    // Appliquée par le commit de la dernière phase (2026-10-20) ; ce qui reste ensuite est voulu (lectures de repli, Linux).
+    applied: "dernière phase",
+    only: ["apps/desktop/", "jarod-core/packages/", "packages/", "mobile/", "pinokio-runtime/", "plugins/herald-os-bridge/", "docs/", "README.md", "README-WINDOWS.md"],
+    rules: [
+      [/\b__heraldOS(Booted)?\b/g, (_m, booted) => `__jarodOS${booted ?? ""}`],
+      [/\bheraldOS\b/g, "jarodOS"],
+      [/\bHeraldOS(?=[A-Z]|\b)/g, "JarodOS"],
+      [/\bheraldOs(?=[A-Z]|\b)/g, "jarodOs"],
+      [/\bHeraldOs(?=[A-Z]|\b)/g, "JarodOs"],
+      [/\b(run|shell)HeraldOs/g, (_m, head) => `${head}JarodOs`],
+      [/\bHerald(EventName|Event|Logo|PipeSecurity|TokenSecurity|Panel)\b/g, (_m, tail) => `Jarod${tail}`],
+      [/\bheraldActiveProvider\b/g, "jarodActiveProvider"],
+      [/\bHERALD_(EVENT_NAMES|EVENTS|SKIN)\b/g, (_m, tail) => `JAROD_${tail}`],
+      // Canaux IPC entre le processus principal et la fenêtre (même build) : `'herald-os:backend:rest'` → `'jarod-os:backend:rest'`.
+      [/(['"`])herald-os:(?=[a-z])/g, (_m, quote) => `${quote}jarod-os:`],
+      // Le composant du logo et l'icône de la marque (fichiers renommés à la main, avec git mv).
+      [/\bherald-logo\b/g, "jarod-logo"],
+      [/\bherald-icon\.png\b/g, "jarod-icon.png"],
+    ],
+    manual: ["apps/desktop/src/lib/legacy-storage.ts", "apps/desktop/src/lib/legacy-storage.test.ts"],
+  },
 };
 
 const covered = (file, list) => list.some((p) => (p.endsWith("/") ? file.startsWith(p) : file === p));
@@ -46,7 +72,7 @@ export function plan(phase) {
   if (!def) throw new Error(`phase inconnue : ${phase} (connues : ${Object.keys(PHASES).join(", ")})`);
   const files = execFileSync("git", ["ls-files", "-z", "--cached", "--others", "--exclude-standard"], { cwd: root, encoding: "utf8", maxBuffer: 64 << 20 })
     .split("\0")
-    .filter((f) => f && !covered(f, history) && !covered(f, def.manual));
+    .filter((f) => f && !covered(f, history) && !covered(f, def.manual ?? []) && (!def.only || covered(f, def.only)));
   const out = [];
   for (const f of files) {
     let text;

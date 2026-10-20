@@ -139,7 +139,7 @@ export function MemoryPage() {
       return
     }
 
-    void window.heraldOS.fs.openPath(memoryPath(hermesHome, file)).catch(err => notify({ title: t('memoryPage.openFailed', { file }), body: errorMessage(err), level: 'error' }))
+    void window.jarodOS.fs.openPath(memoryPath(hermesHome, file)).catch(err => notify({ title: t('memoryPage.openFailed', { file }), body: errorMessage(err), level: 'error' }))
   }
 
   const count = filtered.length

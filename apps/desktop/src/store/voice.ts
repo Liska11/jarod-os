@@ -458,7 +458,7 @@ export function bindVoice(): () => void {
       void tuneLocalStt()
     }
   })
-  const offHotkey = window.heraldOS.voice?.onHotkey?.(() => handleVoiceCommand('toggle', 'hotkey')) ?? (() => undefined)
+  const offHotkey = window.jarodOS.voice?.onHotkey?.(() => handleVoiceCommand('toggle', 'hotkey')) ?? (() => undefined)
   const offCommand = onShellCommand(command => {
     if (command.type === 'voice') {
       handleVoiceCommand(command.args?.[0] ?? 'toggle', 'command')

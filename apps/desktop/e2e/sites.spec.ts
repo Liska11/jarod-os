@@ -129,7 +129,7 @@ test('the player waits for files in its tab', async () => {
 test('the Player streams a picked file through jarod-media, by byte ranges', async () => {
   const file = shell.app.evaluate(() => process.execPath)
   const result = await page.evaluate(async target => {
-    const [granted] = await window.heraldOS.media.allow([target])
+    const [granted] = await window.jarodOS.media.allow([target])
     const whole = await fetch(granted.url, { headers: { Range: 'bytes=0-9' } })
     const refused = await fetch(granted.url.replace(/local\/[^/]+$/, `local/${btoa('C:\Windows\win.ini').replace(/=+$/, '')}`))
 

@@ -50,12 +50,12 @@ test('an external backup is complete, verified, and holds no secret value', asyn
   test.setTimeout(180_000)
   writeFileSync(path.join(shell.root, 'workspace', 'avant.txt'), 'version sauvegardée')
 
-  const set = await page.evaluate(dest => window.heraldOS.externalBackup.setDestination(dest), destination)
+  const set = await page.evaluate(dest => window.jarodOS.externalBackup.setDestination(dest), destination)
   expect(set).toEqual({ ok: true })
-  const result = await page.evaluate(() => window.heraldOS.externalBackup.run())
+  const result = await page.evaluate(() => window.jarodOS.externalBackup.run())
   expect(result, JSON.stringify(result)).toMatchObject({ ok: true })
 
-  const state = await page.evaluate(() => window.heraldOS.externalBackup.state())
+  const state = await page.evaluate(() => window.jarodOS.externalBackup.state())
   expect(state.list).toHaveLength(1)
   backupFolder = state.list[0].folder
   const manifest = JSON.parse(readFileSync(path.join(backupFolder, 'jarod-backup.json'), 'utf8')) as { secretsRemoved: number; files: Array<{ path: string }>; excluded: string[] }
@@ -68,7 +68,7 @@ test('an external backup is complete, verified, and holds no secret value', asyn
   const all = (dir: string): string[] => readdirSync(dir, { withFileTypes: true }).flatMap(entry => (entry.isDirectory() ? all(path.join(dir, entry.name)) : [path.join(dir, entry.name)]))
   expect(all(backupFolder).some(file => readFileSync(file).includes(Buffer.from(FAKE)))).toBe(false)
   // The core was started again.
-  await expect.poll(async () => (await page.evaluate(() => window.heraldOS.backend.getState())).phase, { timeout: 60_000 }).toBe('ready')
+  await expect.poll(async () => (await page.evaluate(() => window.jarodOS.backend.getState())).phase, { timeout: 60_000 }).toBe('ready')
 })
 
 test('the backup is shown in Settings › Stockage', async () => {
@@ -88,7 +88,7 @@ test('a restore puts the saved workspace back and keeps the current one beside i
     app.relaunch = () => undefined
   })
   const closed = new Promise<void>(resolve => shell.app.once('close', () => resolve()))
-  const result = await page.evaluate(folder => window.heraldOS.externalBackup.restore(folder), backupFolder)
+  const result = await page.evaluate(folder => window.jarodOS.externalBackup.restore(folder), backupFolder)
 
   expect(result).toMatchObject({ ok: true })
   await closed.catch(() => undefined)
@@ -106,10 +106,10 @@ test('after the restart, the restored database opens: the secret’s name is bac
   page = shell.page
   await expect(page.getByRole('button', { name: 'Accueil' }).first()).toBeVisible({ timeout: 60_000 })
   await expect
-    .poll(async () => (await page.evaluate(() => window.heraldOS.backend.getState())).phase, { timeout: 60_000 })
+    .poll(async () => (await page.evaluate(() => window.jarodOS.backend.getState())).phase, { timeout: 60_000 })
     .toBe('ready')
     .catch(async error => {
-      console.log('BACKEND', JSON.stringify(await page.evaluate(() => window.heraldOS.backend.getState())))
+      console.log('BACKEND', JSON.stringify(await page.evaluate(() => window.jarodOS.backend.getState())))
       throw error
     })
 

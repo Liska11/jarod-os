@@ -17,7 +17,7 @@ export function AboutSection() {
   const [showLog, setShowLog] = useState(false)
   const jarodCore = backend.runtime?.kind === 'jarod'
   const { t } = useT()
-  const log = useLocalData(() => (showLog ? window.heraldOS.backend.logTail(300) : Promise.resolve<string[]>([])), [showLog, backend.phase])
+  const log = useLocalData(() => (showLog ? window.jarodOS.backend.logTail(300) : Promise.resolve<string[]>([])), [showLog, backend.phase])
 
   return (
     <>
@@ -43,7 +43,7 @@ export function AboutSection() {
           keywords="safe mode recovery crash plugins hooks troubleshoot"
         >
           {env?.safeMode && <Pill tone="warn">{t('about.safeMode.pill')}</Pill>}
-          <GlassButton size="sm" onClick={() => void window.heraldOS.window.relaunch(!env?.safeMode)}>
+          <GlassButton size="sm" onClick={() => void window.jarodOS.window.relaunch(!env?.safeMode)}>
             {env?.safeMode ? t('about.restartNormally') : t('about.restartSafe')}
           </GlassButton>
         </SettingsRow>
@@ -62,7 +62,7 @@ export function AboutSection() {
           keywords="data folder settings location backup userdata"
         >
           {env?.userDataDir && (
-            <GlassButton size="sm" onClick={() => void window.heraldOS.fs.openPath(env.userDataDir)}>
+            <GlassButton size="sm" onClick={() => void window.jarodOS.fs.openPath(env.userDataDir)}>
               {t('about.open')}
             </GlassButton>
           )}

@@ -48,7 +48,7 @@ export const brandingCommands: readonly OsCommand[] = [
         return fail('Give a logo, a lock-screen picture or a name.')
       }
 
-      $branding.set(await window.heraldOS.branding.set(patch))
+      $branding.set(await window.jarodOS.branding.set(patch))
       const note = patch.lock && $env.get()?.platform !== 'linux' ? ' (the lock-screen picture is used on Jarod-OS Linux)' : ''
 
       return ok(`Branding updated${note}`, { data: describe(), highlight: { kind: 'setting', id: 'about' } })
@@ -63,7 +63,7 @@ export const brandingCommands: readonly OsCommand[] = [
     run: async ({ what }) => {
       const part = String(what ?? 'all')
       const patch: BrandingPatch = part === 'all' ? { logo: null, lock: null, name: null } : { [part]: null }
-      $branding.set(await window.heraldOS.branding.set(patch))
+      $branding.set(await window.jarodOS.branding.set(patch))
 
       return ok(part === 'all' ? 'Branding reset' : `Reset the ${part === 'lock' ? 'lock-screen picture' : part}`, { data: describe(), highlight: { kind: 'setting', id: 'about' } })
     }

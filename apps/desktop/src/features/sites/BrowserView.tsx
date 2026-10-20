@@ -12,7 +12,7 @@ function go(url: string): void {
   const id = $siteViews.get().browser?.id
 
   if (id) {
-    void window.heraldOS.web.navigate(id, url).catch(() => undefined)
+    void window.jarodOS.web.navigate(id, url).catch(() => undefined)
   }
 }
 
@@ -59,13 +59,13 @@ export function BrowserView({ active }: { active: boolean }) {
   return (
     <div className={active ? 'flex min-h-0 flex-1 flex-col' : 'hidden'}>
       <div className="flex items-center gap-1 border-b border-line px-2 py-1.5">
-        <GlassButton size="icon" variant="ghost" aria-label={t('sites.back')} disabled={!state.canGoBack} onClick={() => state.id && void window.heraldOS.web.history(state.id, 'back')}>
+        <GlassButton size="icon" variant="ghost" aria-label={t('sites.back')} disabled={!state.canGoBack} onClick={() => state.id && void window.jarodOS.web.history(state.id, 'back')}>
           <IconArrowLeft />
         </GlassButton>
-        <GlassButton size="icon" variant="ghost" aria-label={t('sites.forward')} disabled={!state.canGoForward} onClick={() => state.id && void window.heraldOS.web.history(state.id, 'forward')}>
+        <GlassButton size="icon" variant="ghost" aria-label={t('sites.forward')} disabled={!state.canGoForward} onClick={() => state.id && void window.jarodOS.web.history(state.id, 'forward')}>
           <IconArrowRight />
         </GlassButton>
-        <GlassButton size="icon" variant="ghost" aria-label={t('sites.reload')} disabled={!state.id} onClick={() => state.id && void window.heraldOS.web.reload(state.id)}>
+        <GlassButton size="icon" variant="ghost" aria-label={t('sites.reload')} disabled={!state.id} onClick={() => state.id && void window.jarodOS.web.reload(state.id)}>
           {state.loading ? <Spinner /> : <IconRefresh />}
         </GlassButton>
         <GlassButton size="icon" variant="ghost" aria-label={t('sites.home')} disabled={!state.id} onClick={() => go(SITES.browser.home)}>

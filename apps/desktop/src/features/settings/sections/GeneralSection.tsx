@@ -36,7 +36,7 @@ export function GeneralSection() {
 
   const chooseFolder = async (key: 'defaultCwd' | 'projectsRoot' = 'defaultCwd') => {
     try {
-      const [path] = await window.heraldOS.fs.pickFiles({ directory: true })
+      const [path] = await window.jarodOS.fs.pickFiles({ directory: true })
 
       if (path) {
         await save({ [key]: path })
@@ -98,13 +98,13 @@ export function GeneralSection() {
       <SettingsGroup title={t('settings.general.session')}>
               {hostPlatform() === 'linux' ? (
                 <SettingsRow icon={<IconPower />} label={t('settings.general.restart')} description={t('settings.general.restart.hint')} keywords="exit close quit">
-                  <GlassButton size="sm" variant="danger" onClick={() => void attempt('native.failed.quit', () => window.heraldOS.window.quit())} aria-label={t('settings.general.restart')}>
+                  <GlassButton size="sm" variant="danger" onClick={() => void attempt('native.failed.quit', () => window.jarodOS.window.quit())} aria-label={t('settings.general.restart')}>
                     {t('settings.general.restart.button')}
                   </GlassButton>
                 </SettingsRow>
               ) : (
                 <SettingsRow icon={<IconPower />} label={t('settings.general.quit')} description={t('settings.general.quit.hint')} keywords="exit close">
-                  <GlassButton size="sm" variant="danger" onClick={() => void attempt('native.failed.quit', () => window.heraldOS.window.quit())} aria-label={t('settings.general.quit')}>
+                  <GlassButton size="sm" variant="danger" onClick={() => void attempt('native.failed.quit', () => window.jarodOS.window.quit())} aria-label={t('settings.general.quit')}>
                     {t('settings.general.quit.button')}
                   </GlassButton>
                 </SettingsRow>
@@ -113,7 +113,7 @@ export function GeneralSection() {
 
             <SettingsGroup title={t('settings.general.system')}>
               <SettingsRow icon={<IconRefresh />} label={t('settings.general.systemCheck')} description={t('settings.general.systemCheck.hint')} keywords="audit hardware software check">
-                <GlassButton size="sm" onClick={() => void window.heraldOS.systemAudit.run()} aria-label={t('settings.general.systemCheck')}>
+                <GlassButton size="sm" onClick={() => void window.jarodOS.systemAudit.run()} aria-label={t('settings.general.systemCheck')}>
                   {t('settings.general.systemCheck')}
                 </GlassButton>
               </SettingsRow>

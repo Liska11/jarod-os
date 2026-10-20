@@ -115,7 +115,7 @@ export function CaptureEditor({ file }: { file?: string }) {
     }
 
     let cancelled = false
-    window.heraldOS.capture
+    window.jarodOS.capture
       .readImage(file)
       .then(url => {
         const img = new Image()
@@ -226,7 +226,7 @@ export function CaptureEditor({ file }: { file?: string }) {
           <IconTrash />
         </GlassButton>
         <span className="flex-1" />
-        <GlassButton size="sm" variant="ghost" disabled={busy || !image} onClick={() => void act(async () => window.heraldOS.capture.copyImage(exportPng()).then(() => notify({ title: t('capture.copied'), body: t('capture.copied.hint'), level: 'success' })))}>
+        <GlassButton size="sm" variant="ghost" disabled={busy || !image} onClick={() => void act(async () => window.jarodOS.capture.copyImage(exportPng()).then(() => notify({ title: t('capture.copied'), body: t('capture.copied.hint'), level: 'success' })))}>
           <IconCopy />
           {t('capture.copy')}
         </GlassButton>
@@ -236,7 +236,7 @@ export function CaptureEditor({ file }: { file?: string }) {
           disabled={busy || !image}
           onClick={() =>
             void act(async () => {
-              const saved = await window.heraldOS.capture.saveImage(markedUpName(file), exportPng())
+              const saved = await window.jarodOS.capture.saveImage(markedUpName(file), exportPng())
               askAbout(saved)
             })
           }
@@ -244,7 +244,7 @@ export function CaptureEditor({ file }: { file?: string }) {
           <HermesAvatar size={16} rounded={4} />
           {t('capture.ask')}
         </GlassButton>
-        <GlassButton size="sm" variant="primary" disabled={busy || !image} onClick={() => void act(async () => window.heraldOS.capture.saveImage(markedUpName(file), exportPng()).then(saved => notify({ title: t('capture.saved'), body: baseName(saved), level: 'success', actions: [{ label: t('capture.show'), command: 'files.show', args: { path: saved } }] })))}>
+        <GlassButton size="sm" variant="primary" disabled={busy || !image} onClick={() => void act(async () => window.jarodOS.capture.saveImage(markedUpName(file), exportPng()).then(saved => notify({ title: t('capture.saved'), body: baseName(saved), level: 'success', actions: [{ label: t('capture.show'), command: 'files.show', args: { path: saved } }] })))}>
           <IconDeviceFloppy />
           {t('controls.save')}
         </GlassButton>

@@ -73,10 +73,10 @@ test.afterAll(async () => {
 
 test('main refuses an upgrade without a confirmation, an invalid id and a package the check did not list', async () => {
   const replies = await page.evaluate(async () => ({
-    noConfirmation: await window.heraldOS.updates.upgrade('0123456789abcdef0123456789abcdef'),
-    invalid: await window.heraldOS.updates.prepareUpgrade({ id: '--all', version: '1', source: 'winget' }),
-    injection: await window.heraldOS.updates.prepareUpgrade({ id: 'Git.Git & calc', version: '2.51.0', source: 'winget' }),
-    unlisted: await window.heraldOS.updates.prepareUpgrade({ id: 'Evil.Thing', version: '1.0', source: 'winget' })
+    noConfirmation: await window.jarodOS.updates.upgrade('0123456789abcdef0123456789abcdef'),
+    invalid: await window.jarodOS.updates.prepareUpgrade({ id: '--all', version: '1', source: 'winget' }),
+    injection: await window.jarodOS.updates.prepareUpgrade({ id: 'Git.Git & calc', version: '2.51.0', source: 'winget' }),
+    unlisted: await window.jarodOS.updates.prepareUpgrade({ id: 'Evil.Thing', version: '1.0', source: 'winget' })
   }))
 
   expect(replies.noConfirmation).toMatchObject({ ok: false, error: expect.stringMatching(/confirmez-la/) })
@@ -136,14 +136,14 @@ test('one listed program: the confirmation names id, version and source; progres
 })
 
 test('with the Internet off, the button is disabled and main refuses with a clear message', async () => {
-  await page.evaluate(() => window.heraldOS.network.set({ internet: false }))
+  await page.evaluate(() => window.jarodOS.network.set({ internet: false }))
   await page.reload()
   await openSystem(page)
   const panel = page.getByRole('region', { name: 'Mises à jour' })
 
   await expect(panel.getByRole('button', { name: 'Mettre à jour Other…' })).toBeDisabled()
-  const reply = await page.evaluate(() => window.heraldOS.updates.prepareUpgrade({ id: 'Other.Tool', version: '1.1', source: 'winget' }))
+  const reply = await page.evaluate(() => window.jarodOS.updates.prepareUpgrade({ id: 'Other.Tool', version: '1.1', source: 'winget' }))
 
   expect(reply).toMatchObject({ ok: false, error: expect.stringMatching(/^Internet désactivé pour Jarod : la mise à jour de Other.Tool/) })
-  await page.evaluate(() => window.heraldOS.network.set({ internet: true }))
+  await page.evaluate(() => window.jarodOS.network.set({ internet: true }))
 })

@@ -49,7 +49,7 @@ function firstLine(text: string | undefined): string {
 }
 
 export function YourDay({ now }: { now: Date }) {
-  const calendar = useLocalData(() => window.heraldOS.calendar.today(), [])
+  const calendar = useLocalData(() => window.jarodOS.calendar.today(), [])
   const jobs = useBackendData(() => rest.get<CronJob[]>('/api/cron/jobs'))
   const status = calendar.data?.status
   const { t: tr } = useT()

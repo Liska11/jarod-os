@@ -2,15 +2,15 @@ import fs from 'node:fs'
 import { writeFileAtomic } from './atomic-write.ts'
 import path from 'node:path'
 import { type EventAutomation, isEventName } from '../shared/events.ts'
-import type { ContinuityPrefs, CrashHelpPrefs, HeraldOSPrefs } from '../shared/ipc.ts'
+import type { ContinuityPrefs, CrashHelpPrefs, JarodOSPrefs } from '../shared/ipc.ts'
 import { normalizeMenuBar } from '../shared/menu-bar.ts'
 import { normalizeVoicePrefs, VOICE_DEFAULTS } from '../shared/voice-prefs.ts'
-import { heraldOsDataDir } from './paths.ts'
+import { jarodOsDataDir } from './paths.ts'
 
 const CONTINUITY_DEFAULTS: ContinuityPrefs = { enabled: null, exclude: [] }
 const CRASH_HELP_DEFAULTS: CrashHelpPrefs = { enabled: true, muted: [] }
 
-const DEFAULTS: HeraldOSPrefs = {
+const DEFAULTS: JarodOSPrefs = {
   voice: VOICE_DEFAULTS,
   continuity: CONTINUITY_DEFAULTS,
   crashHelp: CRASH_HELP_DEFAULTS,
@@ -28,20 +28,20 @@ const DEFAULTS: HeraldOSPrefs = {
 }
 
 function prefsFile(): string {
-  return path.join(heraldOsDataDir(), 'prefs.json')
+  return path.join(jarodOsDataDir(), 'prefs.json')
 }
 
-export function readPrefs(): HeraldOSPrefs {
+export function readPrefs(): JarodOSPrefs {
   try {
-    const parsed = JSON.parse(fs.readFileSync(prefsFile(), 'utf8')) as Omit<Partial<HeraldOSPrefs>, 'accent'> & { accent?: string }
+    const parsed = JSON.parse(fs.readFileSync(prefsFile(), 'utf8')) as Omit<Partial<JarodOSPrefs>, 'accent'> & { accent?: string }
     // Accent names from the first alpha.
-    const legacy: Record<string, HeraldOSPrefs['accent']> = { gold: 'blue', jade: 'violet', blue: 'blue', ice: 'ice', violet: 'violet' }
+    const legacy: Record<string, JarodOSPrefs['accent']> = { gold: 'blue', jade: 'violet', blue: 'blue', ice: 'ice', violet: 'violet' }
     const accent = parsed.accent ? legacy[parsed.accent] : undefined
 
     return {
       ...DEFAULTS,
       ...parsed,
-      accent: (accent as HeraldOSPrefs['accent']) ?? DEFAULTS.accent,
+      accent: (accent as JarodOSPrefs['accent']) ?? DEFAULTS.accent,
       spaces: parsed.spaces?.length ? parsed.spaces : DEFAULTS.spaces,
       voice: normalizeVoicePrefs(parsed.voice),
       continuity: normalizeContinuity(parsed.continuity),
@@ -56,7 +56,7 @@ export function readPrefs(): HeraldOSPrefs {
   }
 }
 
-function normalizeLanguage(value: unknown): HeraldOSPrefs['language'] {
+function normalizeLanguage(value: unknown): JarodOSPrefs['language'] {
   return value === 'en' || value === 'fr' || value === 'auto' ? value : undefined
 }
 
@@ -99,7 +99,7 @@ function normalizeContinuity(value: Partial<ContinuityPrefs> | undefined): Conti
   return { ...CONTINUITY_DEFAULTS, ...value, enabled, exclude }
 }
 
-export function writePrefs(patch: Partial<HeraldOSPrefs>): HeraldOSPrefs {
+export function writePrefs(patch: Partial<JarodOSPrefs>): JarodOSPrefs {
   const current = readPrefs()
   // Nested objects are patched field by field by their callers; merge instead of replacing.
   const next = {
@@ -112,7 +112,7 @@ export function writePrefs(patch: Partial<HeraldOSPrefs>): HeraldOSPrefs {
     ...('assistantName' in patch ? { assistantName: normalizeAssistantName(patch.assistantName) } : {}),
     ...(patch.menuBar ? { menuBar: normalizeMenuBar({ ...current.menuBar, ...patch.menuBar }) } : {})
   }
-  fs.mkdirSync(heraldOsDataDir(), { recursive: true })
+  fs.mkdirSync(jarodOsDataDir(), { recursive: true })
   writeFileAtomic(prefsFile(), JSON.stringify(next, null, 2))
 
   return next

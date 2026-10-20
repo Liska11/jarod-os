@@ -25,7 +25,7 @@ export function ExternalBackupBlock() {
   const [restarting, setRestarting] = useState(false)
 
   const refresh = useCallback(() => {
-    void window.heraldOS.externalBackup
+    void window.jarodOS.externalBackup
       .state()
       .then(next => {
         setState(next)
@@ -37,7 +37,7 @@ export function ExternalBackupBlock() {
   useEffect(() => {
     refresh()
 
-    return window.heraldOS.externalBackup.onProgress(next => {
+    return window.jarodOS.externalBackup.onProgress(next => {
       setProgress(next)
 
       if (next.operation === null) refresh()
@@ -49,13 +49,13 @@ export function ExternalBackupBlock() {
   useEffect(() => {
     if (!state) return
     setEstimate(null)
-    void window.heraldOS.externalBackup
+    void window.jarodOS.externalBackup
       .estimate(state.settings.parts)
       .then(setEstimate)
       .catch(() => undefined)
 
     if (state.settings.destination) {
-      void window.heraldOS.externalBackup
+      void window.jarodOS.externalBackup
         .check(state.settings.destination.path)
         .then(setCheck)
         .catch(() => undefined)
@@ -70,17 +70,17 @@ export function ExternalBackupBlock() {
 
   const choose = async () => {
     setError(null)
-    const folder = await window.heraldOS.externalBackup.choose()
+    const folder = await window.jarodOS.externalBackup.choose()
 
     if (!folder) return
-    const result = await window.heraldOS.externalBackup.setDestination(folder)
+    const result = await window.jarodOS.externalBackup.setDestination(folder)
 
     if (!result.ok) setError(describe(result.error))
     refresh()
   }
 
   const options = (parts: ExternalPart[], auto = state?.settings.auto ?? { enabled: false, everyHours: 24 }) => {
-    void window.heraldOS.externalBackup
+    void window.jarodOS.externalBackup
       .setOptions(parts, auto)
       .then(setState)
       .catch(() => undefined)
@@ -88,7 +88,7 @@ export function ExternalBackupBlock() {
 
   const run = async () => {
     setError(null)
-    const result = await window.heraldOS.externalBackup.run()
+    const result = await window.jarodOS.externalBackup.run()
 
     if (!result.ok && result.error !== 'cancelled') setError(describe(result.error))
     refresh()
@@ -97,7 +97,7 @@ export function ExternalBackupBlock() {
   const restore = async (folder: string) => {
     setError(null)
     setConfirm(null)
-    const result = await window.heraldOS.externalBackup.restore(folder)
+    const result = await window.jarodOS.externalBackup.restore(folder)
 
     if (result.ok) setRestarting(true)
     else setError(describe(result.error))
@@ -184,7 +184,7 @@ export function ExternalBackupBlock() {
               </label>
               <span className="flex-1" />
               {working ? (
-                <GlassButton size="sm" variant="danger" disabled={progress?.operation !== 'backup'} onClick={() => void window.heraldOS.externalBackup.cancel()}>
+                <GlassButton size="sm" variant="danger" disabled={progress?.operation !== 'backup'} onClick={() => void window.jarodOS.externalBackup.cancel()}>
                   <IconPlayerStop />
                   {t('externalBackup.cancel')}
                 </GlassButton>

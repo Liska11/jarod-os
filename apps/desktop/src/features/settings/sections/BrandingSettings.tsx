@@ -2,7 +2,7 @@ import { useStore } from '@nanostores/react'
 import { t, useT } from '../../../lib/i18n.ts'
 import { IconId, IconLock, IconPhoto } from '@tabler/icons-react'
 import { useEffect, useState } from 'react'
-import { HeraldLogo } from '../../../components/herald-logo.tsx'
+import { JarodLogo } from '../../../components/jarod-logo.tsx'
 import { GlassButton, GlassCard } from '../../../components/ui/glass.tsx'
 import { $env } from '../../../store/backend.ts'
 import { $branding } from '../../../store/branding.ts'
@@ -23,7 +23,7 @@ async function run(command: string, args: Record<string, unknown>) {
 
 async function choose(kind: 'logo' | 'lock') {
   try {
-    const [file] = await window.heraldOS.fs.pickFiles({ directory: false, multiple: false })
+    const [file] = await window.jarodOS.fs.pickFiles({ directory: false, multiple: false })
 
     if (file) {
       await run('branding.set', { [kind]: file })
@@ -42,7 +42,7 @@ export function AboutIdentity() {
   return (
     <SettingsBlock label="Jarod-OS" description={branding.name ?? undefined} keywords={t('branding.aboutKw')}>
       <GlassCard className="flex items-center gap-4 p-5">
-        {branding.logo ? <img src={branding.logo} alt={branding.name ? t('branding.logoAltNamed', { name: branding.name }) : t('branding.logoAlt')} className="h-12 max-w-[180px] object-contain" /> : <HeraldLogo height={56} />}
+        {branding.logo ? <img src={branding.logo} alt={branding.name ? t('branding.logoAltNamed', { name: branding.name }) : t('branding.logoAlt')} className="h-12 max-w-[180px] object-contain" /> : <JarodLogo height={56} />}
         <div className="min-w-0">
           {branding.name && <div className="truncate text-[15px] font-semibold text-fg">{branding.name}</div>}
           <div className={branding.name ? 'text-[12.5px] text-fg-3' : 'text-[15px] font-semibold text-fg'}>Jarod-OS {env?.version ?? ''}</div>

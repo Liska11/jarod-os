@@ -59,7 +59,7 @@ import { HermesAvatar } from '../../components/app-icon.tsx'
 import { GlassButton } from '../../components/ui/glass.tsx'
 import { Kbd, Spinner } from '../../components/ui/primitives.tsx'
 import { cn } from '../../lib/cn.ts'
-import { CLI_UNAVAILABLE_MESSAGE, type CliOutcome, parseThemeList, runHeraldOs, runHeraldOsWithToast } from '../../lib/herald-os-cli.ts'
+import { CLI_UNAVAILABLE_MESSAGE, type CliOutcome, parseThemeList, runJarodOs, runJarodOsWithToast } from '../../lib/herald-os-cli.ts'
 import { $env } from '../../store/backend.ts'
 import { $catalog, loadCatalog } from '../../store/catalog.ts'
 import { openSurface, relayToMain } from '../../store/shell.ts'
@@ -147,7 +147,7 @@ const POWER_CONFIRM: Partial<Record<PowerAction, MessageKey>> = {
 
 /** Run a power action; resolves to an inline message when the machine cannot do it here. */
 export async function runPower(action: PowerAction): Promise<string | null> {
-  const bridge = window.heraldOS?.shell?.power
+  const bridge = window.jarodOS?.shell?.power
   const platform = $env.get()?.platform
 
   // systemctl / niri / herald-os only exist on Jarod-OS Linux, shutdown.exe on Windows; elsewhere say so instead of spawning nothing.
@@ -398,7 +398,7 @@ function extensionItem(entry: MenuExtension, close: () => void): MenuItem {
         leaf: {
           kind: 'local',
           run: () => {
-            void attempt('native.failed.openLink', () => window.heraldOS.shell.openExternal(action.url))
+            void attempt('native.failed.openLink', () => window.jarodOS.shell.openExternal(action.url))
             close()
           }
         }
@@ -412,7 +412,7 @@ function extensionItem(entry: MenuExtension, close: () => void): MenuItem {
             // A registry command is a host action: main checks the id against the catalogue, decides,
             // records the attempt and only then asks the Hermes window to run it (R3 — the shell bus
             // no longer carries one).
-            void window.heraldOS.control.run(action.command, action.args).then(result => {
+            void window.jarodOS.control.run(action.command, action.args).then(result => {
               if (!result.ok) {
                 notify({ title: 'Could not do that', body: result.error ?? result.summary, level: 'warn' })
               }
@@ -504,7 +504,7 @@ export function ControlMenu({ onClose, onApplications, initialItem }: ControlMen
 
   // Read menu.json each time the menu opens, so an edit shows up without a restart.
   useEffect(() => {
-    void window.heraldOS.shell
+    void window.jarodOS.shell
       .menuExtensions?.()
       .then(setExtensions)
       .catch(() => undefined)
@@ -606,7 +606,7 @@ export function ControlMenu({ onClose, onApplications, initialItem }: ControlMen
 
         return
       case 'exec':
-        void window.heraldOS.shell.runMenuExtension(leaf.id).then(onClose, (error: unknown) =>
+        void window.jarodOS.shell.runMenuExtension(leaf.id).then(onClose, (error: unknown) =>
           setStep({ kind: 'message', title: item.label, text: error instanceof Error ? error.message.replace(/^Error invoking remote method '[^']+': (Error: )?/, '') : String(error), tone: 'danger' })
         )
 
@@ -923,7 +923,7 @@ function RunStep({ title, argv, onClose, onBack }: { title: string; argv: string
   useEffect(() => {
     let cancelled = false
     setOutcome(null)
-    void runHeraldOsWithToast(argv, title).then(result => {
+    void runJarodOsWithToast(argv, title).then(result => {
       if (!cancelled) {
         setOutcome(result)
       }
@@ -985,7 +985,7 @@ function ThemeStep({ onBack, onRun }: { onBack: () => void; onRun: (title: strin
 
   useEffect(() => {
     let cancelled = false
-    void Promise.all([runHeraldOs(['theme', 'list']), runHeraldOs(['theme', 'current'])]).then(([list, now]) => {
+    void Promise.all([runJarodOs(['theme', 'list']), runJarodOs(['theme', 'current'])]).then(([list, now]) => {
       if (cancelled) {
         return
       }

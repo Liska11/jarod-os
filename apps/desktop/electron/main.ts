@@ -5,7 +5,7 @@ import { randomBytes } from 'node:crypto'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { type ControlRunResult, type EnvInfo, type HeraldOSPrefs, IPC, type RestRequest, type ShellCommand, type WindowState } from '../shared/ipc.ts'
+import { type ControlRunResult, type EnvInfo, type JarodOSPrefs, IPC, type RestRequest, type ShellCommand, type WindowState } from '../shared/ipc.ts'
 import { privilegedPluginSchemes } from '../shared/plugins.ts'
 import { BackendManager } from './backend/manager.ts'
 import { jarodDataDir, resolveJarodCore, runDbSnapshot, selectBackend } from './backend/jarod-core.ts'
@@ -57,7 +57,7 @@ import { registerNotificationHistoryIpc } from './notifications-history.ts'
 import { osEnv } from './env.ts'
 import { claimSingleInstance } from './single-instance.ts'
 import { SwitchService } from './switches.ts'
-import { appUserModelId, hermesHome, heraldOsDataDir, isDev, legacyShellConfigDir, shellConfigDir } from './paths.ts'
+import { appUserModelId, hermesHome, jarodOsDataDir, isDev, legacyShellConfigDir, shellConfigDir } from './paths.ts'
 import { readPrefs, writePrefs } from './prefs.ts'
 import { isOmarchy, readOmarchyTheme } from './theme/omarchy.ts'
 import { prefsForTheme } from './theme/themes.ts'
@@ -201,7 +201,7 @@ const plugins = new PluginHost(
   safeMode
 )
 /** Preferences changed outside a renderer (the CLI, a theme): every window and the wallpaper follow. */
-function broadcastPrefs(next: HeraldOSPrefs): void {
+function broadcastPrefs(next: JarodOSPrefs): void {
   wallpaper?.apply(next.wallpaper)
 
   for (const win of BrowserWindow.getAllWindows()) {
@@ -239,7 +239,7 @@ const shellHost: ShellHost | null = panels ?? appHost
 // by a one-shot capability (shell/host-control.ts).
 const { backend: backendToken, cli: cliToken } = controlTokens()
 const surfaceTokens = { backend: backendToken, cli: cliToken }
-const controlJournalFile = path.join(heraldOsDataDir(), 'control-audit.jsonl')
+const controlJournalFile = path.join(jarodOsDataDir(), 'control-audit.jsonl')
 const journalControl = controlAuditSink(controlJournalFile)
 // The core appends its remote commands (remote_exec: attempt, decision, exit code) to this same journal, in the same line shape;
 // without this variable it offers no remote commands at all (docs/REMOTE-SSH.md).
@@ -385,13 +385,13 @@ if (control) {
 }
 // Desktop mode has no compositor CLI socket; the OS control server gives the backend the same `ui*`
 // surface. Windows gets a named pipe here rather than a loopback port (shell/control-authz.ts).
-const osControlPath = panels ? path.join(process.env.XDG_RUNTIME_DIR || `/run/user/${process.getuid?.() ?? 1000}`, 'herald-os', 'control.sock') : path.join(heraldOsDataDir(), 'control.sock')
+const osControlPath = panels ? path.join(process.env.XDG_RUNTIME_DIR || `/run/user/${process.getuid?.() ?? 1000}`, 'herald-os', 'control.sock') : path.join(jarodOsDataDir(), 'control.sock')
 const osControl = panels
   ? null
   : new OsControlServer(
       // The nonce is drawn here, once: the pipe name is then unguessable, and only this process knows
       // it until the DACL has been verified and the backend is told where to dial (R3.2).
-      controlEndpoint({ platform: process.platform, runtimeDir: heraldOsDataDir(), dataDir: heraldOsDataDir(), nonce: pipeNonce }),
+      controlEndpoint({ platform: process.platform, runtimeDir: jarodOsDataDir(), dataDir: jarodOsDataDir(), nonce: pipeNonce }),
       async request => {
         // One pipeline, then the work: who is asking, whether the argument shape matches the command,
         // and — for anything that changes the machine — an approval this process witnessed itself.
@@ -578,7 +578,7 @@ function registerCoreIpc(): void {
   })
 
   ipcMain.handle(IPC.prefsGet, () => readPrefs())
-  ipcMain.handle(IPC.prefsSet, (event, patch: Partial<HeraldOSPrefs>) => {
+  ipcMain.handle(IPC.prefsSet, (event, patch: Partial<JarodOSPrefs>) => {
     const next = writePrefs(patch)
 
     if ('wallpaper' in patch) {

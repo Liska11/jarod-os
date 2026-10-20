@@ -56,7 +56,7 @@ export function PinokioWindow({ win }: { win: OSWindow }) {
 
     setOpening(true)
     setError(null)
-    window.heraldOS.pinokio
+    window.jarodOS.pinokio
       .openView(pageUrl ?? undefined, { title: pageUrl ? undefined : t('pinokio.title') })
       .then(id => {
         adoptWebView(id, win.id, pageUrl ?? state.url, pageUrl ? win.title : t('pinokio.title'), !pageUrl)
@@ -99,17 +99,17 @@ export function PinokioWindow({ win }: { win: OSWindow }) {
         {entry?.loading && <Spinner className="ml-1 shrink-0" />}
         <div className="ml-auto flex items-center gap-0.5">
           {!pageUrl && viewId && (
-            <BarButton label={t('pinokio.home')} onClick={() => void window.heraldOS.web.navigate(viewId, state.url).catch(() => undefined)}>
+            <BarButton label={t('pinokio.home')} onClick={() => void window.jarodOS.web.navigate(viewId, state.url).catch(() => undefined)}>
               <IconHome size={14} />
             </BarButton>
           )}
           {viewId && (
-            <BarButton label={t('pinokio.reload')} onClick={() => void window.heraldOS.web.reload(viewId).catch(() => undefined)}>
+            <BarButton label={t('pinokio.reload')} onClick={() => void window.jarodOS.web.reload(viewId).catch(() => undefined)}>
               <IconRefresh size={14} />
             </BarButton>
           )}
           {state.home && (
-            <BarButton label={t('pinokio.folder')} onClick={() => void window.heraldOS.pinokio.openHome().catch(() => undefined)}>
+            <BarButton label={t('pinokio.folder')} onClick={() => void window.jarodOS.pinokio.openHome().catch(() => undefined)}>
               <IconFolder size={14} />
             </BarButton>
           )}

@@ -7,7 +7,7 @@ export const $branding = atom<BrandingView>({ name: null, logo: null, lock: null
 let bound = false
 
 export function bindBranding(): () => void {
-  const bridge = window.heraldOS?.branding
+  const bridge = window.jarodOS?.branding
 
   if (bound || !bridge) {
     return () => undefined

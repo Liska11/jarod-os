@@ -18,7 +18,7 @@ export function SiteTab({ site, active, toolbar = true }: { site: SiteId; active
       {toolbar && (
         <div className="flex items-center gap-2 px-3 py-1.5 text-[11.5px] text-fg-3">
           <span className="min-w-0 flex-1 truncate">{state.title || SITES[site].name}</span>
-          <GlassButton size="sm" variant="ghost" aria-label={t('sites.reload')} disabled={!state.id} onClick={() => state.id && void window.heraldOS.web.reload(state.id)}>
+          <GlassButton size="sm" variant="ghost" aria-label={t('sites.reload')} disabled={!state.id} onClick={() => state.id && void window.jarodOS.web.reload(state.id)}>
             {state.loading ? <Spinner /> : <IconRefresh />}
           </GlassButton>
         </div>

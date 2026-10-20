@@ -184,7 +184,7 @@ function ProviderItem({ row, onChanged }: { row: ProviderRow; onChanged: () => v
         {t(pill.label)}
       </Pill>
       {row.key_url && state === 'needs-key' && (
-        <GlassButton size="sm" variant="ghost" onClick={() => void attempt('native.failed.openLink', () => window.heraldOS.shell.openExternal(row.key_url!))} aria-label={t('providers.getKeyAria', { name: row.name })} title={t('providers.getKeyTitle')}>
+        <GlassButton size="sm" variant="ghost" onClick={() => void attempt('native.failed.openLink', () => window.jarodOS.shell.openExternal(row.key_url!))} aria-label={t('providers.getKeyAria', { name: row.name })} title={t('providers.getKeyTitle')}>
           <IconExternalLink />
         </GlassButton>
       )}

@@ -190,7 +190,7 @@ test.beforeAll(async () => {
     await page.waitForTimeout(600)
   }
 
-  wsInfo = await page.evaluate(() => window.heraldOS.backend.getState())
+  wsInfo = await page.evaluate(() => window.jarodOS.backend.getState())
   await withControl(async c => {
     await c.invoke('add-model', 'e2e', 'custom', 'jarod-test-model', `http://127.0.0.1:${model.port}/v1`)
     await c.call('config.set', { key: 'model', value: 'custom:jarod-test-model' })

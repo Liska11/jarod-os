@@ -1,7 +1,7 @@
 import { useStore } from '@nanostores/react'
 import { computed } from 'nanostores'
 import { useMemo } from 'react'
-import type { BackendRuntime, HeraldOSPrefs } from '../../shared/ipc.ts'
+import type { BackendRuntime, JarodOSPrefs } from '../../shared/ipc.ts'
 import { en, type MessageKey } from '../locales/en.ts'
 import { fr } from '../locales/fr.ts'
 import { $backend, $prefs } from '../store/backend.ts'
@@ -18,7 +18,7 @@ export type { MessageKey }
 const CATALOGS: Record<Locale, Record<MessageKey, string>> = { en, fr }
 
 /** The language to show: the one chosen in Settings, else the system's when it is French, else English. */
-export function resolveLocale(preference: HeraldOSPrefs['language'], systemLanguage: string | undefined): Locale {
+export function resolveLocale(preference: JarodOSPrefs['language'], systemLanguage: string | undefined): Locale {
   if (preference === 'en' || preference === 'fr') {
     return preference
   }

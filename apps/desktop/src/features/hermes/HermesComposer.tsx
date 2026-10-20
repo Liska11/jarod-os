@@ -52,7 +52,7 @@ export function HermesComposer({ disabled, streaming, placeholder, autoFocus, on
   }
 
   const attach = async () => {
-    const paths = await window.heraldOS.fs.pickFiles({ multiple: true })
+    const paths = await window.jarodOS.fs.pickFiles({ multiple: true })
 
     if (paths.length === 0) {
       return

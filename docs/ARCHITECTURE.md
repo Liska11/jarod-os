@@ -19,7 +19,7 @@ The same seam rules upstream Hermes Desktop uses apply here:
 | Agent backend | The work: sessions, model calls, tools, skills, memory, schedules, approvals | the Jarod core shipped in Jarod-OS (`jarod-core/`, default), or the user's Hermes install (`$HERMES_HOME/hermes-agent`) |
 
 The renderer never touches Node or Electron directly; native power arrives through a narrow,
-typed preload bridge (`window.heraldOS`). Agent behaviour is never re-implemented in React.
+typed preload bridge (`window.jarodOS`). Agent behaviour is never re-implemented in React.
 
 ```mermaid
 flowchart LR

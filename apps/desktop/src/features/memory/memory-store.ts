@@ -268,7 +268,7 @@ async function readMemoryFile(hermesHome: string, file: MemoryFile, listing: rea
     return { file, path, exists: false, modifiedAt: 0, truncated: false, texts: [] }
   }
 
-  const preview = await window.heraldOS.fs.readFile(path)
+  const preview = await window.jarodOS.fs.readFile(path)
 
   if (preview.kind !== 'text') {
     // Binary or too large to preview: show nothing rather than a garbled list, and never write back.
@@ -337,7 +337,7 @@ export async function loadMemory(hermesHome: string): Promise<void> {
       let listing: DirEntry[] = []
 
       try {
-        listing = await window.heraldOS.fs.readDir(memoriesDir(hermesHome))
+        listing = await window.jarodOS.fs.readDir(memoriesDir(hermesHome))
       } catch {
         // No memories folder yet: both files are simply absent.
       }
@@ -381,13 +381,13 @@ async function commitFile(hermesHome: string, file: MemoryFile, texts: string[])
     } else {
       if (!current?.exists) {
         try {
-          await window.heraldOS.fs.mkdir(memoriesDir(hermesHome))
+          await window.jarodOS.fs.mkdir(memoriesDir(hermesHome))
         } catch {
           // Folder probably exists already; the write below reports real failures.
         }
       }
 
-      await window.heraldOS.fs.writeText(memoryPath(hermesHome, file), serialize(texts))
+      await window.jarodOS.fs.writeText(memoryPath(hermesHome, file), serialize(texts))
     }
   } finally {
     await loadMemory(hermesHome)

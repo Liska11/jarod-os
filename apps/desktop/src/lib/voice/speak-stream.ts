@@ -55,7 +55,7 @@ export class SpeakStream {
   }
 
   private async open(): Promise<void> {
-    const target = await window.heraldOS.voice.audioWsUrl('speak-stream').catch(error => {
+    const target = await window.jarodOS.voice.audioWsUrl('speak-stream').catch(error => {
       this.finish('error', error instanceof Error ? error.message : String(error))
 
       return null

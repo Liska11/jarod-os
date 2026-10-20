@@ -170,8 +170,8 @@ test.describe('chat', () => {
 
 test.describe('isolation', () => {
   test('an isolated profile never lists files from the real machine', async () => {
-    const recent = await page.evaluate(() => window.heraldOS.fs.recent(5))
-    const found = await page.evaluate(() => window.heraldOS.fs.find('a', 5))
+    const recent = await page.evaluate(() => window.jarodOS.fs.recent(5))
+    const found = await page.evaluate(() => window.jarodOS.fs.find('a', 5))
 
     expect(recent).toEqual([])
     expect(found).toEqual([])

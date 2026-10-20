@@ -3,7 +3,7 @@ import { IconBattery, IconBattery1, IconBattery2, IconBattery3, IconBattery4, Ic
 import { Fragment, type ReactNode, useEffect, useRef, useState } from 'react'
 import type { StatusPanelId, SwitchName } from '../../shared/ipc.ts'
 import { clockText, type MenuBarItem, normalizeMenuBar, visibleMenuBarItems } from '../../shared/menu-bar.ts'
-import { HeraldLogo } from '../components/herald-logo.tsx'
+import { JarodLogo } from '../components/jarod-logo.tsx'
 import { cn } from '../lib/cn.ts'
 import { hostPlatform } from '../lib/platform-labels.ts'
 import { planPercent } from '../lib/usage.ts'
@@ -135,13 +135,13 @@ export function WindowControls() {
 
   return (
     <div className="no-drag flex items-center gap-0.5" role="group" aria-label={t('menubar.windowControls')}>
-      <button type="button" aria-label={t('menubar.minimize')} title={t('menubar.minimize')} onClick={() => void quietly(() => window.heraldOS.window.minimize())} className={cn(base, 'hover:bg-white/10')}>
+      <button type="button" aria-label={t('menubar.minimize')} title={t('menubar.minimize')} onClick={() => void quietly(() => window.jarodOS.window.minimize())} className={cn(base, 'hover:bg-white/10')}>
         <IconMinus size={15} />
       </button>
-      <button type="button" aria-label={filled ? t('menubar.restore') : t('menubar.maximize')} title={state.fullscreen ? t('menubar.leaveFullscreen') : filled ? t('menubar.restore') : t('menubar.maximize')} onClick={() => void quietly(() => window.heraldOS.window.toggleMaximize())} className={cn(base, 'hover:bg-white/10')}>
+      <button type="button" aria-label={filled ? t('menubar.restore') : t('menubar.maximize')} title={state.fullscreen ? t('menubar.leaveFullscreen') : filled ? t('menubar.restore') : t('menubar.maximize')} onClick={() => void quietly(() => window.jarodOS.window.toggleMaximize())} className={cn(base, 'hover:bg-white/10')}>
         {filled ? <IconCopy size={14} /> : <IconSquare size={13} />}
       </button>
-      <button type="button" aria-label={t('menubar.close')} title={t('menubar.close')} onClick={() => void quietly(() => window.heraldOS.window.close())} className={cn(base, 'hover:bg-danger/80 hover:text-white')}>
+      <button type="button" aria-label={t('menubar.close')} title={t('menubar.close')} onClick={() => void quietly(() => window.jarodOS.window.close())} className={cn(base, 'hover:bg-danger/80 hover:text-white')}>
         <IconX size={15} />
       </button>
     </div>
@@ -168,7 +168,7 @@ function SwitchIndicators() {
         </button>
       )}
       {recording.recording && (
-        <button type="button" aria-label={t('menubar.stopRecording')} title={t('menubar.stopRecording.title')} onClick={() => void window.heraldOS.capture.record('stop').catch(() => undefined)} className="flex h-6 items-center gap-1.5 rounded-md px-1.5 text-[12px] text-danger hover:bg-white/10">
+        <button type="button" aria-label={t('menubar.stopRecording')} title={t('menubar.stopRecording.title')} onClick={() => void window.jarodOS.capture.record('stop').catch(() => undefined)} className="flex h-6 items-center gap-1.5 rounded-md px-1.5 text-[12px] text-danger hover:bg-white/10">
           <span className="size-2 animate-pulse-soft rounded-full bg-danger" />
           {t('menubar.recording')}
         </button>
@@ -266,7 +266,7 @@ export function MenuBar() {
   return (
     <header className="drag-region absolute inset-x-0 top-0 z-(--z-menubar) flex h-(--menubar-h) items-center justify-between px-3 text-[12.5px] text-fg select-none" style={{ background: 'linear-gradient(180deg, var(--menubar-from, rgba(3,10,40,.55)), var(--menubar-to, rgba(3,10,40,.15)))' }}>
       <div className="flex items-center gap-2.5 pl-[74px]">
-        <HeraldLogo height={24} />
+        <JarodLogo height={24} />
         <span className="font-semibold">Jarod-OS</span>
         {title !== 'Jarod-OS' && (
           <>

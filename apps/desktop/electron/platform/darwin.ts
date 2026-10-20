@@ -5,7 +5,7 @@ import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 import type { BatteryStatus, CalendarEvent, CalendarResult, ControlAction, InstalledApp, NetworkStatus, ProcessInfo, RecentFile, StatusPanelId, StatusPanelState, SystemInfo, SystemStats } from '../../shared/ipc.ts'
-import { heraldOsDataDir } from '../paths.ts'
+import { jarodOsDataDir } from '../paths.ts'
 import { darwinControlAction, darwinControlStatus } from './darwin-controls.ts'
 import { run } from './exec.ts'
 import { normaliseFileQuery, rankFiles } from './find.ts'
@@ -334,7 +334,7 @@ export class DarwinPlatform implements HostPlatform {
   }
 
   async thumbnail(filePath: string, size: number): Promise<Buffer | null> {
-    const cacheDir = path.join(heraldOsDataDir(), 'cache', 'thumbs')
+    const cacheDir = path.join(jarodOsDataDir(), 'cache', 'thumbs')
     let stamp = ''
 
     try {
@@ -381,7 +381,7 @@ export class DarwinPlatform implements HostPlatform {
    * catalog fall back to a QuickLook thumbnail (`qlmanage`).
    */
   async appIcon(appPath: string): Promise<Buffer | null> {
-    const cacheDir = path.join(heraldOsDataDir(), 'cache', 'icons')
+    const cacheDir = path.join(jarodOsDataDir(), 'cache', 'icons')
     const cacheFile = path.join(cacheDir, `${crypto.createHash('sha1').update(appPath).digest('hex')}.png`)
 
     try {

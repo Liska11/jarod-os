@@ -276,7 +276,7 @@ function literal(value: string): string {
 const INTEROP = `using System;
 using System.Runtime.InteropServices;
 
-public static class HeraldPipeSecurity {
+public static class JarodPipeSecurity {
     [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
     public static extern IntPtr CreateFileW(string name, uint access, uint share, IntPtr attributes, uint disposition, uint flags, IntPtr template);
 
@@ -331,25 +331,25 @@ export function hardenScript(pipePath: string, sddl: string): string {
     `$sddl = ${literal(sddl)}`,
     '# GENERIC_READ (0x80000000, which carries READ_CONTROL) | WRITE_DAC (0x40000); OPEN_EXISTING = 3.',
     '$access = [uint32]2147483648 -bor [uint32]262144',
-    '$handle = [HeraldPipeSecurity]::CreateFileW($pipe, $access, [uint32]0, [IntPtr]::Zero, [uint32]3, [uint32]0, [IntPtr]::Zero)',
+    '$handle = [JarodPipeSecurity]::CreateFileW($pipe, $access, [uint32]0, [IntPtr]::Zero, [uint32]3, [uint32]0, [IntPtr]::Zero)',
     'if ($handle -eq [IntPtr]::new(-1)) { Write-Output "OPEN_FAILED win32=$([System.Runtime.InteropServices.Marshal]::GetLastWin32Error())"; exit 1 }',
     'try {',
     '  $new = [IntPtr]::Zero',
     '  $length = 0',
     '  # SDDL_REVISION_1 = 1.',
-    '  if (-not [HeraldPipeSecurity]::ConvertStringSecurityDescriptorToSecurityDescriptorW($sddl, 1, [ref]$new, [ref]$length)) { Write-Output "SDDL_PARSE_FAILED win32=$([System.Runtime.InteropServices.Marshal]::GetLastWin32Error())"; exit 1 }',
+    '  if (-not [JarodPipeSecurity]::ConvertStringSecurityDescriptorToSecurityDescriptorW($sddl, 1, [ref]$new, [ref]$length)) { Write-Output "SDDL_PARSE_FAILED win32=$([System.Runtime.InteropServices.Marshal]::GetLastWin32Error())"; exit 1 }',
     '  try {',
     '    # SetSecurityInfo wants the ACL, not the descriptor that carries it.',
     '    $present = $false',
     '    $acl = [IntPtr]::Zero',
     '    $defaulted = $false',
-    '    if (-not [HeraldPipeSecurity]::GetSecurityDescriptorDacl($new, [ref]$present, [ref]$acl, [ref]$defaulted) -or -not $present -or $acl -eq [IntPtr]::Zero) { Write-Output "NO_DACL_IN_SDDL win32=$([System.Runtime.InteropServices.Marshal]::GetLastWin32Error())"; exit 1 }',
+    '    if (-not [JarodPipeSecurity]::GetSecurityDescriptorDacl($new, [ref]$present, [ref]$acl, [ref]$defaulted) -or -not $present -or $acl -eq [IntPtr]::Zero) { Write-Output "NO_DACL_IN_SDDL win32=$([System.Runtime.InteropServices.Marshal]::GetLastWin32Error())"; exit 1 }',
     '    # SE_KERNEL_OBJECT = 6; DACL_SECURITY_INFORMATION | PROTECTED_DACL_SECURITY_INFORMATION = 2147483652.',
-    '    $code = [HeraldPipeSecurity]::SetSecurityInfo($handle, 6, [uint32]2147483652, [IntPtr]::Zero, [IntPtr]::Zero, $acl, [IntPtr]::Zero)',
+    '    $code = [JarodPipeSecurity]::SetSecurityInfo($handle, 6, [uint32]2147483652, [IntPtr]::Zero, [IntPtr]::Zero, $acl, [IntPtr]::Zero)',
     '    if ($code -ne 0) { Write-Output "SETSECURITY_FAILED win32=$code"; exit 1 }',
-    '  } finally { [void][HeraldPipeSecurity]::LocalFree($new) }',
+    '  } finally { [void][JarodPipeSecurity]::LocalFree($new) }',
     ...readBackBody('DACL_AFTER_SET'),
-    '} finally { [void][HeraldPipeSecurity]::CloseHandle($handle) }',
+    '} finally { [void][JarodPipeSecurity]::CloseHandle($handle) }',
     '',
   ].join('\n')
 }
@@ -362,11 +362,11 @@ export function readScript(pipePath: string): string {
     INTEROP,
     "'@",
     `$pipe = ${literal(pipePath)}`,
-    '$handle = [HeraldPipeSecurity]::CreateFileW($pipe, [uint32]2147483648, [uint32]0, [IntPtr]::Zero, [uint32]3, [uint32]0, [IntPtr]::Zero)',
+    '$handle = [JarodPipeSecurity]::CreateFileW($pipe, [uint32]2147483648, [uint32]0, [IntPtr]::Zero, [uint32]3, [uint32]0, [IntPtr]::Zero)',
     'if ($handle -eq [IntPtr]::new(-1)) { Write-Output "OPEN_FAILED win32=$([System.Runtime.InteropServices.Marshal]::GetLastWin32Error())"; exit 1 }',
     'try {',
     ...readBackBody('SDDL'),
-    '} finally { [void][HeraldPipeSecurity]::CloseHandle($handle) }',
+    '} finally { [void][JarodPipeSecurity]::CloseHandle($handle) }',
     '',
   ].join('\n')
 }
@@ -379,14 +379,14 @@ function readBackBody(marker: ReadbackMarker): string[] {
     '  $held = [IntPtr]::Zero',
     '  $descriptor = [IntPtr]::Zero',
     '  # SE_KERNEL_OBJECT = 6; OWNER (1) | GROUP (2) | DACL (4).',
-    '  $result = [HeraldPipeSecurity]::GetSecurityInfo($handle, 6, 7, [ref]$owner, [ref]$group, [ref]$held, [IntPtr]::Zero, [ref]$descriptor)',
+    '  $result = [JarodPipeSecurity]::GetSecurityInfo($handle, 6, 7, [ref]$owner, [ref]$group, [ref]$held, [IntPtr]::Zero, [ref]$descriptor)',
     '  if ($result -ne 0) { Write-Output "GETSECURITY_FAILED win32=$result"; exit 1 }',
     '  try {',
     '    $text = [IntPtr]::Zero',
     '    $textLength = 0',
-    '    if (-not [HeraldPipeSecurity]::ConvertSecurityDescriptorToStringSecurityDescriptorW($descriptor, 1, 7, [ref]$text, [ref]$textLength)) { Write-Output "SDDL_FAILED win32=$([System.Runtime.InteropServices.Marshal]::GetLastWin32Error())"; exit 1 }',
-    '    try { Write-Output "' + marker + ' $([System.Runtime.InteropServices.Marshal]::PtrToStringUni($text))" } finally { [void][HeraldPipeSecurity]::LocalFree($text) }',
-    '  } finally { [void][HeraldPipeSecurity]::LocalFree($descriptor) }',
+    '    if (-not [JarodPipeSecurity]::ConvertSecurityDescriptorToStringSecurityDescriptorW($descriptor, 1, 7, [ref]$text, [ref]$textLength)) { Write-Output "SDDL_FAILED win32=$([System.Runtime.InteropServices.Marshal]::GetLastWin32Error())"; exit 1 }',
+    '    try { Write-Output "' + marker + ' $([System.Runtime.InteropServices.Marshal]::PtrToStringUni($text))" } finally { [void][JarodPipeSecurity]::LocalFree($text) }',
+    '  } finally { [void][JarodPipeSecurity]::LocalFree($descriptor) }',
   ]
 }
 
@@ -399,7 +399,7 @@ function readBackBody(marker: ReadbackMarker): string[] {
 const TOKEN_INTEROP = `using System;
 using System.Runtime.InteropServices;
 
-public static class HeraldTokenSecurity {
+public static class JarodTokenSecurity {
     [DllImport("kernel32.dll")]
     public static extern IntPtr GetCurrentProcess();
 
@@ -434,31 +434,31 @@ export function tokenDefaultDaclScript(): string {
     "'@",
     '# TOKEN_QUERY = 8; TokenDefaultDacl = 6 (one pointer).',
     '$token = [IntPtr]::Zero',
-    'if (-not [HeraldTokenSecurity]::OpenProcessToken([HeraldTokenSecurity]::GetCurrentProcess(), [uint32]8, [ref]$token)) { Write-Output "OPENTOKEN_FAILED win32=$([System.Runtime.InteropServices.Marshal]::GetLastWin32Error())"; exit 1 }',
+    'if (-not [JarodTokenSecurity]::OpenProcessToken([JarodTokenSecurity]::GetCurrentProcess(), [uint32]8, [ref]$token)) { Write-Output "OPENTOKEN_FAILED win32=$([System.Runtime.InteropServices.Marshal]::GetLastWin32Error())"; exit 1 }',
     'try {',
     '  # The documented two-call shape: ask for the length first, then for the value.',
     '  $need = 0',
-    '  [void][HeraldTokenSecurity]::GetTokenInformation($token, 6, [IntPtr]::Zero, 0, [ref]$need)',
+    '  [void][JarodTokenSecurity]::GetTokenInformation($token, 6, [IntPtr]::Zero, 0, [ref]$need)',
     '  if ($need -le 0) { $need = 8 }',
     '  $info = [System.Runtime.InteropServices.Marshal]::AllocHGlobal($need)',
     '  try {',
     '    $returned = 0',
-    '    if (-not [HeraldTokenSecurity]::GetTokenInformation($token, 6, $info, $need, [ref]$returned)) { Write-Output "GETTOKENINFO_FAILED win32=$([System.Runtime.InteropServices.Marshal]::GetLastWin32Error()) need=$need"; exit 1 }',
+    '    if (-not [JarodTokenSecurity]::GetTokenInformation($token, 6, $info, $need, [ref]$returned)) { Write-Output "GETTOKENINFO_FAILED win32=$([System.Runtime.InteropServices.Marshal]::GetLastWin32Error()) need=$need"; exit 1 }',
     '    $dacl = [System.Runtime.InteropServices.Marshal]::ReadIntPtr($info)',
     '    if ($dacl -eq [IntPtr]::Zero) { Write-Output "TOKEN_DEFAULT_DACL "; exit 0 }',
     '    $descriptor = [System.Runtime.InteropServices.Marshal]::AllocHGlobal(40)',
     '    try {',
     '      # SECURITY_DESCRIPTOR_REVISION = 1; a SECURITY_DESCRIPTOR is 20 bytes, 40 is a safe buffer.',
-    '      if (-not [HeraldTokenSecurity]::InitializeSecurityDescriptor($descriptor, 1)) { Write-Output "INITSD_FAILED win32=$([System.Runtime.InteropServices.Marshal]::GetLastWin32Error())"; exit 1 }',
-    '      if (-not [HeraldTokenSecurity]::SetSecurityDescriptorDacl($descriptor, $true, $dacl, $false)) { Write-Output "SETSDDACL_FAILED win32=$([System.Runtime.InteropServices.Marshal]::GetLastWin32Error())"; exit 1 }',
+    '      if (-not [JarodTokenSecurity]::InitializeSecurityDescriptor($descriptor, 1)) { Write-Output "INITSD_FAILED win32=$([System.Runtime.InteropServices.Marshal]::GetLastWin32Error())"; exit 1 }',
+    '      if (-not [JarodTokenSecurity]::SetSecurityDescriptorDacl($descriptor, $true, $dacl, $false)) { Write-Output "SETSDDACL_FAILED win32=$([System.Runtime.InteropServices.Marshal]::GetLastWin32Error())"; exit 1 }',
     '      $text = [IntPtr]::Zero',
     '      $textLength = 0',
     '      # SDDL_REVISION_1 = 1; DACL_SECURITY_INFORMATION = 4.',
-    '      if (-not [HeraldTokenSecurity]::ConvertSecurityDescriptorToStringSecurityDescriptorW($descriptor, 1, 4, [ref]$text, [ref]$textLength)) { Write-Output "SDDL_FAILED win32=$([System.Runtime.InteropServices.Marshal]::GetLastWin32Error())"; exit 1 }',
-    '      try { Write-Output "TOKEN_DEFAULT_DACL $([System.Runtime.InteropServices.Marshal]::PtrToStringUni($text))" } finally { [void][HeraldTokenSecurity]::LocalFree($text) }',
+    '      if (-not [JarodTokenSecurity]::ConvertSecurityDescriptorToStringSecurityDescriptorW($descriptor, 1, 4, [ref]$text, [ref]$textLength)) { Write-Output "SDDL_FAILED win32=$([System.Runtime.InteropServices.Marshal]::GetLastWin32Error())"; exit 1 }',
+    '      try { Write-Output "TOKEN_DEFAULT_DACL $([System.Runtime.InteropServices.Marshal]::PtrToStringUni($text))" } finally { [void][JarodTokenSecurity]::LocalFree($text) }',
     '    } finally { [System.Runtime.InteropServices.Marshal]::FreeHGlobal($descriptor) }',
     '  } finally { [System.Runtime.InteropServices.Marshal]::FreeHGlobal($info) }',
-    '} finally { [void][HeraldTokenSecurity]::CloseHandle($token) }',
+    '} finally { [void][JarodTokenSecurity]::CloseHandle($token) }',
     '',
   ].join('\n')
 }

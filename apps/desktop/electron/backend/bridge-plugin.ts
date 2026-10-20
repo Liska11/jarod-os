@@ -4,7 +4,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import type { BackendRuntime } from '../../shared/ipc.ts'
 import { log } from '../log.ts'
-import { hermesHome, heraldOsDataDir } from '../paths.ts'
+import { hermesHome, jarodOsDataDir } from '../paths.ts'
 
 /*
  * A packaged Jarod-OS carries the herald-os-bridge plugin in its resources. Hermes loads user
@@ -101,7 +101,7 @@ export function folderFingerprint(dir: string): string {
 }
 
 /** Copy the bundled plugin to `<herald-os data dir>/bridge-plugin` unless the copy there is current; returns the copy. */
-export function stageBridgePlugin(bundled: string, target: string = path.join(heraldOsDataDir(), 'bridge-plugin')): string {
+export function stageBridgePlugin(bundled: string, target: string = path.join(jarodOsDataDir(), 'bridge-plugin')): string {
   const wanted = folderFingerprint(bundled)
   const marker = path.join(target, '.fingerprint')
   let current = ''
@@ -210,7 +210,7 @@ export async function ensureBridgePlugin(runtime: BackendRuntime, resources: str
   // them behind a lookup). The marker means it worked, so a failed try runs again on the next start
   // and a person who turns the plugin off later is left alone. Its name carries the plugin's: the marker of
   // the older name (copied with the rest of the folder) must not stop the renamed plugin from being enabled.
-  const enabled = path.join(heraldOsDataDir(), `${BRIDGE_PLUGIN}-enabled`)
+  const enabled = path.join(jarodOsDataDir(), `${BRIDGE_PLUGIN}-enabled`)
 
   if (fs.existsSync(enabled)) {
     return

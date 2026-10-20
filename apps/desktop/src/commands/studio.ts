@@ -133,7 +133,7 @@ export const studioCommands: readonly OsCommand[] = [
     run: async () => {
       // Panels mode: the Studio is its own compositor window.
       if (isPanels) {
-        await window.heraldOS.shell.close('window:studio')
+        await window.jarodOS.shell.close('window:studio')
 
         return ok('Closed the Studio')
       }

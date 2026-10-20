@@ -1,7 +1,7 @@
 import { IconMessageChatbot, IconPlus, IconSparkles, IconX } from '@tabler/icons-react'
 import { t, type MessageKey, useT } from '../../lib/i18n.ts'
 import { useState } from 'react'
-import { HERALD_EVENTS, type HeraldEventName } from '../../../shared/events.ts'
+import { JAROD_EVENTS, type JarodEventName } from '../../../shared/events.ts'
 import { Chips, GlassButton, GlassCard } from '../../components/ui/glass.tsx'
 import { sendPrompt } from '../../store/chat.ts'
 import { showPage } from '../../store/windows.ts'
@@ -11,7 +11,7 @@ import { eventLabel, FieldLabel, GlyphTile, Hint, SelectInput, TextArea, TextInp
 
 /** Runs on an event instead of a schedule; the page turns it into a paused job plus a rule. */
 export interface EventTrigger {
-  event: HeraldEventName
+  event: JarodEventName
   match?: Record<string, string>
 }
 
@@ -20,10 +20,10 @@ const TRIGGER_MODES = [
   { id: 'event', label: t('automation.trigger') }
 ] as const
 
-const EVENT_CHOICES = HERALD_EVENTS.filter(event => event.automation)
+const EVENT_CHOICES = JAROD_EVENTS.filter(event => event.automation)
 
 /** Events that can be narrowed down, and the detail they match on. */
-const MATCHES: Partial<Record<HeraldEventName, { key: string; label: MessageKey; placeholder: MessageKey }>> = {
+const MATCHES: Partial<Record<JarodEventName, { key: string; label: MessageKey; placeholder: MessageKey }>> = {
   crash: { key: 'app', label: 'automation.match.app', placeholder: 'automation.match.app.placeholder' },
   'network-change': { key: 'wifi', label: 'automation.match.wifi', placeholder: 'automation.match.wifi.placeholder' }
 }
@@ -34,7 +34,7 @@ export function NewAutomationForm({ targets, creating, onCreate, onCancel }: { t
   const [name, setName] = useState('')
   const [mode, setMode] = useState<'schedule' | 'event'>('schedule')
   const [schedule, setSchedule] = useState('')
-  const [event, setEvent] = useState<HeraldEventName>('login')
+  const [event, setEvent] = useState<JarodEventName>('login')
   const [matchValue, setMatchValue] = useState('')
   const [prompt, setPrompt] = useState('')
   const [deliver, setDeliver] = useState('local')
@@ -90,7 +90,7 @@ export function NewAutomationForm({ targets, creating, onCreate, onCancel }: { t
             </>
           ) : (
             <>
-              <SelectInput id="new-automation-schedule" value={event} onChange={e => setEvent(e.target.value as HeraldEventName)}>
+              <SelectInput id="new-automation-schedule" value={event} onChange={e => setEvent(e.target.value as JarodEventName)}>
                 {EVENT_CHOICES.map(choice => (
                   <option key={choice.name} value={choice.name}>
                     {eventLabel(choice.name)}

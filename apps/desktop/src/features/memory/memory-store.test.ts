@@ -23,7 +23,7 @@ function bridge(routes: Record<string, (call: Call) => unknown>, disk: Record<st
   })
 
   ;(globalThis as { window?: unknown }).window = {
-    heraldOS: {
+    jarodOS: {
       backend: { rest },
       fs: {
         readDir: async (dir: string) => Object.keys(disk).filter(p => p.startsWith(dir)).map(p => ({ name: p.slice(dir.length + 1), modifiedAt: 1000 })),

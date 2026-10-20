@@ -445,18 +445,18 @@ export function validateTheme(value: unknown): string | null {
 // ---- Hermes skins ------------------------------------------------------------------------------
 
 /** The Hermes skin Jarod-OS writes from its theme: `jarod-os` since the rename (docs/RENAME-PLAN-JAROD-OS.md, phase 5). */
-export const HERALD_SKIN = 'jarod-os'
+export const JAROD_SKIN = 'jarod-os'
 /** The skin it wrote before, still in the person's Hermes config: ours too, so it is replaced, never taken for a choice of theirs. */
 const LEGACY_SKIN = 'herald-os'
 
 /** Whether `name` is a skin Jarod-OS writes (under either name), so following it would only follow ourselves. */
 export function isOurSkin(name: string | undefined): boolean {
-  return name === HERALD_SKIN || name === LEGACY_SKIN
+  return name === JAROD_SKIN || name === LEGACY_SKIN
 }
 
 /** The skin to point Hermes at, given the one its config names now; `null` leaves the person's own choice standing. */
 export function skinToSelect(current: string): string | null {
-  return current === '' || current === 'default' || current === LEGACY_SKIN ? HERALD_SKIN : null
+  return current === '' || current === 'default' || current === LEGACY_SKIN ? JAROD_SKIN : null
 }
 
 /** The Hermes skin (`~/.hermes/skins/herald-os.yaml`) that dresses Hermes's own CLI and TUI in the theme. */
@@ -494,7 +494,7 @@ export function hermesSkinColors(colors: ThemeColors): Record<string, string> {
 }
 
 export function hermesSkinYaml(label: string, colors: ThemeColors): string {
-  const lines = [`# Written by Jarod-OS from its "${label.replace(/"/g, "'")}" theme; Jarod-OS rewrites it when the theme changes.`, `name: ${HERALD_SKIN}`, `description: "Jarod-OS: ${label.replace(/"/g, "'")}"`, 'colors:']
+  const lines = [`# Written by Jarod-OS from its "${label.replace(/"/g, "'")}" theme; Jarod-OS rewrites it when the theme changes.`, `name: ${JAROD_SKIN}`, `description: "Jarod-OS: ${label.replace(/"/g, "'")}"`, 'colors:']
 
   for (const [key, value] of Object.entries(hermesSkinColors(colors))) {
     lines.push(`  ${key}: "${value}"`)

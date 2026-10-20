@@ -541,7 +541,7 @@ export interface ControlRunResult {
 /** Authenticated WebSocket endpoints the renderer may dial besides the gateway. */
 export type AudioWsKind = 'speak-stream'
 
-export interface HeraldOSPrefs {
+export interface JarodOSPrefs {
   /** The interface language: the system's (`auto`, the default), English or French. */
   language?: 'auto' | 'en' | 'fr'
   /** What the assistant is called in the interface; unset follows the backend (Jarod for the Jarod core, Hermes for Hermes). */
@@ -761,7 +761,7 @@ export interface PinokioState {
   error?: string
 }
 
-/** Main -> renderer: lifecycle of one embedded web view (`window.heraldOS.web`). */
+/** Main -> renderer: lifecycle of one embedded web view (`window.jarodOS.web`). */
 export type WebViewEvent =
   | { id: string; type: 'title'; title: string }
   | { id: string; type: 'url'; url: string }
@@ -802,319 +802,319 @@ export interface EnvInfo {
 
 /** Channel names, table-driven so preload and main cannot drift. */
 export const IPC = {
-  backendGetState: 'herald-os:backend:get-state',
-  backendState: 'herald-os:backend:state',
-  backendRestart: 'herald-os:backend:restart',
-  backendRest: 'herald-os:backend:rest',
-  backendLogTail: 'herald-os:backend:log-tail',
+  backendGetState: 'jarod-os:backend:get-state',
+  backendState: 'jarod-os:backend:state',
+  backendRestart: 'jarod-os:backend:restart',
+  backendRest: 'jarod-os:backend:rest',
+  backendLogTail: 'jarod-os:backend:log-tail',
 
-  systemInfo: 'herald-os:system:info',
-  systemStats: 'herald-os:system:stats',
-  systemStatsPush: 'herald-os:system:stats-push',
-  systemStatsSubscribe: 'herald-os:system:stats-subscribe',
-  systemProcesses: 'herald-os:system:processes',
+  systemInfo: 'jarod-os:system:info',
+  systemStats: 'jarod-os:system:stats',
+  systemStatsPush: 'jarod-os:system:stats-push',
+  systemStatsSubscribe: 'jarod-os:system:stats-subscribe',
+  systemProcesses: 'jarod-os:system:processes',
 
-  appsList: 'herald-os:apps:list',
-  appsLaunch: 'herald-os:apps:launch',
-  appsIcon: 'herald-os:apps:icon',
+  appsList: 'jarod-os:apps:list',
+  appsLaunch: 'jarod-os:apps:launch',
+  appsIcon: 'jarod-os:apps:icon',
 
-  fsHome: 'herald-os:fs:home',
-  fsReadDir: 'herald-os:fs:read-dir',
-  fsReadFile: 'herald-os:fs:read-file',
-  fsReveal: 'herald-os:fs:reveal',
-  fsOpenPath: 'herald-os:fs:open-path',
-  fsOpenIn: 'herald-os:fs:open-in',
-  fsRecent: 'herald-os:fs:recent',
+  fsHome: 'jarod-os:fs:home',
+  fsReadDir: 'jarod-os:fs:read-dir',
+  fsReadFile: 'jarod-os:fs:read-file',
+  fsReveal: 'jarod-os:fs:reveal',
+  fsOpenPath: 'jarod-os:fs:open-path',
+  fsOpenIn: 'jarod-os:fs:open-in',
+  fsRecent: 'jarod-os:fs:recent',
   /** Find files by name under the home folder (Spotlight on macOS). */
-  fsFind: 'herald-os:fs:find',
-  fsThumbnail: 'herald-os:fs:thumbnail',
-  fsImageInfo: 'herald-os:fs:image-info',
-  fsWriteText: 'herald-os:fs:write-text',
-  fsMkdir: 'herald-os:fs:mkdir',
-  fsRename: 'herald-os:fs:rename',
-  fsTrash: 'herald-os:fs:trash',
-  fsExportPdf: 'herald-os:fs:export-pdf',
-  fsPickFiles: 'herald-os:fs:pick-files',
-  fsDirSize: 'herald-os:fs:dir-size',
+  fsFind: 'jarod-os:fs:find',
+  fsThumbnail: 'jarod-os:fs:thumbnail',
+  fsImageInfo: 'jarod-os:fs:image-info',
+  fsWriteText: 'jarod-os:fs:write-text',
+  fsMkdir: 'jarod-os:fs:mkdir',
+  fsRename: 'jarod-os:fs:rename',
+  fsTrash: 'jarod-os:fs:trash',
+  fsExportPdf: 'jarod-os:fs:export-pdf',
+  fsPickFiles: 'jarod-os:fs:pick-files',
+  fsDirSize: 'jarod-os:fs:dir-size',
   /** A bounded recursive listing of a project folder (build output and dependencies skipped). */
-  fsListTree: 'herald-os:fs:list-tree',
-  fsWatchTree: 'herald-os:fs:watch-tree',
-  fsUnwatchTree: 'herald-os:fs:unwatch-tree',
+  fsListTree: 'jarod-os:fs:list-tree',
+  fsWatchTree: 'jarod-os:fs:watch-tree',
+  fsUnwatchTree: 'jarod-os:fs:unwatch-tree',
   /** Main -> renderer: `TreeChangedEvent`. */
-  fsTreeChanged: 'herald-os:fs:tree-changed',
+  fsTreeChanged: 'jarod-os:fs:tree-changed',
 
-  systemNetwork: 'herald-os:system:network',
-  calendarToday: 'herald-os:calendar:today',
+  systemNetwork: 'jarod-os:system:network',
+  calendarToday: 'jarod-os:calendar:today',
 
   /** Recent documents, project folders and running apps, for "Pick up where you left off". */
-  contextSnapshot: 'herald-os:context:snapshot',
+  contextSnapshot: 'jarod-os:context:snapshot',
   /** Main tells the windows the user is back after sleep, a lock or a long idle stretch. */
-  contextReturned: 'herald-os:context:returned',
+  contextReturned: 'jarod-os:context:returned',
 
   /** The crashes seen since Jarod-OS started, newest first (offers arrive as a `crash` ShellCommand). */
-  crashRecent: 'herald-os:crash:recent',
+  crashRecent: 'jarod-os:crash:recent',
 
   /** Installed themes (built in and the user's own). */
-  themeList: 'herald-os:theme:list',
+  themeList: 'jarod-os:theme:list',
   /** Apply a theme everywhere: the shell, Hermes's skin and, on Jarod-OS Linux, the whole session. */
-  themeApply: 'herald-os:theme:apply',
+  themeApply: 'jarod-os:theme:apply',
   /** Save a theme the shell made (from an image) into the user's theme folder. */
-  themeSave: 'herald-os:theme:save',
+  themeSave: 'jarod-os:theme:save',
   /** A small PNG of an image (data URL) to take theme colours from. */
-  themeSample: 'herald-os:theme:sample',
+  themeSample: 'jarod-os:theme:sample',
   /** Install a theme from a git repository (colours and images only). */
-  themeInstall: 'herald-os:theme:install',
+  themeInstall: 'jarod-os:theme:install',
   /** Font families installed on this computer. */
-  fontsList: 'herald-os:fonts:list',
+  fontsList: 'jarod-os:fonts:list',
 
   /** Let the person select part of the screen; resolves with the PNG's path, or null when cancelled. */
-  captureRegion: 'herald-os:capture:region',
+  captureRegion: 'jarod-os:capture:region',
   /** A screenshot of a region, the focused window or the whole screen, saved where screenshots go. */
-  captureScreenshot: 'herald-os:capture:screenshot',
+  captureScreenshot: 'jarod-os:capture:screenshot',
   /** Start, stop or toggle a screen recording; resolves with the recording state. */
-  captureRecord: 'herald-os:capture:record',
-  captureRecordState: 'herald-os:capture:record-state',
-  captureTool: 'herald-os:capture:tool',
+  captureRecord: 'jarod-os:capture:record',
+  captureRecordState: 'jarod-os:capture:record-state',
+  captureTool: 'jarod-os:capture:tool',
   /** Main -> renderer: a recording started or stopped (`RecordingState`). */
-  captureRecordChanged: 'herald-os:capture:record-changed',
+  captureRecordChanged: 'jarod-os:capture:record-changed',
   /** An image file as a data URL, for the markup editor. */
-  captureReadImage: 'herald-os:capture:read-image',
+  captureReadImage: 'jarod-os:capture:read-image',
   /** Write a PNG (data URL) inside the home folder. */
-  captureSaveImage: 'herald-os:capture:save-image',
+  captureSaveImage: 'jarod-os:capture:save-image',
   /** Put an image (a file or a data URL) on the clipboard. */
-  captureCopyImage: 'herald-os:capture:copy-image',
+  captureCopyImage: 'jarod-os:capture:copy-image',
   /** Ask the OS for camera access (macOS), for the camera bubble. */
-  cameraRequest: 'herald-os:camera:request',
+  cameraRequest: 'jarod-os:camera:request',
 
   /** Type text into whatever app is focused (wtype on Wayland, a paste on macOS). */
-  dictationType: 'herald-os:dictation:type',
+  dictationType: 'jarod-os:dictation:type',
 
   /** The install catalog: groups of software with their state here, and installing or removing one. */
-  catalogList: 'herald-os:catalog:list',
-  catalogInstall: 'herald-os:catalog:install',
-  catalogRemove: 'herald-os:catalog:remove',
+  catalogList: 'jarod-os:catalog:list',
+  catalogInstall: 'jarod-os:catalog:install',
+  catalogRemove: 'jarod-os:catalog:remove',
   /** Models a local server (Ollama, LM Studio) has, for "Use with Hermes". */
-  catalogLocalModels: 'herald-os:catalog:local-models',
+  catalogLocalModels: 'jarod-os:catalog:local-models',
 
   /** Widget plugins (ADR-019): the installed ones, turning one on or off, git installs, and their messages. */
-  pluginsList: 'herald-os:plugins:list',
-  pluginsSetEnabled: 'herald-os:plugins:set-enabled',
-  pluginsAdd: 'herald-os:plugins:add',
-  pluginsUpdate: 'herald-os:plugins:update',
-  pluginsRemove: 'herald-os:plugins:remove',
-  pluginCall: 'herald-os:plugins:call',
+  pluginsList: 'jarod-os:plugins:list',
+  pluginsSetEnabled: 'jarod-os:plugins:set-enabled',
+  pluginsAdd: 'jarod-os:plugins:add',
+  pluginsUpdate: 'jarod-os:plugins:update',
+  pluginsRemove: 'jarod-os:plugins:remove',
+  pluginCall: 'jarod-os:plugins:call',
   /** main → renderer: the plugin list changed (installed, enabled, files saved). */
-  pluginsChanged: 'herald-os:plugins:changed',
+  pluginsChanged: 'jarod-os:plugins:changed',
 
   /** First-boot setup on the Jarod-OS image: whether it is due, the name, the password, done. */
-  setupState: 'herald-os:setup:state',
+  setupState: 'jarod-os:setup:state',
   /** First-run Telegram step: check a bot token (`getMe`); wait for a message to the bot and answer it. */
-  setupTelegramCheck: 'herald-os:setup:telegram-check',
-  setupTelegramTest: 'herald-os:setup:telegram-test',
-  setupName: 'herald-os:setup:name',
-  setupPassword: 'herald-os:setup:password',
-  setupFinish: 'herald-os:setup:finish',
+  setupTelegramCheck: 'jarod-os:setup:telegram-check',
+  setupTelegramTest: 'jarod-os:setup:telegram-test',
+  setupName: 'jarod-os:setup:name',
+  setupPassword: 'jarod-os:setup:password',
+  setupFinish: 'jarod-os:setup:finish',
 
-  /** The events main emitted lately (`HeraldEvent[]`, newest first), for Settings and the agent. */
-  eventsRecent: 'herald-os:events:recent',
+  /** The events main emitted lately (`JarodEvent[]`, newest first), for Settings and the agent. */
+  eventsRecent: 'jarod-os:events:recent',
 
   /** A quick panel's state (Wi-Fi networks, Bluetooth devices, audio devices, displays, power). */
-  controlsStatus: 'herald-os:controls:status',
+  controlsStatus: 'jarod-os:controls:status',
   /** Change something from a quick panel (`ControlAction`); resolves with the panel's new state. */
-  controlsAction: 'herald-os:controls:action',
+  controlsAction: 'jarod-os:controls:action',
 
-  switchesGet: 'herald-os:switches:get',
+  switchesGet: 'jarod-os:switches:get',
   /** Turn one switch on or off; resolves with every switch's state. */
-  switchesSet: 'herald-os:switches:set',
+  switchesSet: 'jarod-os:switches:set',
   /** Main -> renderer: a switch changed (from the CLI, a hotkey or another window). */
-  switchesChanged: 'herald-os:switches:changed',
+  switchesChanged: 'jarod-os:switches:changed',
 
   /** The notification history (the last week), kept across restarts. */
-  notificationsLoad: 'herald-os:notifications:load',
-  notificationsSave: 'herald-os:notifications:save',
+  notificationsLoad: 'jarod-os:notifications:load',
+  notificationsSave: 'jarod-os:notifications:save',
 
-  terminalCreate: 'herald-os:terminal:create',
-  terminalWrite: 'herald-os:terminal:write',
-  terminalResize: 'herald-os:terminal:resize',
-  terminalDispose: 'herald-os:terminal:dispose',
-  terminalData: 'herald-os:terminal:data',
-  terminalExit: 'herald-os:terminal:exit',
+  terminalCreate: 'jarod-os:terminal:create',
+  terminalWrite: 'jarod-os:terminal:write',
+  terminalResize: 'jarod-os:terminal:resize',
+  terminalDispose: 'jarod-os:terminal:dispose',
+  terminalData: 'jarod-os:terminal:data',
+  terminalExit: 'jarod-os:terminal:exit',
 
-  notifyNative: 'herald-os:notify:native',
+  notifyNative: 'jarod-os:notify:native',
 
-  windowState: 'herald-os:window:state',
-  windowGetState: 'herald-os:window:get-state',
-  windowToggleFullscreen: 'herald-os:window:toggle-fullscreen',
-  windowQuit: 'herald-os:window:quit',
-  windowRelaunch: 'herald-os:window:relaunch',
-  windowMinimize: 'herald-os:window:minimize',
-  windowToggleMaximize: 'herald-os:window:toggle-maximize',
-  windowClose: 'herald-os:window:close',
+  windowState: 'jarod-os:window:state',
+  windowGetState: 'jarod-os:window:get-state',
+  windowToggleFullscreen: 'jarod-os:window:toggle-fullscreen',
+  windowQuit: 'jarod-os:window:quit',
+  windowRelaunch: 'jarod-os:window:relaunch',
+  windowMinimize: 'jarod-os:window:minimize',
+  windowToggleMaximize: 'jarod-os:window:toggle-maximize',
+  windowClose: 'jarod-os:window:close',
 
-  shellOpenExternal: 'herald-os:shell:open-external',
+  shellOpenExternal: 'jarod-os:shell:open-external',
 
   /** Native gestures the Jarod engine asks for (pickers, confirmations, notices): kind + params in, the user's answer out. */
-  jarodShell: 'herald-os:jarod:shell',
+  jarodShell: 'jarod-os:jarod:shell',
 
   // Embedded web views: http(s) pages rendered inside a Jarod-OS window, never the system browser.
   /** Perform an `EditAction` in this window (or in one of its web views). */
-  editAction: 'herald-os:edit:action',
-  webOpen: 'herald-os:web:open',
+  editAction: 'jarod-os:edit:action',
+  webOpen: 'jarod-os:web:open',
   /** Show a local file (PDF, image, text, media) in a locked-down viewer view. */
-  webOpenFile: 'herald-os:web:open-file',
-  webSetBounds: 'herald-os:web:set-bounds',
-  webClose: 'herald-os:web:close',
+  webOpenFile: 'jarod-os:web:open-file',
+  webSetBounds: 'jarod-os:web:set-bounds',
+  webClose: 'jarod-os:web:close',
   /** Studio preview: a web page or a file inside the project folder. */
-  webOpenPreview: 'herald-os:web:open-preview',
-  webNavigate: 'herald-os:web:navigate',
-  webReload: 'herald-os:web:reload',
+  webOpenPreview: 'jarod-os:web:open-preview',
+  webNavigate: 'jarod-os:web:navigate',
+  webReload: 'jarod-os:web:reload',
   /** A site's own page (shared/web-sites.ts): the Browser or one of the Social apps, in its own partition. */
-  webOpenSite: 'herald-os:web:open-site',
+  webOpenSite: 'jarod-os:web:open-site',
   /** Back or forward in a view's history. */
-  webHistory: 'herald-os:web:history',
+  webHistory: 'jarod-os:web:history',
   /** Desktop apps the pages hand over to (electron/ipc/native-apps.ts): installed?, start, install with winget. */
-  nativeAppFind: 'herald-os:native-app:find',
-  nativeAppLaunch: 'herald-os:native-app:launch',
-  nativeAppInstall: 'herald-os:native-app:install',
+  nativeAppFind: 'jarod-os:native-app:find',
+  nativeAppLaunch: 'jarod-os:native-app:launch',
+  nativeAppInstall: 'jarod-os:native-app:install',
   /** A desktop app's window inside the right pane (electron/platform/window-embed.ts): take it, place it, give it back. */
-  nativeEmbedOpen: 'herald-os:native-embed:open',
-  nativeEmbedBounds: 'herald-os:native-embed:bounds',
-  nativeEmbedRelease: 'herald-os:native-embed:release',
+  nativeEmbedOpen: 'jarod-os:native-embed:open',
+  nativeEmbedBounds: 'jarod-os:native-embed:bounds',
+  nativeEmbedRelease: 'jarod-os:native-embed:release',
   /** Main -> renderer: the embedded app's window was closed. */
-  nativeEmbedGone: 'herald-os:native-embed:gone',
+  nativeEmbedGone: 'jarod-os:native-embed:gone',
   /** The Player page may stream these files (picked or dropped by the user) through jarod-media:. */
-  mediaAllow: 'herald-os:media:allow',
+  mediaAllow: 'jarod-os:media:allow',
   /** Main -> renderer: title/url/loading changes and `closed`. */
-  webEvent: 'herald-os:web:event',
+  webEvent: 'jarod-os:web:event',
 
   // The Pinokio engine (electron/pinokio): state, start/stop, its UI in a web view.
-  pinokioGetState: 'herald-os:pinokio:get-state',
+  pinokioGetState: 'jarod-os:pinokio:get-state',
   /** Main -> renderer: the engine's `PinokioState` changed. */
-  pinokioState: 'herald-os:pinokio:state',
-  pinokioStart: 'herald-os:pinokio:start',
-  pinokioStop: 'herald-os:pinokio:stop',
+  pinokioState: 'jarod-os:pinokio:state',
+  pinokioStart: 'jarod-os:pinokio:start',
+  pinokioStop: 'jarod-os:pinokio:stop',
   /** Open the engine's UI (or one of its pages) in a web view owned by this window; resolves with the view id. */
-  pinokioOpenView: 'herald-os:pinokio:open-view',
-  pinokioOpenHome: 'herald-os:pinokio:open-home',
+  pinokioOpenView: 'jarod-os:pinokio:open-view',
+  pinokioOpenHome: 'jarod-os:pinokio:open-home',
   /** Main -> renderer: show this page in a Jarod-OS web window (an app's UI, a link out of Pinokio). */
-  pinokioOpenUrl: 'herald-os:pinokio:open-url',
+  pinokioOpenUrl: 'jarod-os:pinokio:open-url',
 
   // The system audit (electron/setup/audit.ts): hardware and prerequisites, checked at first run.
-  systemAuditGet: 'herald-os:system-audit:get',
+  systemAuditGet: 'jarod-os:system-audit:get',
   /** Audit again, ignoring the saved report. */
-  systemAuditRun: 'herald-os:system-audit:run',
+  systemAuditRun: 'jarod-os:system-audit:run',
   /** Install (or update) one missing prerequisite on Windows: a closed list of tools (electron/setup/install.ts). */
-  systemAuditInstall: 'herald-os:system-audit:install',
+  systemAuditInstall: 'jarod-os:system-audit:install',
   // The Jarod disk (electron/data-root.ts, electron/data-disk.ts): where Jarod-OS keeps its data, and moving it.
-  dataDiskState: 'herald-os:data-disk:state',
-  dataDiskDrives: 'herald-os:data-disk:drives',
+  dataDiskState: 'jarod-os:data-disk:state',
+  dataDiskDrives: 'jarod-os:data-disk:drives',
   /** Make a folder the Jarod disk (copying the data in when asked), then restart. */
-  dataDiskApply: 'herald-os:data-disk:apply',
+  dataDiskApply: 'jarod-os:data-disk:apply',
   // Backups on the Jarod disk (electron/backups.ts, electron/ipc/backups.ts).
-  backupsState: 'herald-os:backups:state',
-  backupsCreate: 'herald-os:backups:create',
-  backupsSettings: 'herald-os:backups:settings',
-  backupsRemove: 'herald-os:backups:remove',
+  backupsState: 'jarod-os:backups:state',
+  backupsCreate: 'jarod-os:backups:create',
+  backupsSettings: 'jarod-os:backups:settings',
+  backupsRemove: 'jarod-os:backups:remove',
   /** Put a backup back (the current state is kept aside), then restart. */
-  backupsRestore: 'herald-os:backups:restore',
+  backupsRestore: 'jarod-os:backups:restore',
   // Sandboxes on the Jarod disk (electron/sandboxes.ts, electron/ipc/sandboxes.ts).
-  sandboxesState: 'herald-os:sandboxes:state',
-  sandboxesCreate: 'herald-os:sandboxes:create',
-  sandboxesCompare: 'herald-os:sandboxes:compare',
-  sandboxesApply: 'herald-os:sandboxes:apply',
-  sandboxesRemove: 'herald-os:sandboxes:remove',
+  sandboxesState: 'jarod-os:sandboxes:state',
+  sandboxesCreate: 'jarod-os:sandboxes:create',
+  sandboxesCompare: 'jarod-os:sandboxes:compare',
+  sandboxesApply: 'jarod-os:sandboxes:apply',
+  sandboxesRemove: 'jarod-os:sandboxes:remove',
   // Environments on the Jarod disk (electron/environments.ts, electron/ipc/environments.ts).
-  environmentsState: 'herald-os:environments:state',
-  environmentsCreate: 'herald-os:environments:create',
-  environmentsRemove: 'herald-os:environments:remove',
+  environmentsState: 'jarod-os:environments:state',
+  environmentsCreate: 'jarod-os:environments:create',
+  environmentsRemove: 'jarod-os:environments:remove',
   // WSL machines and the Jarod disk (electron/vms.ts, electron/ipc/vms.ts).
-  vmsState: 'herald-os:vms:state',
-  vmsOnline: 'herald-os:vms:online',
-  vmsCreate: 'herald-os:vms:create',
-  vmsMove: 'herald-os:vms:move',
-  vmsStop: 'herald-os:vms:stop',
+  vmsState: 'jarod-os:vms:state',
+  vmsOnline: 'jarod-os:vms:online',
+  vmsCreate: 'jarod-os:vms:create',
+  vmsMove: 'jarod-os:vms:move',
+  vmsStop: 'jarod-os:vms:stop',
   /** Erase a machine (wsl --unregister): the exact name typed by the person is required. */
-  vmsRemove: 'herald-os:vms:remove',
+  vmsRemove: 'jarod-os:vms:remove',
   // The Internet switch (shared/network-policy.ts, electron/network.ts).
-  networkGet: 'herald-os:network:get',
-  networkSet: 'herald-os:network:set',
-  networkChanged: 'herald-os:network:changed',
+  networkGet: 'jarod-os:network:get',
+  networkSet: 'jarod-os:network:set',
+  networkChanged: 'jarod-os:network:changed',
   // Remote machines (electron/remote-machines.ts, electron/ipc/remote-machines.ts).
-  remoteTailscale: 'herald-os:remote:tailscale',
-  remoteProbe: 'herald-os:remote:probe',
-  remoteScanKeys: 'herald-os:remote:scan-keys',
-  remoteTrustKeys: 'herald-os:remote:trust-keys',
-  remoteSyncHosts: 'herald-os:remote:sync-hosts',
+  remoteTailscale: 'jarod-os:remote:tailscale',
+  remoteProbe: 'jarod-os:remote:probe',
+  remoteScanKeys: 'jarod-os:remote:scan-keys',
+  remoteTrustKeys: 'jarod-os:remote:trust-keys',
+  remoteSyncHosts: 'jarod-os:remote:sync-hosts',
   // Update checks (electron/updates-check.ts).
-  updatesState: 'herald-os:updates:state',
-  updatesCheck: 'herald-os:updates:check',
-  updatesOpenWindowsUpdate: 'herald-os:updates:open-windows-update',
-  updatesPrepareUpgrade: 'herald-os:updates:prepare-upgrade',
-  updatesUpgrade: 'herald-os:updates:upgrade',
-  updatesProgress: 'herald-os:updates:progress',
+  updatesState: 'jarod-os:updates:state',
+  updatesCheck: 'jarod-os:updates:check',
+  updatesOpenWindowsUpdate: 'jarod-os:updates:open-windows-update',
+  updatesPrepareUpgrade: 'jarod-os:updates:prepare-upgrade',
+  updatesUpgrade: 'jarod-os:updates:upgrade',
+  updatesProgress: 'jarod-os:updates:progress',
   // External backups (electron/external-backup.ts, electron/ipc/external-backup.ts).
-  externalBackupState: 'herald-os:external-backup:state',
-  externalBackupEstimate: 'herald-os:external-backup:estimate',
-  externalBackupCheck: 'herald-os:external-backup:check',
-  externalBackupChoose: 'herald-os:external-backup:choose',
-  externalBackupSetDestination: 'herald-os:external-backup:set-destination',
-  externalBackupSetOptions: 'herald-os:external-backup:set-options',
-  externalBackupRun: 'herald-os:external-backup:run',
-  externalBackupCancel: 'herald-os:external-backup:cancel',
-  externalBackupRestore: 'herald-os:external-backup:restore',
-  externalBackupProgress: 'herald-os:external-backup:progress',
+  externalBackupState: 'jarod-os:external-backup:state',
+  externalBackupEstimate: 'jarod-os:external-backup:estimate',
+  externalBackupCheck: 'jarod-os:external-backup:check',
+  externalBackupChoose: 'jarod-os:external-backup:choose',
+  externalBackupSetDestination: 'jarod-os:external-backup:set-destination',
+  externalBackupSetOptions: 'jarod-os:external-backup:set-options',
+  externalBackupRun: 'jarod-os:external-backup:run',
+  externalBackupCancel: 'jarod-os:external-backup:cancel',
+  externalBackupRestore: 'jarod-os:external-backup:restore',
+  externalBackupProgress: 'jarod-os:external-backup:progress',
 
-  prefsGet: 'herald-os:prefs:get',
-  prefsSet: 'herald-os:prefs:set',
-  prefsChanged: 'herald-os:prefs:changed',
+  prefsGet: 'jarod-os:prefs:get',
+  prefsSet: 'jarod-os:prefs:set',
+  prefsChanged: 'jarod-os:prefs:changed',
 
-  bridgePolicyRead: 'herald-os:bridge:policy-read',
-  bridgePolicyWrite: 'herald-os:bridge:policy-write',
-  bridgeAuditRead: 'herald-os:bridge:audit-read',
+  bridgePolicyRead: 'jarod-os:bridge:policy-read',
+  bridgePolicyWrite: 'jarod-os:bridge:policy-write',
+  bridgeAuditRead: 'jarod-os:bridge:audit-read',
 
-  envInfo: 'herald-os:env:info',
+  envInfo: 'jarod-os:env:info',
 
   // OS control: main asks the Hermes window to run a registry command (from the control socket /
   // the agent's os_ui tool) and the window replies.
-  osControlRequest: 'herald-os:os-control:request',
-  osControlReply: 'herald-os:os-control:reply',
+  osControlRequest: 'jarod-os:os-control:request',
+  osControlReply: 'jarod-os:os-control:reply',
   /** Renderer -> main: this window asks for one registry command (the gate decides, then the bridge runs it). */
-  controlRun: 'herald-os:control:run',
+  controlRun: 'jarod-os:control:run',
 
   // Voice: microphone permission, tokenized audio WebSocket URLs, the global hotkey.
-  voiceRequestMicrophone: 'herald-os:voice:request-microphone',
-  voiceMicrophoneStatus: 'herald-os:voice:microphone-status',
-  voiceAudioWsUrl: 'herald-os:voice:audio-ws-url',
+  voiceRequestMicrophone: 'jarod-os:voice:request-microphone',
+  voiceMicrophoneStatus: 'jarod-os:voice:microphone-status',
+  voiceAudioWsUrl: 'jarod-os:voice:audio-ws-url',
   /** Main -> renderer: the global voice hotkey was pressed. */
-  voiceHotkey: 'herald-os:voice:hotkey',
+  voiceHotkey: 'jarod-os:voice:hotkey',
 
   // Panels mode: surfaces, cross-window relay, compositor state.
-  shellOpen: 'herald-os:shell:open',
-  shellClose: 'herald-os:shell:close',
-  shellRelay: 'herald-os:shell:relay',
-  shellCommand: 'herald-os:shell:command',
-  shellResize: 'herald-os:shell:resize',
-  shellWallpaperFrame: 'herald-os:shell:wallpaper-frame',
-  wmGetState: 'herald-os:wm:get-state',
-  wmState: 'herald-os:wm:state',
-  wmAction: 'herald-os:wm:action',
+  shellOpen: 'jarod-os:shell:open',
+  shellClose: 'jarod-os:shell:close',
+  shellRelay: 'jarod-os:shell:relay',
+  shellCommand: 'jarod-os:shell:command',
+  shellResize: 'jarod-os:shell:resize',
+  shellWallpaperFrame: 'jarod-os:shell:wallpaper-frame',
+  wmGetState: 'jarod-os:wm:get-state',
+  wmState: 'jarod-os:wm:state',
+  wmAction: 'jarod-os:wm:action',
 
   // Phase 2: system services reachable from any surface.
   /** Run a `herald-os` CLI command (install, reminder, notice, ocr, …); resolves with its output. */
-  shellHeraldOs: 'herald-os:shell:herald-os',
-  menuExtensions: 'herald-os:menu:extensions',
-  menuExtensionRun: 'herald-os:menu:extension-run',
-  brandingGet: 'herald-os:branding:get',
-  brandingSet: 'herald-os:branding:set',
-  brandingChanged: 'herald-os:branding:changed',
+  shellJarodOs: 'jarod-os:shell:herald-os',
+  menuExtensions: 'jarod-os:menu:extensions',
+  menuExtensionRun: 'jarod-os:menu:extension-run',
+  brandingGet: 'jarod-os:branding:get',
+  brandingSet: 'jarod-os:branding:set',
+  brandingChanged: 'jarod-os:branding:changed',
   /** Power actions: suspend | reboot | poweroff | logout | lock. */
-  shellPower: 'herald-os:shell:power',
+  shellPower: 'jarod-os:shell:power',
   /** Clipboard history (cliphist): list entries / paste one back to the clipboard. */
-  clipboardHistory: 'herald-os:clipboard:history',
-  clipboardPaste: 'herald-os:clipboard:paste',
+  clipboardHistory: 'jarod-os:clipboard:history',
+  clipboardPaste: 'jarod-os:clipboard:paste',
   /** Desktop notifications from other apps (org.freedesktop.Notifications), pushed to the Hermes window. */
-  notificationsIncoming: 'herald-os:notifications:incoming',
-  notificationsAction: 'herald-os:notifications:action'
+  notificationsIncoming: 'jarod-os:notifications:incoming',
+  notificationsAction: 'jarod-os:notifications:action'
 } as const
 
 export type PowerAction = 'suspend' | 'reboot' | 'poweroff' | 'logout' | 'lock'
@@ -1140,7 +1140,7 @@ export interface IncomingNotification {
   expireTimeout: number
 }
 
-export interface HeraldOsResult {
+export interface JarodOsResult {
   code: number
   stdout: string
   stderr: string

@@ -1,5 +1,5 @@
 import { app, Menu, nativeImage, Tray } from 'electron'
-import type { HeraldOSPrefs } from '../shared/ipc.ts'
+import type { JarodOSPrefs } from '../shared/ipc.ts'
 import { log } from './log.ts'
 
 /*
@@ -16,7 +16,7 @@ const LABELS: Record<Language, { show: string; safe: string; normal: string; qui
 }
 
 /** The menu's language: the one chosen in Settings, else the system's when it is French. */
-export function trayLanguage(preference: HeraldOSPrefs['language'], systemLocale: string): Language {
+export function trayLanguage(preference: JarodOSPrefs['language'], systemLocale: string): Language {
   if (preference === 'en' || preference === 'fr') {
     return preference
   }

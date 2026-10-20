@@ -120,7 +120,7 @@ async function gatherEvidence(awayMs?: number): Promise<CatchUpEvidence> {
   const { exclude } = $continuity.get()
   const home = $env.get()?.homeDir ?? ''
   const hidden = (text: string | undefined) => Boolean(text && isExcluded(text, exclude, home))
-  const [snapshot, calendar] = await Promise.all([window.heraldOS.context.snapshot(), window.heraldOS.calendar.today().catch(() => null)])
+  const [snapshot, calendar] = await Promise.all([window.jarodOS.context.snapshot(), window.jarodOS.calendar.today().catch(() => null)])
   const now = Date.now()
   // Conversations only: automation runs (a reminder every half hour) would crowd them out. A request
   // Hermes never answered (stopped or failed) counts: that is unfinished work.
@@ -271,7 +271,7 @@ export function bindContinuity(): () => void {
     booted = true
     setTimeout(() => void refreshThreads(), BOOT_DELAY_MS)
   })
-  const offReturned = window.heraldOS.context.onReturned(event => {
+  const offReturned = window.jarodOS.context.onReturned(event => {
     void refreshThreads({ force: true, awayMs: event.awayMs }).then(threads => {
       // Offer, never navigate: the Overview already shows the cards.
       if (threads.length && $page.get() !== 'overview') {

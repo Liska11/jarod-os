@@ -1,4 +1,4 @@
-import { type HeraldEvent, matchesRule } from '../../shared/events.ts'
+import { type JarodEvent, matchesRule } from '../../shared/events.ts'
 import type { BackendManager } from '../backend/manager.ts'
 import { log } from '../log.ts'
 import { readPrefs } from '../prefs.ts'
@@ -8,7 +8,7 @@ import { readPrefs } from '../prefs.ts'
  * job runs it and resumes it (Hermes's `force` fire), so it is paused again straight away to keep
  * it event-only. The run itself happens in Hermes's cron runner, with its usual history and delivery.
  */
-export async function fireEventAutomations(event: HeraldEvent, backend: BackendManager): Promise<void> {
+export async function fireEventAutomations(event: JarodEvent, backend: BackendManager): Promise<void> {
   const rules = (readPrefs().eventAutomations ?? []).filter(rule => matchesRule(rule, event))
 
   if (rules.length === 0) {

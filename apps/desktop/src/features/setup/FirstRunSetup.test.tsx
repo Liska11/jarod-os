@@ -19,7 +19,7 @@ beforeEach(() => {
   resetCommands()
   defineCommands(setupCommands)
   $setupRequested.set(false)
-  ;(window as unknown as { heraldOS: unknown }).heraldOS = { setup: { state: async () => ({ mode: 'desktop', needed: false }), finish } }
+  ;(window as unknown as { jarodOS: unknown }).jarodOS = { setup: { state: async () => ({ mode: 'desktop', needed: false }), finish } }
 })
 
 afterEach(() => {

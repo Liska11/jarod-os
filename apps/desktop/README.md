@@ -16,7 +16,7 @@ electron/              Electron main: owns the machine
   platform/            HostPlatform per OS: darwin.ts, linux.ts, generic.ts (placeholder elsewhere)
   shell/               shell modes, panels-mode windows, control socket, notification daemon
   wm/                  niri compositor IPC (Linux panels mode)
-preload/index.ts       the `window.heraldOS` bridge, the renderer's only way to reach main
+preload/index.ts       the `window.jarodOS` bridge, the renderer's only way to reach main
 shared/                types shared by main, preload and renderer (IPC contract, voice settings)
 src/                   React renderer
   main.tsx             entry

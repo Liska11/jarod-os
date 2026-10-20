@@ -34,7 +34,7 @@ export function TelegramStep({ onDone }: { onDone: () => void }) {
     setError(null)
     setTrip(null)
     try {
-      const result = await window.heraldOS.setup.telegramCheck(token)
+      const result = await window.jarodOS.setup.telegramCheck(token)
       setBot(result)
       if (!result.ok) setError(telegramError(result))
     } finally {
@@ -46,7 +46,7 @@ export function TelegramStep({ onDone }: { onDone: () => void }) {
     setBusy('test')
     setError(null)
     try {
-      const result = await window.heraldOS.setup.telegramTest(token, t('setup.telegram.reply'))
+      const result = await window.jarodOS.setup.telegramTest(token, t('setup.telegram.reply'))
       setTrip(result)
       if (!result.ok) setError(telegramError(result))
     } finally {

@@ -1,6 +1,6 @@
 import { useStore } from '@nanostores/react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { HeraldOSPrefs } from '../../shared/ipc.ts'
+import type { JarodOSPrefs } from '../../shared/ipc.ts'
 import { wallpaperTint, type WallpaperTint } from '../../shared/theme.ts'
 import { $prefs, $windowState } from '../store/backend.ts'
 
@@ -31,7 +31,7 @@ const OCEAN_STOPS: WallpaperTint['stops'] = ['#1240c8', '#0a2a96', '#04113f']
 const OCEAN_HUE = 214
 
 /** The drawn wallpaper's tint for the current theme (null keeps the ocean blues). */
-export function tintFor(prefs: Pick<HeraldOSPrefs, 'themeColors' | 'themeScheme'>): WallpaperTint | null {
+export function tintFor(prefs: Pick<JarodOSPrefs, 'themeColors' | 'themeScheme'>): WallpaperTint | null {
   return wallpaperTint(prefs.themeColors, prefs.themeScheme)
 }
 
@@ -133,7 +133,7 @@ function useWallpaperSource(custom: string | undefined): string | undefined {
     }
 
     let cancelled = false
-    window.heraldOS.capture.readImage(custom).then(
+    window.jarodOS.capture.readImage(custom).then(
       url => !cancelled && setSource(url),
       () => !cancelled && setSource(custom.startsWith('/') ? `file://${custom}` : custom)
     )

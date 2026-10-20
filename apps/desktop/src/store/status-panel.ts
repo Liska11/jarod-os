@@ -20,14 +20,14 @@ export function openStatusPanel(panel: StatusPanelId): void {
 }
 
 export async function loadPanel(panel: Exclude<StatusPanelId, 'clock'>): Promise<StatusPanelState> {
-  const state = await window.heraldOS.controls.status(panel)
+  const state = await window.jarodOS.controls.status(panel)
   $panelStates.setKey(panel, state)
 
   return state
 }
 
 export async function panelAction(action: ControlAction): Promise<StatusPanelState> {
-  const state = await window.heraldOS.controls.act(action)
+  const state = await window.jarodOS.controls.act(action)
   $panelStates.setKey(action.panel, state)
 
   return state

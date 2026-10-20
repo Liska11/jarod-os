@@ -62,7 +62,7 @@ export function FileTree({ root, files, activeFile, revision, onOpen }: { root: 
   useEffect(() => {
     let cancelled = false
     const timer = setTimeout(() => {
-      window.heraldOS.fs
+      window.jarodOS.fs
         .listTree(root)
         .then(result => {
           if (!cancelled) {

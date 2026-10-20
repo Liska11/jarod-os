@@ -2,7 +2,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { BrowserWindow, ipcMain, powerMonitor, powerSaveBlocker } from 'electron'
-import { type HeraldOSPrefs, type IdleTimings, IPC, type SwitchName, type SwitchState } from '../shared/ipc.ts'
+import { type JarodOSPrefs, type IdleTimings, IPC, type SwitchName, type SwitchState } from '../shared/ipc.ts'
 import { log } from './log.ts'
 import { run } from './platform/exec.ts'
 import { readPrefs, writePrefs } from './prefs.ts'
@@ -20,7 +20,7 @@ const IDLE_POLL_MS = 10_000
 const SWITCH_NAMES: readonly SwitchName[] = ['nightLight', 'stayAwake', 'doNotDisturb', 'screensaver']
 
 /** idle.conf for linux/bin/herald-os-idle: seconds, 0 for never. */
-export function renderIdleConf(prefs: Pick<HeraldOSPrefs, 'idle' | 'screensaver'>): string {
+export function renderIdleConf(prefs: Pick<JarodOSPrefs, 'idle' | 'screensaver'>): string {
   const idle = { ...IDLE_DEFAULTS, ...prefs.idle }
   const seconds = (minutes: number) => Math.max(0, Math.round(minutes * 60))
   const screensaver = prefs.screensaver?.enabled ? seconds(prefs.screensaver.afterMinutes || SCREENSAVER_DEFAULT_MINUTES) : 0
@@ -46,7 +46,7 @@ export class SwitchService {
       session: boolean
       getWindows: () => BrowserWindow[]
       /** Preferences changed here (do not disturb, the screensaver): every window follows. */
-      onPrefs: (prefs: HeraldOSPrefs) => void
+      onPrefs: (prefs: JarodOSPrefs) => void
       /** Desktop mode: show the screensaver over the shell. */
       showScreensaver: () => void
     }
@@ -131,7 +131,7 @@ export class SwitchService {
   }
 
   /** Settings changed the idle timings or the screensaver delay. */
-  async applyIdle(prefs: HeraldOSPrefs): Promise<void> {
+  async applyIdle(prefs: JarodOSPrefs): Promise<void> {
     if (!this.options.session) {
       return
     }
@@ -180,7 +180,7 @@ export class SwitchService {
     return state
   }
 
-  private writeIdleConf(prefs: HeraldOSPrefs): void {
+  private writeIdleConf(prefs: JarodOSPrefs): void {
     try {
       fs.mkdirSync(path.dirname(IDLE_CONF), { recursive: true })
       fs.writeFileSync(IDLE_CONF, renderIdleConf(prefs))

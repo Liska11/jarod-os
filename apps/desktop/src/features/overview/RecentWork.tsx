@@ -30,7 +30,7 @@ function menuFor(file: RecentFile, onRemove: () => void): MenuItemDef[] {
   const items: MenuItemDef[] = [{ id: 'open', label: t('recent.open'), icon: <IconAppWindow />, onSelect: () => openRecent(file) }]
 
   if (file.kind === 'file' && isViewable(file.path)) {
-    items.push({ id: 'open-app', label: t('recent.openInApp'), icon: <IconExternalLink />, onSelect: () => void window.heraldOS.fs.openPath(file.path).catch(error => notify({ title: t('recent.openFailed', { name: file.name }), body: String(error), level: 'error' })) })
+    items.push({ id: 'open-app', label: t('recent.openInApp'), icon: <IconExternalLink />, onSelect: () => void window.jarodOS.fs.openPath(file.path).catch(error => notify({ title: t('recent.openFailed', { name: file.name }), body: String(error), level: 'error' })) })
   }
 
   items.push(

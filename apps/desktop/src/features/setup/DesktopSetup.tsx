@@ -1,7 +1,7 @@
 import { IconAlertTriangle, IconCheck, IconCopy, IconCpu, IconDeviceFloppy, IconDownload, IconInfoCircle, IconRefresh, IconSparkles, IconX } from '@tabler/icons-react'
 import { useEffect, useState } from 'react'
 import { type AuditReport, type Check, type CheckStatus, INSTALLABLE_PREREQUISITES, type SystemFacts } from '../../../shared/system-audit.ts'
-import { HeraldLogo } from '../../components/herald-logo.tsx'
+import { JarodLogo } from '../../components/jarod-logo.tsx'
 import { GlassButton } from '../../components/ui/glass.tsx'
 import { Spinner } from '../../components/ui/primitives.tsx'
 import { cn } from '../../lib/cn.ts'
@@ -26,7 +26,7 @@ export function DesktopSetup({ onFinished, onDemand = false }: { onFinished: () 
   const next = () => setStep(STEPS[Math.min(STEPS.length - 1, STEPS.indexOf(step) + 1)] ?? 'done')
 
   const finish = async () => {
-    if (!onDemand) await window.heraldOS.setup.finish({})
+    if (!onDemand) await window.jarodOS.setup.finish({})
     onFinished()
   }
 
@@ -34,7 +34,7 @@ export function DesktopSetup({ onFinished, onDemand = false }: { onFinished: () 
     <div className="absolute inset-0 z-(--z-boot) flex items-center justify-center bg-bg/85 backdrop-blur-md animate-fade-in" role="dialog" aria-label={t('setup.title')}>
       <div className="float flex max-h-[92vh] w-[min(640px,92vw)] flex-col gap-5 rounded-2xl p-7">
         <div className="flex items-center gap-3">
-          <HeraldLogo height={56} />
+          <JarodLogo height={56} />
           <span className="flex-1" />
           <div className="flex gap-1.5" aria-hidden>
             {STEPS.map(item => (
@@ -146,7 +146,7 @@ function AuditStep({ onDone }: { onDone: () => void }) {
     setBusy(true)
     setError(null)
     try {
-      setReport(await (fresh ? window.heraldOS.systemAudit.run() : window.heraldOS.systemAudit.get()))
+      setReport(await (fresh ? window.jarodOS.systemAudit.run() : window.jarodOS.systemAudit.get()))
     } catch (failure) {
       setError((failure as Error).message)
     } finally {
@@ -171,7 +171,7 @@ function AuditStep({ onDone }: { onDone: () => void }) {
   const install = async (check: Check): Promise<boolean> => {
     setInstalling(check.id)
     try {
-      const outcome = await window.heraldOS.systemAudit.install(check.id, check.status === 'outdated')
+      const outcome = await window.jarodOS.systemAudit.install(check.id, check.status === 'outdated')
       setOutcomes(current => ({ ...current, [check.id]: outcome }))
       return outcome.ok
     } catch (failure) {

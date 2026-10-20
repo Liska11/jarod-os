@@ -100,7 +100,7 @@ export function DockSurface() {
     setTimeout(() => setBouncing(null), 450)
 
     try {
-      await window.heraldOS.apps.launch(app.path)
+      await window.jarodOS.apps.launch(app.path)
     } catch (error) {
       notify({ title: t('dock.openFailed', { name: app.name }), body: error instanceof Error ? error.message : String(error), level: 'error' })
     }
@@ -211,7 +211,7 @@ export function DockSurface() {
 
     const fixed: DockEntry[] = [
       { id: 'applications', label: 'Applications', render: () => <span className="icon-tile size-11 rounded-[11px]"><AppGlyph id="grid" size={22} /></span>, onClick: () => openSurface('command', { type: 'applications' }) },
-      { id: 'trash', label: 'Trash', render: () => <span className="flex size-11 items-center justify-center rounded-[11px] bg-white/6 text-fg-2"><AppGlyph id="trash" size={22} /></span>, onClick: () => window.heraldOS.fs.openPath(trashPath).catch(() => undefined) }
+      { id: 'trash', label: 'Trash', render: () => <span className="flex size-11 items-center justify-center rounded-[11px] bg-white/6 text-fg-2"><AppGlyph id="trash" size={22} /></span>, onClick: () => window.jarodOS.fs.openPath(trashPath).catch(() => undefined) }
     ]
 
     return [...list.slice(0, MAX_ITEMS - fixed.length), ...fixed]

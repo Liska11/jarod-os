@@ -2,10 +2,10 @@ import type { RestRequest } from '../../shared/ipc.ts'
 
 /** REST through Electron main (which holds the session token). */
 export const rest = {
-  get: <T,>(path: string, query?: RestRequest['query']) => window.heraldOS.backend.rest<T>({ method: 'GET', path, query }),
-  post: <T,>(path: string, body?: unknown, query?: RestRequest['query']) => window.heraldOS.backend.rest<T>({ method: 'POST', path, body, query }),
-  put: <T,>(path: string, body?: unknown, query?: RestRequest['query']) => window.heraldOS.backend.rest<T>({ method: 'PUT', path, body, query }),
-  del: <T,>(path: string, query?: RestRequest['query']) => window.heraldOS.backend.rest<T>({ method: 'DELETE', path, query })
+  get: <T,>(path: string, query?: RestRequest['query']) => window.jarodOS.backend.rest<T>({ method: 'GET', path, query }),
+  post: <T,>(path: string, body?: unknown, query?: RestRequest['query']) => window.jarodOS.backend.rest<T>({ method: 'POST', path, body, query }),
+  put: <T,>(path: string, body?: unknown, query?: RestRequest['query']) => window.jarodOS.backend.rest<T>({ method: 'PUT', path, body, query }),
+  del: <T,>(path: string, query?: RestRequest['query']) => window.jarodOS.backend.rest<T>({ method: 'DELETE', path, query })
 }
 
 export interface CronJob {

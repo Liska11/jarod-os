@@ -24,11 +24,11 @@ export function DataDiskPicker({ compact = false }: { compact?: boolean }) {
   const [result, setResult] = useState<DataDiskApplyResult | null>(null)
 
   useEffect(() => {
-    void window.heraldOS.dataDisk
+    void window.jarodOS.dataDisk
       .state()
       .then(setState)
       .catch(() => undefined)
-    void window.heraldOS.dataDisk
+    void window.jarodOS.dataDisk
       .drives()
       .then(list => {
         setDrives(list)
@@ -49,7 +49,7 @@ export function DataDiskPicker({ compact = false }: { compact?: boolean }) {
   }
 
   const browse = async () => {
-    const [folder] = await window.heraldOS.fs.pickFiles({ directory: true }).catch(() => [])
+    const [folder] = await window.jarodOS.fs.pickFiles({ directory: true }).catch(() => [])
 
     if (folder) {
       setRoot(folder)
@@ -62,7 +62,7 @@ export function DataDiskPicker({ compact = false }: { compact?: boolean }) {
     setResult(null)
 
     try {
-      setResult(await window.heraldOS.dataDisk.apply(root.trim(), move))
+      setResult(await window.jarodOS.dataDisk.apply(root.trim(), move))
     } catch (reason) {
       setResult({ ok: false, error: reason instanceof Error ? reason.message : String(reason) })
     } finally {

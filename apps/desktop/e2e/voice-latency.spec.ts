@@ -10,7 +10,7 @@ let shell: Launched
 test.beforeAll(async () => {
   shell = await launchShell()
   await expect(shell.page.getByRole('button', { name: 'Accueil' }).first()).toBeVisible({ timeout: 60_000 })
-  await expect.poll(async () => (await shell.page.evaluate(() => window.heraldOS.backend.getState())).phase, { timeout: 60_000 }).toBe('ready')
+  await expect.poll(async () => (await shell.page.evaluate(() => window.jarodOS.backend.getState())).phase, { timeout: 60_000 }).toBe('ready')
 })
 
 test.afterAll(async () => {
@@ -28,7 +28,7 @@ test('the core synthesizes speech locally; one sentence and a whole reply are ti
   const timings = await shell.page.evaluate(async sentences => {
     const time = async (text: string) => {
       const started = performance.now()
-      const result = await window.heraldOS.backend.rest<{ data_url?: string }>({ method: 'POST', path: '/api/audio/speak', body: { text } })
+      const result = await window.jarodOS.backend.rest<{ data_url?: string }>({ method: 'POST', path: '/api/audio/speak', body: { text } })
 
       return { ms: Math.round(performance.now() - started), ok: Boolean(result?.data_url) }
     }

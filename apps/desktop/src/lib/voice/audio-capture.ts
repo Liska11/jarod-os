@@ -49,10 +49,10 @@ async function open(): Promise<void> {
   }
 
   opening = (async () => {
-    const permission = await window.heraldOS.voice.microphoneStatus().catch(() => 'unknown' as const)
+    const permission = await window.jarodOS.voice.microphoneStatus().catch(() => 'unknown' as const)
 
     if (permission === 'not-determined') {
-      const granted = await window.heraldOS.voice.requestMicrophone().catch(() => 'unknown' as const)
+      const granted = await window.jarodOS.voice.requestMicrophone().catch(() => 'unknown' as const)
 
       if (granted === 'denied' || granted === 'restricted') {
         throw new MicrophoneUnavailableError('denied', `Microphone access was denied. Allow Jarod-OS in ${privacySettingsPath('Microphone')}.`)

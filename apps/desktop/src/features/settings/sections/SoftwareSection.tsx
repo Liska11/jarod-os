@@ -122,7 +122,7 @@ function UseWithHermes({ kind, label }: { kind: 'ollama' | 'lmstudio'; label: st
     setLoading(true)
 
     try {
-      setModels(await window.heraldOS.catalog.localModels(kind))
+      setModels(await window.jarodOS.catalog.localModels(kind))
     } catch (error) {
       notify({ title: t('software.notReady', { label }), body: errorText(error), level: 'warn' })
     } finally {

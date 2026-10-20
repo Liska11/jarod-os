@@ -63,7 +63,7 @@ describe("modèle", () => {
 });
 
 // Herald lit ce YAML pour trouver le fournisseur actif (apps/desktop/src/lib/hermes-auth.ts `parseActiveProvider`) : même expression ici.
-const heraldActiveProvider = (yaml: string): string | null => {
+const jarodActiveProvider = (yaml: string): string | null => {
   const block = /^model:\s*\n((?:[ \t]+.*\n?)*)/m.exec(yaml);
   const match = block ? /^[ \t]+provider:\s*['"]?([\w.-]+)['"]?/m.exec(block[1]!) : null;
   return match?.[1] ?? null;
@@ -75,7 +75,7 @@ describe("config/raw : une vue en lecture seule du modèle actif", () => {
     const s = fakeSettings({ activeProvider: "lmstudio", activeModel: "qwen3-8b", providerOverrides: { lmstudio: { baseUrl: "http://u:p@127.0.0.1:1234/v1" } }, apiKey: "x" });
     const { yaml } = configRaw(s);
     expect(yaml).toBe('model:\n  provider: "lmstudio"\n  default: "qwen3-8b"\n');
-    expect(heraldActiveProvider(yaml)).toBe("lmstudio");
+    expect(jarodActiveProvider(yaml)).toBe("lmstudio");
     expect(yaml).not.toMatch(/baseUrl|127\.0\.0\.1|providerOverrides|apiKey/);
     expect(configRaw(fakeSettings({ activeProvider: "", activeModel: "" })).yaml).toBe("model:\n");
   });
@@ -85,12 +85,12 @@ describe("config/raw : une vue en lecture seule du modèle actif", () => {
     expect(yaml).not.toContain(SECRET_SHAPE);
     expect(yaml).not.toMatch(/CANARI/);
     expect(redactText(yaml)).toBe(yaml); // plus rien que le masqueur de Jarod reconnaîtrait comme un secret
-    expect(heraldActiveProvider(yaml)).toBe("custom");
+    expect(jarodActiveProvider(yaml)).toBe("custom");
   });
 
   it("les guillemets et retours à la ligne d'un nom de modèle ne cassent pas le YAML", () => {
     const { yaml } = configRaw(fakeSettings({ activeProvider: "custom", activeModel: 'a"b\nprovider: pirate' }));
-    expect(heraldActiveProvider(yaml)).toBe("custom");
+    expect(jarodActiveProvider(yaml)).toBe("custom");
     expect(yaml.split("\n").filter((l) => l.startsWith("  provider:"))).toHaveLength(1);
   });
 });

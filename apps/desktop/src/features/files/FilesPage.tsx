@@ -83,7 +83,7 @@ function isTypingTarget(target: EventTarget | null): boolean {
 
 /** Dropped files (Finder, Explorer): Electron no longer exposes File.path, so this only works when the bridge adds it. */
 function pathOfDroppedFile(file: File): string | null {
-  const candidate = window.heraldOS.fs.pathForFile?.(file) || (file as File & { path?: string }).path
+  const candidate = window.jarodOS.fs.pathForFile?.(file) || (file as File & { path?: string }).path
 
   return typeof candidate === 'string' && isAbsolutePath(candidate) ? candidate : null
 }
@@ -475,7 +475,7 @@ export function FilesPage() {
                   label: t('filesPage.openTerminal'),
                   icon: <IconTerminal2 />,
                   disabled: !cwd,
-                  onSelect: () => cwd && window.heraldOS.fs.openIn('terminal', cwd).catch(error => notify({ title: t('filesPage.openTerminalFailed'), body: messageOf(error), level: 'error' }))
+                  onSelect: () => cwd && window.jarodOS.fs.openIn('terminal', cwd).catch(error => notify({ title: t('filesPage.openTerminalFailed'), body: messageOf(error), level: 'error' }))
                 },
                 { id: 'hidden', label: showHidden ? t('filesPage.hideHidden') : t('filesPage.showHidden'), icon: showHidden ? <IconEyeOff /> : <IconEye />, checked: showHidden, onSelect: () => $showHidden.set(!showHidden), dividerBefore: true },
                 { id: 'refresh', label: t('filesPage.refresh'), icon: <IconRefresh />, onSelect: refresh }

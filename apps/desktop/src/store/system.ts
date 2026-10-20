@@ -15,7 +15,7 @@ export function useSystemStats(): SystemStats | null {
     subscribers++
 
     if (subscribers === 1) {
-      unsubscribe = window.heraldOS.system.subscribeStats(stats => $systemStats.set(stats))
+      unsubscribe = window.jarodOS.system.subscribeStats(stats => $systemStats.set(stats))
     }
 
     return () => {
@@ -39,7 +39,7 @@ let networkUsers = 0
 export function useNetworkStatus(): NetworkStatus | null {
   useEffect(() => {
     networkUsers++
-    const load = () => void window.heraldOS.system.network().then(value => $network.set(value)).catch(() => undefined)
+    const load = () => void window.jarodOS.system.network().then(value => $network.set(value)).catch(() => undefined)
 
     if (networkUsers === 1) {
       load()
@@ -64,7 +64,7 @@ export function useSystemInfo(): SystemInfo | null {
 
   useEffect(() => {
     if (!$systemInfo.get()) {
-      void window.heraldOS.system.info().then(value => $systemInfo.set(value))
+      void window.jarodOS.system.info().then(value => $systemInfo.set(value))
     }
   }, [])
 

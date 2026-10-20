@@ -13,7 +13,7 @@ export function pluginsAt(plugins: readonly PluginView[], placement: PluginPlace
 let bound = false
 
 export function bindPlugins(): () => void {
-  const bridge = window.heraldOS?.plugins
+  const bridge = window.jarodOS?.plugins
 
   if (bound || !bridge) {
     return () => undefined

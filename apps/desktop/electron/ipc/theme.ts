@@ -1,6 +1,6 @@
 import fs from 'node:fs'
 import { ipcMain, nativeImage } from 'electron'
-import { type HeraldOSPrefs, IPC } from '../../shared/ipc.ts'
+import { type JarodOSPrefs, IPC } from '../../shared/ipc.ts'
 import { skinToSelect, type ThemeSpec } from '../../shared/theme.ts'
 import type { BackendManager } from '../backend/manager.ts'
 import { events } from '../events/bus.ts'
@@ -12,7 +12,7 @@ import { findTheme, installTheme, listFonts, listThemes, prefsForTheme, saveThem
 export interface ThemeIpcDeps {
   panels: boolean
   /** Push new preferences to every window (and the wallpaper service). */
-  broadcast: (prefs: HeraldOSPrefs) => void
+  broadcast: (prefs: JarodOSPrefs) => void
   backend: BackendManager
 }
 
@@ -43,7 +43,7 @@ export function syncHermesSkin(spec: ThemeSpec, backend: BackendManager): void {
 }
 
 /** Apply an installed theme everywhere it reaches. */
-export async function applyTheme(name: string, deps: ThemeIpcDeps): Promise<HeraldOSPrefs> {
+export async function applyTheme(name: string, deps: ThemeIpcDeps): Promise<JarodOSPrefs> {
   const found = findTheme(name)
 
   if (!found) {

@@ -102,7 +102,7 @@ export function StudioWindow({ win }: { win: OSWindow }) {
     }
 
     let cancelled = false
-    window.heraldOS.fs
+    window.jarodOS.fs
       .readDir(root)
       .then(entries => !cancelled && setIndexOnDisk(entries.some(entry => entry.name === 'index.html' && entry.kind === 'file')))
       .catch(() => !cancelled && setIndexOnDisk(false))

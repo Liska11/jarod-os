@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { BackendState } from '../../shared/ipc.ts'
-import { HeraldLogo } from '../components/herald-logo.tsx'
+import { JarodLogo } from '../components/jarod-logo.tsx'
 import { cn } from '../lib/cn.ts'
 import { Button } from '../components/ui/button.tsx'
 import { Spinner } from '../components/ui/primitives.tsx'
@@ -29,7 +29,7 @@ export function BootScreen({ state, leaving = false }: { state: BackendState; le
       aria-hidden={leaving}
     >
       <div className={cn('no-drag glass flex w-[440px] flex-col items-center gap-6 rounded-2xl px-8 py-10 text-center', leaving && 'boot-card-leave')}>
-        <HeraldLogo height={120} />
+        <JarodLogo height={120} />
         <div className="flex flex-col gap-1.5">
           <div className="text-[22px] font-medium tracking-tight">Jarod-OS</div>
           <div className="flex items-center justify-center gap-2 text-[13px] text-fg-2">
@@ -43,13 +43,13 @@ export function BootScreen({ state, leaving = false }: { state: BackendState; le
           <div className="flex w-full flex-col gap-3">
             <div className="selectable rounded-md bg-danger/10 px-3 py-2 text-left text-[12px] text-danger">{state.error}</div>
             <div className="flex justify-center gap-2">
-              <Button variant="primary" onClick={() => void attempt('native.failed.restartEngine', () => window.heraldOS.backend.restart())}>
+              <Button variant="primary" onClick={() => void attempt('native.failed.restartEngine', () => window.jarodOS.backend.restart())}>
                 {t('boot.tryAgain')}
               </Button>
               <Button variant="ghost" onClick={() => setShowLog(v => !v)}>
                 {showLog ? t('boot.hideLog') : t('boot.showLog')}
               </Button>
-              <Button variant="ghost" onClick={() => void attempt('native.failed.quit', () => window.heraldOS.window.quit())}>
+              <Button variant="ghost" onClick={() => void attempt('native.failed.quit', () => window.jarodOS.window.quit())}>
                 {t('boot.quit')}
               </Button>
             </div>

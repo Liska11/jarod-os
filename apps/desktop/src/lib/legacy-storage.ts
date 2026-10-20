@@ -9,6 +9,8 @@ export const STORAGE_PREFIX = 'jarod-os.'
  */
 const OLDER: ReadonlyArray<{ prefix: string; keep: boolean }> = [
   { prefix: 'herald-os.', keep: true },
+  // The recent emojis were saved with a colon (`herald-os:emoji-recent`); they join the others under the current prefix.
+  { prefix: 'herald-os:', keep: true },
   { prefix: 'hermes-os.', keep: false }
 ]
 

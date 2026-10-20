@@ -74,7 +74,7 @@ export function openPaneApp(app: PaneApp): void {
 export function closePaneApp(app: PaneApp): void {
   // A desktop app's window gets its frame back when its tab closes.
   if (EMBEDDED_APPS.includes(app)) {
-    void window.heraldOS.nativeApps.release(app).catch(() => undefined)
+    void window.jarodOS.nativeApps.release(app).catch(() => undefined)
   }
 
   const next = $paneApps.get().filter(item => item !== app)

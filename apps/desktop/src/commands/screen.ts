@@ -17,7 +17,7 @@ export const screenCommands: readonly OsCommand[] = [
     args: [{ name: 'question', type: 'string', description: 'The question, if already known' }],
     phrases: ['ask about part of the screen', 'ask about this part of the screen', 'what is this on my screen'],
     run: async ({ question }, context) => {
-      const file = await window.heraldOS.capture.region()
+      const file = await window.jarodOS.capture.region()
 
       if (!file) {
         return fail('Nothing was selected.')

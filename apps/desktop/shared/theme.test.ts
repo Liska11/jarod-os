@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { contrast, HERALD_SKIN, hermesSkinYaml, isOurSkin, luminance, mix, paletteVars, parseHex, schemeOf, terminalColors, themeColorsFromSkin, themeFromPixels, themeSlug, skinToSelect, toHex, type ThemeColors, validateTheme, wallpaperTint } from './theme.ts'
+import { contrast, JAROD_SKIN, hermesSkinYaml, isOurSkin, luminance, mix, paletteVars, parseHex, schemeOf, terminalColors, themeColorsFromSkin, themeFromPixels, themeSlug, skinToSelect, toHex, type ThemeColors, validateTheme, wallpaperTint } from './theme.ts'
 
 const OCEAN: ThemeColors = { bg: '#04113f', bg2: '#0a2a96', surface: '#0b1c5a', fg: '#e9eefb', fg_dim: '#9fb0dc', accent: '#4d92ff', accent_strong: '#5296ff', border_active: '#4d92ff', border_inactive: '#1c2c66', urgent: '#ff6b6b', ok: '#36e6a6', warn: '#f2c25e' }
 const PAPER: ThemeColors = { ...OCEAN, bg: '#f4f1ea', bg2: '#ebe5d8', surface: '#ffffff', fg: '#25221c', fg_dim: '#6b6456', accent: '#b4532a', accent_strong: '#9c4522' }
@@ -103,6 +103,8 @@ describe('themes on disk', () => {
       const spec = JSON.parse(fs.readFileSync(path.join(root, name, 'theme.json'), 'utf8'))
       expect(validateTheme(spec), name).toBeNull()
       expect(spec.name, name).toBe(name)
+      // The label is what the theme picker shows: the Jarod-OS name (the id keeps its older prefix, shared with Linux).
+      expect(spec.label, name).toMatch(/^Jarod /)
       expect(contrast(spec.colors.fg, spec.colors.bg), `${name} text contrast`).toBeGreaterThanOrEqual(7)
       expect(contrast(spec.colors.accent, spec.colors.bg), `${name} accent contrast`).toBeGreaterThanOrEqual(2.5)
     }
@@ -125,7 +127,7 @@ describe('Hermes skins', () => {
   })
 
   it('the skin is jarod-os since the rename, and the older herald-os counts as ours (rename, phase 5)', () => {
-    expect(HERALD_SKIN).toBe('jarod-os')
+    expect(JAROD_SKIN).toBe('jarod-os')
     expect(isOurSkin('jarod-os')).toBe(true)
     expect(isOurSkin('herald-os')).toBe(true)
     expect(isOurSkin('ares')).toBe(false)

@@ -1,8 +1,8 @@
 import fs from 'node:fs'
 import net from 'node:net'
 import path from 'node:path'
-import { HERALD_EVENT_NAMES, isEventName } from '../../shared/events.ts'
-import type { HeraldOSPrefs, ShellCommand } from '../../shared/ipc.ts'
+import { JAROD_EVENT_NAMES, isEventName } from '../../shared/events.ts'
+import type { JarodOSPrefs, ShellCommand } from '../../shared/ipc.ts'
 import { isHexColor, THEME_COLOR_KEYS, type ThemeColors, type ThemeSpec } from '../../shared/theme.ts'
 import { events } from '../events/bus.ts'
 import { hostPlatform } from '../platform/index.ts'
@@ -58,7 +58,7 @@ export class ControlSocket {
   constructor(
     private readonly shell: ShellHost,
     /** Called after the CLI changes preferences so windows and the wallpaper follow. */
-    private readonly onPrefsChanged?: (prefs: HeraldOSPrefs) => void,
+    private readonly onPrefsChanged?: (prefs: JarodOSPrefs) => void,
     /** Runs registry commands in the Hermes window (`ui`, `ui-list`, `ui-state`; token-protected). */
     private readonly osBridge?: OsCommandBridge,
     /** A theme was applied: Hermes's skin follows it. */
@@ -342,7 +342,7 @@ export class ControlSocket {
         // The shell reads the same theme.json the engine applied; a theme only the engine can see
         // (an unusual folder) still applies from the fields it sent.
         const found = findTheme(name)
-        const patch: Partial<HeraldOSPrefs> = found ? prefsForTheme(found.spec, found.dir) : this.themeFromRequest(name, request)
+        const patch: Partial<JarodOSPrefs> = found ? prefsForTheme(found.spec, found.dir) : this.themeFromRequest(name, request)
 
         if (!found && typeof request.wallpaper === 'string') {
           patch.wallpaper = request.wallpaper || undefined
@@ -462,7 +462,7 @@ export class ControlSocket {
         const [name, ...pairs] = args
 
         if (!isEventName(name)) {
-          return { ok: false, error: `unknown event ${name ?? ''}; events: ${HERALD_EVENT_NAMES.join(', ')}` }
+          return { ok: false, error: `unknown event ${name ?? ''}; events: ${JAROD_EVENT_NAMES.join(', ')}` }
         }
 
         const detail: Record<string, string> = {}
@@ -503,7 +503,7 @@ export class ControlSocket {
     return match.name
   }
 
-  private themeFromRequest(name: string, request: ControlRequest): Partial<HeraldOSPrefs> {
+  private themeFromRequest(name: string, request: ControlRequest): Partial<JarodOSPrefs> {
     const shellSpec = (request.shell ?? {}) as { theme?: string; accent?: string }
 
     if (shellSpec.theme === 'ocean' || shellSpec.theme === 'graphite') {

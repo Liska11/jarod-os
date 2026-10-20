@@ -18,7 +18,7 @@ import { $page, $windows, openApp, showPage } from './windows.ts'
 /** Installed only in development builds (see boot.ts). */
 export function installDebugHook(): void {
   Object.assign(window as unknown as Record<string, unknown>, {
-    __heraldOS: {
+    __jarodOS: {
       sendPrompt,
       runSlash,
       createChat,

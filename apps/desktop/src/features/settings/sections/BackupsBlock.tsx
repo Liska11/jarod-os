@@ -23,7 +23,7 @@ export function BackupsBlock() {
   const [restarting, setRestarting] = useState(false)
 
   const refresh = useCallback(() => {
-    void window.heraldOS.backups
+    void window.jarodOS.backups
       .state()
       .then(setState)
       .catch(() => undefined)
@@ -36,7 +36,7 @@ export function BackupsBlock() {
   const create = async () => {
     setBusy(true)
     setError(null)
-    const result = await window.heraldOS.backups.create().catch((reason: unknown) => ({ ok: false as const, error: String(reason) }))
+    const result = await window.jarodOS.backups.create().catch((reason: unknown) => ({ ok: false as const, error: String(reason) }))
 
     if (!result.ok) {
       setError(describe(result.error))
@@ -55,8 +55,8 @@ export function BackupsBlock() {
     setError(null)
     const result =
       confirm.action === 'restore'
-        ? await window.heraldOS.backups.restore(confirm.id, confirm.workspace).catch((reason: unknown) => ({ ok: false as const, error: String(reason) }))
-        : await window.heraldOS.backups.remove(confirm.id).catch((reason: unknown) => ({ ok: false as const, error: String(reason) }))
+        ? await window.jarodOS.backups.restore(confirm.id, confirm.workspace).catch((reason: unknown) => ({ ok: false as const, error: String(reason) }))
+        : await window.jarodOS.backups.remove(confirm.id).catch((reason: unknown) => ({ ok: false as const, error: String(reason) }))
 
     if (!result.ok) {
       setError(describe(result.error))
@@ -70,7 +70,7 @@ export function BackupsBlock() {
   }
 
   const save = (daily: boolean, keep: number) => {
-    void window.heraldOS.backups
+    void window.jarodOS.backups
       .settings(daily, keep)
       .then(setState)
       .catch(() => undefined)

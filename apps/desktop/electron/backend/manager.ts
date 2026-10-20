@@ -7,7 +7,7 @@ import type { AudioWsKind, AudioWsTarget, BackendRuntime, BackendState, RestRequ
 import { redactLine } from '../../shared/redact.ts'
 import { osEnv } from '../env.ts'
 import { log } from '../log.ts'
-import { hermesHome, heraldOsDataDir } from '../paths.ts'
+import { hermesHome, jarodOsDataDir } from '../paths.ts'
 import { ensureBridgePlugin } from './bridge-plugin.ts'
 import { type AttachTarget, attachTarget, foreignGateway } from './coexist.ts'
 import { type CoreLocation, type JarodCore, jarodDataDir, jarodSpawnPlan, jarodWorkspace, resolveJarodCore, selectBackend } from './jarod-core.ts'
@@ -272,8 +272,8 @@ export class BackendManager {
 
       // It did not get our control socket in its environment; the bridge plugin reads this instead.
       if (this.control) {
-        const file = path.join(heraldOsDataDir(), 'control.json')
-        fs.mkdirSync(heraldOsDataDir(), { recursive: true })
+        const file = path.join(jarodOsDataDir(), 'control.json')
+        fs.mkdirSync(jarodOsDataDir(), { recursive: true })
         fs.writeFileSync(file, JSON.stringify({ socket: this.control.endpoint(), token: this.control.token }), { mode: 0o600 })
         fs.chmodSync(file, 0o600)
       }
@@ -296,7 +296,7 @@ export class BackendManager {
 
   private async spawnServe(runtime: BackendRuntime, generation: number, core: JarodCore | null): Promise<number> {
     this.token = crypto.randomBytes(32).toString('base64url')
-    const dataDir = heraldOsDataDir()
+    const dataDir = jarodOsDataDir()
     const readyFile = path.join(dataDir, readyFileName(process.pid))
     fs.mkdirSync(dataDir, { recursive: true })
     fs.rmSync(readyFile, { force: true })

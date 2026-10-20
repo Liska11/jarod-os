@@ -51,7 +51,7 @@ export function WallpaperSurface() {
         const dataUrl = source.toDataURL('image/png')
 
         if (!cancelled) {
-          window.heraldOS.shell.wallpaperFrame(dataUrl).catch(() => undefined)
+          window.jarodOS.shell.wallpaperFrame(dataUrl).catch(() => undefined)
         }
       } catch {
         // Nothing to fall back to here; main keeps the previous render on disk.
@@ -59,7 +59,7 @@ export function WallpaperSurface() {
     }
 
     // The theme decides the colours; then one rAF so the window has its final size before we read it.
-    void window.heraldOS.prefs
+    void window.jarodOS.prefs
       .get()
       .then(prefs => tintFor(prefs))
       .catch(() => null)

@@ -8,7 +8,7 @@ import { artifactKind, isEditable } from './artifact-store.ts'
 
 /** A file Hermes produced in this turn; selecting it opens it in the artifact pane. */
 export const ArtifactCard = memo(function ArtifactCard({ artifact, selected, onSelect }: { artifact: Artifact; selected: boolean; onSelect: () => void }) {
-  const size = useLocalData(() => window.heraldOS.fs.readFile(artifact.path).then(file => file.size), [artifact.path, artifact.ts])
+  const size = useLocalData(() => window.jarodOS.fs.readFile(artifact.path).then(file => file.size), [artifact.path, artifact.ts])
   const kind = artifactKind(artifact.name)
   const title = artifact.name.replace(/\.[a-z0-9]{1,6}$/i, '').replace(/[-_]+/g, ' ')
   const status = size.error ? 'Missing on disk' : isEditable(artifact.name) ? 'Ready to edit' : kind === 'image' ? 'Image' : 'Ready to open'

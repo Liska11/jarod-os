@@ -10,7 +10,7 @@ beforeEach(() => {
   resetProviderFallback()
   // The renderer bridge: GET /api/config reports the provider, PUT /api/config records the switch.
   ;(globalThis as unknown as { window: unknown }).window = {
-    heraldOS: {
+    jarodOS: {
       backend: {
         rest: async (request: { method: string; path: string; body?: { config?: { tts?: { provider?: string }; stt?: { provider?: string } } } }) => {
           restCalls.push(request)

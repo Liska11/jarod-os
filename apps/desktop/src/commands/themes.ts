@@ -121,7 +121,7 @@ export const themeCommands: readonly OsCommand[] = [
     args: [{ name: 'filter', type: 'string', description: 'Only families containing this' }],
     run: async ({ filter }) => {
       const needle = filter ? String(filter).toLowerCase() : ''
-      const families = (await window.heraldOS.fonts.list()).filter(family => !needle || family.toLowerCase().includes(needle))
+      const families = (await window.jarodOS.fonts.list()).filter(family => !needle || family.toLowerCase().includes(needle))
 
       return ok(`${families.length} font famil${families.length === 1 ? 'y' : 'ies'}`, { items: families.slice(0, 200) })
     }

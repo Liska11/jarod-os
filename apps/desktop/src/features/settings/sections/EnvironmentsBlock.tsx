@@ -35,7 +35,7 @@ export function EnvironmentsBlock() {
   const [confirm, setConfirm] = useState<string | null>(null)
 
   const refresh = useCallback(() => {
-    void window.heraldOS.environments
+    void window.jarodOS.environments
       .state()
       .then(setState)
       .catch(() => undefined)
@@ -49,7 +49,7 @@ export function EnvironmentsBlock() {
   const create = async () => {
     setBusy(true)
     setError(null)
-    const result = await window.heraldOS.environments.create(environmentSlug(name), kind, version.trim()).catch((reason: unknown) => ({ ok: false as const, error: String(reason) }))
+    const result = await window.jarodOS.environments.create(environmentSlug(name), kind, version.trim()).catch((reason: unknown) => ({ ok: false as const, error: String(reason) }))
 
     if (result.ok) setName('')
     else setError(describe(result.error))
@@ -60,7 +60,7 @@ export function EnvironmentsBlock() {
 
   const remove = async (target: string) => {
     setConfirm(null)
-    const result = await window.heraldOS.environments.remove(target).catch((reason: unknown) => ({ ok: false as const, error: String(reason) }))
+    const result = await window.jarodOS.environments.remove(target).catch((reason: unknown) => ({ ok: false as const, error: String(reason) }))
 
     if (!result.ok) setError(describe(result.error))
 

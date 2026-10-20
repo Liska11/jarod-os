@@ -1,5 +1,5 @@
 import type { CaptureTool, ScreenshotMode } from '../../shared/ipc.ts'
-import { CLI_UNAVAILABLE_MESSAGE, runHeraldOs } from '../lib/herald-os-cli.ts'
+import { CLI_UNAVAILABLE_MESSAGE, runJarodOs } from '../lib/herald-os-cli.ts'
 import { $env } from '../store/backend.ts'
 import { $recording, askAbout, offerCapture } from '../store/capture.ts'
 import { fail, ok, type OsCommand } from '../store/os-commands.ts'
@@ -11,7 +11,7 @@ import { baseName } from '../../shared/path-names.ts'
 
 /** A Jarod-OS Linux tool run through the CLI (it draws its own selection where it needs one). */
 async function linuxTool(argv: string[], title: string) {
-  const outcome = await runHeraldOs(argv)
+  const outcome = await runJarodOs(argv)
 
   if (outcome.unavailable) {
     return fail(`${title}: ${CLI_UNAVAILABLE_MESSAGE.toLowerCase()}.`)
@@ -28,7 +28,7 @@ async function screenTool(tool: CaptureTool, linuxArgv: string[], title: string)
     return linuxTool(linuxArgv, title)
   }
 
-  const result = await window.heraldOS.capture.tool(tool)
+  const result = await window.jarodOS.capture.tool(tool)
 
   if (result.cancelled) {
     return fail(`${title}: cancelled.`)
@@ -55,7 +55,7 @@ export const captureCommands: readonly OsCommand[] = [
     ],
     phrases: ['take a screenshot', { phrase: 'screenshot the whole screen', args: { mode: 'screen' } }, { phrase: 'screenshot this window', args: { mode: 'window' } }],
     run: async ({ mode, edit }, context) => {
-      const file = await window.heraldOS.capture.screenshot(mode as ScreenshotMode)
+      const file = await window.jarodOS.capture.screenshot(mode as ScreenshotMode)
 
       if (!file) {
         return fail('No screenshot: the selection was cancelled.')
@@ -82,7 +82,7 @@ export const captureCommands: readonly OsCommand[] = [
     ],
     phrases: [{ phrase: 'start recording the screen', args: { action: 'start' } }, { phrase: 'stop recording', args: { action: 'stop' } }, { phrase: 'record my screen', args: { action: 'start' } }],
     run: async ({ action, region, audio }) => {
-      const state = await window.heraldOS.capture.record((action as 'toggle' | 'start' | 'stop') ?? 'toggle', { region: Boolean(region), audio: Boolean(audio) })
+      const state = await window.jarodOS.capture.record((action as 'toggle' | 'start' | 'stop') ?? 'toggle', { region: Boolean(region), audio: Boolean(audio) })
 
       return ok(state.recording ? 'Recording the screen; run it again (or click the red dot) to stop' : state.file ? `Saved ${baseName(state.file)}` : 'Not recording', { data: { ...state } })
     }
@@ -108,7 +108,7 @@ export const captureCommands: readonly OsCommand[] = [
     args: [{ name: 'file', type: 'string', description: 'The picture', required: true }],
     hidden: true,
     run: async ({ file }) => {
-      await window.heraldOS.capture.copyImage(String(file))
+      await window.jarodOS.capture.copyImage(String(file))
 
       return ok('Copied to the clipboard')
     }
@@ -185,7 +185,7 @@ export const captureCommands: readonly OsCommand[] = [
     run: async ({ enabled }) => {
       if (enabled === false) {
         if (isPanels) {
-          await window.heraldOS.shell.close('window:camera')
+          await window.jarodOS.shell.close('window:camera')
         } else {
           Object.values($windows.get())
             .filter(win => win.appId === 'camera')

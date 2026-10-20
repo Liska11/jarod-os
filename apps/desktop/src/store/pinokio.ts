@@ -16,14 +16,14 @@ let bound = false
 
 /** Subscribe once to main's state pushes and page requests; refresh the state now. */
 export function bindPinokio(): void {
-  if (bound || !window.heraldOS?.pinokio) {
+  if (bound || !window.jarodOS?.pinokio) {
     return
   }
 
   bound = true
-  window.heraldOS.pinokio.onState(state => $pinokio.set(state))
-  window.heraldOS.pinokio.onOpenUrl(url => void showPinokioPage(url).catch(() => undefined))
-  void window.heraldOS.pinokio
+  window.jarodOS.pinokio.onState(state => $pinokio.set(state))
+  window.jarodOS.pinokio.onOpenUrl(url => void showPinokioPage(url).catch(() => undefined))
+  void window.jarodOS.pinokio
     .getState()
     .then(state => $pinokio.set(state))
     .catch(() => undefined)
@@ -70,7 +70,7 @@ export async function showPinokioPage(url: string): Promise<string> {
 /** Start the engine (or find the Pinokio app's); resolves with the resulting state. */
 export async function startPinokio(): Promise<PinokioState> {
   bindPinokio()
-  const state = await window.heraldOS.pinokio.start()
+  const state = await window.jarodOS.pinokio.start()
   $pinokio.set(state)
 
   return state
@@ -78,7 +78,7 @@ export async function startPinokio(): Promise<PinokioState> {
 
 export async function stopPinokio(): Promise<PinokioState> {
   bindPinokio()
-  const state = await window.heraldOS.pinokio.stop()
+  const state = await window.jarodOS.pinokio.stop()
   $pinokio.set(state)
 
   return state

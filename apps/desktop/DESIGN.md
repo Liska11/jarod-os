@@ -21,8 +21,8 @@ secondary apps, a dock, a menu bar. For where files live, see [README.md](README
   `src/features/web/native-view.ts`, which also trims it around the voice pill and action captions.
 - `src/shell/apps.ts` is the registry: `PAGES` (sidebar), `FLOATING_APPS`, `HERMES_APPS`,
   `FEATURED_NATIVE` (macOS apps by name). Icons are ids rendered by `AppGlyph` / `AppTile`
-  (`src/components/app-icon.tsx`). Two marks, never swapped: `HeraldLogo`
-  (`src/components/herald-logo.tsx`) is the product (menu bar, boot screen), `HermesAvatar` and
+  (`src/components/app-icon.tsx`). Two marks, never swapped: `JarodLogo`
+  (`src/components/jarod-logo.tsx`) is the product (menu bar, boot screen), `HermesAvatar` and
   `HermesMark` are the agent (chat, dock tile, sign-in card).
 - A page is a component exported from `src/features/<page>/<Name>Page.tsx` and registered in
   `src/shell/MainWindow.tsx`. It fills its container (`h-full`), owns its scrolling, and is kept
@@ -81,7 +81,7 @@ Stores (nanostores; subscribe with `useStore`):
 - `store/continuity.ts`: `$threads`, `$catchUp`, `refreshThreads`, `continueThread`, `startNextStep`, `dismissThread`, `setExclusions` (Pick up where you left off; pure evidence and parsing in `lib/continuity.ts`, see `docs/ARCHITECTURE.md`).
 - `store/voice.ts`: `$voice` (state, engine, captions, live meter), `$voiceActive`, `startVoice`, `endConversation`, `toggleVoice`, `toggleMute`; `store/wake.ts`: `$wake`, `setWakeWordEnabled`. Voice UI lives in `src/features/voice/` (`VoiceOrb`, `MicButton`, `VoiceIndicator`); see `docs/VOICE.md`.
 
-Electron bridge `window.heraldOS` (typed in `preload/index.ts`):
+Electron bridge `window.jarodOS` (typed in `preload/index.ts`):
 `backend.{getState,onState,restart,rest,logTail}`, `system.{info,stats,processes,network,subscribeStats}`,
 `apps.{list,launch,icon}`, `fs.{home,readDir,readFile,reveal,openPath,openIn,recent,thumbnail,imageInfo,writeText,mkdir,rename,trash,exportPdf,pickFiles,dirSize}`,
 `calendar.today()`, `context.{snapshot,onReturned}`, `terminal.*`, `notifications.native`, `window.*`, `shell.openExternal`,

@@ -3,7 +3,7 @@ import fs from 'node:fs/promises'
 import { writeFileAtomic } from '../atomic-write.ts'
 import path from 'node:path'
 import { type AuditEntry, IPC } from '../../shared/ipc.ts'
-import { heraldOsDataDir } from '../paths.ts'
+import { jarodOsDataDir } from '../paths.ts'
 
 const DEFAULT_POLICY = `# Jarod-OS system bridge policy. See docs/SYSTEM-BRIDGE.md.
 version: 1
@@ -17,8 +17,8 @@ protected_paths: []
 
 /** The policy file and audit log the herald-os-bridge plugin reads and writes. */
 export function registerBridgeIpc(): void {
-  const policyFile = () => path.join(heraldOsDataDir(), 'permissions.yaml')
-  const auditFile = () => path.join(heraldOsDataDir(), 'audit.jsonl')
+  const policyFile = () => path.join(jarodOsDataDir(), 'permissions.yaml')
+  const auditFile = () => path.join(jarodOsDataDir(), 'audit.jsonl')
 
   ipcMain.handle(IPC.bridgePolicyRead, async () => {
     try {
@@ -28,7 +28,7 @@ export function registerBridgeIpc(): void {
     }
   })
   ipcMain.handle(IPC.bridgePolicyWrite, async (_event, text: string) => {
-    await fs.mkdir(heraldOsDataDir(), { recursive: true })
+    await fs.mkdir(jarodOsDataDir(), { recursive: true })
     writeFileAtomic(policyFile(), String(text))
   })
   ipcMain.handle(IPC.bridgeAuditRead, async (_event, limit: number): Promise<AuditEntry[]> => {

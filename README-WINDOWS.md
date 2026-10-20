@@ -2,7 +2,7 @@
 
 Jarod-OS is derived from Herald OS by Luke The Dev (MIT; see [NOTICE](NOTICE)). Only the name shown to the
 user, the executable and the installer identity changed; internal identifiers (`herald-os-bridge`, `JAROD_OS_*`,
-`window.heraldOS`, data folders under `herald-os`) keep their upstream names.
+`window.jarodOS`, data folders under `herald-os`) keep their upstream names.
 
 Jarod-OS runs on Windows 10 and 11 as an **application**: the same window as on macOS, fullscreen
 by default (no WSL). It does not replace the Windows desktop the way Jarod-OS Linux replaces the

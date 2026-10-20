@@ -19,7 +19,7 @@ export function hermesHome(): string {
 }
 
 /** The shell's folder in the Hermes home: `jarod-os` since the rename (phase 5); migrate.ts copies the older `herald-os` into it once. */
-export function heraldOsDataDir(): string {
+export function jarodOsDataDir(): string {
   return path.join(hermesHome(), 'jarod-os')
 }
 

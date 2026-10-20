@@ -108,7 +108,7 @@ export function CodeView({ path, file, root, pinned, onTogglePin, running = fals
     }
 
     let cancelled = false
-    window.heraldOS.fs
+    window.jarodOS.fs
       .readFile(path)
       .then(preview => {
         if (cancelled) {

@@ -25,7 +25,7 @@ export function SandboxesBlock() {
   const [error, setError] = useState<string | null>(null)
 
   const refresh = useCallback(() => {
-    void window.heraldOS.sandboxes
+    void window.jarodOS.sandboxes
       .state()
       .then(setState)
       .catch(() => undefined)
@@ -37,7 +37,7 @@ export function SandboxesBlock() {
     ['no-disk', 'busy', 'not-a-folder', 'overlaps', 'not-a-sandbox'].includes(reason) ? t(`sandboxes.error.${reason}` as MessageKey) : /protected|home folder/.test(reason) ? t('sandboxes.error.notEditable') : t('sandboxes.error.other', { detail: reason })
 
   const pick = async () => {
-    const [folder] = await window.heraldOS.fs.pickFiles({ directory: true }).catch(() => [])
+    const [folder] = await window.jarodOS.fs.pickFiles({ directory: true }).catch(() => [])
 
     if (folder) setSource(folder)
   }
@@ -45,7 +45,7 @@ export function SandboxesBlock() {
   const create = async () => {
     setBusy(true)
     setError(null)
-    const result = await window.heraldOS.sandboxes.create(source, label, full).catch((reason: unknown) => ({ ok: false as const, error: String(reason) }))
+    const result = await window.jarodOS.sandboxes.create(source, label, full).catch((reason: unknown) => ({ ok: false as const, error: String(reason) }))
 
     if (result.ok) {
       setSource('')
@@ -116,7 +116,7 @@ function SandboxRow({ sandbox, folder, describe, onChanged }: { sandbox: Sandbox
   const compare = async () => {
     setBusy('compare')
     setNote(null)
-    const result = await window.heraldOS.sandboxes.compare(sandbox.name).catch((reason: unknown) => ({ ok: false as const, error: String(reason) }))
+    const result = await window.jarodOS.sandboxes.compare(sandbox.name).catch((reason: unknown) => ({ ok: false as const, error: String(reason) }))
     setBusy(null)
 
     if (!result.ok) {
@@ -131,7 +131,7 @@ function SandboxRow({ sandbox, folder, describe, onChanged }: { sandbox: Sandbox
 
   const apply = async () => {
     setBusy('apply')
-    const result = await window.heraldOS.sandboxes.apply(sandbox.name, [...chosen]).catch((reason: unknown) => ({ ok: false as const, error: String(reason) }))
+    const result = await window.jarodOS.sandboxes.apply(sandbox.name, [...chosen]).catch((reason: unknown) => ({ ok: false as const, error: String(reason) }))
     setBusy(null)
     setNote(result.ok ? t('sandboxes.applied', { count: result.changes?.length ?? 0 }) : describe(result.error))
 
@@ -142,7 +142,7 @@ function SandboxRow({ sandbox, folder, describe, onChanged }: { sandbox: Sandbox
 
   const remove = async () => {
     setBusy('remove')
-    const result = await window.heraldOS.sandboxes.remove(sandbox.name).catch((reason: unknown) => ({ ok: false as const, error: String(reason) }))
+    const result = await window.jarodOS.sandboxes.remove(sandbox.name).catch((reason: unknown) => ({ ok: false as const, error: String(reason) }))
     setBusy(null)
     setConfirmRemove(false)
 

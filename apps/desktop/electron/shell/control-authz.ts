@@ -14,7 +14,7 @@
 import crypto from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
-import { HERALD_EVENT_NAMES } from '../../shared/events.ts'
+import { JAROD_EVENT_NAMES } from '../../shared/events.ts'
 import { sameToken } from './json-lines.ts'
 
 /**
@@ -308,7 +308,7 @@ export const SHELL_COMMANDS: ReadonlyMap<string, ShellCommandSpec> = new Map<str
       validate: request => {
         const [name] = stringArgs(request)
 
-        return name && (HERALD_EVENT_NAMES as readonly string[]).includes(name) ? undefined : `unknown event ${name ?? ''}`
+        return name && (JAROD_EVENT_NAMES as readonly string[]).includes(name) ? undefined : `unknown event ${name ?? ''}`
       },
     },
   ],

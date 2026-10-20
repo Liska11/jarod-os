@@ -3,7 +3,7 @@ import { performEdit, rememberFocusedEditable } from './edit-target.ts'
 import { notify } from './notifications.ts'
 import { closeThisSurface, isPanels, openSurface, surface } from './shell.ts'
 
-const RECENT_KEY = 'herald-os:emoji-recent'
+const RECENT_KEY = 'jarod-os.emoji-recent'
 const RECENT_LIMIT = 24
 
 /** Desktop mode: the picker overlay inside the Herald window. */
@@ -42,7 +42,7 @@ export async function insertEmoji(char: string): Promise<void> {
   // Panels mode's overlay window, or the macOS panel over another app.
   if (isPanels || surface === 'emoji') {
     // Main waits for the overlay to close so the keystrokes land in the app that had focus.
-    const typing = window.heraldOS.dictation.type(char, { delayMs: 220 })
+    const typing = window.jarodOS.dictation.type(char, { delayMs: 220 })
     closeThisSurface()
     await typing.catch(() => undefined)
 

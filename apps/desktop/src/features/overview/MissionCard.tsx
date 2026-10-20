@@ -98,7 +98,7 @@ export function MissionCard({ mission }: { mission: Mission }) {
               <div className="truncate text-[11px] text-fg-4">{artifact.kind === 'folder' ? t('overview.folder') : t('overview.draft')}</div>
             </div>
           </div>
-          <GlassButton size="sm" aria-label={t('overview.openAria', { name: artifact.name })} onClick={() => void attempt('native.failed.openFile', () => window.heraldOS.fs.openPath(artifact.path))}>
+          <GlassButton size="sm" aria-label={t('overview.openAria', { name: artifact.name })} onClick={() => void attempt('native.failed.openFile', () => window.jarodOS.fs.openPath(artifact.path))}>
             {t('overview.openDraft')}
             <IconExternalLink />
           </GlassButton>

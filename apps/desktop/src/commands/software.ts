@@ -110,7 +110,7 @@ export const softwareCommands: readonly OsCommand[] = [
     ],
     run: async ({ server, model }) => {
       const kind = server === 'lmstudio' ? 'lmstudio' : 'ollama'
-      const models = await window.heraldOS.catalog.localModels(kind)
+      const models = await window.jarodOS.catalog.localModels(kind)
 
       if (!model) {
         return ok(`Models on ${kind === 'ollama' ? 'Ollama' : 'LM Studio'}: ${models.join(', ')}`, { data: { models } })

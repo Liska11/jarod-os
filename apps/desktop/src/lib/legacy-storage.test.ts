@@ -59,6 +59,14 @@ describe('migrateLegacyStorage', () => {
     expect(storage.data.get('jarod-os.panels')).toBe('first')
   })
 
+  it('copies the one key saved with a colon (the recent emojis) to the current prefix too', () => {
+    const storage = memoryStorage({ 'herald-os:emoji-recent': '["🙂"]' })
+
+    expect(migrateLegacyStorage(storage)).toBe(1)
+    expect(storage.data.get('jarod-os.emoji-recent')).toBe('["🙂"]')
+    expect(storage.data.get('herald-os:emoji-recent')).toBe('["🙂"]')
+  })
+
   it('does nothing when there is nothing older', () => {
     expect(migrateLegacyStorage(memoryStorage({ 'jarod-os.panels': 'x' }))).toBe(0)
   })

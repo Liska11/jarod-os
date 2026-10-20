@@ -28,7 +28,7 @@ export function NativeAppPanel({ app, name, icon, installable, active, target }:
   const main = useStore($windows)[MAIN_WINDOW_ID]
   const win: OSWindow = main ?? ({ id: MAIN_WINDOW_ID, phase: 'closing', z: 0, bounds: { x: 0, y: 0, width: 0, height: 0 } } as OSWindow)
   const embedded = phase === 'embedded'
-  const place = useCallback((bounds: WebViewBounds, visible: boolean) => window.heraldOS.nativeApps.place(app, bounds, visible), [app])
+  const place = useCallback((bounds: WebViewBounds, visible: boolean) => window.jarodOS.nativeApps.place(app, bounds, visible), [app])
   const { visible, covered, occluded } = useNativeView(embedded ? app : null, surface, win, { active: active && embedded, followFrameRadius: false, place })
   const lastTarget = useRef<string | null>(null)
 
@@ -36,7 +36,7 @@ export function NativeAppPanel({ app, name, icon, installable, active, target }:
     (file?: string | null) => {
       setPhase('opening')
       setError(null)
-      window.heraldOS.nativeApps
+      window.jarodOS.nativeApps
         .embed(app, file ?? undefined)
         .then(() => setPhase('embedded'))
         .catch((reason: unknown) => {
@@ -63,7 +63,7 @@ export function NativeAppPanel({ app, name, icon, installable, active, target }:
 
   useEffect(
     () =>
-      window.heraldOS.nativeApps.onGone(gone => {
+      window.jarodOS.nativeApps.onGone(gone => {
         if (gone === app) {
           setPhase('gone')
         }
@@ -74,7 +74,7 @@ export function NativeAppPanel({ app, name, icon, installable, active, target }:
   // Hidden tab: the window hides with it (useNativeView only reports while the tab is active).
   useEffect(() => {
     if (embedded && !active) {
-      window.heraldOS.nativeApps.place(app, { x: 0, y: 0, width: 1, height: 1 }, false)
+      window.jarodOS.nativeApps.place(app, { x: 0, y: 0, width: 1, height: 1 }, false)
     }
   }, [embedded, active, app])
 

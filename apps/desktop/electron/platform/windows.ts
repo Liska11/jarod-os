@@ -69,7 +69,7 @@ Add-Type -TypeDefinition @'
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
-namespace HeraldPanel {
+namespace JarodPanel {
   [Guid("5CDF2C82-841E-4546-9722-0CF74078229A"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
   interface IAudioEndpointVolume {
     [PreserveSig] int _0(); [PreserveSig] int _1(); [PreserveSig] int _2(); [PreserveSig] int _3();
@@ -161,7 +161,7 @@ function DeviceName([string]$flow, [string]$id) {
   return $guid
 }
 function Rows([int]$flow, [string]$name) {
-  return @([HeraldPanel.Panel]::List($flow) | ForEach-Object {
+  return @([JarodPanel.Panel]::List($flow) | ForEach-Object {
     $f = $_ -split '\|'
     [pscustomobject]@{ id = $f[0]; name = (DeviceName $name $f[0]); level = [int]$f[1]; muted = ($f[2] -eq '1'); isDefault = ($f[3] -eq '1') }
   })
@@ -176,7 +176,7 @@ const AUDIO_STATE = AUDIO_TYPES + String.raw`
 const AUDIO_SET = (flow: 0 | 1, guid: string, percent: number, mute: number) =>
   AUDIO_TYPES +
   String.raw`
-if (-not [HeraldPanel.Panel]::Set(${flow}, '${guid}', ${percent}, ${mute})) { throw 'That audio device is not available.' }
+if (-not [JarodPanel.Panel]::Set(${flow}, '${guid}', ${percent}, ${mute})) { throw 'That audio device is not available.' }
 '{}'
 `
 

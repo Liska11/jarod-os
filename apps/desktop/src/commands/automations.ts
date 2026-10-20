@@ -1,4 +1,4 @@
-import { describeRule, eventLabel, HERALD_EVENTS, isEventName } from '../../shared/events.ts'
+import { describeRule, eventLabel, JAROD_EVENTS, isEventName } from '../../shared/events.ts'
 import type { CronJob } from '../lib/rest.ts'
 import { automationEnabled, createAutomation, createEventAutomation, deleteAutomation, eventRuleFor, findAutomation, listAutomations, setAutomationEnabled, triggerAutomation } from '../store/automations.ts'
 import { fail, ok, type OsCommand } from '../store/os-commands.ts'
@@ -134,7 +134,7 @@ export const automationCommands: readonly OsCommand[] = [
       { name: 'name', type: 'string', description: 'Short name', required: true },
       { name: 'prompt', type: 'string', description: 'What Hermes should do each run', required: true },
       { name: 'schedule', type: 'string', description: 'When it runs (or give event)' },
-      { name: 'event', type: 'string', description: 'Run each time this happens instead of on a schedule', enum: ['', ...HERALD_EVENTS.filter(event => event.automation).map(event => event.name)] },
+      { name: 'event', type: 'string', description: 'Run each time this happens instead of on a schedule', enum: ['', ...JAROD_EVENTS.filter(event => event.automation).map(event => event.name)] },
       { name: 'match', type: 'string', description: 'For event: the program (crash) or Wi-Fi network (network-change) it is about' }
     ],
     run: async ({ name, schedule, prompt, event, match }) => {

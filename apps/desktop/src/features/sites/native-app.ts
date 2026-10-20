@@ -12,7 +12,7 @@ export function useNativeApp(app: NativeAppId, name: string) {
   const [error, setError] = useState<string | null>(null)
 
   const check = useCallback(() => {
-    void window.heraldOS.nativeApps
+    void window.jarodOS.nativeApps
       .installed(app)
       .then(setInstalled)
       .catch(() => setInstalled(false))
@@ -23,7 +23,7 @@ export function useNativeApp(app: NativeAppId, name: string) {
   const launch = useCallback(
     (target?: string) => {
       setError(null)
-      window.heraldOS.nativeApps.launch(app, target).catch((reason: unknown) => {
+      window.jarodOS.nativeApps.launch(app, target).catch((reason: unknown) => {
         setError(clean(reason))
         check()
       })
@@ -36,7 +36,7 @@ export function useNativeApp(app: NativeAppId, name: string) {
     setError(null)
 
     try {
-      const result = await window.heraldOS.nativeApps.install(app)
+      const result = await window.jarodOS.nativeApps.install(app)
 
       if (result.ok) {
         notify({ title: t('sites.native.installed', { name }), level: 'success', surface: 'hermes' })

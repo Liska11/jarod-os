@@ -19,8 +19,8 @@ import { errorText } from '../settings/sections/shared.tsx'
  * enabled in Settings › Devices, one command at a time, each confirmed by the person (remote_exec, docs/REMOTE-SSH.md).
  */
 
-type Tailscale = Awaited<ReturnType<typeof window.heraldOS.remote.tailscale>>
-type Scan = Exclude<Awaited<ReturnType<typeof window.heraldOS.remote.scanKeys>>, { error: string }>
+type Tailscale = Awaited<ReturnType<typeof window.jarodOS.remote.tailscale>>
+type Scan = Exclude<Awaited<ReturnType<typeof window.jarodOS.remote.scanKeys>>, { error: string }>
 
 export function RemoteMachines() {
   useT()
@@ -34,7 +34,7 @@ export function RemoteMachines() {
 
   const refreshTailscale = useCallback(() => {
     setTailscale(null)
-    void window.heraldOS.remote
+    void window.jarodOS.remote
       .tailscale()
       .then(setTailscale)
       .catch(() => setTailscale({ installed: false, backend: null, self: null, peers: [] }))
@@ -44,7 +44,7 @@ export function RemoteMachines() {
 
   // The Internet switch's "remote machines" exception covers exactly the machines declared here.
   useEffect(() => {
-    if (hosts.data) void window.heraldOS.remote.syncHosts(hosts.data.map(h => h.host.toLowerCase())).catch(() => undefined)
+    if (hosts.data) void window.jarodOS.remote.syncHosts(hosts.data.map(h => h.host.toLowerCase())).catch(() => undefined)
   }, [hostKey])
 
   const add = async () => {
@@ -184,13 +184,13 @@ function TargetRow({ host, onRemoved }: { host: SshHost; onRemoved: () => void }
 
   const probe = async () => {
     setNetwork({ state: 'running', text: t('remote.checking') })
-    const r = await window.heraldOS.remote.probe(host.host, host.port)
+    const r = await window.jarodOS.remote.probe(host.host, host.port)
     setNetwork(r.ok ? { state: 'ok', text: t('remote.network.ok', { ms: r.ms }) } : { state: 'failed', text: t(`remote.network.${r.error === 'offline' ? 'offline' : r.error === 'timeout' ? 'timeout' : 'failed'}` as MessageKey, { detail: r.error ?? '' }) })
   }
 
   const keys = async () => {
     setKeyCheck({ state: 'running', text: t('remote.checking') })
-    const r = await window.heraldOS.remote.scanKeys(host.host, host.port)
+    const r = await window.jarodOS.remote.scanKeys(host.host, host.port)
 
     if ('error' in r) {
       setKeyCheck({ state: 'failed', text: t(r.error === 'offline' ? 'remote.network.offline' : 'remote.keys.failed') })
@@ -204,7 +204,7 @@ function TargetRow({ host, onRemoved }: { host: SshHost; onRemoved: () => void }
 
   const trust = async () => {
     if (!scan) return
-    const r = await window.heraldOS.remote.trustKeys(scan.token)
+    const r = await window.jarodOS.remote.trustKeys(scan.token)
     setScan(null)
     setKeyCheck(r.ok ? { state: 'ok', text: t('remote.keys.trusted') } : { state: 'failed', text: r.error ?? '' })
   }

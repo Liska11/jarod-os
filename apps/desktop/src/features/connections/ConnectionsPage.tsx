@@ -166,7 +166,7 @@ export function ConnectionsPage() {
             const flow = await api.authMcp(source.server.name)
 
             if (flow.authorization_url) {
-              await window.heraldOS.shell.openExternal(flow.authorization_url)
+              await window.jarodOS.shell.openExternal(flow.authorization_url)
               notify({ title: t('conn.finishSignIn', { name: connection.name }), body: t('conn.approveInBrowser'), level: 'info' })
             } else {
               notify({ title: t('conn.signInStartFailed', { name: connection.name }), body: flow.error ?? t('conn.noAuthLink'), level: 'error' })
@@ -213,7 +213,7 @@ export function ConnectionsPage() {
     const started = await api.startProviderOAuth(id)
 
     if (started.verification_url) {
-      await window.heraldOS.shell.openExternal(started.verification_url)
+      await window.jarodOS.shell.openExternal(started.verification_url)
     }
 
     notify({

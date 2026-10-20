@@ -96,7 +96,7 @@ test('in a short window the sidebar scrolls, and its fold button stays reachable
 test('Connexions › Machines distantes shows Tailscale’s real state and the separate checks', async () => {
   await page.getByRole('navigation').first().getByRole('button', { name: 'Connexions', exact: true }).click()
   await page.getByRole('tab', { name: 'Machines distantes' }).or(page.getByRole('button', { name: 'Machines distantes' })).first().click()
-  const state = await page.evaluate(() => window.heraldOS.remote.tailscale())
+  const state = await page.evaluate(() => window.jarodOS.remote.tailscale())
   await expect(page.getByText('Tailscale', { exact: true })).toBeVisible()
 
   if (!state.installed) {
@@ -117,7 +117,7 @@ test('Réglages › Appareils: agent commands on a machine are off by default, o
   const journal = await shell.app.evaluate(() => process.env.JAROD_CONTROL_JOURNAL ?? '')
   expect(journal.startsWith(shell.root)).toBe(true)
   expect(path.basename(journal)).toBe('control-audit.jsonl')
-  await expect.poll(async () => (await page.evaluate(() => window.heraldOS.backend.getState())).phase, { timeout: 60_000 }).toBe('ready')
+  await expect.poll(async () => (await page.evaluate(() => window.jarodOS.backend.getState())).phase, { timeout: 60_000 }).toBe('ready')
 
   // Native dialogs replaced in main: the key "chosen" is a throwaway file, every confirmation is recorded and accepted. Nothing connects.
   const key = path.join(shell.root, 'id_e2e')

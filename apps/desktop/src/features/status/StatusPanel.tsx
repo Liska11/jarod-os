@@ -522,7 +522,7 @@ function ClockPanel() {
 
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 15_000)
-    void window.heraldOS.calendar
+    void window.jarodOS.calendar
       .today()
       .then(result => setEvents(result.events))
       .catch(() => setEvents([]))

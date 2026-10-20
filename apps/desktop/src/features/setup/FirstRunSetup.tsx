@@ -1,7 +1,7 @@
 import { useStore } from '@nanostores/react'
 import { IconArrowRight, IconCheck, IconGift, IconLock, IconUser, IconWifi } from '@tabler/icons-react'
 import { useEffect, useState } from 'react'
-import { HeraldLogo } from '../../components/herald-logo.tsx'
+import { JarodLogo } from '../../components/jarod-logo.tsx'
 import { GlassButton } from '../../components/ui/glass.tsx'
 import { Spinner } from '../../components/ui/primitives.tsx'
 import { cn } from '../../lib/cn.ts'
@@ -29,7 +29,7 @@ export function FirstRunSetup() {
   const requested = useStore($setupRequested)
 
   useEffect(() => {
-    void window.heraldOS.setup
+    void window.jarodOS.setup
       ?.state()
       .then(state => {
         setMode(state.mode)
@@ -57,7 +57,7 @@ export function FirstRunSetup() {
   }
 
   const finish = async () => {
-    await window.heraldOS.setup.finish({ later: forSomeoneElse })
+    await window.jarodOS.setup.finish({ later: forSomeoneElse })
     setDue(false)
   }
 
@@ -68,7 +68,7 @@ export function FirstRunSetup() {
     <div className="absolute inset-0 z-(--z-boot) flex items-center justify-center bg-bg/85 backdrop-blur-md animate-fade-in" role="dialog" aria-label={t('setup.title')}>
       <div className="float flex w-[min(560px,92vw)] flex-col gap-5 rounded-2xl p-7">
         <div className="flex items-center gap-3">
-          <HeraldLogo height={56} />
+          <JarodLogo height={56} />
           <span className="flex-1" />
           <div className="flex gap-1.5" aria-hidden>
             {steps.map(item => (
@@ -145,8 +145,8 @@ function Account({ onDone }: { onDone: () => void }) {
     setError(null)
 
     try {
-      await window.heraldOS.setup.name(name)
-      const result = await window.heraldOS.setup.password(password)
+      await window.jarodOS.setup.name(name)
+      const result = await window.jarodOS.setup.password(password)
 
       if (result.ok) {
         onDone()

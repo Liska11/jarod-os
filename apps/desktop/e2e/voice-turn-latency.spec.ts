@@ -102,15 +102,15 @@ test('one spoken turn with a real model: end of speech → transcript → first 
   shell = await launchShell({}, { args: ['--use-fake-device-for-media-stream', `--use-file-for-fake-audio-capture=${wav}`] })
   const { app, page } = shell
   await expect(page.getByRole('button', { name: 'Accueil' }).first()).toBeVisible({ timeout: 60_000 })
-  await expect.poll(async () => (await page.evaluate(() => window.heraldOS.backend.getState())).phase, { timeout: 60_000 }).toBe('ready')
+  await expect.poll(async () => (await page.evaluate(() => window.jarodOS.backend.getState())).phase, { timeout: 60_000 }).toBe('ready')
 
   // The model of the throwaway root: the one named in the environment, nothing else.
-  await page.evaluate(([p, m]) => window.heraldOS.backend.rest({ method: 'PUT', path: '/api/config', body: { config: { model: { provider: p, default: m } } } }), [provider, model])
+  await page.evaluate(([p, m]) => window.jarodOS.backend.rest({ method: 'PUT', path: '/api/config', body: { config: { model: { provider: p, default: m } } } }), [provider, model])
 
   // Can the core transcribe here? If not, main answers the transcription with the known text (and the stage is reported as stubbed).
   const sttWorks = await page.evaluate(async file => {
     try {
-      const result = await window.heraldOS.backend.rest<{ ok?: boolean; transcript?: string }>({ method: 'POST', path: '/api/audio/transcribe', body: { data_url: file, mime_type: 'audio/wav' } })
+      const result = await window.jarodOS.backend.rest<{ ok?: boolean; transcript?: string }>({ method: 'POST', path: '/api/audio/transcribe', body: { data_url: file, mime_type: 'audio/wav' } })
 
       return Boolean(result?.ok && result.transcript?.trim())
     } catch {
@@ -121,17 +121,17 @@ test('one spoken turn with a real model: end of speech → transcript → first 
   if (!sttWorks) {
     await app.evaluate(({ ipcMain }, text) => {
       const handlers = (ipcMain as unknown as { _invokeHandlers?: Map<string, (event: unknown, request: { path?: string }) => unknown> })._invokeHandlers
-      const original = handlers?.get('herald-os:backend:rest')
+      const original = handlers?.get('jarod-os:backend:rest')
 
       if (!handlers || !original) throw new Error('cannot wrap the backend REST handler (Electron internals changed)')
 
-      handlers.set('herald-os:backend:rest', (event, request) => (request?.path === '/api/audio/transcribe' ? { ok: true, transcript: text, provider: 'e2e-stub' } : original(event, request)))
+      handlers.set('jarod-os:backend:rest', (event, request) => (request?.path === '/api/audio/transcribe' ? { ok: true, transcript: text, provider: 'e2e-stub' } : original(event, request)))
     }, QUESTION)
   }
 
   // Start a conversation the way the global hotkey does.
   await app.evaluate(({ BrowserWindow }) => {
-    for (const win of BrowserWindow.getAllWindows()) win.webContents.send('herald-os:voice:hotkey')
+    for (const win of BrowserWindow.getAllWindows()) win.webContents.send('jarod-os:voice:hotkey')
   })
 
   type Turn = { transcriptMs: number | null; firstTokenMs: number | null; firstAudioMs: number | null }

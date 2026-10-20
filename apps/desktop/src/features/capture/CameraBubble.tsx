@@ -16,7 +16,7 @@ export function CameraBubble() {
 
     void (async () => {
       try {
-        if (!(await window.heraldOS.capture.requestCamera())) {
+        if (!(await window.jarodOS.capture.requestCamera())) {
           throw new Error(`Jarod-OS is not allowed to use the camera (${privacySettingsPath('Camera')}).`)
         }
 

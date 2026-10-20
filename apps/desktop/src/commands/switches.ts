@@ -31,7 +31,7 @@ export const switchCommands: readonly OsCommand[] = [
     tier: 'read',
     args: [],
     run: async () => {
-      const state = await window.heraldOS.switches.get()
+      const state = await window.jarodOS.switches.get()
       $switches.set(state)
       const on = (Object.keys(SWITCH_LABELS) as SwitchName[]).filter(name => state[name])
 

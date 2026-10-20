@@ -15,7 +15,7 @@ export function loadNativeApps(): void {
   }
 
   loaded = true
-  void window.heraldOS.apps
+  void window.jarodOS.apps
     .list()
     .then(apps => $nativeApps.set(apps))
     .catch(() => {
@@ -29,7 +29,7 @@ export function requestIcon(appPath: string): void {
   }
 
   requested.add(appPath)
-  void window.heraldOS.apps
+  void window.jarodOS.apps
     .icon(appPath)
     .then(url => $nativeIcons.setKey(appPath, url))
     .catch(() => $nativeIcons.setKey(appPath, ''))

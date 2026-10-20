@@ -7,8 +7,8 @@ import type { ShellCommand, ShellMode, ShellSurface, WmAction, WmState, WmWindow
  * - `panels` mode (niri): the menu bar, dock, Hermes window, command overlay and floating apps are
  *   separate windows; stores that act on another window go through `relay`.
  */
-export const surface: ShellSurface = window.heraldOS?.shell?.surface ?? 'desktop'
-export const shellMode: ShellMode = window.heraldOS?.shell?.mode ?? 'desktop'
+export const surface: ShellSurface = window.jarodOS?.shell?.surface ?? 'desktop'
+export const shellMode: ShellMode = window.jarodOS?.shell?.mode ?? 'desktop'
 export const isPanels = shellMode === 'panels'
 export const isMainSurface = surface === 'desktop' || surface === 'main'
 
@@ -16,7 +16,7 @@ export const isMainSurface = surface === 'desktop' || surface === 'main'
 export const $wm = atom<WmState>({ available: false, windows: [], workspaces: [], focusedWindowId: null })
 
 export function wmAction(action: WmAction): Promise<void> {
-  return window.heraldOS.wm.action(action).catch(() => undefined)
+  return window.jarodOS.wm.action(action).catch(() => undefined)
 }
 
 /** The compositor's focused window, if it is not one of ours. */
@@ -67,15 +67,15 @@ export function relayToMain(command: ShellCommand): void {
     return
   }
 
-  window.heraldOS.shell.relay('main', command).catch(() => undefined)
+  window.jarodOS.shell.relay('main', command).catch(() => undefined)
 }
 
 export function openSurface(target: ShellSurface, command?: ShellCommand): void {
-  window.heraldOS.shell.open(target, command).catch(() => undefined)
+  window.jarodOS.shell.open(target, command).catch(() => undefined)
 }
 
 export function closeThisSurface(): void {
-  window.heraldOS.shell.close().catch(() => undefined)
+  window.jarodOS.shell.close().catch(() => undefined)
 }
 
 let bound = false
@@ -89,12 +89,12 @@ export function bindShell(): void {
   bound = true
 
   if (isPanels) {
-    window.heraldOS.wm
+    window.jarodOS.wm
       .getState()
       .then(state => $wm.set(state))
       .catch(() => undefined)
-    window.heraldOS.wm.onState(state => $wm.set(state))
+    window.jarodOS.wm.onState(state => $wm.set(state))
   }
 
-  window.heraldOS.shell.onCommand(dispatch)
+  window.jarodOS.shell.onCommand(dispatch)
 }

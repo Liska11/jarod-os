@@ -233,7 +233,7 @@ function AllowedFolders({ connectionId }: { connectionId: string }) {
     setPicking(true)
 
     try {
-      const picked = await window.heraldOS.fs.pickFiles({ directory: true, multiple: true })
+      const picked = await window.jarodOS.fs.pickFiles({ directory: true, multiple: true })
       const next = [...folders]
 
       for (const path of picked) {

@@ -19,7 +19,7 @@ export const pluginCommands: readonly OsCommand[] = [
     tier: 'read',
     args: [],
     run: async () => {
-      const plugins = await window.heraldOS.plugins.list()
+      const plugins = await window.jarodOS.plugins.list()
       $plugins.set(plugins)
 
       return ok(plugins.length ? plugins.map(plugin => `${plugin.manifest.name} (${plugin.enabled ? 'on' : 'off'})`).join(', ') : 'No plugins installed', {
@@ -75,7 +75,7 @@ export const pluginCommands: readonly OsCommand[] = [
     tier: 'mutate',
     args: [{ name: 'url', type: 'string', description: 'https or ssh git URL', required: true }],
     run: async ({ url }) => {
-      const added = await window.heraldOS.plugins.add(String(url))
+      const added = await window.jarodOS.plugins.add(String(url))
 
       return ok(`Installed ${added.manifest.name}, turned off: turn it on in Settings > Plugins`, { highlight: { kind: 'setting', id: 'plugins' } })
     }

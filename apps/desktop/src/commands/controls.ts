@@ -7,10 +7,10 @@ import { openStatusPanel, PANEL_TITLES } from '../store/status-panel.ts'
 const PANEL_NAMES = ['wifi', 'bluetooth', 'audio', 'display', 'power', 'clock'] as const
 
 async function status<P extends Exclude<StatusPanelId, 'clock'>>(panel: P): Promise<Extract<StatusPanelState, { panel: P }>> {
-  return (await window.heraldOS.controls.status(panel)) as Extract<StatusPanelState, { panel: P }>
+  return (await window.jarodOS.controls.status(panel)) as Extract<StatusPanelState, { panel: P }>
 }
 
-const act = (action: ControlAction) => window.heraldOS.controls.act(action)
+const act = (action: ControlAction) => window.jarodOS.controls.act(action)
 
 /** The one entry whose name contains `query` (case-insensitive), preferring an exact name. */
 function pick<T extends { name: string }>(items: readonly T[], query: string): T | { error: string } {

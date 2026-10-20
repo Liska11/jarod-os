@@ -1,18 +1,18 @@
 import { ipcMain } from 'electron'
-import type { HeraldEvent, HeraldEventName } from '../../shared/events.ts'
+import type { JarodEvent, JarodEventName } from '../../shared/events.ts'
 import { IPC } from '../../shared/ipc.ts'
 import { log } from '../log.ts'
 
-type Listener = (event: HeraldEvent) => void
+type Listener = (event: JarodEvent) => void
 
 const RECENT_MAX = 50
 
 /** One place every event source reports to; hooks and event automations listen. */
 class EventBus {
   private readonly listeners = new Set<Listener>()
-  private readonly recent: HeraldEvent[] = []
+  private readonly recent: JarodEvent[] = []
 
-  emit(name: HeraldEventName, detail: Record<string, string | number | boolean | undefined> = {}): void {
+  emit(name: JarodEventName, detail: Record<string, string | number | boolean | undefined> = {}): void {
     const clean: Record<string, string> = {}
 
     for (const [key, value] of Object.entries(detail)) {
@@ -21,7 +21,7 @@ class EventBus {
       }
     }
 
-    const event: HeraldEvent = { name, at: Date.now(), detail: clean }
+    const event: JarodEvent = { name, at: Date.now(), detail: clean }
     this.recent.unshift(event)
     this.recent.splice(RECENT_MAX)
     log('events', `${name}${Object.keys(clean).length ? ` ${JSON.stringify(clean)}` : ''}`)
@@ -41,7 +41,7 @@ class EventBus {
     return () => this.listeners.delete(listener)
   }
 
-  recentEvents(): HeraldEvent[] {
+  recentEvents(): JarodEvent[] {
     return [...this.recent]
   }
 

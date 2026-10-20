@@ -30,7 +30,7 @@ export function PreviewPane({ win, target, root, contentKey, compact = false }: 
   const { covered, occluded } = useNativeView(viewId, host, win, { active: !error, followFrameRadius: false })
 
   useEffect(() => {
-    const off = window.heraldOS.web.onEvent(event => {
+    const off = window.jarodOS.web.onEvent(event => {
       if (event.id !== idRef.current) {
         return
       }
@@ -54,7 +54,7 @@ export function PreviewPane({ win, target, root, contentKey, compact = false }: 
       const open = idRef.current
 
       if (open) {
-        void quietly(() => window.heraldOS.web.close(open))
+        void quietly(() => window.jarodOS.web.close(open))
         idRef.current = null
       }
     }
@@ -70,11 +70,11 @@ export function PreviewPane({ win, target, root, contentKey, compact = false }: 
     setError(null)
 
     if (idRef.current) {
-      void window.heraldOS.web.navigate(idRef.current, target).catch(err => setError(err instanceof Error ? err.message : String(err)))
+      void window.jarodOS.web.navigate(idRef.current, target).catch(err => setError(err instanceof Error ? err.message : String(err)))
       return
     }
 
-    void window.heraldOS.web
+    void window.jarodOS.web
       .openPreview(target, { root: root ?? undefined, title: t('missionPreview.title') })
       .then(id => {
         idRef.current = id
@@ -93,7 +93,7 @@ export function PreviewPane({ win, target, root, contentKey, compact = false }: 
       retries.current += 1
 
       if (idRef.current) {
-        void window.heraldOS.web.navigate(idRef.current, target).catch(() => undefined)
+        void window.jarodOS.web.navigate(idRef.current, target).catch(() => undefined)
       }
     }, RETRY_MS)
 
@@ -110,7 +110,7 @@ export function PreviewPane({ win, target, root, contentKey, compact = false }: 
       const open = idRef.current
 
       if (open) {
-        void attempt('native.failed.reloadPreview', () => window.heraldOS.web.reload(open))
+        void attempt('native.failed.reloadPreview', () => window.jarodOS.web.reload(open))
       }
     }, RELOAD_DEBOUNCE_MS)
 
@@ -128,7 +128,7 @@ export function PreviewPane({ win, target, root, contentKey, compact = false }: 
           <span className="truncate text-fg-2">{label || 'No preview yet'}</span>
           {loading && <Spinner className="ml-auto shrink-0" />}
         </div>
-        <button type="button" disabled={!viewId} onClick={() => viewId && void attempt('native.failed.reloadPreview', () => window.heraldOS.web.reload(viewId))} className="flex size-6 items-center justify-center rounded-md text-fg-3 hover:bg-white/8 hover:text-fg disabled:opacity-40" title={t('preview.reload')} aria-label={t('preview.reloadAria')}>
+        <button type="button" disabled={!viewId} onClick={() => viewId && void attempt('native.failed.reloadPreview', () => window.jarodOS.web.reload(viewId))} className="flex size-6 items-center justify-center rounded-md text-fg-3 hover:bg-white/8 hover:text-fg disabled:opacity-40" title={t('preview.reload')} aria-label={t('preview.reloadAria')}>
           <IconRefresh size={14} />
         </button>
         <button type="button" disabled={!target || !isWeb(target)} onClick={() => target && void openWebWindow(url || target)} className="flex size-6 items-center justify-center rounded-md text-fg-3 hover:bg-white/8 hover:text-fg disabled:opacity-40" title={t('preview.ownWindow')} aria-label={t('preview.ownWindowAria')}>

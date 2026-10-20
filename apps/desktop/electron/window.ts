@@ -2,7 +2,7 @@ import { app, BrowserWindow, screen, shell } from 'electron'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import type { HeraldOSPrefs } from '../shared/ipc.ts'
+import type { JarodOSPrefs } from '../shared/ipc.ts'
 import { osEnv } from './env.ts'
 import { devServerUrl, isShellPage, rendererIndex } from './paths.ts'
 import type { Rect } from './window-state.ts'
@@ -13,7 +13,7 @@ const here = path.dirname(fileURLToPath(import.meta.url))
 export function appIconPath(): string | undefined {
   const root = app.getAppPath()
 
-  return [path.join(root, 'build', 'icon.png'), path.join(root, 'dist', 'renderer', 'brand', 'herald-icon.png')].find(file => fs.existsSync(file))
+  return [path.join(root, 'build', 'icon.png'), path.join(root, 'dist', 'renderer', 'brand', 'jarod-icon.png')].find(file => fs.existsSync(file))
 }
 
 /** The smallest the main window may get outside kiosk mode. */
@@ -31,7 +31,7 @@ export function loadShell(win: BrowserWindow): void {
 }
 
 /** `restore`: where the window was last time, already checked against today's screens (see window-state.ts). */
-export function createMainWindow(prefs: HeraldOSPrefs, restore: { bounds: Rect; maximized: boolean } | null = null): BrowserWindow {
+export function createMainWindow(prefs: JarodOSPrefs, restore: { bounds: Rect; maximized: boolean } | null = null): BrowserWindow {
   const { workAreaSize } = screen.getPrimaryDisplay()
   // Jarod-OS Linux: the shell is the whole session (cage hands it the only output). Kiosk mode
   // removes every escape hatch a window manager would normally offer.

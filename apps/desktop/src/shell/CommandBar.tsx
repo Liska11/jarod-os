@@ -149,7 +149,7 @@ export function CommandPalette({ onClose, standalone = false, onApplications, cl
       // a registry command.
       openSurface('main')
 
-      const result = await window.heraldOS.control.run(id, args)
+      const result = await window.jarodOS.control.run(id, args)
 
       if (!result.ok) {
         notify({ title: 'Could not do that', body: result.error ?? result.summary, level: 'warn' })
@@ -226,7 +226,7 @@ export function CommandPalette({ onClose, standalone = false, onApplications, cl
                 key={app.path}
                 value={`app:${app.name}`}
                 onSelect={() => {
-                  window.heraldOS.apps.launch(app.path).catch(() => undefined)
+                  window.jarodOS.apps.launch(app.path).catch(() => undefined)
                   close()
                 }}
                 icon={<IconArrowRight size={15} />}

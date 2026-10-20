@@ -9,7 +9,7 @@ export const $screensaverUp = atom(false)
 export const SWITCH_LABELS: Record<SwitchName, string> = { nightLight: 'Night light', doNotDisturb: 'Do not disturb', stayAwake: 'Stay awake', screensaver: 'Screensaver' }
 
 export async function setSwitch(name: SwitchName, enabled: boolean): Promise<SwitchState> {
-  const state = await window.heraldOS.switches.set(name, enabled)
+  const state = await window.jarodOS.switches.set(name, enabled)
   $switches.set(state)
 
   return state
@@ -19,16 +19,16 @@ let bound = false
 
 /** Every window keeps its own copy: each menu bar shows the indicators. */
 export function bindSwitches(): () => void {
-  if (bound || !window.heraldOS?.switches) {
+  if (bound || !window.jarodOS?.switches) {
     return () => undefined
   }
 
   bound = true
-  void window.heraldOS.switches
+  void window.jarodOS.switches
     .get()
     .then(state => $switches.set(state))
     .catch(() => undefined)
-  const off = window.heraldOS.switches.onChanged(state => $switches.set(state))
+  const off = window.jarodOS.switches.onChanged(state => $switches.set(state))
 
   return () => {
     off()

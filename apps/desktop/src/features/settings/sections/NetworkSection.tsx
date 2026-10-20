@@ -36,7 +36,7 @@ export function NetworkSection() {
           <Pill tone={phaseTone(backend.phase)} dot>
             {backend.phase}
           </Pill>
-          <GlassButton size="sm" variant="ghost" onClick={() => void attempt('native.failed.restartEngine', () => window.heraldOS.backend.restart())} aria-label={t('network.restartAria')}>
+          <GlassButton size="sm" variant="ghost" onClick={() => void attempt('native.failed.restartEngine', () => window.jarodOS.backend.restart())} aria-label={t('network.restartAria')}>
             {t('network.restart')}
           </GlassButton>
         </SettingsRow>

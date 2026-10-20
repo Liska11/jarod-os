@@ -46,7 +46,7 @@ export function StatusPanelSurface() {
 
       if (height > 0 && height !== last) {
         last = height
-        window.heraldOS.shell.resize(WIDTH, height).catch(() => undefined)
+        window.jarodOS.shell.resize(WIDTH, height).catch(() => undefined)
       }
     }
     const observer = new ResizeObserver(fit)

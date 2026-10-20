@@ -38,7 +38,7 @@ function savePlaylist(files: string[]): void {
 
 /** A subtitles file as a WebVTT track (SubRip is converted); null when it cannot be read. */
 async function readSubtitles(file: string): Promise<{ label: string; url: string } | null> {
-  const [granted] = await window.heraldOS.media.allow([file]).catch(() => [])
+  const [granted] = await window.jarodOS.media.allow([file]).catch(() => [])
   const text = granted ? await fetch(granted.url).then(response => (response.ok ? response.text() : '')).catch(() => '') : ''
 
   return text ? { label: fileName(file), url: URL.createObjectURL(new Blob([toVtt(text, file)], { type: 'text/vtt' })) } : null
@@ -63,7 +63,7 @@ export function Player({ active }: { active: boolean }) {
       return
     }
 
-    const granted = await window.heraldOS.media.allow(files).catch(() => [])
+    const granted = await window.jarodOS.media.allow(files).catch(() => [])
     setUrls(previous => ({ ...previous, ...Object.fromEntries(granted.map(entry => [entry.file, entry.url])) }))
   }, [])
 
@@ -119,12 +119,12 @@ export function Player({ active }: { active: boolean }) {
   }
 
   const pick = async () => {
-    const files = await window.heraldOS.fs.pickFiles({ multiple: true }).catch(() => [])
+    const files = await window.jarodOS.fs.pickFiles({ multiple: true }).catch(() => [])
     await add(files)
   }
 
   const pickSubtitles = async () => {
-    const [file] = await window.heraldOS.fs.pickFiles({ multiple: false }).catch(() => [])
+    const [file] = await window.jarodOS.fs.pickFiles({ multiple: false }).catch(() => [])
 
     if (file && isSubtitle(file)) {
       await loadSubtitles(file)
@@ -200,7 +200,7 @@ export function Player({ active }: { active: boolean }) {
       onDrop={event => {
         event.preventDefault()
         setDragging(false)
-        void add([...event.dataTransfer.files].map(file => window.heraldOS.fs.pathForFile(file)).filter(Boolean))
+        void add([...event.dataTransfer.files].map(file => window.jarodOS.fs.pathForFile(file)).filter(Boolean))
       }}
     >
       <div className="flex flex-wrap items-center gap-1 border-b border-line px-2 py-1.5">

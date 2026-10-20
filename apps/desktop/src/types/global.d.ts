@@ -1,7 +1,7 @@
-import type { HeraldOSApi } from '../../preload/index.ts'
+import type { JarodOSApi } from '../../preload/index.ts'
 
 declare global {
   interface Window {
-    heraldOS: HeraldOSApi
+    jarodOS: JarodOSApi
   }
 }

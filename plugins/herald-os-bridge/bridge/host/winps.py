@@ -215,8 +215,8 @@ $key = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize'
 $apps = (Get-ItemProperty -Path $key -Name AppsUseLightTheme -ErrorAction SilentlyContinue).AppsUseLightTheme
 $system = (Get-ItemProperty -Path $key -Name SystemUsesLightTheme -ErrorAction SilentlyContinue).SystemUsesLightTheme
 Add-Type -AssemblyName System.Windows.Forms
-Add-Type -Namespace HeraldOS -Name Dpi -MemberDefinition '[DllImport("user32.dll")] public static extern bool SetProcessDPIAware();'
-[void][HeraldOS.Dpi]::SetProcessDPIAware()
+Add-Type -Namespace JarodOS -Name Dpi -MemberDefinition '[DllImport("user32.dll")] public static extern bool SetProcessDPIAware();'
+[void][JarodOS.Dpi]::SetProcessDPIAware()
 $screens = @([System.Windows.Forms.Screen]::AllScreens | ForEach-Object {
   [pscustomobject]@{ name = [string]$_.DeviceName; width = [int]$_.Bounds.Width; height = [int]$_.Bounds.Height; primary = [bool]$_.Primary } })
 [pscustomobject]@{ apps_light = $apps; system_light = $system; screens = $screens } | ConvertTo-Json -Compress -Depth 4
@@ -228,9 +228,9 @@ $value = 1
 if ($A.enabled) { $value = 0 }
 Set-ItemProperty -Path $key -Name AppsUseLightTheme -Value $value -Type DWord
 Set-ItemProperty -Path $key -Name SystemUsesLightTheme -Value $value -Type DWord
-Add-Type -Namespace HeraldOS -Name Broadcast -MemberDefinition '[DllImport("user32.dll", SetLastError=true, CharSet=CharSet.Auto)] public static extern IntPtr SendMessageTimeout(IntPtr hWnd, uint Msg, UIntPtr wParam, string lParam, uint flags, uint timeout, out UIntPtr result);'
+Add-Type -Namespace JarodOS -Name Broadcast -MemberDefinition '[DllImport("user32.dll", SetLastError=true, CharSet=CharSet.Auto)] public static extern IntPtr SendMessageTimeout(IntPtr hWnd, uint Msg, UIntPtr wParam, string lParam, uint flags, uint timeout, out UIntPtr result);'
 $r = [UIntPtr]::Zero
-[void][HeraldOS.Broadcast]::SendMessageTimeout([IntPtr]0xffff, 0x1A, [UIntPtr]::Zero, 'ImmersiveColorSet', 2, 5000, [ref]$r)
+[void][JarodOS.Broadcast]::SendMessageTimeout([IntPtr]0xffff, 0x1A, [UIntPtr]::Zero, 'ImmersiveColorSet', 2, 5000, [ref]$r)
 '{}'
 """
 
@@ -239,7 +239,7 @@ AUDIO = r"""
 Add-Type -TypeDefinition @'
 using System;
 using System.Runtime.InteropServices;
-namespace HeraldOS {
+namespace JarodOS {
   [Guid("5CDF2C82-841E-4546-9722-0CF74078229A"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
   interface IAudioEndpointVolume {
     [PreserveSig] int _0(); [PreserveSig] int _1(); [PreserveSig] int _2(); [PreserveSig] int _3();
@@ -296,9 +296,9 @@ if ($null -ne $A) {
   if ($null -ne $A.muted) { if ($A.muted) { $mute = 1 } else { $mute = 0 } }
 }
 if ($percent -ge 0 -or $mute -ge 0) {
-  if (-not [HeraldOS.Audio]::Set(0, $percent, $mute)) { throw 'No audio output device is available.' }
+  if (-not [JarodOS.Audio]::Set(0, $percent, $mute)) { throw 'No audio output device is available.' }
 }
-[pscustomobject]@{ output = [HeraldOS.Audio]::Get(0); input = [HeraldOS.Audio]::Get(1) } | ConvertTo-Json -Compress
+[pscustomobject]@{ output = [JarodOS.Audio]::Get(0); input = [JarodOS.Audio]::Get(1) } | ConvertTo-Json -Compress
 """
 
 EVENT_LOG = r"""

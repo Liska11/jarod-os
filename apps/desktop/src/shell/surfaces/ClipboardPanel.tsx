@@ -31,7 +31,7 @@ export function ClipboardPanel({ onClose }: { onClose: () => void }) {
 
   useEffect(() => {
     let cancelled = false
-    const bridge = window.heraldOS?.clipboard
+    const bridge = window.jarodOS?.clipboard
 
     if (!bridge) {
       setEntries([])
@@ -76,7 +76,7 @@ export function ClipboardPanel({ onClose }: { onClose: () => void }) {
     }
 
     setPasting(entry.id)
-    window.heraldOS.clipboard
+    window.jarodOS.clipboard
       .paste(entry.id)
       .then(onClose)
       .catch((reason: unknown) => {

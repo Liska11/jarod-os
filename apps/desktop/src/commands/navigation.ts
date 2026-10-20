@@ -261,7 +261,7 @@ export const navigationCommands: readonly OsCommand[] = [
     args: [],
     phrases: ['toggle fullscreen', 'go fullscreen', 'fullscreen', 'exit fullscreen', 'leave fullscreen', 'enter fullscreen'],
     run: async () => {
-      await window.heraldOS.window.toggleFullscreen()
+      await window.jarodOS.window.toggleFullscreen()
 
       return ok('Toggled fullscreen')
     }

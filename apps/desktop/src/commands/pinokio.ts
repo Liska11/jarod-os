@@ -6,7 +6,7 @@ import { isLocalPage, openPinokio, showPinokioPage, startPinokio, stopPinokio } 
  * talk to the engine; the rest is for people (palette, voice) and the agent's os_ui.
  */
 
-const describe = (state: Awaited<ReturnType<typeof window.heraldOS.pinokio.getState>>) => ({ phase: state.phase, url: state.url, version: state.version ?? null, home: state.home, error: state.error ?? null })
+const describe = (state: Awaited<ReturnType<typeof window.jarodOS.pinokio.getState>>) => ({ phase: state.phase, url: state.url, version: state.version ?? null, home: state.home, error: state.error ?? null })
 
 export const pinokioCommands: readonly OsCommand[] = [
   {
@@ -29,7 +29,7 @@ export const pinokioCommands: readonly OsCommand[] = [
     tier: 'read',
     args: [],
     run: async () => {
-      const state = await window.heraldOS.pinokio.getState()
+      const state = await window.jarodOS.pinokio.getState()
 
       return ok(`Pinokio engine: ${state.phase}${state.version ? ` (pinokiod ${state.version})` : ''}`, { data: describe(state) })
     }

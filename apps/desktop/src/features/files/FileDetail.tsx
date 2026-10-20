@@ -34,7 +34,7 @@ export function FileDetail({ item }: { item: FileItem }) {
   const missions = useStore($missions)
   const favorite = prefs.favorites.includes(item.path)
   const image = isImage(item)
-  const info = useLocalData(() => (image ? window.heraldOS.fs.imageInfo(item.path).catch(() => null) : Promise.resolve(null)), [item.path, image])
+  const info = useLocalData(() => (image ? window.jarodOS.fs.imageInfo(item.path).catch(() => null) : Promise.resolve(null)), [item.path, image])
   const count = useDirCount(item.kind === 'directory' ? item.path : null)
   const artifact = artifacts.find(candidate => expandHome(candidate.path, home) === item.path)
   const mission = artifact ? missions.find(candidate => candidate.runtimeId === artifact.sessionId) : undefined
@@ -103,7 +103,7 @@ export function FileDetail({ item }: { item: FileItem }) {
 /** Space-bar quick look, rendered inside the page. Images and text render inline; the rest explains itself. */
 export function PreviewOverlay({ item, onClose }: { item: FileItem; onClose: () => void }) {
   const { t } = useT()
-  const preview = useLocalData<FilePreview | null>(() => (item.kind === 'file' ? window.heraldOS.fs.readFile(item.path) : Promise.resolve(null)), [item.path])
+  const preview = useLocalData<FilePreview | null>(() => (item.kind === 'file' ? window.jarodOS.fs.readFile(item.path) : Promise.resolve(null)), [item.path])
   const large = useThumbnail(item.kind === 'file' && (preview.data?.kind === 'too-large' || preview.data?.kind === 'binary') ? item.path : null, 1024)
 
   useEffect(() => {

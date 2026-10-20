@@ -8,7 +8,7 @@ export const $terminalRequest = atom<{ program?: string; environment?: string; v
 /** Open the Terminal with a new tab running a catalog coding agent (claude, codex, …). */
 export function openTerminalProgram(program: string, label: string): void {
   if (isPanels) {
-    window.heraldOS.shell.open('window:terminal', { type: 'terminal-program', args: [program, label] }).catch(() => undefined)
+    window.jarodOS.shell.open('window:terminal', { type: 'terminal-program', args: [program, label] }).catch(() => undefined)
 
     return
   }

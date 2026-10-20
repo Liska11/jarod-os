@@ -10,7 +10,7 @@ import { baseName } from '../../shared/path-names.ts'
 
 /*
  * Web pages inside Jarod-OS. A web window is a native view main layers over the shell
- * (`window.heraldOS.web`), framed by a floating `web` Hermes window whose content rect it follows.
+ * (`window.jarodOS.web`), framed by a floating `web` Hermes window whose content rect it follows.
  * The shell never sends the user to the system browser for something it can host itself; the
  * provider sign-in is the first such page. Panels mode has no desktop window to layer over, so
  * there main opens a compositor window and no floating frame exists.
@@ -105,13 +105,13 @@ function bind(): void {
   }
 
   bound = true
-  window.heraldOS.web.onEvent(onEvent)
+  window.jarodOS.web.onEvent(onEvent)
   // The frame owns the page: once the window manager drops the frame, the view goes too.
   $windows.subscribe(windows => {
     for (const entry of Object.values($webWindows.get())) {
       if (entry.windowId && !windows[entry.windowId]) {
         remove(entry.id)
-        void window.heraldOS.web.close(entry.id).catch(() => undefined)
+        void window.jarodOS.web.close(entry.id).catch(() => undefined)
       }
     }
   })
@@ -124,7 +124,7 @@ export async function openWebWindow(url: string, options: OpenWebWindowOptions =
   }
 
   bind()
-  const id = await window.heraldOS.web.open(url, { title: options.title })
+  const id = await window.jarodOS.web.open(url, { title: options.title })
   const title = options.title ?? new URL(url).host
   const windowId = isPanels ? null : openApp('web', { payload: { viewId: id, url }, title, bounds: options.bounds, singleton: false })
   $webWindows.set({ ...$webWindows.get(), [id]: { id, windowId, url, title, fixedTitle: Boolean(options.title), loading: true } })
@@ -144,14 +144,14 @@ export function adoptWebView(id: string, windowId: string, url: string, title: s
 /** Close an adopted view but keep its frame open (the Pinokio window stays up, showing why, once its engine stops). */
 export function releaseWebView(id: string): void {
   remove(id)
-  void window.heraldOS.web.close(id).catch(() => undefined)
+  void window.jarodOS.web.close(id).catch(() => undefined)
 }
 
 /** Show a local file (PDF, image, text, media) in a Jarod-OS window; resolves with the view id. */
 export async function openFileWindow(filePath: string, options: OpenWebWindowOptions = {}): Promise<string> {
   bind()
   const title = options.title ?? baseName(filePath)
-  const id = await window.heraldOS.web.openFile(filePath, { title })
+  const id = await window.jarodOS.web.openFile(filePath, { title })
   const url = `file://${filePath}`
   const windowId = isPanels ? null : openApp('web', { payload: { viewId: id, url }, title, bounds: options.bounds, singleton: false })
   $webWindows.set({ ...$webWindows.get(), [id]: { id, windowId, url, title, fixedTitle: true, loading: true } })
@@ -171,7 +171,7 @@ export function closeWebWindow(id: string): void {
     closeWindow(entry.windowId)
   } else {
     remove(id)
-    void window.heraldOS.web.close(id).catch(() => undefined)
+    void window.jarodOS.web.close(id).catch(() => undefined)
   }
 }
 

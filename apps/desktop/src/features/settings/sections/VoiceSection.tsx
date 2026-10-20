@@ -70,7 +70,7 @@ export function VoiceSection() {
 
   useEffect(() => {
     void fetchLiveStatus().then(setLiveStatus)
-    void window.heraldOS.voice.microphoneStatus().then(setMic)
+    void window.jarodOS.voice.microphoneStatus().then(setMic)
   }, [])
 
   useEffect(() => setHotkeyDraft(voice.hotkey), [voice.hotkey])
@@ -106,7 +106,7 @@ export function VoiceSection() {
 
   const requestMic = async () => {
     try {
-      setMic(await window.heraldOS.voice.requestMicrophone())
+      setMic(await window.jarodOS.voice.requestMicrophone())
     } catch (error) {
       notify({ title: t('settings.voice.microphone'), body: errorText(error), level: 'error' })
     }

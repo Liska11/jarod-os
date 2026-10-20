@@ -68,10 +68,10 @@ export function TerminalSurface() {
     pending.current = true
 
     try {
-      const handle = await window.heraldOS.terminal.create({ cols: 120, rows: 30, program: program?.id, environment: program?.environment, vm: program?.vm, ssh: program?.ssh })
+      const handle = await window.jarodOS.terminal.create({ cols: 120, rows: 30, program: program?.id, environment: program?.environment, vm: program?.vm, ssh: program?.ssh })
 
       if (!mounted.current) {
-        void quietly(() => window.heraldOS.terminal.dispose(handle.id))
+        void quietly(() => window.jarodOS.terminal.dispose(handle.id))
 
         return
       }
@@ -129,7 +129,7 @@ export function TerminalSurface() {
       mounted.current = false
 
       for (const id of ids) {
-        void quietly(() => window.heraldOS.terminal.dispose(id))
+        void quietly(() => window.jarodOS.terminal.dispose(id))
       }
 
       ids.clear()
@@ -138,7 +138,7 @@ export function TerminalSurface() {
 
   useEffect(
     () =>
-      window.heraldOS.terminal.onExit(id => {
+      window.jarodOS.terminal.onExit(id => {
         live.current.delete(id)
         setTabs(current => {
           const next = current.filter(tab => tab.id !== id)
@@ -152,7 +152,7 @@ export function TerminalSurface() {
 
   const close = (id: string) => {
     live.current.delete(id)
-    void quietly(() => window.heraldOS.terminal.dispose(id))
+    void quietly(() => window.jarodOS.terminal.dispose(id))
     setTabs(current => {
       const next = current.filter(tab => tab.id !== id)
       setActive(prev => (prev === id ? (next[next.length - 1]?.id ?? null) : prev))
@@ -265,13 +265,13 @@ function TerminalView({ id, active }: { id: string; active: boolean }) {
 
     term.current = terminal
     fit.current = fitAddon
-    const offData = window.heraldOS.terminal.onData((tid, data) => {
+    const offData = window.jarodOS.terminal.onData((tid, data) => {
       if (tid === id) {
         terminal.write(data)
       }
     })
-    const onInput = terminal.onData(data => window.heraldOS.terminal.write(id, data))
-    const onResize = terminal.onResize(({ cols, rows }) => window.heraldOS.terminal.resize(id, cols, rows))
+    const onInput = terminal.onData(data => window.jarodOS.terminal.write(id, data))
+    const onResize = terminal.onResize(({ cols, rows }) => window.jarodOS.terminal.resize(id, cols, rows))
     const observer = new ResizeObserver(() => {
       if (el.clientWidth > 0 && el.clientHeight > 0) {
         fitAddon.fit()

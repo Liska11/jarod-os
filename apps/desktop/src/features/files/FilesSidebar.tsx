@@ -24,7 +24,7 @@ interface Place {
 
 async function namesIn(dir: string): Promise<Set<string>> {
   try {
-    return new Set((await window.heraldOS.fs.readDir(dir)).map(entry => entry.name))
+    return new Set((await window.jarodOS.fs.readDir(dir)).map(entry => entry.name))
   } catch {
     return new Set()
   }
@@ -81,7 +81,7 @@ export function FilesSidebar() {
               key={place.id}
               type="button"
               aria-current={active ? 'page' : undefined}
-              onClick={() => (place.external ? void window.heraldOS.fs.openPath(place.external) : navigate(place.location))}
+              onClick={() => (place.external ? void window.jarodOS.fs.openPath(place.external) : navigate(place.location))}
               onDragOver={event => {
                 if (droppable && event.dataTransfer.types.includes(DRAG_MIME)) {
                   event.preventDefault()

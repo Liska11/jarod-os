@@ -24,7 +24,7 @@ export function VmsBlock() {
   const [message, setMessage] = useState<{ tone: 'ok' | 'error'; text: string } | null>(null)
 
   const refresh = useCallback(() => {
-    void window.heraldOS.vms
+    void window.jarodOS.vms
       .state()
       .then(setState)
       .catch(() => undefined)
@@ -47,7 +47,7 @@ export function VmsBlock() {
 
   const loadOnline = () => {
     setOnline([])
-    void window.heraldOS.vms
+    void window.jarodOS.vms
       .online()
       .then(list => {
         setOnline(list)
@@ -57,7 +57,7 @@ export function VmsBlock() {
   }
 
   const install = async () => {
-    const ok = await act('install', () => window.heraldOS.vms.create(distro, name.trim()), t('vms.installed', { name: name.trim() }))
+    const ok = await act('install', () => window.jarodOS.vms.create(distro, name.trim()), t('vms.installed', { name: name.trim() }))
 
     if (ok) {
       openTerminalVm(name.trim())
@@ -161,12 +161,12 @@ function VmRow({
           {t('vms.open')}
         </GlassButton>
         {running && (
-          <GlassButton size="icon" variant="ghost" aria-label={t('vms.stop')} disabled={disabled} onClick={() => void onAct(`stop ${vm.name}`, () => window.heraldOS.vms.stop(vm.name), t('vms.stoppedDone', { name: vm.name }))}>
+          <GlassButton size="icon" variant="ghost" aria-label={t('vms.stop')} disabled={disabled} onClick={() => void onAct(`stop ${vm.name}`, () => window.jarodOS.vms.stop(vm.name), t('vms.stoppedDone', { name: vm.name }))}>
             <IconPlayerStop />
           </GlassButton>
         )}
         {canMove && (
-          <GlassButton size="sm" variant="ghost" disabled={disabled} onClick={() => void onAct(`move ${vm.name}`, () => window.heraldOS.vms.move(vm.name), t('vms.moved', { name: vm.name }))}>
+          <GlassButton size="sm" variant="ghost" disabled={disabled} onClick={() => void onAct(`move ${vm.name}`, () => window.jarodOS.vms.move(vm.name), t('vms.moved', { name: vm.name }))}>
             {working === `move ${vm.name}` ? <Spinner /> : <IconTransfer />}
             {t('vms.move')}
           </GlassButton>
@@ -194,7 +194,7 @@ function VmRow({
             size="sm"
             variant="danger"
             disabled={typed !== vm.name || disabled}
-            onClick={() => void onAct(`remove ${vm.name}`, () => window.heraldOS.vms.remove(vm.name, typed), t('vms.removed', { name: vm.name })).then(() => setRemoving(false))}
+            onClick={() => void onAct(`remove ${vm.name}`, () => window.jarodOS.vms.remove(vm.name, typed), t('vms.removed', { name: vm.name })).then(() => setRemoving(false))}
           >
             {t('vms.removeNow')}
           </GlassButton>

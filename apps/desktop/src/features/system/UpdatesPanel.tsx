@@ -4,11 +4,11 @@ import { GlassButton, Pill, type PillTone } from '../../components/ui/glass.tsx'
 import { Spinner } from '../../components/ui/primitives.tsx'
 import { dateLocale, type MessageKey, t, useT } from '../../lib/i18n.ts'
 
-type State = Awaited<ReturnType<typeof window.heraldOS.updates.state>>
+type State = Awaited<ReturnType<typeof window.jarodOS.updates.state>>
 type Category = 'windows' | 'drivers' | 'software'
-type Plan = Extract<Awaited<ReturnType<typeof window.heraldOS.updates.prepareUpgrade>>, { ok: true }>['plan']
-type Progress = Parameters<Parameters<typeof window.heraldOS.updates.onProgress>[0]>[0]
-type Result = Extract<Awaited<ReturnType<typeof window.heraldOS.updates.upgrade>>, { ok: true }>['result']
+type Plan = Extract<Awaited<ReturnType<typeof window.jarodOS.updates.prepareUpgrade>>, { ok: true }>['plan']
+type Progress = Parameters<Parameters<typeof window.jarodOS.updates.onProgress>[0]>[0]
+type Result = Extract<Awaited<ReturnType<typeof window.jarodOS.updates.upgrade>>, { ok: true }>['result']
 
 const TONE: Record<string, PillTone> = { 'up-to-date': 'ok', available: 'warn', failed: 'danger', unsupported: 'muted', unchecked: 'muted' }
 const RESULT_TONE: Record<Result['outcome'], string> = { success: 'text-ok', 'reboot-required': 'text-warn', failed: 'text-danger', cancelled: 'text-fg-3' }
@@ -28,7 +28,7 @@ export function UpdatesPanel() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    void window.heraldOS.updates
+    void window.jarodOS.updates
       .state()
       .then(next => {
         setState(next)
@@ -36,12 +36,12 @@ export function UpdatesPanel() {
       })
       .catch(() => undefined)
 
-    return window.heraldOS.updates.onProgress(next => setProgress(next.phase === 'done' ? null : next))
+    return window.jarodOS.updates.onProgress(next => setProgress(next.phase === 'done' ? null : next))
   }, [])
 
   const check = async () => {
     setBusy(true)
-    setState(await window.heraldOS.updates.check().catch(() => state))
+    setState(await window.jarodOS.updates.check().catch(() => state))
     setBusy(false)
   }
 
@@ -49,7 +49,7 @@ export function UpdatesPanel() {
   const prepare = async (id: string, version: string | null, source: string) => {
     setError(null)
     setOutcome(null)
-    const reply = await window.heraldOS.updates.prepareUpgrade({ id, version: version ?? '', source }).catch((cause: Error) => ({ ok: false as const, error: cause.message }))
+    const reply = await window.jarodOS.updates.prepareUpgrade({ id, version: version ?? '', source }).catch((cause: Error) => ({ ok: false as const, error: cause.message }))
 
     if (reply.ok) setPlan(reply.plan)
     else setError(reply.error)
@@ -59,7 +59,7 @@ export function UpdatesPanel() {
   const confirm = async (confirmed: Plan) => {
     setPlan(null)
     setProgress({ id: confirmed.id, phase: 'starting', percent: null, line: '' })
-    const reply = await window.heraldOS.updates.upgrade(confirmed.token).catch((cause: Error) => ({ ok: false as const, error: cause.message }))
+    const reply = await window.jarodOS.updates.upgrade(confirmed.token).catch((cause: Error) => ({ ok: false as const, error: cause.message }))
     setProgress(null)
 
     if (reply.ok) {
@@ -154,7 +154,7 @@ export function UpdatesPanel() {
               <Pill tone={TONE[result.status] ?? 'muted'}>{t(`updates.status.${result.status}` as MessageKey, { count: result.items.length })}</Pill>
               <span className="flex-1" />
               {category !== 'software' && result.status === 'available' && (
-                <GlassButton size="sm" variant="ghost" onClick={() => void window.heraldOS.updates.openWindowsUpdate()}>
+                <GlassButton size="sm" variant="ghost" onClick={() => void window.jarodOS.updates.openWindowsUpdate()}>
                   <IconExternalLink />
                   {t('updates.openWindowsUpdate')}
                 </GlassButton>

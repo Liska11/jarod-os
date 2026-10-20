@@ -48,7 +48,7 @@ export function useNativeView(viewId: string | null, element: RefObject<HTMLElem
       // Leave room for the voice pill and action captions; a sliver of page is not worth showing.
       const trimmed = trimAround({ x: rect.left, y: rect.top, width: rect.width, height: rect.height }, Object.values(avoid))
       const show = visible && trimmed.height >= 60 && trimmed.width >= 60
-      options.place ? options.place({ ...trimmed, radius }, show) : window.heraldOS.web.setBounds(viewId, { ...trimmed, radius }, show)
+      options.place ? options.place({ ...trimmed, radius }, show) : window.jarodOS.web.setBounds(viewId, { ...trimmed, radius }, show)
     }
 
     report()

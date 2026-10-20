@@ -40,14 +40,14 @@ describe('logIpcFailures', () => {
     const ipc = { handle: (channel: string, fn: (...args: unknown[]) => unknown) => void handlers.set(channel, fn) }
     logIpcFailures(ipc as never, log)
 
-    ipc.handle('herald-os:fs:read', async () => {
+    ipc.handle('jarod-os:fs:read', async () => {
       throw new Error('ENOENT: no such file')
     })
-    ipc.handle('herald-os:ok', async () => 42)
+    ipc.handle('jarod-os:ok', async () => 42)
 
-    await expect(handlers.get('herald-os:fs:read')!({})).rejects.toThrow('ENOENT')
-    await expect(handlers.get('herald-os:ok')!({})).resolves.toBe(42)
-    expect(lines).toEqual(['[ipc] herald-os:fs:read failed: ENOENT: no such file'])
+    await expect(handlers.get('jarod-os:fs:read')!({})).rejects.toThrow('ENOENT')
+    await expect(handlers.get('jarod-os:ok')!({})).resolves.toBe(42)
+    expect(lines).toEqual(['[ipc] jarod-os:fs:read failed: ENOENT: no such file'])
   })
 })
 

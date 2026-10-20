@@ -25,7 +25,7 @@ function ContinuitySettings() {
   const isFolder = (entry: string) => entry.startsWith('/') || entry.startsWith('~')
 
   const pickFolders = async () => {
-    const picked = await window.heraldOS.fs.pickFiles({ directory: true, multiple: true })
+    const picked = await window.jarodOS.fs.pickFiles({ directory: true, multiple: true })
     add(picked.map(target => (home && target.startsWith(`${home}/`) ? `~${target.slice(home.length)}` : target)))
   }
 
@@ -104,11 +104,11 @@ function ContinuitySettings() {
 
 export function PrivacySection() {
   useT()
-  const policy = useLocalData(() => window.heraldOS.bridge.readPolicy())
+  const policy = useLocalData(() => window.jarodOS.bridge.readPolicy())
   const [draft, setDraft] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [showAudit, setShowAudit] = useState(false)
-  const audit = useLocalData(() => (showAudit ? window.heraldOS.bridge.readAudit(200) : Promise.resolve([])), [showAudit])
+  const audit = useLocalData(() => (showAudit ? window.jarodOS.bridge.readAudit(200) : Promise.resolve([])), [showAudit])
   const text = draft ?? policy.data ?? ''
   const dirty = draft !== null && draft !== policy.data
 
@@ -120,7 +120,7 @@ export function PrivacySection() {
     setSaving(true)
 
     try {
-      await window.heraldOS.bridge.writePolicy(text)
+      await window.jarodOS.bridge.writePolicy(text)
       markSaved()
       notify({ title: t('settings.privacy.saved'), body: t('settings.privacy.saved.body'), level: 'success' })
       policy.reload()

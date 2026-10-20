@@ -20,19 +20,19 @@ async function loadPreview(artifact: Artifact): Promise<PreviewData> {
   const kind = previewKind(artifact.path)
 
   if (kind === 'image') {
-    const thumb = await window.heraldOS.fs.thumbnail(artifact.path, 640)
+    const thumb = await window.jarodOS.fs.thumbnail(artifact.path, 640)
 
     if (thumb) {
       return { type: 'image', src: thumb }
     }
 
-    const file = await window.heraldOS.fs.readFile(artifact.path)
+    const file = await window.jarodOS.fs.readFile(artifact.path)
 
     return file.kind === 'image' && file.content ? { type: 'image', src: file.content } : { type: 'file' }
   }
 
   if (kind === 'text') {
-    const file = await window.heraldOS.fs.readFile(artifact.path)
+    const file = await window.jarodOS.fs.readFile(artifact.path)
 
     if (file.kind === 'text' && typeof file.content === 'string') {
       const lines = file.content.split('\n')
@@ -64,7 +64,7 @@ export function MissionPreview({ artifact }: { artifact: Artifact | undefined })
         <>
           <PreviewCard artifact={artifact} data={preview.data} loading={preview.loading} error={preview.error} />
           <div className="flex justify-center">
-            <GlassButton size="sm" onClick={() => void attempt('native.failed.openFile', () => window.heraldOS.fs.openPath(artifact.path))} aria-label={t('missionPreview.openAria', { name: artifact.name })}>
+            <GlassButton size="sm" onClick={() => void attempt('native.failed.openFile', () => window.jarodOS.fs.openPath(artifact.path))} aria-label={t('missionPreview.openAria', { name: artifact.name })}>
               <IconExternalLink />
               {t('missionPreview.open')}
             </GlassButton>

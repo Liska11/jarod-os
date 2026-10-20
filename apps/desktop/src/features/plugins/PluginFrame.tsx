@@ -71,7 +71,7 @@ export function PluginFrame({ plugin, at, className, title, width, height }: { p
         return
       }
 
-      void window.heraldOS.plugins
+      void window.jarodOS.plugins
         .call(id, message.method, message.params ?? {})
         .then(result => reply({ reply: message.id, result }))
         .catch((error: unknown) => reply({ reply: message.id, error: error instanceof Error ? error.message.replace(/^Error invoking remote method '[^']+': (Error: )?/, '') : String(error) }))

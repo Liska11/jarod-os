@@ -7,20 +7,20 @@ export const $network = atom<NetworkPolicy | null>(null)
 let bound = false
 
 export function bindNetwork(): void {
-  if (bound || typeof window === 'undefined' || !window.heraldOS?.network) {
+  if (bound || typeof window === 'undefined' || !window.jarodOS?.network) {
     return
   }
 
   bound = true
-  void window.heraldOS.network
+  void window.jarodOS.network
     .get()
     .then(policy => $network.set(policy))
     .catch(() => undefined)
-  window.heraldOS.network.onChanged(policy => $network.set(policy))
+  window.jarodOS.network.onChanged(policy => $network.set(policy))
 }
 
 export async function setNetwork(change: Partial<Omit<NetworkPolicy, 'version'>>): Promise<NetworkPolicy> {
-  const next = await window.heraldOS.network.set(change)
+  const next = await window.jarodOS.network.set(change)
   $network.set(next)
 
   return next

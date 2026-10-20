@@ -37,9 +37,9 @@ interface Job {
 }
 
 /** The cron jobs as the core serves them (the same REST the page reads). */
-const fetchJobs = () => page.evaluate(() => window.heraldOS.backend.rest<Job[]>({ method: 'GET', path: '/api/cron/jobs' }))
+const fetchJobs = () => page.evaluate(() => window.jarodOS.backend.rest<Job[]>({ method: 'GET', path: '/api/cron/jobs' }))
 const kanbanTasks = async () => {
-  const state = await page.evaluate(() => window.heraldOS.backend.getState())
+  const state = await page.evaluate(() => window.jarodOS.backend.getState())
   const answer = await invokeCore<{ data: { title: string; status: string; priority: number; body: string | null; assignee: string | null }[] }>(state, 'kanban-list-tasks', {})
 
   return answer.data

@@ -1,7 +1,7 @@
 import { spawn } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
-import { type HeraldEvent, hookEnv } from '../../shared/events.ts'
+import { type JarodEvent, hookEnv } from '../../shared/events.ts'
 import { log } from '../log.ts'
 import { shellConfigDir } from '../paths.ts'
 
@@ -55,7 +55,7 @@ export function hookCommand(script: string, eventName: string, platform: NodeJS.
 }
 
 /** Run the person's hook scripts for an event, each with the event in its environment. Never waits on them. */
-export function runHooks(event: HeraldEvent): void {
+export function runHooks(event: JarodEvent): void {
   for (const script of hookScripts(path.join(hooksDir(), `${event.name}.d`))) {
     const { file, args } = hookCommand(script, event.name)
     const child = spawn(file, args, { env: { ...process.env, ...hookEnv(event) }, stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true })

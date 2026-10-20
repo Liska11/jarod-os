@@ -2,7 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { ipcMain } from 'electron'
 import { IPC } from '../shared/ipc.ts'
-import { heraldOsDataDir } from './paths.ts'
+import { jarodOsDataDir } from './paths.ts'
 
 /** The notification history outlives a restart, for a week and up to this many entries. */
 const KEEP_MS = 7 * 24 * 60 * 60_000
@@ -15,7 +15,7 @@ interface StoredNotification {
 }
 
 function historyFile(): string {
-  return path.join(heraldOsDataDir(), 'notifications.json')
+  return path.join(jarodOsDataDir(), 'notifications.json')
 }
 
 /** Drop entries older than a week and anything that is not a notification. */
@@ -39,7 +39,7 @@ export function registerNotificationHistoryIpc(): void {
     }
   })
   ipcMain.handle(IPC.notificationsSave, (_event, items: unknown) => {
-    fs.mkdirSync(heraldOsDataDir(), { recursive: true })
+    fs.mkdirSync(jarodOsDataDir(), { recursive: true })
     const file = historyFile()
     fs.writeFileSync(`${file}.tmp`, JSON.stringify(keepRecent(items)))
     fs.renameSync(`${file}.tmp`, file)

@@ -1,4 +1,4 @@
-import type { HeraldOsResult } from '../../shared/ipc.ts'
+import type { JarodOsResult } from '../../shared/ipc.ts'
 import { relayToMain } from '../store/shell.ts'
 
 /** Exit code main returns when the `herald-os` CLI does not exist on this platform (macOS, desktop mode). */
@@ -25,7 +25,7 @@ export function tailLines(text: string, lines = 4): string {
   return parts.slice(-lines).join('\n')
 }
 
-function summarize(result: HeraldOsResult): CliOutcome {
+function summarize(result: JarodOsResult): CliOutcome {
   if (result.code === CLI_UNAVAILABLE_CODE) {
     return { ok: false, unavailable: true, code: result.code, output: CLI_UNAVAILABLE_MESSAGE }
   }
@@ -40,8 +40,8 @@ function summarize(result: HeraldOsResult): CliOutcome {
  * Run a `herald-os` CLI command from any surface. Never throws: a missing bridge or a rejected IPC
  * becomes a failed outcome so callers can show it inline.
  */
-export async function runHeraldOs(argv: string[]): Promise<CliOutcome> {
-  const bridge = window.heraldOS?.shell?.heraldOs
+export async function runJarodOs(argv: string[]): Promise<CliOutcome> {
+  const bridge = window.jarodOS?.shell?.jarodOs
 
   if (typeof bridge !== 'function') {
     return { ok: false, unavailable: true, code: CLI_UNAVAILABLE_CODE, output: CLI_UNAVAILABLE_MESSAGE }
@@ -57,8 +57,8 @@ export async function runHeraldOs(argv: string[]): Promise<CliOutcome> {
 }
 
 /** Run a command and relay a toast describing the result to the Hermes window (silent when the CLI is unavailable). */
-export async function runHeraldOsWithToast(argv: string[], title: string): Promise<CliOutcome> {
-  const outcome = await runHeraldOs(argv)
+export async function runJarodOsWithToast(argv: string[], title: string): Promise<CliOutcome> {
+  const outcome = await runJarodOs(argv)
 
   if (!outcome.unavailable) {
     const body = outcome.ok ? outcome.output || 'Done' : outcome.output || `herald-os exited with code ${outcome.code}`

@@ -82,7 +82,7 @@ export function bindJarod(): () => void {
 
     const { kind, ...params } = request.params as Record<string, unknown>
 
-    void answerShellRequest(kind, params, window.heraldOS.jarod.shell).then(answer => request.respond(answer))
+    void answerShellRequest(kind, params, window.jarodOS.jarod.shell).then(answer => request.respond(answer))
 
     return true
   })

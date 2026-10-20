@@ -57,7 +57,7 @@ test('a backup made from Settings lands on the Jarod disk, with its manifest', a
 
 test('the core starts again after the backup (it stops only for the data copy)', async () => {
   await expect
-    .poll(async () => (await page.evaluate(() => window.heraldOS.backend.getState())).phase, { timeout: 60_000 })
+    .poll(async () => (await page.evaluate(() => window.jarodOS.backend.getState())).phase, { timeout: 60_000 })
     .not.toBe('stopped')
 })
 
@@ -67,7 +67,7 @@ test('a sandbox of a project: compared and applied from Settings', async () => {
   writeFileSync(path.join(project, 'src', 'app.js'), 'v1')
 
   // The folder picker is a native dialog: the sandbox is created through the same call the button makes.
-  const created = await page.evaluate(source => window.heraldOS.sandboxes.create(source, 'essai', false), project)
+  const created = await page.evaluate(source => window.jarodOS.sandboxes.create(source, 'essai', false), project)
   expect(created).toMatchObject({ ok: true, name: 'essai' })
   writeFileSync(path.join(root, 'sandboxes', 'essai', 'src', 'app.js'), 'v2 from the sandbox')
 
@@ -85,22 +85,22 @@ test('a sandbox of a project: compared and applied from Settings', async () => {
 
 test('a Python environment built with uv, and a terminal that runs its Python', async () => {
   test.setTimeout(240_000)
-  const built = await page.evaluate(() => window.heraldOS.environments.create('py-test', 'python', '3.11'))
+  const built = await page.evaluate(() => window.jarodOS.environments.create('py-test', 'python', '3.11'))
   expect(built).toEqual({ ok: true, name: 'py-test' })
   expect(existsSync(path.join(root, 'environments', 'py-test', 'Scripts', 'python.exe'))).toBe(true)
 
   // A terminal in the environment: its python answers first, from the environment's folder.
   const output = await page.evaluate(async () => {
-    const handle = await window.heraldOS.terminal.create({ cols: 120, rows: 30, environment: 'py-test' })
+    const handle = await window.jarodOS.terminal.create({ cols: 120, rows: 30, environment: 'py-test' })
     let text = ''
-    const off = window.heraldOS.terminal.onData((id, data) => {
+    const off = window.jarodOS.terminal.onData((id, data) => {
       if (id === handle.id) text += data
     })
     await new Promise(resolve => setTimeout(resolve, 2500))
-    window.heraldOS.terminal.write(handle.id, 'python -c "import sys; print(sys.prefix)"\r')
+    window.jarodOS.terminal.write(handle.id, 'python -c "import sys; print(sys.prefix)"\r')
     await new Promise(resolve => setTimeout(resolve, 4000))
     off()
-    await window.heraldOS.terminal.dispose(handle.id)
+    await window.jarodOS.terminal.dispose(handle.id)
 
     return text
   })
@@ -119,7 +119,7 @@ test('the WSL machines of this computer are listed, read-only', async () => {
   await expect(page.getByRole('heading', { name: 'Machines virtuelles' })).toBeVisible()
 
   // Nothing is installed, moved or started here: the list is what `wsl --list --verbose` reports, without Docker's own.
-  const state = await page.evaluate(() => window.heraldOS.vms.state())
+  const state = await page.evaluate(() => window.jarodOS.vms.state())
   expect(state.available).toBe(true)
   expect(state.root).toBe(root)
   expect(state.list.every(vm => !/^docker-desktop/i.test(vm.name))).toBe(true)
