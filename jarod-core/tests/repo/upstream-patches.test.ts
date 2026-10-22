@@ -9,6 +9,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { isolatedGitEnv } from "./git-env.js";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const PATCH = join(repoRoot, "licenses", "upstream-patches", "0001-providers-remote-panes.patch");
@@ -43,11 +44,12 @@ describe("HN4 — le correctif amont de Providers.tsx", () => {
     try {
       const file = join(dir, ...REL.split("/"));
       mkdirSync(dirname(file), { recursive: true });
-      writeFileSync(file, execFileSync("git", ["-C", UPSTREAM, "show", `${REV}:${REL}`], { maxBuffer: 64 * 1024 * 1024 }));
+      const env = isolatedGitEnv(); // ni GIT_DIR ni GIT_WORK_TREE hérités : `git apply` agirait dans un autre dépôt
+      writeFileSync(file, execFileSync("git", ["-C", UPSTREAM, "show", `${REV}:${REL}`], { maxBuffer: 64 * 1024 * 1024, env }));
       const p = join(dir, "p.patch");
       writeFileSync(p, patch);
-      execFileSync("git", ["apply", "--check", p], { cwd: dir });
-      execFileSync("git", ["apply", p], { cwd: dir });
+      execFileSync("git", ["apply", "--check", p], { cwd: dir, env });
+      execFileSync("git", ["apply", p], { cwd: dir, env });
       const after = readFileSync(file, "utf8");
       expect(after).toContain("const REMOTE_PANES = typeof __JAROD_REMOTE_PANES__");
       expect(after.match(/REMOTE_PANES &&/g)?.length).toBe(4);

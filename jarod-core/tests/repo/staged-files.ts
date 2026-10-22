@@ -37,15 +37,18 @@ export function stagedProblems(entries: readonly StagedEntry[]): string[] {
   return problems;
 }
 
-const git = (cwd: string, args: string[], input?: string): string =>
-  execFileSync("git", args, { cwd, encoding: "utf8", maxBuffer: 256 * 1024 * 1024, ...(input !== undefined ? { input } : {}) });
+const git = (cwd: string, env: NodeJS.ProcessEnv, args: string[], input?: string): string =>
+  execFileSync("git", args, { cwd, env, encoding: "utf8", maxBuffer: 256 * 1024 * 1024, ...(input !== undefined ? { input } : {}) });
 
-/** Lit l'index de `cwd` : chemins ajoutés ou modifiés avec leur taille dans l'index et dans HEAD. */
-export function readStaged(cwd: string): StagedEntry[] {
-  const names = git(cwd, ["diff", "--cached", "--name-only", "--diff-filter=AM", "-z", "--no-renames"]).split("\0").filter(Boolean);
+/**
+ * Lit l'index de `cwd` : chemins ajoutés ou modifiés avec leur taille dans l'index et dans HEAD. `env` reste l'environnement hérité pour le
+ * crochet `pre-commit` (git y fixe GIT_DIR / GIT_INDEX_FILE) ; un test sur un dépôt fabriqué passe `isolatedGitEnv()`.
+ */
+export function readStaged(cwd: string, env: NodeJS.ProcessEnv = process.env): StagedEntry[] {
+  const names = git(cwd, env, ["diff", "--cached", "--name-only", "--diff-filter=AM", "-z", "--no-renames"]).split("\0").filter(Boolean);
   if (names.length === 0) return [];
   const sizes = (prefix: string): (number | null)[] =>
-    git(cwd, ["cat-file", "--batch-check"], names.map((n) => `${prefix}${n}`).join("\n") + "\n")
+    git(cwd, env, ["cat-file", "--batch-check"], names.map((n) => `${prefix}${n}`).join("\n") + "\n")
       .split("\n")
       .filter(Boolean)
       .map((l) => (l.endsWith(" missing") ? null : Number(l.split(" ")[2])));

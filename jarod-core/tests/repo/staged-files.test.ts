@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
+import { isolatedGitEnv } from "./git-env.js";
 import { readStaged, stagedProblems } from "./staged-files.js";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
@@ -40,7 +41,7 @@ describe("garde sur un vrai index git", () => {
   afterEach(() => {
     for (const d of dirs.splice(0)) rmSync(d, { recursive: true, force: true });
   });
-  const git = (cwd: string, ...args: string[]) => execFileSync("git", ["-c", "user.name=t", "-c", "user.email=t@t", ...args], { cwd, encoding: "utf8" });
+  const git = (cwd: string, ...args: string[]) => execFileSync("git", ["-c", "user.name=t", "-c", "user.email=t@t", ...args], { cwd, encoding: "utf8", env: isolatedGitEnv() });
   function repo(): string {
     const d = mkdtempSync(join(tmpdir(), "jarod-staged-"));
     dirs.push(d);
@@ -59,7 +60,7 @@ describe("garde sur un vrai index git", () => {
     writeFileSync(join(d, "keep", ".gitkeep"), "");
     rmSync(join(d, "small.ts"));
     git(d, "add", "-A");
-    const staged = readStaged(d);
+    const staged = readStaged(d, isolatedGitEnv());
     expect(staged.map((s) => s.path).sort()).toEqual(["big.ts", "keep/.gitkeep"]); // small.ts supprimé : ni ajouté ni modifié
     const bad = stagedProblems(staged);
     expect(bad).toHaveLength(1);
@@ -68,7 +69,7 @@ describe("garde sur un vrai index git", () => {
 
   it("le script en ligne de commande sort en code 1 sur un fichier vidé, 0 sinon, et la dérogation JAROD_ALLOW_EMPTY=1 est dite", () => {
     const d = repo();
-    const run = (env: Record<string, string> = {}) => spawnSync(TSX, [CLI], { cwd: d, encoding: "utf8", shell: process.platform === "win32", env: { ...process.env, ...env } });
+    const run = (env: Record<string, string> = {}) => spawnSync(TSX, [CLI], { cwd: d, encoding: "utf8", shell: process.platform === "win32", env: { ...isolatedGitEnv(), ...env } });
     writeFileSync(join(d, "big.ts"), "export const x = 2;\n".repeat(400));
     git(d, "add", "-A");
     expect(run().status).toBe(0);
@@ -85,6 +86,6 @@ describe("garde sur un vrai index git", () => {
 
   it("un index vide ne pose aucun problème", () => {
     const d = repo();
-    expect(readStaged(d)).toEqual([]);
+    expect(readStaged(d, isolatedGitEnv())).toEqual([]);
   });
 });

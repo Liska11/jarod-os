@@ -26,9 +26,10 @@ export function isAllowedIgnored(path: string): boolean {
  * `--ignored=matching` : git rend le chemin qui correspond à une règle (un dossier ignoré en entier apparaît une
  * fois, sans ses fichiers — `node_modules` n'est pas parcouru), jamais ses ancêtres simplement non suivis.
  */
-export function ignoredSources(repoRoot: string, scope = "packages"): string[] {
+export function ignoredSources(repoRoot: string, scope = "packages", env: NodeJS.ProcessEnv = process.env): string[] {
   const out = execFileSync("git", ["status", "--porcelain=v1", "-z", "--ignored=matching", "--untracked-files=normal", "--", scope], {
     cwd: repoRoot,
+    env,
     encoding: "utf8",
     maxBuffer: 64 * 1024 * 1024,
   });

@@ -34,8 +34,11 @@ export function shellRunner(check, root) {
   return { id: check.id, ok: result.status === 0 && !result.error, ms: Date.now() - started, tail: `${result.stdout ?? ""}${result.stderr ?? ""}`.slice(-400) };
 }
 
+// A lot is always about `root`: an inherited GIT_DIR / GIT_WORK_TREE would point git at another repository (incident of 2026-10-22).
+const gitEnv = () => Object.fromEntries(Object.entries(process.env).filter(([k]) => !/^GIT_/i.test(k)));
+
 function git(root, args) {
-  const r = spawnSync("git", args, { cwd: root, encoding: "utf8" });
+  const r = spawnSync("git", args, { cwd: root, encoding: "utf8", env: gitEnv() });
 
   return r.status === 0 ? r.stdout.trim() : "";
 }

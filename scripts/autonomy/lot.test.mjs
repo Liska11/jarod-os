@@ -6,10 +6,14 @@ import { join } from "node:path";
 import { test } from "node:test";
 import { MAX_ATTEMPTS, check, paths, score, start, status, verdict } from "./lot-lib.mjs";
 
+// No inherited GIT_* variable for the test's own git (incident of 2026-10-22): git follows them before cwd, so `git init` here could
+// reinitialise another repository. lot-lib.mjs strips them for its own git calls.
+const gitEnv = Object.fromEntries(Object.entries(process.env).filter(([k]) => !/^GIT_/i.test(k)));
+
 function world(checks) {
   const root = mkdtempSync(join(tmpdir(), "jarod-lot-"));
 
-  spawnSync("git", ["init", "-q"], { cwd: root });
+  spawnSync("git", ["init", "-q"], { cwd: root, env: gitEnv });
   mkdirSync(join(root, "autonomy"));
   writeFileSync(paths(root).checks, JSON.stringify({ checks }));
 
@@ -36,7 +40,7 @@ test("a lot that keeps everything green is accepted and journalled; nothing is c
     assert.equal(start(root, "L1", runnerOf(outcomes)).ok, true);
     assert.equal(check(root, "L1", runnerOf(outcomes)).verdict, "accept");
     assert.deepEqual(lines(root).map((l) => l.event), ["start", "accept"]);
-    assert.equal(spawnSync("git", ["log"], { cwd: root, encoding: "utf8" }).status !== 0, true, "no commit was made");
+    assert.equal(spawnSync("git", ["log"], { cwd: root, encoding: "utf8", env: gitEnv }).status !== 0, true, "no commit was made");
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
