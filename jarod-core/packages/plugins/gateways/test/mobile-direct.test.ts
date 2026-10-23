@@ -759,6 +759,28 @@ describe("mobile bridge — taking the app's access away", () => {
     }
   });
 
+  it("answers the phone that leaves before cutting it off, however slow the sealing", async () => {
+    const r = await started();
+    try {
+      const { phone } = await pairPhone(r);
+      // A busy computer: sealing the answer takes longer than a timer tick.
+      const host = r.core.remoteHost() as unknown as { clients: Map<string, { cid: string; channel: SecureChannel }> };
+      const channel = [...host.clients.values()].find((c) => c.cid === phone.cid)!.channel;
+      const seal = channel.seal.bind(channel);
+      channel.seal = async (m) => {
+        await new Promise((d) => setTimeout(d, 50));
+        return seal(m);
+      };
+      const answer = phone.rpc("device.leave");
+      await phone.closed;
+      const late = new Promise((d) => setTimeout(() => d({ error: "no answer before the channel closed" }), 500));
+      expect(await Promise.race([answer, late])).toEqual({ id: 1, result: true });
+      expect(r.core.settings.getAll().remote.devices).toEqual([]);
+    } finally {
+      await r.stop();
+    }
+  });
+
   it("closes every direct channel when the bridge stops", async () => {
     const r = await started();
     const { phone } = await pairPhone(r);

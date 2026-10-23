@@ -644,8 +644,10 @@ export class RemoteHost extends Emitter<{ status: RemoteStatus }> implements App
       }
       case "device.leave": {
         // The phone forgets this computer: its key is no longer accepted, from now on.
+        // After this request, on the client's queue: its answer is sealed and sent first. A timer
+        // could fire while the answer is still being sealed and cut the channel before it went out.
         const id = c.device!.id;
-        setTimeout(() => this.revoke(id), 0);
+        c.queue = c.queue.then(() => this.revoke(id));
         return true;
       }
       default:
