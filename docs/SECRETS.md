@@ -33,9 +33,21 @@ This builds on the core's existing vault. No second vault was created: the same 
 |---|---|
 | Conversations and summaries | The values never reach the model; tool outputs are masked. |
 | Memory and embeddings | Built from the conversation, which does not hold the values. |
-| Logs and audit | `redactText`, then truncation; only names are recorded. |
+| Logs and audit | The arguments of a tool call are masked **by structure** before they are written (`auditArgs`, `kernel/src/redact.ts`): a field named like a secret (`password`, `token`, `apiKey`, `authorization`, `cookie`…) is replaced whole, short or long; strings go through the known token shapes and the `--password abc`-style command-line options; truncation comes last. Free text holding an unknown, unnamed secret is not guaranteed to be caught. Older logs are not rewritten: if an old log may hold a pasted secret, rotate that secret. |
 | External backups | The values are deleted from the database copy (`docs/BACKUP-EXTERNE.md`). A temporary secret is never on disk. |
 | Local backups of the Jarod disk | They copy the encrypted database as it is, values included. They live on the same disk, under the same protection as the data. |
+
+## What a child process receives (2026-10-22)
+
+The core builds each child's environment instead of passing its own (`kernel/src/child-env.ts`):
+
+| Child | Receives | Never receives |
+|---|---|---|
+| A third-party **MCP server** | The system environment (Windows needs `PATH`, `SystemRoot`, `TEMP`, `APPDATA`…; `ELECTRON_RUN_AS_NODE` stays) and **only the variables its own configuration names** (an internal control token named there is still dropped) | Internal control tokens, Jarod's provider keys, and any variable whose name looks like a secret (token, password, API key…) unless the server's configuration names it |
+| A command of the agent (`run_shell`, `system_open`) | The person's environment, so `git`, `aws`, `kubectl`, `ssh`, `docker` keep working with their own credentials, plus the secrets the vault injects for that one command | Internal control tokens (gateway, control channel, relays, messaging) and Jarod's provider keys |
+| An engine Jarod launches (syft, PowerShell tools, browser, embeddings…) | As the agent's | As the agent's |
+
+The gateway token is read at start-up and removed from the core's own environment before any child can exist. The chain "MCP server → control token → core → sensitive read" is cut at its first link: a server has no token to present. Possessing a token would not, by itself, give access to every API; this was not tested with a real token.
 
 ## Limits
 
