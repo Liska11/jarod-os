@@ -70,7 +70,7 @@ Items identified and deliberately not done. Each survives the session here.
 
 ## From phase 4 (plugin platform)
 
-- Connect `PluginPlatform` to the kernel's real loader through a `PluginHost`, and sign the shipped plugins.
+- ~~Connect `PluginPlatform` to the kernel's real loader through a `PluginHost`~~ **done 2026-10-23 (V-06)**: a user plugin runs only when the platform installed it with a signed manifest (publisher key, or the profile's local key after the person's native approval); see `jarod-core/DECISIONS.md`. Still open: shipping publisher keys and signing third-party plugins at the source.
 - Real memory / VRAM / disk measurement feeding `reportUsage`.
 - Two frontends on one profile at once: **covered** (`BEGIN IMMEDIATE` + `busy_timeout`, `jarod-core/tests/integration/sqlite-contention.test.ts`, 2026-10-18).
 
