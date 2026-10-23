@@ -2,10 +2,9 @@
  * V-02 — timeline auditée : `audit-session` sur un VRAI kernel derrière les VRAIS handlers.
  * V-03 — `audit-recent` : la part du noyau dans la vue unique des journaux.
  */
-import { mkdtempSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { cleanup } from "@jarod/kernel/testing";
+import { cleanup, tempDir } from "@jarod/kernel/testing";
 import { afterEach, describe, expect, it } from "vitest";
 import { tailLines } from "../src/main/handlers/audit.js";
 import { setupKernel } from "./ui-parite-helpers.js";
@@ -36,7 +35,7 @@ const lines = (...l: string[]) => l.map((x) => `${x}\n`).join("");
 
 describe("audit-recent (V-03)", () => {
   it("rend les dernières lignes de l'agent, toutes conversations, et celles de mcp-server.log de la même racine", async () => {
-    const dataRoot = mkdtempSync(join(tmpdir(), "jarod-audit-"));
+    const dataRoot = tempDir();
     writeFileSync(join(dataRoot, "mcp-server.log"), lines("2026-10-23T10:00:00.000Z memory_search args=12o résultat=345o ok", "2026-10-23T10:00:01.000Z sessions_list args=2o résultat=0o erreur"));
     const { call, app } = await setupKernel(undefined, [], { dataRoot });
     app.agent.audit({ sessionId: "s-a", tool: "run_shell", args: "{}", decision: "accordé", ok: true });
@@ -55,14 +54,14 @@ describe("audit-recent (V-03)", () => {
   });
 
   it("sans mcp-server.log (jarod mcp jamais lancé) : aucune ligne, pas d'erreur", async () => {
-    const { call } = await setupKernel(undefined, [], { dataRoot: mkdtempSync(join(tmpdir(), "jarod-audit-")) });
+    const { call } = await setupKernel(undefined, [], { dataRoot: tempDir() });
     expect(((await call("audit-recent")) as { mcpServer: string[] }).mcpServer).toEqual([]);
   });
 });
 
 describe("tailLines", () => {
   it("lit la fin sans tout lire, écarte la ligne coupée, complète par la génération tournée", () => {
-    const dir = mkdtempSync(join(tmpdir(), "jarod-tail-"));
+    const dir = tempDir();
     const file = join(dir, "x.log");
     writeFileSync(`${file}.1`, lines("ancienne-1", "ancienne-2"));
     writeFileSync(file, `a\r\nb\n`);

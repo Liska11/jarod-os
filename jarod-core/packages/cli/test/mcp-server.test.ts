@@ -1,6 +1,6 @@
 // SPECS-P5-MCP.md §3-§4 : protocole MCP et cinq outils en LECTURE SEULE, sur des données simulées (les barres sur un vrai profil sont dans
 // mcp-profile.test.ts, la conformité par client indépendant dans mcp-conformance.test.ts).
-import { mkdtempSync, readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -10,7 +10,8 @@ import { createMcpServerHandlers, fileAudit, MCP_TOOL_NAMES, mcpClean, type McpD
 // V-03 : la vue unique des journaux du shell lit ces lignes (`audit-view-model.ts`, `MCP_LINE`) ; changer le format casse la vue.
 describe("mcp-server.log", () => {
   it("une ligne par appel, au format que la vue unique des journaux lit", () => {
-    const file = join(mkdtempSync(join(tmpdir(), "jarod-mcp-log-")), "mcp-server.log");
+    const dir = mkdtempSync(join(tmpdir(), "jarod-mcp-log-"));
+    const file = join(dir, "mcp-server.log");
     const audit = fileAudit(file);
     audit({ tool: "memory_search", argBytes: 12, resultBytes: 345, ok: true });
     audit({ tool: "sessions_list", argBytes: 2, resultBytes: 0, ok: false });
@@ -22,6 +23,7 @@ describe("mcp-server.log", () => {
       ["sessions_list", "2", "0", "erreur"],
     ]);
     expect(Number.isFinite(Date.parse(format.exec(lines[0]!)![1]!))).toBe(true);
+    rmSync(dir, { recursive: true, force: true });
   });
 });
 
