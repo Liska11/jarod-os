@@ -1,7 +1,7 @@
 // Non-régression de l'incident du 2026-10-22 : des variables GIT_* héritées, pointées sur un autre dépôt, détournaient `git init` / `git commit`
 // d'un dépôt temporaire vers ce dépôt. La « victime » ici est elle-même un dépôt temporaire : le vrai dépôt n'est jamais visé.
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -80,7 +80,8 @@ describe("isolement Git des tests (incident du 2026-10-22)", () => {
     writeFileSync(join(nested, "c.txt"), "c\n");
     git(nested, env, "add", "-A");
     git(nested, env, "commit", "-q", "-m", "imbriqué");
-    expect(git(nested, env, "rev-parse", "--show-toplevel").replace(/\\/g, "/").toLowerCase()).toBe(nested.replace(/\\/g, "/").toLowerCase());
+    // Chemin réel : sur la CI Windows, le dossier temporaire est un nom court (RUNNER~1) que git développe.
+    expect(git(nested, env, "rev-parse", "--show-toplevel").replace(/\\/g, "/").toLowerCase()).toBe(realpathSync.native(nested).replace(/\\/g, "/").toLowerCase());
     expect(snapshot()).toEqual(before);
   });
 });
