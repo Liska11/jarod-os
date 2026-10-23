@@ -1,4 +1,5 @@
 // Portage de packages/core/src/tools/builtin.ts (rév. 2e180305).
+import { compareTrees, factsOf, httpProof, recordFacts, shellProof, snapshotTree } from "./proofs.js";
 import { spawn } from "node:child_process";
 import { existsSync, realpathSync } from "node:fs";
 import { mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
@@ -106,7 +107,7 @@ export function runShell(
   timeoutMs = 120_000,
   plan?: ShellLaunchPlan,
   extraEnv: Record<string, string> = {},
-): Promise<{ code: number | null; output: string }> {
+): Promise<{ code: number | null; output: string; stopped: "timeout" | "abort" | null }> {
   // The user's environment minus Jarod's internal tokens and provider keys; secrets the agent is allowed to use arrive through `extraEnv`.
   const env = childEnv("agent-shell", { explicit: extraEnv });
   return new Promise((done) => {
@@ -133,6 +134,8 @@ export function runShell(
     let size = 0;
     let notes = "";
     let finished = false;
+    // V-10 : pourquoi la commande a été arrêtée, s'il y a lieu (la preuve le dit ; le texte ajouté à la sortie n'est pas une source).
+    let stopped: "timeout" | "abort" | null = null;
     const onData = (b: Buffer) => {
       if (size < MAX_OUTPUT * 4) {
         chunks.push(b);
@@ -150,14 +153,16 @@ export function runShell(
       // A grandchild may still hold the pipes: stop listening rather than waiting for them.
       child.stdout.destroy();
       child.stderr.destroy();
-      done({ code, output: truncate(decodeConsoleOutput(Buffer.concat(chunks)) + notes + extra, MAX_OUTPUT) });
+      done({ code, output: truncate(decodeConsoleOutput(Buffer.concat(chunks)) + notes + extra, MAX_OUTPUT), stopped });
     };
     const timer = setTimeout(() => {
       notes += `\n[délai dépassé après ${timeoutMs / 1000}s : commande arrêtée]`;
+      stopped = "timeout";
       kill();
     }, timeoutMs);
     const onAbort = () => {
       notes += "\n[interrompu]";
+      stopped ??= "abort";
       kill();
     };
     if (signal?.aborted) onAbort();
@@ -371,6 +376,11 @@ export function builtinTools(memory: MemoryService, localServer?: LlamaServerSup
       },
       dangerous: true,
       source: "builtin",
+      // V-10 : le code de sortie rendu par le système, et ce que la commande a changé dans le dossier de travail (proofs.ts).
+      async verify(args) {
+        const f = factsOf(args);
+        return f?.kind === "shell" ? shellProof(f) : { status: "unverifiable", evidence: "aucun constat de la commande" };
+      },
       async run(args, ctx) {
         const cwd = resolveInWorkspace(ctx, ".");
         const seconds = Math.min(600, Math.max(1, Number(args.timeout_seconds) || 120));
@@ -393,7 +403,9 @@ export function builtinTools(memory: MemoryService, localServer?: LlamaServerSup
         // Un refus n'est pas un résultat : il lève. Le refus ne doit jamais pouvoir passer pour une
         // sortie de commande réussie (le cœur le marque alors en erreur, avec la raison écrite).
         if (planned.kind === "refuse") throw new Error(planned.reason);
-        const { code, output } = await runShell(
+        // V-10 : le dossier de travail juste avant, pour dire ensuite ce que la commande y a changé.
+        const before = ctx.workspace ? await snapshotTree(cwd) : null;
+        const { code, output, stopped } = await runShell(
           String(args.command),
           cwd,
           ctx.signal,
@@ -402,6 +414,7 @@ export function builtinTools(memory: MemoryService, localServer?: LlamaServerSup
           // Le marqueur du shell de l'agent : `jarod permissions` refuse d'écrire quand il le voit (l'agent ne s'accorde pas de droits).
           { ...secrets.env, JAROD_AGENT_SHELL: "1" },
         );
+        recordFacts(args, { kind: "shell", code, stopped, changes: before ? compareTrees(before, await snapshotTree(cwd)) : null });
         const note = planned.mode === "exec" ? `[${planned.detail}]\n` : "";
         // A command that prints its environment must not hand the value to the model.
         return VaultService.redact(`${note}code de sortie : ${code}\n${output}`, secrets.used);
@@ -416,15 +429,22 @@ export function builtinTools(memory: MemoryService, localServer?: LlamaServerSup
       // H3 : l'URL est choisie par le MODÈLE, donc par ce qu'il vient de lire. Sans accord, un contenu non
       // fiable fait partir la mémoire du prompt dans l'URL (`https://x/?d=…`) sans que rien ne s'affiche.
       dangerous: true,
+      // V-10 : la réponse réellement reçue (statut, hôte, taille, type), constatée par `run`.
+      async verify(args) {
+        const f = factsOf(args);
+        return f?.kind === "http" ? httpProof(f) : { status: "unverifiable", evidence: "aucune réponse constatée" };
+      },
       async run(args, ctx) {
         const start = new URL(String(args.url));
         const { res, url } = await fetchChecked(start, ctx.signal);
         const type = res.headers.get("content-type") ?? "";
         if (/^(image|audio|video)\/|application\/(octet-stream|zip|pdf)/.test(type)) {
           await res.body?.cancel().catch(() => {});
+          recordFacts(args, { kind: "http", status: res.status, requested: start.href, final: url.href, bytes: 0, capped: true, type });
           return `HTTP ${res.status} — ${url.href}\n\nContenu non textuel (${type}).`;
         }
         const { text: body, capped } = await readCapped(res, MAX_FETCH_BYTES);
+        recordFacts(args, { kind: "http", status: res.status, requested: start.href, final: url.href, bytes: Buffer.byteLength(body), capped, type });
         const text = type.includes("html") ? htmlToText(body) : body;
         return truncate(
           `HTTP ${res.status} — ${url.href}\n\n${text}${capped ? "\n… [page tronquée]" : ""}`,

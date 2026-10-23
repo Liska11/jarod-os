@@ -1,4 +1,5 @@
 // Portage de packages/core/src/tools/vault.ts (rév. 2e180305).
+import { factsOf, httpProof, recordFacts } from "./proofs.js";
 import { VaultService } from "@jarod/plugin-rag";
 import { truncate, withTimeout } from "@jarod/kernel/util";
 import type { ToolDef } from "./registry.js";
@@ -49,6 +50,11 @@ export function vaultTools(): ToolDef[] {
       // It can change things on a server, and it can carry a credential: the user sees it first.
       dangerous: true,
       source: "builtin",
+      // V-10 : la réponse réellement reçue (statut, hôte, taille ; une redirection non suivie et où elle menait), constatée par `run`.
+      async verify(args) {
+        const f = factsOf(args);
+        return f?.kind === "http" ? httpProof(f) : { status: "unverifiable", evidence: "aucune réponse constatée" };
+      },
       async run(args, ctx) {
         const url = new URL(String(args.url));
         if (url.protocol !== "http:" && url.protocol !== "https:")
@@ -79,16 +85,18 @@ export function vaultTools(): ToolDef[] {
           signal: withTimeout(ctx.signal, 30_000),
         });
         let text = "";
+        let size = 0;
+        let capped = false;
         if (res.body) {
           const reader = res.body.getReader();
           const chunks: Uint8Array[] = [];
-          let size = 0;
           for (;;) {
             const { done, value } = await reader.read();
             if (done) break;
             chunks.push(value);
             size += value.length;
             if (size > MAX_BODY) {
+              capped = true;
               await reader.cancel().catch(() => {});
               break;
             }
@@ -96,6 +104,7 @@ export function vaultTools(): ToolDef[] {
           text = Buffer.concat(chunks).toString("utf8");
         }
         const location = res.headers.get("location");
+        recordFacts(args, { kind: "http", status: res.status, requested: url.href, final: res.url || url.href, bytes: size, capped, type: res.headers.get("content-type") ?? "", ...(location ? { location } : {}) });
         const out = `HTTP ${res.status} ${method} ${url.href}${location ? `\nLocation : ${location}` : ""}\n\n${text}`;
         return VaultService.redact(truncate(out, MAX_RESPONSE), filled.used);
       },

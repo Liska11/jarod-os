@@ -39,6 +39,7 @@ export * from "./console-text.js";
 export * from "./lsp.js";
 export * from "./present.js";
 export * from "./profile-tools.js";
+export * from "./proofs.js";
 export * from "./rag-tools.js";
 export * from "./registry.js";
 export * from "./remote-exec.js";
