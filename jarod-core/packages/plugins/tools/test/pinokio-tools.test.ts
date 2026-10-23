@@ -115,7 +115,8 @@ describe("pinokioTools", () => {
       if (String(message.uri).endsWith("start.js")) started = true;
       return [{ type: "stream", data: { raw: `running ${String(message.uri)}\n` } }, { type: "result", data: {} }];
     });
-    const out = JSON.parse(await tool(pinokioTools({ env: ENV, fetch: impl, socket }), "pinokio_run").run({ app_id: "app.git", wait_seconds: 10 }, ctx));
+    // Un moteur Windows simulé (chemins « C:\… ») : la plateforme est celle du moteur, pas du processus de test.
+    const out = JSON.parse(await tool(pinokioTools({ env: ENV, fetch: impl, socket, platform: "win32" }), "pinokio_run").run({ app_id: "app.git", wait_seconds: 10 }, ctx));
     const ran = sent.filter((m) => typeof m.uri === "string" && !m.mode).map((m) => m.uri);
     expect(ran).toEqual(["C:\\pinokio\\api\\app.git\\install.js", "C:\\pinokio\\api\\app.git\\start.js"]);
     expect(out).toMatchObject({ ready: true, ready_url: "http://127.0.0.1:7860", launch: { state: "done", url: "http://127.0.0.1:7860" } });

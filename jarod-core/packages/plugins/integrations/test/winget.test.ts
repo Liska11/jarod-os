@@ -30,7 +30,11 @@ describe("D3 — winget : identifiants exacts, jamais une ligne construite par u
   });
 });
 
-const hasWinget = spawnSync("winget", ["--version"], { encoding: "utf8", shell: true }).status === 0;
+// winget présent ET sa source utilisable : sur un runner de CI, le binaire existe mais la source peut ne pas être initialisée
+// (0x8A15000F, « données de la source manquantes ») ; ce n'est pas un défaut de Jarod.
+const hasWinget =
+  spawnSync("winget", ["--version"], { encoding: "utf8", shell: true }).status === 0 &&
+  spawnSync("winget", ["search", "--id", "Microsoft.PowerShell", "--exact", "--source", "winget", "--accept-source-agreements", "--disable-interactivity"], { encoding: "utf8", shell: true, timeout: 120_000 }).status === 0;
 
 describe.skipIf(!hasWinget)("D3 contre winget réel (lecture seule : show, search, list — rien n'est installé)", () => {
   it("show Microsoft.PowerShell : la sortie réelle est lue, la licence et l'éditeur sont reconnus", () => {

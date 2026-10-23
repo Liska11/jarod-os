@@ -1,9 +1,12 @@
 // Règles de permissions modifiées depuis Réglages ou par `jarod permissions edit/move` (2026-10-21) : le même service que l'ajout et la
 // révocation — modification en place, déplacement, nombre d'utilisations réservé aux autorisations, et la relecture avant écriture qui ne rend
 // jamais une utilisation consommée pendant la confirmation.
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import type { PermissionRule } from "@jarod/contracts";
 import { describe, expect, it } from "vitest";
-import { normalizeRules, planGrant, planMove, planUpdate, rebaseRules } from "../src/admin.js";
+import { canonicalTarget, normalizeRules, planGrant, planMove, planUpdate, rebaseRules } from "../src/admin.js";
 
 const NOW = 1_800_000_000_000;
 const DEMO: PermissionRule = { tool: "system_files", decision: "allow", autonomous: true, target: "D:\\demo\\*", uses: 3, id: "p-demo01", createdAt: NOW - 1, by: "commande" };
@@ -83,5 +86,29 @@ describe("relecture avant écriture", () => {
     const planned = planUpdate(base, "p-demo01", { uses: 10 }, NOW).rules;
     expect(() => rebaseRules(base, [DEMO, STOP], planned)).toThrow(/ont changé pendant la confirmation/);
     expect(() => rebaseRules(base, [{ ...DEMO, target: "C:\\*" }], planned)).toThrow(/ont changé/);
+  });
+});
+
+describe("cible d'une règle ramenée au chemin réel", () => {
+  it("un dossier écrit par une jonction (ou un lien) est enregistré sous son chemin réel ; le joker et le reste du motif sont gardés", () => {
+    const root = mkdtempSync(join(tmpdir(), "jarod-rule-target-"));
+    try {
+      const real = join(root, "réel");
+      mkdirSync(real);
+      const link = join(root, "lien");
+      symlinkSync(real, link, process.platform === "win32" ? "junction" : "dir");
+      const sep = process.platform === "win32" ? "\\" : "/";
+      const realDir = realpathSync.native(real);
+      expect(canonicalTarget(`${link}${sep}*`)).toBe(`${realDir}${sep}*`);
+      expect(canonicalTarget(`${link}${sep}a*.txt`)).toBe(`${realDir}${sep}a*.txt`);
+      expect(canonicalTarget(`${realDir}${sep}*`)).toBe(`${realDir}${sep}*`);
+      expect(planGrant([], { tool: "system_files", decision: "allow", target: `${link}${sep}*` }, NOW).rules[0]!.target).toBe(`${realDir}${sep}*`);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("une cible qui n'est pas un chemin absolu (hôte, motif) est rendue telle quelle", () => {
+    for (const t of ["*.youtube.com", "github.com", "relatif\\*", "*"]) expect(canonicalTarget(t)).toBe(t);
   });
 });

@@ -6,8 +6,39 @@
  * aucun outil de l'agent n'appelle ces fonctions pour écrire.
  */
 import { randomBytes } from "node:crypto";
+import { realpathSync } from "node:fs";
+import { basename, dirname, isAbsolute, join, resolve } from "node:path";
 import { PermissionRule } from "@jarod/contracts";
 import { type CallScope, type Resolution, ruleSpent, rulesWeakenings, scopeWords } from "./guard.js";
+
+/**
+ * La cible d'une règle qui est un chemin absolu, ramenée à son chemin RÉEL : les outils de fichiers donnent au garde des chemins réels
+ * (`operationTargets`, une jonction ne fait pas sortir du dossier autorisé). Sans cela, une règle écrite avec un nom court (« RUNNER~1 »), un
+ * lien ou une jonction ne couvrait jamais l'appel et l'accord était redemandé. Seuls les dossiers COMPLETS avant le premier joker sont résolus
+ * (le plus proche qui existe) ; le reste du motif est gardé tel quel. Une cible qui n'est pas un chemin (hôte, motif) est rendue inchangée.
+ */
+export function canonicalTarget(target: string): string {
+  if (!isAbsolute(target)) return target;
+  const star = target.indexOf("*");
+  const fixed = star < 0 ? target : target.slice(0, star);
+  const cut = star < 0 ? target.length : Math.max(fixed.lastIndexOf("\\"), fixed.lastIndexOf("/")) + 1;
+  const head = target.slice(0, cut);
+  if (!head) return target;
+  const rest: string[] = [];
+  let cur = resolve(head);
+  for (;;) {
+    try {
+      const real = join(realpathSync.native(cur), ...rest.reverse());
+      if (real.toLowerCase() === resolve(head).toLowerCase()) return target;
+      return real + (/[\\/]$/.test(head) ? (real.includes("\\") ? "\\" : "/") : "") + target.slice(cut);
+    } catch {
+      const up = dirname(cur);
+      if (up === cur) return target;
+      rest.push(basename(cur));
+      cur = up;
+    }
+  }
+}
 
 /** Plafond des règles de permissions de l'utilisateur : au-delà, c'est une liste qu'aucun écran ne peut montrer. */
 export const MAX_PERMISSION_RULES = 200;
@@ -195,7 +226,7 @@ export function planGrant(current: readonly PermissionRule[], input: GrantInput,
     tool: input.tool,
     decision: input.decision,
     ...(input.autonomous ? { autonomous: true as const } : {}),
-    ...(input.target !== undefined ? { target: input.target } : {}),
+    ...(input.target !== undefined ? { target: canonicalTarget(input.target) } : {}),
     ...(input.operation !== undefined ? { operation: input.operation } : {}),
     ...(input.session !== undefined ? { session: input.session } : {}),
     ...(input.durationMs !== undefined ? { expiresAt: now + input.durationMs } : {}),
@@ -275,7 +306,7 @@ export function planUpdate(current: readonly PermissionRule[], ref: string, chan
     else delete next.autonomous;
   }
   if (next.decision !== "allow") delete next.autonomous;
-  set("target", change.target);
+  set("target", typeof change.target === "string" ? canonicalTarget(change.target) : change.target);
   set("operation", change.operation);
   set("session", change.session);
   set("uses", change.uses);
