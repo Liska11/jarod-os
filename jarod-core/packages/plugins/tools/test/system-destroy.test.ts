@@ -4,7 +4,7 @@ import { type ChildProcess, execFileSync, spawn } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import type { ToolContext, ToolDef } from "../src/registry.js";
 import { systemDestroyTools } from "../src/system/destroy.js";
@@ -401,7 +401,9 @@ describe.runIf(win)("sur cette machine (vrai PowerShell) : uniquement des fichie
     const short = execFileSync("cmd.exe", ["/d", "/c", `for %I in ("${f}") do @echo %~sI`], { encoding: "utf8" })
       .replace(/"/g, "")
       .trim();
-    if (!short || short.toLowerCase() === f.toLowerCase() || !short.includes("~")) t.skip();
+    // Le NOM DU FICHIER doit être raccourci et désigner ce fichier : sans nom court, cmd peut rendre un chemin incohérent (« D:\C:\… »)
+    // dont le seul « ~ » vient d'un dossier parent (RUNNER~1 sur la CI).
+    if (!short || short.toLowerCase() === f.toLowerCase() || !basename(short).includes("~") || !existsSync(short)) t.skip();
     const out = JSON.parse(await files.run({ action: "trash", paths: [short] }, ctx));
     expect(out.applied).toHaveLength(1);
     expect(existsSync(f)).toBe(false);

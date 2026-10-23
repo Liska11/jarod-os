@@ -2,8 +2,12 @@
 // Le voice plugin doit lire autoSpeak et ttsRate des reglages et les utiliser pour la synthese vocale.
 import { bootApp, cleanup, shutdown, tempDir } from "@jarod/kernel/testing";
 import { afterEach, describe, expect, it } from "vitest";
+import { SpeechService } from "../src/speech.js";
 
 afterEach(cleanup);
+
+// VS2-VS4 parlent vraiment : sans moteur vocal (runner Linux sans espeak-ng), ils sont sautés, pas échoués.
+const noEngine = new SpeechService().engine() === null;
 
 describe("VS1-VS4 -- Core voice settings (autoSpeak, ttsRate)", () => {
   it("VS1 : autoSpeak: false -> agent ne lit pas les reponses", async () => {
@@ -19,7 +23,7 @@ describe("VS1-VS4 -- Core voice settings (autoSpeak, ttsRate)", () => {
     await shutdown(app);
   });
 
-  it("VS2 : autoSpeak: true -> agent lit la reponse finale via TTSService.speak", async () => {
+  it.skipIf(noEngine)("VS2 : autoSpeak: true -> agent lit la reponse finale via TTSService.speak", async () => {
     const app = await bootApp({ storage: { dataDir: tempDir(), encryptDb: false }, llm: {}, voice: {} });
     const s = app.storage.settings;
     s.set("voice", { ...s.get("voice"), autoSpeak: true, ttsRate: 1.0 });
@@ -30,7 +34,7 @@ describe("VS1-VS4 -- Core voice settings (autoSpeak, ttsRate)", () => {
     await shutdown(app);
   });
 
-  it("VS3 : ttsRate: 1.5 -> provider TTS reçoit rate: 1.5", async () => {
+  it.skipIf(noEngine)("VS3 : ttsRate: 1.5 -> provider TTS reçoit rate: 1.5", async () => {
     const app = await bootApp({ storage: { dataDir: tempDir(), encryptDb: false }, llm: {}, voice: {} });
     const s = app.storage.settings;
     s.set("voice", { ...s.get("voice"), autoSpeak: true, ttsRate: 1.5 });
@@ -40,7 +44,7 @@ describe("VS1-VS4 -- Core voice settings (autoSpeak, ttsRate)", () => {
     await shutdown(app);
   });
 
-  it("VS4 : ttsRate hors bornes -> ramené dans [0.25, 4.0] (défaut 1.0)", async () => {
+  it.skipIf(noEngine)("VS4 : ttsRate hors bornes -> ramené dans [0.25, 4.0] (défaut 1.0)", async () => {
     const app = await bootApp({ storage: { dataDir: tempDir(), encryptDb: false }, llm: {}, voice: {} });
     const s = app.storage.settings;
     // Trop haut

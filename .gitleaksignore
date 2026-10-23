@@ -20,3 +20,9 @@
 a7e172938f4b270397feabc664c266823d99d25f:jarod-core/packages/plugins/integrations/test/integrations.test.ts:generic-api-key:143
 b076342b76e7472541daa5079693e013ecbbd420:jarod-core/packages/plugins/tools/test/remote-exec.test.ts:generic-api-key:288
 39411481c57e186a5f12985533332e34f425481a:mobile/src/lib/news.ts:generic-api-key:23
+79d69c387fa6d9588cc651a19771eeb9767752ac:jarod-core/packages/plugins/integrations/test/engines/opencodereview.engine.test.ts:generic-api-key:61
+17c2cb615c96e146be119363bac49222d5ebfa34:jarod-core/packages/kernel/test/redact-args.test.ts:curl-auth-header:26
+767c73df001438b7a2ee60ee33947784a656b5a3:apps/desktop/shared/legacy-env.test.ts:generic-api-key:36
+767c73df001438b7a2ee60ee33947784a656b5a3:jarod-core/packages/kernel/test/legacy-env.test.ts:generic-api-key:33
+767c73df001438b7a2ee60ee33947784a656b5a3:jarod-core/packages/plugins/tools/test/remote-exec.test.ts:generic-api-key:298
+958e5114d38171b1a8ce1d90bcf8e5109bbe0ec0:jarod-core/packages/plugins/skills/src/bundled/diagram-design.ts:sourcegraph-access-token:8
