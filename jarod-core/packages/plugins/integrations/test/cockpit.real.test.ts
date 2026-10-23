@@ -12,7 +12,10 @@ describe("cockpit : sondes réelles", () => {
     const t0 = Date.now();
     const rows = await s.list();
     expect(Date.now() - t0).toBeLessThan(30_000);
-    expect(rows).toHaveLength(28); // + D1 (pilote de fenêtres), raccordé le 2026-10-21
+    // 28 intégrations (+ D1, pilote de fenêtres, raccordé le 2026-10-21) ; V-12 : + 29 commandes du shell (matrice C2) + 6 crates de l'hôte Rust.
+    expect(rows.filter((r) => !r.id.startsWith("shell.") && !r.id.startsWith("rust."))).toHaveLength(28);
+    expect(rows.filter((r) => r.id.startsWith("shell."))).toHaveLength(29);
+    expect(rows.filter((r) => r.id.startsWith("rust."))).toHaveLength(6);
     const keyish = Object.entries(process.env).filter(([k, v]) => /KEY|TOKEN|PASSWORD/i.test(k) && v && v.length >= 8).map(([, v]) => v!);
     for (const r of rows) {
       expect(STATES, r.id).toContain(r.state);

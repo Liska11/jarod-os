@@ -27,9 +27,11 @@ export type CapabilityState =
  *  - `external-app`    : une application séparée ; Jarod peut au mieux la détecter (et l'ouvrir par `system_open`) ;
  *  - `dev-tool`        : outil de DÉVELOPPEMENT ou de QA (inventaire, inspection, banc d'essai), lancé à la demande, jamais dans la boucle
  *                        de l'utilisateur ni présenté comme une capacité de l'agent ;
- *  - `infrastructure`  : un mécanisme interne de Jarod (ex. traces locales), sans outil ni action propre.
+ *  - `infrastructure`  : un mécanisme interne de Jarod (ex. traces locales), sans outil ni action propre ;
+ *  - `shell-command`   : V-12 — une commande du shell Jarod-OS (canal de contrôle, matrice C2) ou du registre de sa fenêtre : lancée par la
+ *                        personne, la CLI du shell ou le cœur par sa porte, avec le palier que le shell applique.
  */
-export type IntegrationLevel = "agent-tool" | "skill" | "detection-only" | "external-app" | "dev-tool" | "infrastructure";
+export type IntegrationLevel = "agent-tool" | "skill" | "detection-only" | "external-app" | "dev-tool" | "infrastructure" | "shell-command";
 
 export type Risk = "read" | "act" | "mutate" | "destructive";
 

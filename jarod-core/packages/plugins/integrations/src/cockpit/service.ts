@@ -4,6 +4,7 @@
  */
 import { COCKPIT_ADAPTERS, COCKPIT_INTEGRATIONS, type Probe, type ProbeContext } from "./catalog.js";
 import type { ProbeHost } from "./probe.js";
+import { rustCapabilities, type ShellDoor, shellCommandCapabilities, shellProbe, windowCommandCapabilities } from "./shell-surface.js";
 import type { CapabilityManifest, CapabilityState, CapabilityView, ProbeResult } from "./types.js";
 
 /** Ce que le cockpit lit du service d'outils (une vue, pour ne pas dépendre de plugin-tools). */
@@ -23,6 +24,8 @@ export interface CapabilityDeps {
   decide: (tool: string) => "allow" | "ask" | "deny";
   /** Vague G : un réglage non sensible, lu par sa clé (ex. `localTraces`). */
   setting?: (key: string) => unknown;
+  /** V-12 : la porte de contrôle du shell (surface C2 et registre de la fenêtre) ; absente = ces capacités disent qu'il n'y a pas de shell. */
+  shell?: ShellDoor;
   now?: () => number;
 }
 
@@ -46,16 +49,32 @@ const words = (s: string) => fold(s).split(/[^a-z0-9]+/).filter((w) => w.length 
 const near = (a: string, b: string) => a === b || (a.length >= 4 && b.length >= 4 && (a.startsWith(b) || b.startsWith(a)));
 
 export class CapabilityService {
-  private readonly entries: Entry[] = COCKPIT_INTEGRATIONS.flatMap((i) => i.capabilities);
+  private readonly entries: Entry[];
   private readonly cache = new Map<string, { at: number; result: ProbeResult }>();
   private readonly now: () => number;
+  /** V-12 : le registre de la fenêtre, relu au plus toutes les `PROBE_TTL_MS` (une requête à la porte du shell). */
+  private window: { at: number; entries: Entry[] } | null = null;
 
   constructor(private readonly deps: CapabilityDeps) {
     this.now = deps.now ?? Date.now;
+    // V-12 : UN registre — le catalogue des intégrations, la surface du shell (matrice C2) et l'hôte Rust ; le registre de la fenêtre s'y
+    // ajoute à chaque lecture, tel que la fenêtre le rend.
+    const noShell: ShellDoor = { state: async () => ({ ok: false, detail: "pas de porte de contrôle branchée" }), uiList: async () => null };
+    this.entries = [...COCKPIT_INTEGRATIONS.flatMap((i) => i.capabilities), ...shellCommandCapabilities(shellProbe(deps.shell ?? noShell)), ...rustCapabilities()];
+  }
+
+  /** Le registre de commandes de la fenêtre, lu par la porte (vide sans shell ou sans fenêtre). */
+  private async windowEntries(force = false): Promise<Entry[]> {
+    if (!this.deps.shell) return [];
+    if (!force && this.window && this.now() - this.window.at < PROBE_TTL_MS) return this.window.entries;
+    const commands = (await this.deps.shell.uiList().catch(() => null)) ?? [];
+    this.window = { at: this.now(), entries: windowCommandCapabilities(commands) };
+    return this.window.entries;
   }
 
   async list(): Promise<CapabilityView[]> {
-    const own = await Promise.all(this.entries.map((e) => this.view(e, false)));
+    const all = [...this.entries, ...(await this.windowEntries())];
+    const own = await Promise.all(all.map((e) => this.view(e, false)));
     return [...own, ...this.toolViews()];
   }
 
@@ -80,14 +99,14 @@ export class CapabilityService {
   }
 
   async describe(id: string): Promise<CapabilityView | null> {
-    const e = this.entries.find((x) => x.id === id);
+    const e = [...this.entries, ...(await this.windowEntries())].find((x) => x.id === id);
     if (e) return this.view(e, false);
     return this.toolViews().find((t) => t.id === id) ?? null;
   }
 
   /** Relance la sonde, sans cache. Une capacité inconnue rend l'état `unknown`. */
   async check(id: string): Promise<CapabilityView> {
-    const e = this.entries.find((x) => x.id === id);
+    const e = [...this.entries, ...(id.startsWith("ui.") ? await this.windowEntries(true) : [])].find((x) => x.id === id);
     if (e) return this.view(e, true);
     const tool = this.toolViews().find((t) => t.id === id);
     if (tool) return tool;

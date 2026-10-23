@@ -22,9 +22,12 @@ describe("capabilities-list / capabilities-check", () => {
     const { call, app } = await setup();
     expect(app.tools?.registry.get("capabilities")).toBeTruthy();
     const rows = (await call("capabilities-list")) as { id: string; state: string; provenance?: { repo: string } }[];
-    const own = rows.filter((r) => !r.id.startsWith("tool."));
+    const own = rows.filter((r) => !["tool.", "shell.", "ui.", "rust."].some((p) => r.id.startsWith(p)));
     // Vagues F (10) et G (17, prompt plus3), plus D1 (pilote de fenêtres, raccordé le 2026-10-21).
     expect(own).toHaveLength(28);
+    // V-12 : le shell (matrice C2) et l'hôte Rust sont au même registre ; sans shell ici, la surface le dit.
+    expect(rows.filter((r) => r.id.startsWith("shell."))).toHaveLength(29);
+    expect(rows.filter((r) => r.id.startsWith("rust."))).toHaveLength(6);
     expect(own.find((r) => r.id === "syft.sbom")?.provenance?.repo).toBe("anchore/syft");
     for (const r of rows) expect(STATES, r.id).toContain(r.state);
     expect(own.find((r) => r.id === "strix.app-security")?.provenance?.repo).toBe("usestrix/strix");

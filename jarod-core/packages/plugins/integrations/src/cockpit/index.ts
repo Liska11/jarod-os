@@ -2,6 +2,7 @@
  * Cockpit : le registre vivant des capacités. Branché par le plugin à partir des services DÉJÀ chargés (outils, skills,
  * permissions, réglages), lus par leur forme pour ne pas dépendre de leurs paquets. Un service absent vaut « rien de déclaré ».
  */
+import { type ShellDoor, shellDoor } from "./shell-surface.js";
 import { nodeProbeHost, type ProbeHost } from "./probe.js";
 import { CapabilityService } from "./service.js";
 
@@ -30,7 +31,7 @@ export interface CockpitServices {
 
 const arr = <T>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]) : []);
 
-export function cockpitService(s: CockpitServices, host: ProbeHost = nodeProbeHost()): CapabilityService {
+export function cockpitService(s: CockpitServices, host: ProbeHost = nodeProbeHost(), shell: ShellDoor = shellDoor()): CapabilityService {
   const disabled = () => arr<string>(s.settings?.get("disabledTools"));
   const gate = s.permissions?.gate((name) => Boolean(s.tools?.registry.get(name)));
   return new CapabilityService({
@@ -65,6 +66,8 @@ export function cockpitService(s: CockpitServices, host: ProbeHost = nodeProbeHo
     },
     // Vague G : réglages non sensibles lus par les sondes (ex. `localTraces`) ; le coffre n'est jamais un réglage.
     setting: (key) => s.settings?.get(key),
+    // V-12 : la porte de contrôle que le shell a donnée au cœur (surface C2, registre de la fenêtre).
+    shell,
     // Sans porte de permissions, rien n'est présumé permis : « ask ».
     decide: (name) => {
       const d = gate?.decide(name);

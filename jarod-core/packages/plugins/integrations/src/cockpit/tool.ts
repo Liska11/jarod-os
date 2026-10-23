@@ -57,12 +57,21 @@ export function capabilitiesTool(service: CapabilityService): CapabilitiesToolDe
       const id = typeof args.id === "string" ? args.id : "";
       if (action === "list") {
         const all = await service.list();
-        const own = all.filter((c) => !c.id.startsWith("tool."));
-        const tools = all.filter((c) => c.id.startsWith("tool."));
+        const family = (prefix: string) => all.filter((c) => c.id.startsWith(prefix));
+        const own = all.filter((c) => !["tool.", "shell.", "ui.", "rust."].some((p) => c.id.startsWith(p)));
+        const tools = family("tool.");
         const blocked = tools.filter((t) => t.state !== "available").length;
+        // V-12 : le shell, sa fenêtre et l'hôte Rust sont au registre, résumés ici en une ligne chacun (le manifeste reste compact).
+        const shell = family("shell.");
+        const ui = family("ui.");
+        const rust = family("rust.");
+        const wired = rust.filter((r) => r.state === "available");
         return [
           ...own.map(line),
           tools.length ? `outils intégrés : ${tools.length - blocked} disponibles, ${blocked} bloqués (describe tool.<nom>)` : "",
+          shell.length ? `shell : ${shell.length} commandes du canal de contrôle — ${shell[0]!.detail} (describe shell.<nom>)` : "",
+          `fenêtre : ${ui.length ? `${ui.length} commandes de son registre (describe ui.<id>)` : "aucune commande lue (pas de fenêtre joignable)"}`,
+          rust.length ? `hôte Rust : ${wired.length} branchée${wired.length > 1 ? "s" : ""}${wired.length ? ` (${wired.map((r) => r.id).join(", ")})` : ""}, ${rust.length - wired.length} prototype${rust.length - wired.length > 1 ? "s" : ""} ou absente${rust.length - wired.length > 1 ? "s" : ""} (describe rust.<crate>)` : "",
         ]
           .filter(Boolean)
           .join("\n");

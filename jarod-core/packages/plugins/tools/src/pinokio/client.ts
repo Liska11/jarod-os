@@ -6,6 +6,7 @@
 // /apps/logs, /info/apps), WebSocket JSON pour l'exécution (un script, `app.download`, `kernel.api.stop`). Le registre public des
 // apps (« Discover ») est https://api.pinokio.co/v1/search.
 import { connect } from "node:net";
+import { controlConnectTarget } from "@jarod/kernel/util";
 
 export const REGISTRY_URL = "https://api.pinokio.co";
 
@@ -36,8 +37,8 @@ export function askShell(command: string, env: NodeJS.ProcessEnv = process.env, 
   const token = env.JAROD_OS_CONTROL_TOKEN ?? env.HERMES_OS_CONTROL_TOKEN;
   if (!endpoint || !token) return Promise.reject(new Error("Jarod-OS n'a pas donné son socket de contrôle : lancez le moteur Pinokio depuis sa fenêtre."));
   return new Promise((resolve, reject) => {
-    const tcp = /^tcp:\/\/([^:]+):(\d+)$/.exec(endpoint);
-    const socket = tcp ? connect(Number(tcp[2]), tcp[1]) : connect(endpoint);
+    // `pipe://<nom>` sous Windows (V-12 : le cœur ne joignait pas le tube nommé que le shell annonce).
+    const socket = connect(controlConnectTarget(endpoint));
     let buffer = "";
     const timer = setTimeout(() => {
       socket.destroy();

@@ -113,3 +113,15 @@ export function renderTemplate(template: string, vars: Record<string, unknown>):
     return v == null ? "" : typeof v === "string" ? v : JSON.stringify(v);
   });
 }
+
+/**
+ * V-12 — où se connecter à la porte de contrôle du shell (`JAROD_OS_CONTROL_SOCKET`) : `tcp://hôte:port`, `pipe://<nom>` (tube nommé
+ * Windows, que le shell annonce ainsi : on le joint en `\\.\pipe\<nom>`), sinon un chemin de socket Unix.
+ */
+export function controlConnectTarget(endpoint: string): { port: number; host: string } | { path: string } {
+  const tcp = /^tcp:\/\/([^:]+):(\d+)$/.exec(endpoint);
+  if (tcp) return { host: tcp[1]!, port: Number(tcp[2]) };
+  const pipe = /^pipe:\/\/(.+)$/.exec(endpoint);
+  if (pipe) return { path: `\\\\.\\pipe\\${pipe[1]}` };
+  return { path: endpoint };
+}
