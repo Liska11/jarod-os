@@ -10,4 +10,13 @@ describe('Capabilities screen', () => {
     expect(own.map(r => r.id)).toEqual(['ghidra.static-analysis'])
     expect(tools).toEqual({ total: 2, available: 1, blocked: 1 })
   })
+
+  it('V-12: the shell surface, its window and the Rust host get their own groups, out of the integration list', () => {
+    const groups = splitRows([row('ghidra.static-analysis', 'available'), row('shell.state', 'available'), row('shell.page', 'available'), row('ui.page.open', 'available'), row('rust.host-sandbox', 'not-installed')])
+
+    expect(groups.own.map(r => r.id)).toEqual(['ghidra.static-analysis'])
+    expect(groups.shell.map(r => r.id)).toEqual(['shell.state', 'shell.page'])
+    expect(groups.window.map(r => r.id)).toEqual(['ui.page.open'])
+    expect(groups.rust.map(r => r.id)).toEqual(['rust.host-sandbox'])
+  })
 })
