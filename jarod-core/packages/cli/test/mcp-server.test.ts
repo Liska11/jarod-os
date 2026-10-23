@@ -1,8 +1,29 @@
 // SPECS-P5-MCP.md §3-§4 : protocole MCP et cinq outils en LECTURE SEULE, sur des données simulées (les barres sur un vrai profil sont dans
 // mcp-profile.test.ts, la conformité par client indépendant dans mcp-conformance.test.ts).
+import { mkdtempSync, readFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { ERR, RpcError } from "../src/jsonrpc-stdio.js";
-import { createMcpServerHandlers, MCP_TOOL_NAMES, mcpClean, type McpData } from "../src/mcp-server.js";
+import { createMcpServerHandlers, fileAudit, MCP_TOOL_NAMES, mcpClean, type McpData } from "../src/mcp-server.js";
+
+// V-03 : la vue unique des journaux du shell lit ces lignes (`audit-view-model.ts`, `MCP_LINE`) ; changer le format casse la vue.
+describe("mcp-server.log", () => {
+  it("une ligne par appel, au format que la vue unique des journaux lit", () => {
+    const file = join(mkdtempSync(join(tmpdir(), "jarod-mcp-log-")), "mcp-server.log");
+    const audit = fileAudit(file);
+    audit({ tool: "memory_search", argBytes: 12, resultBytes: 345, ok: true });
+    audit({ tool: "sessions_list", argBytes: 2, resultBytes: 0, ok: false });
+    const lines = readFileSync(file, "utf8").trim().split("\n");
+    const format = /^(\S+) (\S+) args=(\d+)o résultat=(\d+)o (ok|erreur)$/;
+    expect(lines).toHaveLength(2);
+    expect(lines.map((l) => format.exec(l)?.slice(2))).toEqual([
+      ["memory_search", "12", "345", "ok"],
+      ["sessions_list", "2", "0", "erreur"],
+    ]);
+    expect(Number.isFinite(Date.parse(format.exec(lines[0]!)![1]!))).toBe(true);
+  });
+});
 
 const T0 = Date.UTC(2026, 8, 1, 12, 0, 0);
 // Assemblé à l'exécution : le garde du dépôt refuse la FORME d'une clé dans un fichier suivi.

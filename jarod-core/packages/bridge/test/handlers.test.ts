@@ -1268,7 +1268,8 @@ describe("W8 handlers : carte et garde", () => {
     // + 2 canaux des règles de permissions depuis Réglages (2026-10-21 : permissions-plan, permissions-apply ; même service que `jarod permissions`).
     // + 1 canal des modèles locaux (2026-10-21 : local-models-adopt, reprise d'une instance de propriété incertaine après redémarrage).
     // + 1 canal de la timeline auditée (2026-10-23, V-02 : audit-session, lecture seule).
-    expect(keys).toHaveLength(289);
+    // + 1 canal de la vue unique des journaux (2026-10-23, V-03 : audit-recent, lecture seule).
+    expect(keys).toHaveLength(290);
     const hermes = keys.filter((k) => (HERMES_INVOKE_CHANNELS as readonly string[]).includes(k));
     expect(hermes).toHaveLength(207);
     expect(keys.filter((k) => !hermes.includes(k)).sort()).toEqual([...JAROD_INVOKE_CHANNELS].filter((k) => !k.startsWith("terminal-")).sort());

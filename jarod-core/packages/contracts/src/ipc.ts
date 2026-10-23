@@ -124,6 +124,8 @@ export const JAROD_INVOKE_CHANNELS = [
   "task-cancel",
   // Timeline auditée (V-02, 2026-10-23) : les lignes d'audit d'une conversation, en lecture seule, pour la vue sous chaque tour du chat.
   "audit-session",
+  // Vue unique des journaux (V-03, 2026-10-23) : les dernières lignes de l'agent (toutes conversations) et de `mcp-server.log`, en lecture seule.
+  "audit-recent",
   // Écran « Contexte » (cockpit, lots 3-4) : sorties gardées hors du contexte, proxy de compression et sa santé (lecture seule).
   "context-status",
   // Écran « Artefacts » (cockpit, lot 5) : lister, aperçu borné (cadre sans script), ouvrir avec l'application associée, retirer de la liste.
