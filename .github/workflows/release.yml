@@ -66,7 +66,7 @@ jobs:
           codesign --verify --deep --strict --verbose=2 "$app"
           xcrun stapler validate "$app"
           spctl --assess --type execute --verbose "$app"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: herald-os-macos
           path: |
@@ -120,7 +120,7 @@ jobs:
           done
           # Named as downloaded, so sha256sum -c works next to the download.
           (cd "$(dirname "$tarball")" && sha256sum "$(basename "$tarball")") | tee "$tarball.sha256"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: herald-os-linux-${{ matrix.arch }}
           path: |
