@@ -56,3 +56,7 @@ Les règles des sondes :
 - **context-mode** : l'ajouter comme serveur MCP de Jarod (le client MCP existant suffit).
 - **billion-context** : le brancher comme proxy local du transport, si c'est voulu.
 - **Skills** : installer diagram-design et la sélection mattpocock dans les skills de Jarod.
+
+## V-12 (2026-10-23) : un registre unique
+
+Le registre compte aussi le shell et l'hôte Rust : `shell.*` (les 29 commandes du canal de contrôle, importées de la matrice C2, état mesuré à la porte de contrôle), `ui.*` (le registre de commandes de la fenêtre, lu par `ui-list`) et `rust.*` (les crates de l'hôte Rust, `host-sandbox` branché, les autres en prototype). Niveau d'intégration `shell-command`. Détail : `jarod-core/DECISIONS.md`.
