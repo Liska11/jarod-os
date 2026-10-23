@@ -23,7 +23,8 @@ describe("tasks-list / task-cancel", () => {
 });
 
 describe("permissionsRules : cible et échéance (cockpit, lot 2)", () => {
-  it("une règle ciblée s'écrit et le portail de l'agent la suit pour sa cible seulement", async () => {
+  // system_open appartient à la famille system_*, déclarée sous Windows seulement : ailleurs, l'outil non déclaré est refusé par défaut.
+  it.runIf(process.platform === "win32")("une règle ciblée s'écrit et le portail de l'agent la suit pour sa cible seulement", async () => {
     const { call, app, confirms } = await setupKernel();
     await call("set-jarod-settings", { permissionsRules: [{ tool: "system_open", target: "*steam*", decision: "deny" }] });
     expect(app.agent.gate!.decide("system_open", "Steam")).toBe("deny");

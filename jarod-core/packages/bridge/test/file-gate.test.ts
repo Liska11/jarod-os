@@ -11,6 +11,10 @@ import { FileGate, GateDenied, isForbiddenName, sanitizeSegment } from "../src/m
 
 afterEach(cleanup);
 
+// La garde est jugée en `platform: "win32"` sur de VRAIS dossiers (jonctions, casse, « lecteur:\ ») : sous Linux et macOS, les dossiers
+// temporaires ont des chemins POSIX que cette forme refuse par construction. Seuls les noms assainis (pure chaîne) tournent partout.
+const win = process.platform === "win32";
+
 function world(opts: { workspace?: string | null; env?: NodeJS.ProcessEnv } = {}) {
   const home = realpathSync.native(tempDir());
   const data = join(home, "AppData", "Roaming", "Jarod-One", "data");
@@ -50,7 +54,7 @@ const denied = (fn: () => unknown, reason: RegExp) => {
   throw new Error("accès accordé alors qu'un refus était attendu");
 };
 
-describe("Q12 garde fichiers : racines", () => {
+describe.runIf(win)("Q12 garde fichiers : racines", () => {
   it("(b) sans dossier de travail : aucun accès (fail-closed) ; le dossier des pièces collées reste lisible", () => {
     const { gate, staging } = world();
     const file = join(realpathSync.native(tempDir()), "a.txt");
@@ -112,7 +116,7 @@ describe("Q12 garde fichiers : racines", () => {
   });
 });
 
-describe("Q12 garde fichiers : interdits et forme des chemins", () => {
+describe.runIf(win)("Q12 garde fichiers : interdits et forme des chemins", () => {
   it("noms protégés partout, même sous une racine", () => {
     const ws = realpathSync.native(tempDir());
     const { gate } = world({ workspace: ws });
@@ -156,7 +160,7 @@ describe("Q12 garde fichiers : interdits et forme des chemins", () => {
   });
 });
 
-describe("Q12 garde fichiers : chemin RÉEL (jonction, lien symbolique pointant hors racine)", () => {
+describe.runIf(win)("Q12 garde fichiers : chemin RÉEL (jonction, lien symbolique pointant hors racine)", () => {
   it("jonction de dossier sous la racine vers l'extérieur : refus (contrôle sur le chemin réel)", () => {
     const ws = realpathSync.native(tempDir());
     const outside = realpathSync.native(tempDir());
@@ -210,7 +214,7 @@ describe("Q12 : noms assainis", () => {
   });
 });
 
-describe("SPECS-P5-WORKSPACE.md : garde du dossier de travail PAR DÉFAUT (pickedOnly, plus stricte que bindable)", () => {
+describe.runIf(win)("SPECS-P5-WORKSPACE.md : garde du dossier de travail PAR DÉFAUT (pickedOnly, plus stricte que bindable)", () => {
   it("choisi dans la boîte native pendant ce lancement : accepté, chemin réel rendu", () => {
     const { gate } = world();
     const dir = realpathSync.native(tempDir());

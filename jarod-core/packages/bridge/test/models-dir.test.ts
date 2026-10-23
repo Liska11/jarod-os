@@ -1,7 +1,7 @@
 // Chantier 5b de SPECS-P5-MODELS.md, barre (5b-H), partie pure : `validateModelsDir` — le dossier des modèles n'est JAMAIS sous le dossier de données du profil ni sous la
 // racine des données (`dataRoot`), y compris après résolution des liens symboliques et des jonctions. Barres figées dans DECISIONS AVANT ce code.
 import { join } from "node:path";
-import { mkdirSync, symlinkSync, writeFileSync } from "node:fs";
+import { mkdirSync, realpathSync, symlinkSync, writeFileSync } from "node:fs";
 import { afterEach, describe, expect, it } from "vitest";
 import { cleanup, tempDir } from "@jarod/kernel/testing";
 import { validateModelsDir } from "../src/main/models-dir.js";
@@ -26,7 +26,8 @@ describe("(5b-H) validateModelsDir", () => {
     const { outside, ctx } = layout();
     const r = validateModelsDir(outside, ctx);
     expect(r.ok).toBe(true);
-    if (r.ok) expect(r.dir.toLowerCase()).toBe(outside.toLowerCase());
+    // Chemin réel : sur la CI Windows, le dossier temporaire est un nom court (RUNNER~1) que la validation développe.
+    if (r.ok) expect(r.dir.toLowerCase()).toBe(realpathSync.native(outside).toLowerCase());
   });
 
   it("refusé : le dossier de données du profil, la racine des données, et tout sous-dossier de l'un ou de l'autre — avec la raison", () => {

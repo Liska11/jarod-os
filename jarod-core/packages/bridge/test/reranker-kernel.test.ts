@@ -116,7 +116,8 @@ describe("desktop : worker du reranker isolé", () => {
     try {
       const end = Date.now() + 8_000;
       while (events.length === 0 && Date.now() < end) await new Promise((r) => setTimeout(r, 25));
-      expect(events[0]).toMatchObject({ code: 3221225477, reason: "exit", outcome: "restarted" });
+      // 0xC0000005 (violation d'accès Windows) ; ailleurs, un code de sortie tient sur 8 bits (3221225477 & 0xff = 5).
+      expect(events[0]).toMatchObject({ code: process.platform === "win32" ? 3221225477 : 3221225477 & 0xff, reason: "exit", outcome: "restarted" });
     } finally {
       await k.dispose();
     }

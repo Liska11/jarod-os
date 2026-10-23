@@ -6,7 +6,7 @@
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, readdirSync, symlinkSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, realpathSync, symlinkSync, writeFileSync } from "node:fs";
 import { cleanup, tempDir } from "@jarod/kernel/testing";
 import { JAROD_EVENT_CHANNELS, JAROD_INVOKE_CHANNELS } from "@jarod/contracts/ipc";
 import { reportGgufFit, secretKeyFor } from "@jarod/plugin-llm";
@@ -367,7 +367,8 @@ describe("(5b-B) confirmation native avant tout transfert", () => {
     await e.chooseModels();
     const view = await e.call("hf-repo", { repo: REPO });
     const out = await e.call("hf-download", { repo: REPO, sha: view.sha, keys: ["m-Q4.gguf", "n-Q8.gguf"] });
-    expect(out.destDir.toLowerCase()).toBe(join(e.models, "acme__tiny-GGUF").toLowerCase());
+    // Chemin réel : sur la CI Windows, le dossier temporaire est un nom court (RUNNER~1) que le dossier des modèles développe.
+    expect(out.destDir.toLowerCase()).toBe(join(realpathSync.native(e.models), "acme__tiny-GGUF").toLowerCase());
     expect(out.files.map((f: { name: string }) => f.name).sort()).toEqual(["m-Q4.gguf", "n-Q8.gguf"]);
     expect(readFileSync(join(out.destDir, "m-Q4.gguf")).equals(SMALL)).toBe(true);
     expect(out.files.find((f: { name: string }) => f.name === "n-Q8.gguf").verified).toBe("size-only");
