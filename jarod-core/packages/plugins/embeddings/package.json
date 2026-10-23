@@ -18,8 +18,8 @@
     "@jarod/contracts": "workspace:*",
     "@jarod/kernel": "workspace:*",
     "@jarod/plugin-storage": "workspace:*",
-    "cordis": "4.0.0-rc.10",
-    "openvino-genai-node": "2026.4.0",
-    "openvino-node": "2026.4.0"
+    "cordis": "4.0.0-rc.11",
+    "openvino-genai-node": "2026.4.1",
+    "openvino-node": "2026.4.1"
   }
 }
