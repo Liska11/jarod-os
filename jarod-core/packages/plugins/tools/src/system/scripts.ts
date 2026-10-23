@@ -111,15 +111,39 @@ $out = @(Get-Process | Where-Object { $_.MainWindowHandle -ne 0 } | ForEach-Obje
 ConvertTo-Json -InputObject $out -Compress
 `;
 
+/**
+ * `Get-NetIPConfiguration` lève une exception TERMINANTE (que `-ErrorAction` n'arrête pas) quand une interface porte plusieurs adaptateurs
+ * (« Cannot convert System.Object[] … to CimInstance », observé sur un runner Windows de la CI le 2026-10-23) : tout l'outil échouait. Repli
+ * sur les cmdlets de plus bas niveau, qui ne passent pas par cette propriété : même forme rendue. `$A.forceFallback` : le test qui prouve le repli.
+ */
 export const NETWORK = bt(String.raw`
-$cfg = @(Get-NetIPConfiguration -ErrorAction SilentlyContinue | ForEach-Object {
-  [pscustomobject]@{
-    name = [string]$_.InterfaceAlias; description = [string]$_.InterfaceDescription
-    ipv4 = [string]($_.IPv4Address | Select-Object -First 1).IPAddress
-    gateway = [string]($_.IPv4DefaultGateway | Select-Object -First 1).NextHop
-    dns = @($_.DNSServer | Where-Object { $_.AddressFamily -eq 2 } | ForEach-Object { @($_.ServerAddresses) } | Select-Object -Unique)
-  } })
-$adapters = @(Get-NetAdapter -ErrorAction SilentlyContinue | ForEach-Object {
+$adapterList = @(Get-NetAdapter -ErrorAction SilentlyContinue)
+$cfg = $null
+if (-not ($A -and $A.forceFallback)) {
+  try {
+    $cfg = @(Get-NetIPConfiguration -ErrorAction Stop | ForEach-Object {
+      [pscustomobject]@{
+        name = [string]$_.InterfaceAlias; description = [string]$_.InterfaceDescription
+        ipv4 = [string]($_.IPv4Address | Select-Object -First 1).IPAddress
+        gateway = [string]($_.IPv4DefaultGateway | Select-Object -First 1).NextHop
+        dns = @($_.DNSServer | Where-Object { $_.AddressFamily -eq 2 } | ForEach-Object { @($_.ServerAddresses) } | Select-Object -Unique)
+      } })
+  } catch { $cfg = $null }
+}
+if ($null -eq $cfg) {
+  $cfg = @(Get-NetIPInterface -AddressFamily IPv4 -ConnectionState Connected -ErrorAction SilentlyContinue | Where-Object { $_.InterfaceAlias -notlike 'Loopback*' } | ForEach-Object {
+    $i = $_.InterfaceIndex
+    $adapter = $adapterList | Where-Object { $_.ifIndex -eq $i } | Select-Object -First 1
+    $ip = Get-NetIPAddress -InterfaceIndex $i -AddressFamily IPv4 -ErrorAction SilentlyContinue | Select-Object -First 1
+    $gw = Get-NetRoute -InterfaceIndex $i -DestinationPrefix '0.0.0.0/0' -ErrorAction SilentlyContinue | Sort-Object RouteMetric | Select-Object -First 1
+    [pscustomobject]@{
+      name = [string]$_.InterfaceAlias; description = [string]$(if ($adapter) { $adapter.InterfaceDescription } else { '' })
+      ipv4 = [string]$(if ($ip) { $ip.IPAddress } else { '' })
+      gateway = [string]$(if ($gw) { $gw.NextHop } else { '' })
+      dns = @(Get-DnsClientServerAddress -InterfaceIndex $i -AddressFamily IPv4 -ErrorAction SilentlyContinue | ForEach-Object { @($_.ServerAddresses) } | Select-Object -Unique)
+    } })
+}
+$adapters = @($adapterList | ForEach-Object {
   [pscustomobject]@{ name = [string]$_.Name; mac = [string]$_.MacAddress; status = [string]$_.Status; media = [string]$_.PhysicalMediaType } })
 $wlan = ''
 try { $wlan = (netsh wlan show interfaces) -join "@BT@n" } catch { }

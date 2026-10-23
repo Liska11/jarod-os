@@ -10,7 +10,7 @@ import { measureTree, protectedRoot, protectedRoots } from "../src/system/disk.j
 import {
   buildProcessRows, formatLogLines, parseBluetooth, parseNetwork, parseRunningApps, parseStartApps, parseSystemInfo, parseWlan, summariseCrash,
 } from "../src/system/parse.js";
-import { buildArgv, MAX_SCRIPT_CHARS, type PsRunner } from "../src/system/ps.js";
+import { buildArgv, MAX_SCRIPT_CHARS, type PsRunner, realPsRunner } from "../src/system/ps.js";
 import * as S from "../src/system/scripts.js";
 import { systemReadTools } from "../src/system/tools.js";
 
@@ -333,6 +333,20 @@ describe.runIf(win)("sur cette machine (vrai PowerShell, Windows)", () => {
       server.close();
     }
   }, 60_000);
+
+  // 2026-10-23 : Get-NetIPConfiguration lève une exception terminante quand une interface porte plusieurs adaptateurs (runner Windows de la CI) ;
+  // le repli par les cmdlets de bas niveau doit rendre la MÊME forme. Forcé ici, puisque cette machine ne déclenche pas la panne.
+  it("system_network : le repli (sans Get-NetIPConfiguration) rend la même forme que le chemin normal", async () => {
+    const ps = realPsRunner();
+    const normal = (await ps.json(S.NETWORK, undefined, { timeoutMs: 45_000 })) as { config: Record<string, unknown>[]; adapters: unknown[] };
+    const fallback = (await ps.json(S.NETWORK, { forceFallback: true }, { timeoutMs: 45_000 })) as { config: Record<string, unknown>[]; adapters: unknown[] };
+    expect(Array.isArray(fallback.config)).toBe(true);
+    expect(fallback.adapters.length).toBe(normal.adapters.length);
+    for (const c of fallback.config) expect(Object.keys(c).sort()).toEqual(["description", "dns", "gateway", "ipv4", "name"]);
+    // Les interfaces connectées avec une adresse IPv4, vues par les deux chemins.
+    const named = (cfg: Record<string, unknown>[]) => cfg.filter((c) => c.ipv4).map((c) => String(c.name)).sort();
+    expect(named(fallback.config)).toEqual(named(normal.config));
+  }, 120_000);
 
   it("system_network, system_apps et system_logs répondent avec la forme documentée", async () => {
     expect(Object.keys((await run("system_network")).out)).toEqual(expect.arrayContaining(["online", "interfaces", "dns", "wifi"]));
