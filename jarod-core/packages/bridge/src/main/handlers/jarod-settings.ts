@@ -14,7 +14,7 @@
  * Les écrans (volet Agent…) lisent `get-jarod-settings` : une clé absente de la réponse n'est pas gérée par ce main.
  */
 import { type ConnectedBrowserSettings, connectedBrowserDomainProblem, DEFAULT_DOCKER, EcosystemFlags, ecosystemFlags, type Settings, type ShellPolicy } from "@jarod/contracts";
-import { describeShellGuard } from "@jarod/plugin-agent";
+import { ACCESS_PROFILES, type AccessProfile, describeShellGuard, HARD_LIMITS, isAccessProfile, profilePower } from "@jarod/plugin-agent";
 import { isLoopbackUrl } from "@jarod/plugin-llm";
 import { type GrantInput, normalizeRules, type Plan, planGrant, planMove, planRevoke, planUpdate, rebaseRules, type RuleChange, rulesWeakenings } from "@jarod/plugin-permissions";
 import { STT_DEFAULTS } from "@jarod/plugin-voice";
@@ -237,6 +237,33 @@ const ENTRIES: Record<string, Entry> = {
             action: "Autoriser sans demander",
           }
         : null,
+  },
+  // V-09 : le préréglage de profil d'accès. Ce qui donne PLUS de pouvoir (Demander → M'approuver, → Plein, → un Personnalisé qui lève
+  // l'accord) passe par la confirmation native, qui dit ce qui change et ce qui reste ; durcir ne demande rien.
+  accessProfile: {
+    read: (s) => s.accessProfile,
+    write: (v) => (isAccessProfile(v) ? { accessProfile: v } : bad("accessProfile", `une valeur parmi ${ACCESS_PROFILES.join(", ")}`)),
+    confirm: (patch, current) => {
+      const next = patch.accessProfile as AccessProfile | undefined;
+      if (!next || next === current.accessProfile) return null;
+      const auto = patch.autoApproveTools ?? current.autoApproveTools;
+      if (profilePower(next, auto) <= profilePower(isAccessProfile(current.accessProfile) ? current.accessProfile : "custom", current.autoApproveTools)) return null;
+      const label: Record<AccessProfile, string> = { ask: "Demander", approve: "M'approuver", full: "Plein", custom: "Personnalisé" };
+      const effect: Record<AccessProfile, string> = {
+        ask: "",
+        approve: "Les lectures revues passeront sans vous demander ; les outils sensibles demanderont toujours.",
+        full: "L'agent écrira des fichiers, lancera des commandes et utilisera le réseau SANS vous demander.",
+        custom: "L'interrupteur « sans demander » est allumé : les outils sensibles passeront sans vous demander.",
+      };
+      return {
+        message: `Passer au profil d'accès « ${label[next]} » ?`,
+        detail:
+          `${effect[next]} ` +
+          `Restent soumis à votre accord à chaque appel (limites dures) : ${[...HARD_LIMITS].join(", ")}. ` +
+          "Les règles « refuser » et « demander », l'interrupteur Internet, le mode Plan et les gardes des outils continuent de s'appliquer.",
+        action: `Passer à « ${label[next]} »`,
+      };
+    },
   },
   // « Toujours autoriser » : cet écran ne fait que RETIRER. Un outil n'y entre que par la fenêtre d'accord (confirmation native).
   alwaysAllowTools: {

@@ -34,6 +34,7 @@ import { sessionTools } from "./sessions-tools.js";
 import { registerSkillCommands } from "./skills-commands.js";
 import { permissionsExplainTool } from "./permissions-tool.js";
 
+export * from "./access-profile.js";
 export * from "./agent.js";
 export * from "./builtin-commands.js";
 export * from "./commands.js";

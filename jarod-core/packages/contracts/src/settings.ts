@@ -477,6 +477,13 @@ export interface Settings {
   anthropicFallbacks: boolean;
   autoApproveTools: boolean;
   /**
+   * V-09 — le préréglage de profil d'accès, au-dessus des règles : `ask` (Demander tout), `approve` (M'approuver : les outils sensibles),
+   * `full` (Plein, sauf les limites dures), `custom` (Personnalisé : l'interrupteur global, « Toujours autoriser » et les règles tels que
+   * réglés). Défaut `custom` : le comportement d'avant ne change pas. Passer à plus permissif demande la confirmation native ; jamais
+   * importable depuis un paquet de profil. Voir plugin-agent `access-profile.ts`.
+   */
+  accessProfile: "ask" | "approve" | "full" | "custom";
+  /**
    * « Toujours autoriser » : les outils (noms enregistrés) que l'utilisateur a dispensés d'accord, un par un, depuis la fenêtre
    * d'accord (SPECS-P5-UI-PARITE.md §4). Vaut pour TOUS les appels de cet outil, quels que soient ses arguments. Ne lève PAS une règle
    * « demander » du garde de permissions, ni le mode Plan, ni le garde du shell. Jamais importable depuis un paquet de profil
@@ -716,6 +723,7 @@ export const DEFAULT_SETTINGS: Settings = {
   effort: "",
   anthropicFallbacks: true,
   autoApproveTools: false,
+  accessProfile: "custom",
   alwaysAllowTools: [],
   disabledTools: [],
   memoryInject: true,

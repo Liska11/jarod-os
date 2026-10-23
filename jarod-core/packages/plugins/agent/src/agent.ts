@@ -397,6 +397,7 @@ export function transcript(
 
 import { budgetRatio, budgetStopMessage, budgetWarnMessage, crossedWarning, limitsFor, usageOf } from "./budget.js";
 import { LoopGuardService } from "./loop-guards.js";
+import { type AccessProfile, autonomyHonoured, isAccessProfile, needsApproval } from "./access-profile.js";
 import { NEVER_ALWAYS, NEVER_ALWAYS_REASONS } from "./never-always.js";
 import { COCKPIT_PREROGATIVE } from "./prerogative.js";
 import type { SessionStateService } from "./session-state.js";
@@ -462,6 +463,7 @@ export class Agent {
       ...snapshot,
       alwaysAllowTools: live.alwaysAllowTools,
       autoApproveTools: live.autoApproveTools,
+      accessProfile: live.accessProfile,
       agentMode: live.agentMode,
       shellGuard: live.shellGuard,
       disabledTools: live.disabledTools,
@@ -1365,11 +1367,13 @@ async function runGuardedTool(
     ? extra.gate.resolve(call.name, scope)
     : { decision: extra.gate?.decide(call.name, target) ?? "deny", autonomous: false, source: "défaut" };
   const verdict = res.decision;
+  // V-09 : le profil d'accès (lu à chaque appel, comme les autres permissions). Valeur inconnue ou absente = Personnalisé, le comportement d'avant.
+  const profile: AccessProfile = isAccessProfile(s.accessProfile) ? s.accessProfile : "custom";
   // Une opération que l'outil réserve à une permission EXPLICITE : sans règle de l'utilisateur qui la couvre (le joker « * » seul ne compte
   // pas), refusée — la capacité existe, la permission manque, et le message le dit.
   const facts = { exists: true, dangerous: Boolean(tool.dangerous), restricted: reservedReason(res, operation, tool.restrictedOperations), neverAlways: NEVER_ALWAYS_REASONS[call.name] ?? null };
   // Cockpit, lot 2 : une action à effet, une lecture auditée ou un appel soumis à accord devient une TÂCHE (étapes, preuve, annulation).
-  const tasks = extra.tasks && (tool.dangerous || tool.audited || verdict === "ask") ? extra.tasks : undefined;
+  const tasks = extra.tasks && (tool.dangerous || tool.audited || verdict === "ask" || profile === "ask") ? extra.tasks : undefined;
   const refusedTask = (summary: string, why: string) => {
     if (!tasks) return;
     const h = tasks.begin({ sessionId, tool: call.name, summary, ...(target !== null ? { target } : {}) });
@@ -1414,7 +1418,7 @@ async function runGuardedTool(
   // « Toujours autoriser » dispense l'accord de l'outil, jamais celui qu'impose une règle « demander » du garde, ni pour un outil de NEVER_ALWAYS (§ 23.2) : une entrée
   // déjà enregistrée pour lui est IGNORÉE (la demande est posée), non supprimée.
   const alwaysAllowed = (s.alwaysAllowTools ?? []).includes(call.name) && !NEVER_ALWAYS.has(call.name);
-  if (res.autonomous) {
+  if (res.autonomous && autonomyHonoured(profile)) {
     // Autonomie configurable : une règle de l'utilisateur (allow + autonomous) couvre CET appel — outil, cibles, opération, conversation,
     // échéance, utilisations. L'accord n'est pas demandé ; tout le reste a joué (Internet, mode Plan, refus placés avant, garde de l'outil).
     // Une utilisation est retirée AVANT l'exécution : deux appels simultanés ne passent pas sur la même dernière.
@@ -1429,7 +1433,9 @@ async function runGuardedTool(
     }
     if (task) tasks!.step(task.id, "accordée", `sans accord, par la règle ${res.rule?.id ?? `n° ${(res.index ?? 0) + 1}`}`, "running");
     decision = "autorisé (règle)";
-  } else if ((tool.dangerous && !s.autoApproveTools && !alwaysAllowed) || verdict === "ask") {
+  } else if (
+    needsApproval({ profile, tool: call.name, dangerous: Boolean(tool.dangerous), verdict: verdict === "ask" ? "ask" : "allow", autoApproveTools: s.autoApproveTools, alwaysAllowed })
+  ) {
     if (task) tasks!.step(task.id, "accord demandé", undefined, "awaiting-approval");
     // Un service d'approbation en erreur (rejet OU levée synchrone) REFUSE : l'outil ne tourne jamais sur une erreur (SPECS-P5-UI-PARITE.md § 13, FC4).
     let answer: Promise<boolean>;

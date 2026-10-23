@@ -15,9 +15,10 @@ describe("réglages Agent", () => {
     const v = (await call("get-jarod-settings")) as Record<string, unknown>;
     // La liste blanche exacte : une clé de plus (ou de moins) doit se voir ici.
     expect(Object.keys(v).sort()).toEqual(
-      ["alwaysAllowTools", "android", "apiServer", "anthropicFallbacks", "autoApproveTools", "agentMode", "autoTitle", "browserPersistent", "browserVisible", "compactThreshold", "connectedBrowser", "contextProxy", "desktop", "disabledSkills", "ecosystem", "fallbacks", "imageDescription", "learning", "localTraces", "maxAgentSteps", "memoryInject", "mobile", "permissionsRules", "phoneApprovals", "rag", "sessionBudget", "shellGuard", "terminalShell", "toolSearch", "voice"].sort(),
+      ["accessProfile", "alwaysAllowTools", "android", "apiServer", "anthropicFallbacks", "autoApproveTools", "agentMode", "autoTitle", "browserPersistent", "browserVisible", "compactThreshold", "connectedBrowser", "contextProxy", "desktop", "disabledSkills", "ecosystem", "fallbacks", "imageDescription", "learning", "localTraces", "maxAgentSteps", "memoryInject", "mobile", "permissionsRules", "phoneApprovals", "rag", "sessionBudget", "shellGuard", "terminalShell", "toolSearch", "voice"].sort(),
     );
     expect(v).toMatchObject({
+      accessProfile: "custom",
       autoApproveTools: false,
       alwaysAllowTools: [],
       terminalShell: "",
@@ -154,6 +155,45 @@ describe("autoApproveTools : confirmation native", () => {
     const { call, app } = await setupKernel(undefined, [false]);
     await expect(Promise.resolve().then(() => call("set-jarod-settings", { maxAgentSteps: 99, autoApproveTools: true }))).rejects.toThrow(/refusé/);
     expect(app.agent.settings.get("maxAgentSteps")).toBe(DEFAULT_SETTINGS.maxAgentSteps);
+  });
+});
+
+describe("V-09 — profil d'accès : plus de pouvoir = confirmation native, durcir ne demande rien", () => {
+  it("vers Plein : la boîte dit ce qui change et nomme les limites dures ; refusée, rien n'est écrit", async () => {
+    const { call, app, confirms } = await setupKernel(undefined, [false]);
+    await expect(Promise.resolve().then(() => call("set-jarod-settings", { accessProfile: "full" }))).rejects.toThrow(/refusé par l'utilisateur/);
+    expect(app.agent.settings.get("accessProfile")).toBe("custom");
+    expect(confirms[0]!.message).toMatch(/« Plein »/);
+    expect(confirms[0]!.detail).toMatch(/limites dures.*run_shell.*system_files/);
+  });
+
+  it("acceptée : écrit ; durcir (Plein → Demander) ne demande rien, remonter (Demander → M'approuver) redemande", async () => {
+    const { call, app, confirms } = await setupKernel(undefined, [true, true]);
+    await call("set-jarod-settings", { accessProfile: "full" });
+    expect(app.agent.settings.get("accessProfile")).toBe("full");
+    await call("set-jarod-settings", { accessProfile: "ask" });
+    await call("set-jarod-settings", { accessProfile: "ask" });
+    expect(confirms).toHaveLength(1);
+    // Demander → M'approuver donne du pouvoir (les lectures passent) : la boîte s'ouvre.
+    await call("set-jarod-settings", { accessProfile: "approve" });
+    expect(confirms).toHaveLength(2);
+    expect(app.agent.settings.get("accessProfile")).toBe("approve");
+  });
+
+  it("Personnalisé vaut ce qu'il règle : avec l'interrupteur global allumé, revenir à Personnalisé depuis M'approuver demande", async () => {
+    const { call, app, confirms } = await setupKernel(undefined, [true, true]);
+    await call("set-jarod-settings", { autoApproveTools: true });
+    await call("set-jarod-settings", { accessProfile: "approve" });
+    expect(confirms).toHaveLength(1);
+    await call("set-jarod-settings", { accessProfile: "custom" });
+    expect(confirms).toHaveLength(2);
+    expect(confirms[1]!.message).toMatch(/« Personnalisé »/);
+    expect(app.agent.settings.get("accessProfile")).toBe("custom");
+  });
+
+  it("une valeur inconnue est refusée", async () => {
+    const { call } = await setupKernel();
+    await expect(Promise.resolve().then(() => call("set-jarod-settings", { accessProfile: "root" }))).rejects.toThrow(/accessProfile/);
   });
 });
 
