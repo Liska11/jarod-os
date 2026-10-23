@@ -497,6 +497,16 @@ blockmap (11 Oct, before the rename), the top-level `win-unpacked` and `win-unpa
 - MCP : `mcp_servers` de `config.yaml` → `mcpServers`, tous `enabled: false`. Le jeton d'accès OAuth de `mcp-tokens/<nom>.json` devient l'en-tête
   `Authorization: Bearer …` (Jarod n'a pas de flux OAuth ni de renouvellement : le jeton expire). Les filtres `tools.include/exclude` et les délais ne sont pas repris.
 - Constaté sur ce poste : 394 skills copiés (396 avec les 2 skills d'exemple), 9 serveurs MCP.
+- **Depuis V-15 (24 oct. 2026)**, l'import est complet. `--dry-run` est accepté explicitement (c'est le défaut ; avec `--apply` : refus) :
+  - mémoire : `memories/MEMORY.md` → faits, `USER.md` → préférences (entrées séparées par `§`), sans doublon (une entrée identique n'est jamais ajoutée deux fois) ;
+  - persona : `SOUL.md` → persona de Jarod, seulement si Jarod n'en a pas (jamais remplacée) ;
+  - tâches planifiées : `cron/jobs.json` → planificateur, toutes **désactivées** ; cron, intervalle et « une fois » repris ; une livraison « telegram » sans chat va au canal d'accueil
+    de Hermes (`TELEGRAM_HOME_CHANNEL`) ; les tâches « script sans agent » sont ignorées avec la raison ; le modèle propre à une tâche n'est pas repris (modèle actif de Jarod) ;
+  - bots : les listes d'accès de `.env` (`TELEGRAM_ALLOWED_USERS`, `DISCORD_ALLOWED_USERS`, `SLACK_ALLOWED_USERS`) sont posées seulement si celle de Jarod est vide ;
+    la passerelle reste **éteinte** et le jeton du bot n'est **jamais copié** (seulement détecté, à saisir dans Réglages) ;
+  - MCP : un filtre `tools.include` de noms exacts devient la liste blanche du serveur (V-14) ; un `exclude` ou un motif est signalé.
+- Simulation du 24 oct. sur ce poste (profil Jarod jetable) : 376 skills, 10 serveurs MCP, 22 entrées de mémoire (13 faits, 9 préférences), la persona (663 caractères),
+  5 tâches (2 scripts ignorés), la liste d'accès Telegram ; aucun jeton de bot copié.
 
 ## Icône absente de la barre des tâches (12 oct. 2026)
 
