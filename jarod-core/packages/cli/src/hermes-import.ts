@@ -190,8 +190,15 @@ export function mapMcpServers(raw: Record<string, unknown>, tokenOf: (name: stri
     } else if (command && isAbsolute(command) && !existsSync(command)) {
       report.notes.push(`${name} : la commande ${command} n'existe pas sur cette machine`);
     }
-    const tools = cfg.tools && typeof cfg.tools === "object" ? Object.keys(cfg.tools) : [];
-    if (tools.length > 0) report.notes.push(`${name} : filtre d'outils (${tools.join(", ")}) non repris, Jarod n'en a pas`);
+    // V-14 : une liste `include` de noms exacts devient la liste blanche du serveur ; un `exclude` ou un motif (`*`) demanderait les noms
+    // réels des outils (connexion au serveur) : il n'est pas deviné, il est signalé.
+    const filter = cfg.tools && typeof cfg.tools === "object" && !Array.isArray(cfg.tools) ? (cfg.tools as Record<string, unknown>) : undefined;
+    if (filter) {
+      const include = Array.isArray(filter.include) ? filter.include.map(String) : undefined;
+      const exact = include?.every((t) => t && !/[*?[\]]/.test(t));
+      if (include && exact && Object.keys(filter).every((k) => k === "include")) server.allowedTools = [...new Set(include)].sort();
+      else report.notes.push(`${name} : filtre d'outils (${Object.keys(filter).join(", ")}) non repris tel quel : choisir les outils dans Réglages › Serveurs MCP › Outils`);
+    }
     taken.add(id);
     names.add(name.toLowerCase());
     report.servers.push(server);
@@ -262,6 +269,179 @@ export function planSkills(sources: { label: string; folders: SkillFolder[] }[],
   return plan;
 }
 
+// ───────────────────────── mémoire (V-15) ─────────────────────────
+
+/** Séparateur des entrées de `memories/MEMORY.md` et `USER.md` (Hermes `tools/memory_tool_store.py:23`). */
+export const MEMORY_DELIMITER = "\n§\n";
+
+/** Les entrées d'un fichier de mémoire Hermes, sans les vides. */
+export function readMemoryEntries(text: string): string[] {
+  return text
+    .replace(/\r\n/g, "\n")
+    .split(MEMORY_DELIMITER)
+    .map((e) => e.trim())
+    .filter(Boolean);
+}
+
+export interface MemoryPlan {
+  /** `MEMORY.md` → faits, `USER.md` → préférences (ce que l'agent sait de la personne). */
+  add: { content: string; type: "fact" | "preference" }[];
+  /** Entrées déjà présentes à l'identique dans Jarod (ou deux fois chez Hermes) : rien n'est ajouté. */
+  present: number;
+}
+
+export function planMemory(entries: { fact: string[]; preference: string[] }, existing: ReadonlySet<string>): MemoryPlan {
+  const plan: MemoryPlan = { add: [], present: 0 };
+  const seen = new Set(existing);
+  for (const type of ["fact", "preference"] as const)
+    for (const content of entries[type]) {
+      if (seen.has(content)) plan.present++;
+      else (seen.add(content), plan.add.push({ content, type }));
+    }
+  return plan;
+}
+
+// ───────────────────────── persona (V-15) ─────────────────────────
+
+export type PersonaPlan = { action: "write"; chars: number } | { action: "skip"; reason: string };
+
+/** `SOUL.md` de Hermes → persona de Jarod, seulement quand Jarod n'en a pas : une persona existante n'est jamais remplacée. */
+export function planPersona(soul: string | undefined, current: string): PersonaPlan {
+  const text = soul?.trim() ?? "";
+  if (!text) return { action: "skip", reason: "SOUL.md absent ou vide chez Hermes" };
+  if (current.trim()) return { action: "skip", reason: "Jarod a déjà une persona (jamais remplacée)" };
+  return { action: "write", chars: text.length };
+}
+
+// ───────────────────────── tâches planifiées (V-15) ─────────────────────────
+
+type Gateway = "telegram" | "discord" | "slack";
+const GATEWAYS: Gateway[] = ["telegram", "discord", "slack"];
+
+/** Ce qu'une tâche Hermes devient : un `Scheduler.save` de Jarod, toujours désactivé. */
+export interface CronDraft {
+  name: string;
+  prompt: string;
+  spec: { kind: "cron"; expr: string } | { kind: "interval"; minutes: number } | { kind: "once"; at: number };
+  deliver: { gateway: Gateway; chatId: string } | null;
+}
+
+export interface CronPlan {
+  add: CronDraft[];
+  skipped: { name: string; reason: string }[];
+  notes: string[];
+}
+
+/**
+ * `jobs` = le contenu de `cron/jobs.json` (`{ jobs: [...] }`), `existingNames` = les tâches de Jarod (un nom pris n'est jamais remplacé),
+ * `home` = le canal d'accueil de chaque passerelle chez Hermes (une livraison « telegram » sans chat va là).
+ */
+export function planCron(jobs: unknown, existingNames: ReadonlySet<string>, home: Partial<Record<Gateway, string>>): CronPlan {
+  const plan: CronPlan = { add: [], skipped: [], notes: [] };
+  const list = jobs && typeof jobs === "object" && Array.isArray((jobs as { jobs?: unknown }).jobs) ? ((jobs as { jobs: unknown[] }).jobs as Record<string, unknown>[]) : [];
+  const names = new Set([...existingNames].map((n) => n.toLowerCase()));
+  let ownModel = 0;
+  for (const job of list) {
+    if (!job || typeof job !== "object") continue;
+    const name = typeof job.name === "string" && job.name.trim() ? job.name.trim() : String(job.id ?? "tâche");
+    const prompt = typeof job.prompt === "string" ? job.prompt.trim() : "";
+    if (job.script || job.no_agent === true) {
+      plan.skipped.push({ name, reason: "script sans agent : Jarod ne lance pas de script planifié" });
+      continue;
+    }
+    if (!prompt) {
+      plan.skipped.push({ name, reason: "consigne vide" });
+      continue;
+    }
+    if (names.has(name.toLowerCase())) {
+      plan.skipped.push({ name, reason: "une tâche de ce nom existe déjà dans Jarod" });
+      continue;
+    }
+    const s = job.schedule && typeof job.schedule === "object" ? (job.schedule as Record<string, unknown>) : {};
+    let spec: CronDraft["spec"] | undefined;
+    if (s.kind === "cron" && typeof s.expr === "string" && s.expr.trim().split(/\s+/).length === 5) spec = { kind: "cron", expr: s.expr.trim() };
+    else if (s.kind === "interval" && typeof s.minutes === "number" && s.minutes >= 1) spec = { kind: "interval", minutes: Math.round(s.minutes) };
+    else if (s.kind === "once" && typeof s.run_at === "string" && !Number.isNaN(Date.parse(s.run_at))) spec = { kind: "once", at: Date.parse(s.run_at) };
+    if (!spec) {
+      plan.skipped.push({ name, reason: `horaire non repris (${String(s.kind ?? "absent")})` });
+      continue;
+    }
+    let deliver: CronDraft["deliver"] = null;
+    const raw = typeof job.deliver === "string" ? job.deliver.trim() : "";
+    if (raw && raw !== "local") {
+      const [gateway, ...rest] = raw.split(":");
+      const chatId = rest.join(":").trim() || home[gateway as Gateway];
+      if (GATEWAYS.includes(gateway as Gateway) && chatId) deliver = { gateway: gateway as Gateway, chatId };
+      else plan.notes.push(`${name} : livraison « ${raw} » non reprise (${GATEWAYS.includes(gateway as Gateway) ? "pas de canal d'accueil connu" : "passerelle absente de Jarod"}) : la réponse reste dans Jarod`);
+    }
+    if (typeof job.model === "string" && job.model) ownModel++;
+    names.add(name.toLowerCase());
+    plan.add.push({ name, prompt, spec, deliver });
+  }
+  if (ownModel) plan.notes.push(`${ownModel} tâche(s) avaient leur propre modèle chez Hermes : dans Jarod, elles utilisent le modèle actif`);
+  return plan;
+}
+
+// ───────────────────────── bots (V-15) ─────────────────────────
+
+/** Les seules variables lues dans le `.env` de Hermes : des listes d'identifiants et des canaux. Les jetons ne sont que DÉTECTÉS. */
+const BOT_ENV = {
+  telegram: { token: "TELEGRAM_BOT_TOKEN", allowed: "TELEGRAM_ALLOWED_USERS", home: "TELEGRAM_HOME_CHANNEL" },
+  discord: { token: "DISCORD_BOT_TOKEN", allowed: "DISCORD_ALLOWED_USERS", home: "DISCORD_HOME_CHANNEL" },
+  slack: { token: "SLACK_BOT_TOKEN", allowed: "SLACK_ALLOWED_USERS", home: "SLACK_HOME_CHANNEL" },
+} as const;
+
+/** `KEY=valeur` d'un `.env`, pour les clés demandées seulement (guillemets retirés). Une clé de jeton n'y figure jamais : voir `hasKey`. */
+export function readDotEnv(text: string, keys: readonly string[]): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const raw of text.split(/\r?\n/)) {
+    const m = /^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*?)\s*$/.exec(raw);
+    if (!m || !keys.includes(m[1]!)) continue;
+    out[m[1]!] = m[2]!.replace(/^(['"])(.*)\1$/, "$2");
+  }
+  return out;
+}
+
+/** La clé est-elle définie (non vide) dans le `.env` ? La valeur n'est jamais rendue. */
+export function hasKey(text: string, key: string): boolean {
+  return new RegExp(`^\\s*(?:export\\s+)?${key}\\s*=\\s*\\S`, "m").test(text);
+}
+
+export interface BotPlan {
+  /** Listes d'accès à poser : seulement quand celle de Jarod est vide (jamais fusionnée ni remplacée) ; la passerelle reste éteinte. */
+  allow: { gateway: Gateway; ids: string[] }[];
+  home: Partial<Record<Gateway, string>>;
+  notes: string[];
+}
+
+export function planBots(envText: string, configHome: Partial<Record<Gateway, string>>, current: Record<Gateway, string[]>): BotPlan {
+  const plan: BotPlan = { allow: [], home: { ...configHome }, notes: [] };
+  const values = readDotEnv(envText, GATEWAYS.flatMap((g) => [BOT_ENV[g].allowed, BOT_ENV[g].home]));
+  for (const g of GATEWAYS) {
+    const home = values[BOT_ENV[g].home]?.trim();
+    if (home) plan.home[g] = home;
+    const ids = [...new Set((values[BOT_ENV[g].allowed] ?? "").split(/[\s,]+/).filter((x) => /^[A-Za-z0-9_@.-]{1,64}$/.test(x)))];
+    const token = hasKey(envText, BOT_ENV[g].token);
+    if (!token && !ids.length) continue;
+    if (ids.length && current[g].length) plan.notes.push(`${g} : Jarod a déjà sa liste d'accès, celle de Hermes n'est pas reprise`);
+    else if (ids.length) plan.allow.push({ gateway: g, ids });
+    if (token) plan.notes.push(`${g} : jeton présent chez Hermes, NON copié : le saisir dans Réglages › Messagerie pour activer la passerelle`);
+  }
+  if (plan.allow.some((a) => a.gateway === "telegram")) plan.notes.push("telegram : Hermes liste des utilisateurs, Jarod des chats ; en conversation privée, c'est le même identifiant");
+  return plan;
+}
+
+/** Le canal d'accueil écrit en clé de premier niveau de `config.yaml` (`TELEGRAM_HOME_CHANNEL: …`). */
+export function configHomeChannels(yaml: string): Partial<Record<Gateway, string>> {
+  const out: Partial<Record<Gateway, string>> = {};
+  for (const g of GATEWAYS) {
+    const m = new RegExp(`^${BOT_ENV[g].home}:\\s*(.+?)\\s*$`, "m").exec(yaml);
+    const v = m ? scalar(m[1]!) : null;
+    if (v !== null && v !== "") out[g] = String(v);
+  }
+  return out;
+}
+
 // ───────────────────────── orchestration ─────────────────────────
 
 /** Ce dont l'import a besoin du cœur (un sous-ensemble de `CliCore`, simple à simuler dans les tests). */
@@ -273,6 +453,14 @@ export interface ImportTarget {
     set(key: "disabledSkills", value: string[]): void;
   };
   skills: { dir: string; list(): { id: string }[]; reload(): Promise<unknown> };
+  /** V-15 : les parties suivantes sont importées quand le cœur les a (absentes : la partie est dite « non disponible »). */
+  memory?: { list(): { content: string }[]; add(content: string, type: "fact" | "preference"): unknown };
+  persona?: { read(): string; write(text: string): void };
+  scheduler?: { list(): { name: string }[]; save(input: CronDraft & { enabled: boolean }): unknown };
+  bots?: {
+    get(key: Gateway): { allowedChatIds?: string[]; allowedUserIds?: string[] } & Record<string, unknown>;
+    set(key: Gateway, value: Record<string, unknown>): void;
+  };
 }
 
 export interface ImportOptions {
@@ -285,7 +473,22 @@ export interface ImportOptions {
 export interface ImportResult {
   skills: SkillPlan & { copied: number; disabled: number };
   mcp: McpImportReport;
+  /** V-15 : `null` = le cœur n'a pas ce service. */
+  memory: (MemoryPlan & { added: number }) | null;
+  persona: (PersonaPlan & { written: boolean }) | null;
+  cron: (CronPlan & { created: number }) | null;
+  bots: (BotPlan & { applied: number }) | null;
 }
+
+const readIf = (file: string): string | undefined => {
+  try {
+    return existsSync(file) ? readFileSync(file, "utf8") : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
+const allowKey = (g: Gateway): "allowedChatIds" | "allowedUserIds" => (g === "telegram" ? "allowedChatIds" : "allowedUserIds");
 
 export async function importFromHermes(target: ImportTarget, options: ImportOptions): Promise<ImportResult> {
   await target.skills.reload();
@@ -306,8 +509,61 @@ export async function importFromHermes(target: ImportTarget, options: ImportOpti
   };
   const mcp = mapMcpServers(raw, tokenOf, target.settings.get("mcpServers"));
 
-  const result: ImportResult = { skills: { ...plan, copied: 0, disabled: 0 }, mcp };
+  // V-15 : mémoire, persona, bots (avant les tâches : leur canal d'accueil sert aux livraisons), tâches planifiées.
+  const memoryDir = join(options.hermesHome, "memories");
+  const memory = target.memory
+    ? planMemory(
+        { fact: readMemoryEntries(readIf(join(memoryDir, "MEMORY.md")) ?? ""), preference: readMemoryEntries(readIf(join(memoryDir, "USER.md")) ?? "") },
+        new Set(target.memory.list().map((m) => m.content)),
+      )
+    : null;
+  const persona = target.persona ? planPersona(readIf(join(options.hermesHome, "SOUL.md")), target.persona.read()) : null;
+  const yaml = readIf(yamlPath) ?? "";
+  const bots = target.bots
+    ? planBots(readIf(join(options.hermesHome, ".env")) ?? "", configHomeChannels(yaml), {
+        telegram: target.bots.get("telegram").allowedChatIds ?? [],
+        discord: target.bots.get("discord").allowedUserIds ?? [],
+        slack: target.bots.get("slack").allowedUserIds ?? [],
+      })
+    : null;
+  let jobs: unknown = null;
+  try {
+    jobs = JSON.parse(readIf(join(options.hermesHome, "cron", "jobs.json")) ?? "null");
+  } catch {
+    jobs = null;
+  }
+  const cron = target.scheduler ? planCron(jobs, new Set(target.scheduler.list().map((s) => s.name)), bots?.home ?? configHomeChannels(yaml)) : null;
+
+  const result: ImportResult = {
+    skills: { ...plan, copied: 0, disabled: 0 },
+    mcp,
+    memory: memory && { ...memory, added: 0 },
+    persona: persona && { ...persona, written: false },
+    cron: cron && { ...cron, created: 0 },
+    bots: bots && { ...bots, applied: 0 },
+  };
   if (!options.apply) return result;
+
+  if (memory && target.memory && result.memory) for (const m of memory.add) (target.memory.add(m.content, m.type), result.memory.added++);
+  if (persona?.action === "write" && target.persona && result.persona) {
+    target.persona.write(readIf(join(options.hermesHome, "SOUL.md")) ?? "");
+    result.persona.written = true;
+  }
+  if (bots && target.bots && result.bots)
+    for (const a of bots.allow) {
+      // La passerelle reste éteinte : la liste d'accès est posée, l'activation et le jeton restent un geste de la personne.
+      target.bots.set(a.gateway, { ...target.bots.get(a.gateway), enabled: false, [allowKey(a.gateway)]: a.ids });
+      result.bots.applied++;
+    }
+  if (cron && target.scheduler && result.cron)
+    for (const draft of cron.add) {
+      try {
+        target.scheduler.save({ ...draft, enabled: false });
+        result.cron.created++;
+      } catch (e) {
+        result.cron.skipped.push({ name: draft.name, reason: `refusée par Jarod : ${(e as Error).message}` });
+      }
+    }
 
   for (const f of plan.copy) {
     await cp(f.path, join(target.skills.dir, ...f.rel.split("/")), { recursive: true, errorOnExist: true, force: false });
