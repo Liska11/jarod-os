@@ -176,13 +176,16 @@ export function dshSpawnPlan(
   env.DSH_HOME = options.home
   env.NO_COLOR = '1'
 
+  // Les deux casses (Python et curl lisent les minuscules), et `NODE_USE_ENV_PROXY` : sans lui, le `fetch` de Node — celui de DSH — ignore
+  // ces variables (même proxy mort que `kernel/src/child-env.ts`).
   if (!options.internet) {
-    Object.assign(env, {
-      HTTP_PROXY: 'http://127.0.0.1:9',
-      HTTPS_PROXY: 'http://127.0.0.1:9',
-      ALL_PROXY: 'http://127.0.0.1:9',
-      NO_PROXY: '127.0.0.1,localhost,::1'
-    })
+    for (const name of ['HTTP_PROXY', 'HTTPS_PROXY', 'ALL_PROXY']) {
+      env[name] = 'http://127.0.0.1:9'
+      env[name.toLowerCase()] = 'http://127.0.0.1:9'
+    }
+    env.NO_PROXY = '127.0.0.1,localhost,::1'
+    env.no_proxy = '127.0.0.1,localhost,::1'
+    env.NODE_USE_ENV_PROXY = '1'
   }
 
   // Le `node` de l'installation npm, sinon celui du PATH, sinon l'exécutable de Jarod en mode Node (Electron embarque Node).

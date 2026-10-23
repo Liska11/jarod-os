@@ -111,7 +111,10 @@ describe('dshSpawnPlan', () => {
     })
     expect(plan.env).toMatchObject({
       HTTPS_PROXY: 'http://127.0.0.1:9',
-      NO_PROXY: '127.0.0.1,localhost,::1'
+      https_proxy: 'http://127.0.0.1:9',
+      NO_PROXY: '127.0.0.1,localhost,::1',
+      // Sans elle, le fetch de Node (DSH) ignore le proxy et sort quand même.
+      NODE_USE_ENV_PROXY: '1'
     })
   })
 
