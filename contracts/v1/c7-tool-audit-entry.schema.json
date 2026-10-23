@@ -88,6 +88,11 @@
         ]
       },
       "description": "V-04 (2026-10-23): injection categories found in the tool's OUTPUT by `@jarod/kernel/injection` (observe mode: the output reaches the model unchanged). Categories only, never an excerpt. Absent when nothing is found or the tool produced no output."
+    },
+    "evidence": {
+      "type": "string",
+      "maxLength": 260,
+      "description": "V-08 (2026-10-23): what the tool's verification observed (`Proof.evidence`, e.g. a file read back and compared), masked then cut at 200 characters plus the cut marker, like `target`. Absent when the tool has no verification."
     }
   },
   "additionalProperties": false

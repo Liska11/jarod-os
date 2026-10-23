@@ -5,10 +5,11 @@
  */
 import { closeSync, openSync, readSync, statSync } from "node:fs";
 import { join } from "node:path";
-import type { AuditEntry } from "@jarod/plugin-agent";
+import type { AuditEntry, TurnChanges } from "@jarod/plugin-agent";
 import type { HandlerContext } from "./context.js";
 
 const SESSION_ID = /^[\w.:-]{1,128}$/;
+const CALL_ID = /^[\w.:-]{1,256}$/;
 const MAX = 500;
 /** Ce qu'on lit au plus à la fin d'un journal texte : assez pour `MAX` lignes de `mcp-server.log` (~80 octets chacune). */
 const TAIL_BYTES = 256 * 1024;
@@ -46,6 +47,15 @@ export function createAuditHandlers(ctx: HandlerContext) {
       if (typeof sessionId !== "string" || !SESSION_ID.test(sessionId)) throw new Error("identifiant de conversation invalide");
       const n = typeof limit === "number" && Number.isInteger(limit) && limit > 0 ? Math.min(limit, MAX) : MAX;
       return ctx.kernel().agent.auditOf(sessionId, n);
+    },
+    /**
+     * V-08 — ce que le tour d'un appel a changé dans les fichiers (diff borné), pour la timeline sous ce tour. Le renderer ne désigne qu'une
+     * conversation et un identifiant d'appel, jamais un chemin.
+     */
+    "audit-turn-changes": (sessionId: unknown, callId: unknown): TurnChanges => {
+      if (typeof sessionId !== "string" || !SESSION_ID.test(sessionId)) throw new Error("identifiant de conversation invalide");
+      if (typeof callId !== "string" || !CALL_ID.test(callId)) throw new Error("identifiant d'appel invalide");
+      return ctx.kernel().agent.turnChanges(sessionId, callId);
     },
     /**
      * V-03 — la part du noyau dans la vue unique des journaux : les dernières lignes de l'agent (toutes conversations) et celles de

@@ -1217,6 +1217,11 @@ export interface AuditEntry {
    * l'extrait. Absent quand rien n'est repéré ou que l'outil n'a pas rendu de sortie.
    */
   injection?: InjectionCategory[];
+  /**
+   * V-08 : ce que la vérification a constaté (`Proof.evidence` : « notes.txt relu : 12 octets, contenu identique »), masqué puis coupé à
+   * 200 caractères, comme la cible. Absent quand l'outil n'a pas de vérification.
+   */
+  evidence?: string;
 }
 
 /** Les noms sous lesquels l'assistant est connu : un document qui l'interpelle par son nom est un signal d'injection (V-04). */
@@ -1304,7 +1309,7 @@ async function runGuardedTool(
   // inconnue (null) : un deny ou ask ciblé s'applique alors tel quel (fail-closed). Déclarée ici pour que l'audit la porte dès qu'elle est connue.
   let target: string | null = null;
   // V-02 : chaque appel laisse une ligne — qui a demandé, quoi, sur quoi, qui a décidé, combien de temps, avec quelle preuve.
-  const audit = (decision: AuditEntry["decision"], ok?: boolean, proof?: Proof["status"], injection?: InjectionCategory[]) =>
+  const audit = (decision: AuditEntry["decision"], ok?: boolean, proof?: Proof["status"], injection?: InjectionCategory[], evidence?: string) =>
     extra.audit?.({
       sessionId,
       tool: call.name,
@@ -1318,6 +1323,7 @@ async function runGuardedTool(
       durationMs: Date.now() - started,
       ...(proof ? { proof } : {}),
       ...(injection ? { injection } : {}),
+      ...(evidence ? { evidence: truncate(redactCommandText(evidence), 200) } : {}),
     });
   if (!tool || s.disabledTools.includes(call.name)) {
     audit("refusé (invalide)");
@@ -1505,7 +1511,7 @@ async function runGuardedTool(
     }
     const failed = proof?.status === "failed";
     // V-04 : la sortie est examinée (observation seulement : elle passe inchangée au modèle) ; les catégories vont dans la ligne d'audit.
-    audit(decision ?? "sans accord", !failed, proof?.status, injectionIn(out));
+    audit(decision ?? "sans accord", !failed, proof?.status, injectionIn(out), tool.verify ? proof?.evidence : undefined);
     if (task) tasks!.finish(task.id, failed ? "failed" : "done", proof ? { proof } : {});
     const note = tool.verify && proof ? `\n\n[Vérification : ${PROOF_LABEL[proof.status]}] ${proof.evidence}` : "";
     // Cockpit, lot 3 : une sortie volumineuse reste hors du contexte (aperçu + référence), entière et cherchable ; la preuve reste visible.

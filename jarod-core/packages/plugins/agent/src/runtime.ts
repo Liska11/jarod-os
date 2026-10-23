@@ -8,6 +8,7 @@
  * Les champs portent les mêmes noms que ceux de `JarodCore` : `new Agent(this)` et les tests portés
  * s'en servent tels quels.
  */
+import { type TurnChanges, type TurnDb, turnChanges } from "./turn-changes.js";
 import type { Attachment, ScheduleDelivery, SessionContext } from "@jarod/contracts";
 import type { CheckpointService, Db, EventStoreService, NotificationService, SettingsService } from "@jarod/plugin-storage";
 import type { AttachmentService, VaultService } from "@jarod/plugin-rag";
@@ -235,6 +236,14 @@ export class AgentRuntime {
    * V-02 — la timeline d'une conversation : ses lignes d'audit, dans l'ordre où elles ont été écrites. Cherchées dans les `AUDIT_SCAN`
    * dernières lignes du journal (toutes conversations confondues) : une conversation très ancienne peut n'y avoir plus rien.
    */
+  /**
+   * V-08 — ce que le tour de l'appel `callId` a changé dans les fichiers (diff borné, depuis les points de reprise : rien n'est recopié dans le
+   * journal). Chemins montrés relatifs au dossier de travail de la conversation.
+   */
+  turnChanges(sessionId: string, callId: string): TurnChanges {
+    return turnChanges(this.db as unknown as TurnDb, sessionId, callId, this.agent.settingsFor(sessionId).workspace);
+  }
+
   auditOf(sessionId: string, limit = 500): (AuditEntry & { at: number })[] {
     return this.events
       .list({ stream: "audit", limit: AUDIT_SCAN, newest: true })

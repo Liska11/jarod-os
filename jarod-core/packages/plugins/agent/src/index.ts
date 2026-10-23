@@ -45,6 +45,7 @@ export * from "./never-always.js";
 export * from "./runtime.js";
 export * from "./runtime-lock.js";
 export * from "./sessions.js";
+export * from "./turn-changes.js";
 export * from "./sessions-tools.js";
 export * from "./skills-commands.js";
 export * from "./spill.js";

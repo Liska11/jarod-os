@@ -59,6 +59,16 @@ describe("audit-recent (V-03)", () => {
   });
 });
 
+describe("audit-turn-changes (V-08)", () => {
+  it("ne prend qu'une conversation et un identifiant d'appel valides ; un appel inconnu ne change rien", async () => {
+    const { call } = await setupKernel();
+    expect(await call("audit-turn-changes", "s-a", "c-inconnu")).toEqual({ turn: null, files: [] });
+    await expect(async () => call("audit-turn-changes", "../x", "c1")).rejects.toThrow(/conversation invalide/);
+    await expect(async () => call("audit-turn-changes", "s-a", "C:/fichier")).rejects.toThrow(/appel invalide/);
+    await expect(async () => call("audit-turn-changes", "s-a", 7)).rejects.toThrow(/appel invalide/);
+  });
+});
+
 describe("tailLines", () => {
   it("lit la fin sans tout lire, écarte la ligne coupée, complète par la génération tournée", () => {
     const dir = tempDir();

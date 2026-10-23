@@ -130,6 +130,8 @@ export const JAROD_INVOKE_CHANNELS = [
   "audit-session",
   // Vue unique des journaux (V-03, 2026-10-23) : les dernières lignes de l'agent (toutes conversations) et de `mcp-server.log`, en lecture seule.
   "audit-recent",
+  // Timeline par tour (V-08, 2026-10-23) : les fichiers qu'un tour a changés, avec un diff borné tiré des points de reprise (lecture seule).
+  "audit-turn-changes",
   // Écran « Contexte » (cockpit, lots 3-4) : sorties gardées hors du contexte, proxy de compression et sa santé (lecture seule).
   "context-status",
   // Écran « Artefacts » (cockpit, lot 5) : lister, aperçu borné (cadre sans script), ouvrir avec l'application associée, retirer de la liste.
