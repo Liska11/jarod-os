@@ -145,7 +145,9 @@ test.describe('capabilities', () => {
     for (const name of ['Analyse statique de binaires (Ghidra)', 'Tests de sécurité applicative (Strix)', 'Diagrammes']) {
       await expect(page.getByText(name, { exact: false }).first()).toBeVisible({ timeout: 30_000 })
     }
-    await expect(page.getByRole('button', { name: 'Resonder Diagrammes' })).toBeVisible()
+    // exact: « Diagrammes » is also the prefix of « Diagrammes placés (reladraw) » — a substring match resolves to two buttons.
+    await expect(page.getByRole('button', { name: 'Resonder Diagrammes', exact: true })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Resonder Diagrammes placés (reladraw)', exact: true })).toBeVisible()
     await expect(page.getByText(/^\d+ disponibles, \d+ bloqués$/)).toBeVisible()
   })
 })
@@ -159,20 +161,26 @@ test.describe('tasks', () => {
     await expect(page.getByText('Aucune action pour l’instant')).toBeVisible()
   })
 
-  test('a deny rule on one target, for one hour, is listed with its target and its deadline', async () => {
+  test('a deny rule on one target, for one hour, is previewed before anything is written, and cancelling writes nothing', async () => {
     await openSettings('Agent et sécurité')
 
     await page.getByPlaceholder('Nom d’outil, famille/* ou *').fill('system_open')
     await page.getByPlaceholder('Cible (facultatif) : chemin, application, adresse ; * = n’importe quoi').fill('*steam*')
     await page.locator('select[aria-label]').filter({ has: page.locator('option[value=deny]') }).selectOption('deny')
     await page.getByLabel('Durée').selectOption('1')
-    await page.getByRole('button', { name: 'Ajouter la règle' }).click()
+    // Two steps since the rules editor (2026-10-21): « Vérifier » shows what the change would do, « Appliquer » writes it.
+    await page.getByRole('button', { name: 'Vérifier' }).click()
 
-    await expect(page.getByText('system_open → *steam*')).toBeVisible()
-    await expect(page.getByText(/^jusqu’à /)).toBeVisible()
-    // Not saved: the draft is discarded, nothing reaches the engine.
-    await page.getByRole('button', { name: 'Abandonner' }).click()
+    const plan = page.getByTestId('permission-plan')
+
+    await expect(plan).toBeVisible()
+    await expect(plan).toContainText('system_open')
+    // Not written: cancelling the preview leaves the list as it was. (Writing, then revoking, is covered by permission-rules.spec.ts, which answers the
+    // native confirmation that removing a deny rule asks for; this spec must not open a real native dialog.)
+    await plan.getByRole('button', { name: 'Annuler' }).click()
+    await expect(plan).toHaveCount(0)
     await expect(page.getByText('system_open → *steam*')).toHaveCount(0)
+    await expect(page.getByText('Aucune règle.')).toBeVisible()
   })
 })
 
@@ -209,7 +217,8 @@ test.describe('permissions', () => {
 
     await page.getByPlaceholder('Nom d’outil, famille/* ou *').fill('run_shell')
     await page.locator('select[aria-label]').filter({ has: page.locator('option[value=deny]') }).selectOption('deny')
-    await page.getByRole('button', { name: 'Ajouter la règle' }).click()
+    await page.getByRole('button', { name: 'Vérifier' }).click()
+    await page.getByRole('button', { name: 'Appliquer' }).click()
 
     await expect(page.getByText('Aucune règle.')).toHaveCount(0, { timeout: 15_000 })
     await expect(page.getByText('run_shell').first()).toBeVisible()

@@ -3,7 +3,7 @@ import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { describe, expect, it, vi } from 'vitest'
 import { isShellPage } from '../paths.ts'
-import { checkSender, installIpcSenderGuard, type SenderFrame } from './sender-guard.ts'
+import { checkSender, installIpcSenderGuard, ipcGuardReport, type SenderFrame } from './sender-guard.ts'
 
 const index = path.resolve('/opt/jarod/resources/app.asar/dist/renderer/index.html')
 const packaged = (url: string) => isShellPage(url, index, undefined)
@@ -171,5 +171,22 @@ describe('registrations', () => {
 
     expect(install).toBeGreaterThan(-1)
     expect(install).toBeLessThan(first)
+  })
+})
+
+describe('BL-01 : la liste des canaux passés par le garde', () => {
+  it('note chaque canal enregistré par lui, et signale ceux qui l’étaient déjà (ils lui échapperaient)', () => {
+    const { ipc } = fakeIpc()
+    const withEarly = Object.assign(ipc, { eventNames: () => ['early:send', 'error'], _invokeHandlers: new Map([['early:invoke', () => undefined]]) })
+    const logger = vi.fn()
+
+    installIpcSenderGuard(withEarly as never, { isShell: packaged, logger })
+    withEarly.handle('fs:read', () => 'x')
+    withEarly.on('terminal:write', () => undefined)
+
+    // `error` (événement de l'émetteur) est connu d'avance : il n'est pas compté comme un canal échappé.
+    expect(ipcGuardReport(withEarly)).toEqual({ before: ['early:invoke', 'early:send'], guarded: ['fs:read', 'terminal:write'], electron: ['error'] })
+    expect(logger.mock.calls[0][0]).toMatch(/2 channel\(s\) registered before the sender guard, NOT checked: early:invoke, early:send/)
+    expect(ipcGuardReport({})).toBeNull()
   })
 })

@@ -7,8 +7,15 @@ import { t } from '../../../lib/i18n.ts'
 
 export type LocalBackend = 'llamacpp' | 'lmstudio'
 
+/**
+ * Who loaded a model in memory: Jarod in this session; Jarod before a restart, unverified (`incertaine`); someone else (`externe`). Only
+ * Jarod's own are ever unloaded without the user asking (inactivity, hotswap). Null when it is not loaded.
+ */
+export type LocalModelOwner = 'jarod' | 'incertaine' | 'externe'
+
 export interface LocalModelEntry {
   id: string
+  owner?: LocalModelOwner | null
   name: string
   model: string
   kind: 'chat' | 'embedding'
@@ -21,6 +28,8 @@ export interface LocalModelEntry {
 }
 
 export interface LocalBackendView {
+  /** llama.cpp: a server Jarod did not start answers on the engine's port (never stopped by Jarod). */
+  foreign?: boolean
   available: boolean
   reason: string | null
   models: LocalModelEntry[]
@@ -28,6 +37,8 @@ export interface LocalBackendView {
 
 export interface LocalModelsView {
   hotswap: boolean
+  /** Unload a chat model Jarod loaded after this many minutes without use; 0 = never. */
+  idleUnloadMinutes: number
   backends: Record<LocalBackend, LocalBackendView>
 }
 
@@ -40,6 +51,28 @@ export interface LocalModelActivity {
   at: number
   durationMs?: number
   error?: string
+  /** Set when Jarod unloaded the model by itself (no one used it for the set delay). */
+  reason?: 'inactivité'
+}
+
+/** The delays offered for « unload after inactivity », in minutes; 0 = never. The engine takes any whole number from 0 to 1440. */
+export const IDLE_UNLOAD_CHOICES: readonly number[] = [0, 5, 15, 30, 60, 120, 480]
+
+/** The choices to show: the offered ones, plus the current value when it was set to something else (another way than this screen). */
+export function idleUnloadOptions(current: number): number[] {
+  return IDLE_UNLOAD_CHOICES.includes(current) || !Number.isInteger(current) || current < 0 || current > 1440 ? [...IDLE_UNLOAD_CHOICES] : [...IDLE_UNLOAD_CHOICES, current].sort((a, b) => a - b)
+}
+
+/** « never », « 15 min », « 2 h », « 1 h 30 min ». */
+export function idleUnloadLabel(minutes: number): string {
+  if (minutes <= 0) {
+    return t('localmodels.idle.never')
+  }
+
+  const h = Math.floor(minutes / 60)
+  const m = minutes % 60
+
+  return h === 0 ? t('localmodels.idle.minutes', { n: m }) : m === 0 ? t('localmodels.idle.hours', { n: h }) : t('localmodels.idle.hoursMinutes', { h, m })
 }
 
 export interface EnginePreset {

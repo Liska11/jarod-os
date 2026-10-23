@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { domainProblem, intProblem, readRootProblem, isUserRefusal, moneyProblem, moveItem, programProblem, rootProblem, ruleListProblem, ruleToolProblem, settingErrorText } from './jarod-settings-model.ts'
+import { domainProblem, EMPTY_RULE_FORM, formOf, grantAction, intProblem, kindOf, readRootProblem, isUserRefusal, moneyProblem, moveItem, programProblem, rootProblem, type RuleForm, ruleFormProblem, ruleListProblem, ruleRef, ruleSpentText, ruleToolProblem, settingErrorText, updateAction } from './jarod-settings-model.ts'
 
 describe('intProblem', () => {
   it('accepts whole numbers in range; 0 only where it means off', () => {
@@ -93,5 +93,44 @@ describe('readRootProblem', () => {
     expect(readRootProblem('')).toMatch(/full path/i)
     for (const bad of ['tools', './tools', 'bin\\node']) expect(readRootProblem(bad), bad).toMatch(/absolute/i)
     for (const bad of ['C:\\a\\..\\b', '/a/../b', 'C:\\tools\\*', 'C:\\a<b', '/a\u0001b']) expect(readRootProblem(bad), bad).toMatch(/wildcard|forbidden/i)
+  })
+})
+
+describe('permission rule form (same actions as jarod permissions)', () => {
+  const rule = { tool: 'system_files', decision: 'allow' as const, autonomous: true as const, target: 'D:/demo/*', uses: 3, expiresAt: Date.now() + 3_600_000, id: 'p-demo01' }
+
+  it('a new rule: allow without approval with its bounds; empty fields are left out', () => {
+    const form: RuleForm = { ...EMPTY_RULE_FORM, tool: ' system_files ', kind: 'auto', target: 'D:/demo/*', uses: '3', hours: 8 }
+
+    expect(grantAction(form)).toEqual({ op: 'grant', input: { tool: 'system_files', decision: 'allow', autonomous: true, target: 'D:/demo/*', durationMs: 8 * 3_600_000, uses: 3 } })
+    expect(grantAction({ ...EMPTY_RULE_FORM, tool: 'run_shell', kind: 'deny' })).toEqual({ op: 'grant', input: { tool: 'run_shell', decision: 'deny', autonomous: false } })
+  })
+
+  it('an edit sends only what changed; an emptied field removes the bound; the end is kept unless another duration is chosen', () => {
+    const form = formOf(rule)
+
+    expect(form).toMatchObject({ kind: 'auto', target: 'D:/demo/*', uses: '3', hours: -1 })
+    expect(updateAction('p-demo01', rule, form)).toEqual({ op: 'update', ref: 'p-demo01', change: {} })
+    expect(updateAction('p-demo01', rule, { ...form, uses: '5' }).change).toEqual({ uses: 5 })
+    expect(updateAction('p-demo01', rule, { ...form, uses: '', hours: 0 }).change).toEqual({ uses: null, durationMs: null })
+    expect(updateAction('p-demo01', rule, { ...form, kind: 'deny', uses: '' }).change).toEqual({ decision: 'deny', autonomous: false, uses: null })
+    expect(updateAction('p-demo01', rule, { ...form, target: '' }).change).toEqual({ target: null })
+  })
+
+  it('checks what the engine checks: a number of uses only on an allow rule, operation and conversation characters', () => {
+    expect(ruleFormProblem({ ...EMPTY_RULE_FORM, tool: 'x', kind: 'deny', uses: '2' })).not.toBeNull()
+    expect(ruleFormProblem({ ...EMPTY_RULE_FORM, tool: 'x', kind: 'auto', uses: '2' })).toBeNull()
+    expect(ruleFormProblem({ ...EMPTY_RULE_FORM, tool: 'x', uses: 'deux' })).not.toBeNull()
+    expect(ruleFormProblem({ ...EMPTY_RULE_FORM, tool: 'x', operation: 'a b' })).not.toBeNull()
+    expect(ruleFormProblem({ ...EMPTY_RULE_FORM, tool: 'x', session: 'a/b' })).not.toBeNull()
+  })
+
+  it('names a rule by id, or by position for an old rule written without one; says when it no longer applies', () => {
+    expect(ruleRef(rule, 4)).toBe('p-demo01')
+    expect(ruleRef({ tool: 'x', decision: 'deny' }, 4)).toBe('5')
+    expect(kindOf(rule)).toBe('auto')
+    expect(ruleSpentText({ ...rule, uses: 0 })).not.toBeNull()
+    expect(ruleSpentText({ ...rule, expiresAt: Date.now() - 1 })).not.toBeNull()
+    expect(ruleSpentText(rule)).toBeNull()
   })
 })

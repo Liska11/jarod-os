@@ -5,6 +5,7 @@ import { GlassButton, GlassCard, Toggle } from '../../../components/ui/glass.tsx
 import { Spinner } from '../../../components/ui/primitives.tsx'
 import { formatBytes } from '../../../lib/format.ts'
 import { dateLocale, type MessageKey, useT } from '../../../lib/i18n.ts'
+import { ResticArchiveBlock } from './ResticArchiveBlock.tsx'
 import { SettingsBlock } from './shared.tsx'
 
 const HOURS = [6, 12, 24, 72, 168]
@@ -215,6 +216,7 @@ export function ExternalBackupBlock() {
 
             {error && <p className="text-[12.5px] text-danger">{error}</p>}
             {restarting && <p className="text-[12.5px] text-ok">{t('externalBackup.restored')}</p>}
+            {state.last?.ok && state.last.message === 'complete-archive-failed' && !working && <p className="text-[12px] text-warn">{t('externalBackup.archiveFailed')}</p>}
             {state.last && !working && (
               <p className={`text-[12px] ${state.last.ok ? 'text-fg-3' : 'text-danger'}`}>
                 {state.last.ok
@@ -237,6 +239,7 @@ export function ExternalBackupBlock() {
                 )}
               </>
             )}
+            {destination && state.destinationStatus === 'ok' && <ResticArchiveBlock state={state} working={working || restarting} refresh={refresh} onRestarting={() => setRestarting(true)} />}
           </>
         )}
       </GlassCard>

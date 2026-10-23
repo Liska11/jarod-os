@@ -1,0 +1,88 @@
+/* Lot C : la mini-fenêtre — un îlot sombre et arrondi, lisible d'un coup d'œil ; fond transparent autour. */
+:root {
+  color-scheme: dark;
+  --bg: rgba(12, 16, 30, 0.92);
+  --fg: #e8ecf6;
+  --fg-dim: #9aa6c2;
+  --idle: #5b6b8c;
+  --work: #4d92ff;
+  --wait: #f2b84b;
+}
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: transparent;
+  overflow: hidden;
+  font-family: "Segoe UI", system-ui, sans-serif;
+  user-select: none;
+  cursor: pointer;
+}
+.pill {
+  box-sizing: border-box;
+  margin: 6px;
+  height: calc(100% - 12px);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 16px;
+  border-radius: 999px;
+  background: var(--bg);
+  color: var(--fg);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
+}
+.dot {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--idle);
+}
+.working .dot {
+  background: var(--work);
+  animation: breathe 1.6s ease-in-out infinite;
+}
+.waiting .dot {
+  background: var(--wait);
+}
+.waiting {
+  border-color: rgba(242, 184, 75, 0.55);
+}
+.text {
+  min-width: 0;
+  flex: 1;
+}
+.line1,
+.line2 {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.line1 {
+  font-size: 13px;
+  font-weight: 600;
+}
+.line2 {
+  font-size: 12px;
+  color: var(--fg-dim);
+}
+.count {
+  flex: none;
+  min-width: 22px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  font-size: 12px;
+  text-align: center;
+}
+@keyframes breathe {
+  50% {
+    opacity: 0.35;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .working .dot {
+    animation: none;
+  }
+}

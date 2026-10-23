@@ -22,8 +22,10 @@ export interface BackendState {
   runtime?: BackendRuntime
   /** URL du WebSocket JSON-RPC, **sans** jeton (voir `wsToken` et `src/lib/ws-auth.ts`). */
   wsUrl?: string
-  /** Jeton de la passerelle : la fenêtre le présente en sous-protocole WebSocket, jamais dans une URL. */
+  /** Jeton de la passerelle : la fenêtre le présente comme `wsAuth` le dit. */
   wsToken?: string
+  /** Comment présenter `wsToken` (voir `src/lib/ws-auth.ts`). Absent : `subprotocol`. */
+  wsAuth?: GatewayAuth
   baseUrl?: string
   port?: number
   error?: string
@@ -34,10 +36,18 @@ export interface BackendState {
   sharedGateway?: number
 }
 
-/** Cible d'un WebSocket authentifié de la passerelle : le jeton va en sous-protocole, pas dans l'URL. */
+/**
+ * Où un WebSocket de la passerelle porte son jeton. `subprotocol` : le noyau Jarod (`jarod-gw`, hors de l'URL).
+ * `query` : `?token=`, la seule forme qu'un `hermes serve` local accepte (v0.22.4, `web_server_chat._ws_auth_reason`) ;
+ * le jeton y passe dans l'URL, d'où le masquage de `token=` dans les journaux (`shared/redact.ts`).
+ */
+export type GatewayAuth = 'subprotocol' | 'query'
+
+/** Cible d'un WebSocket authentifié de la passerelle : le jeton va là où `auth` le dit. */
 export interface AudioWsTarget {
   url: string
   token: string
+  auth?: GatewayAuth
 }
 
 export interface RestRequest {
@@ -563,6 +573,8 @@ export interface JarodOSPrefs {
   usageInMenuBar?: boolean
   /** The menu bar's items (order, hidden ones) and clock; `normalizeMenuBar` fills the gaps. */
   menuBar?: MenuBarLayout
+  /** Lot C : la mini-fenêtre en haut de l'écran (ce que fait Jarod, ce qui attend une réponse) ; éteinte par défaut, menu de l'icône. */
+  miniWindow?: boolean
   /** Hermes automations that run when something happens rather than on a schedule. */
   eventAutomations?: EventAutomation[]
   /** Toasts, system notifications and spoken announcements stay quiet; the bell still collects them. */
@@ -1035,6 +1047,20 @@ export const IPC = {
   vmsStop: 'jarod-os:vms:stop',
   /** Erase a machine (wsl --unregister): the exact name typed by the person is required. */
   vmsRemove: 'jarod-os:vms:remove',
+  // Engines (shared/engines.ts, electron/ipc/engines.ts): the list, the cockpit's engine (next launch), DSH driven over ACP.
+  enginesList: 'jarod-os:engines:list',
+  enginesSetPrefs: 'jarod-os:engines:set-prefs',
+  enginesRelaunch: 'jarod-os:engines:relaunch',
+  enginesChanged: 'jarod-os:engines:changed',
+  enginesEvent: 'jarod-os:engines:event',
+  enginesDshStart: 'jarod-os:engines:dsh:start',
+  enginesDshStop: 'jarod-os:engines:dsh:stop',
+  enginesDshNewSession: 'jarod-os:engines:dsh:new-session',
+  enginesDshSessions: 'jarod-os:engines:dsh:sessions',
+  enginesDshResume: 'jarod-os:engines:dsh:resume',
+  enginesDshPrompt: 'jarod-os:engines:dsh:prompt',
+  enginesDshCancel: 'jarod-os:engines:dsh:cancel',
+  enginesDshApprove: 'jarod-os:engines:dsh:approve',
   // The Internet switch (shared/network-policy.ts, electron/network.ts).
   networkGet: 'jarod-os:network:get',
   networkSet: 'jarod-os:network:set',
@@ -1062,11 +1088,22 @@ export const IPC = {
   externalBackupRun: 'jarod-os:external-backup:run',
   externalBackupCancel: 'jarod-os:external-backup:cancel',
   externalBackupRestore: 'jarod-os:external-backup:restore',
+  // G4 (2026-10-21) : l'archive chiffrée restic sous la sauvegarde externe. Aucun canal ne rend la clé.
+  externalBackupResticEnable: 'jarod-os:external-backup:restic-enable',
+  externalBackupResticDisable: 'jarod-os:external-backup:restic-disable',
+  externalBackupResticSheet: 'jarod-os:external-backup:restic-sheet',
+  externalBackupResticList: 'jarod-os:external-backup:restic-list',
+  externalBackupResticRestore: 'jarod-os:external-backup:restic-restore',
+  externalBackupResticCheck: 'jarod-os:external-backup:restic-check',
   externalBackupProgress: 'jarod-os:external-backup:progress',
 
   prefsGet: 'jarod-os:prefs:get',
   prefsSet: 'jarod-os:prefs:set',
   prefsChanged: 'jarod-os:prefs:changed',
+  // Lot C (2026-10-21) : la mini-fenêtre. La fenêtre principale envoie un RÉSUMÉ (send, gardé par le contrôle d'émetteur) ; le main le
+  // valide et le pousse à la mini-fenêtre, qui ne peut que le recevoir (aucun envoi depuis elle).
+  miniState: 'jarod-os:mini:state',
+  miniPush: 'jarod-os:mini:push',
 
   bridgePolicyRead: 'jarod-os:bridge:policy-read',
   bridgePolicyWrite: 'jarod-os:bridge:policy-write',
@@ -1144,4 +1181,19 @@ export interface JarodOsResult {
   code: number
   stdout: string
   stderr: string
+}
+
+/**
+ * Lot C (2026-10-21, inspiré de Coucou, concepts seulement) : ce que la mini-fenêtre affiche. Un résumé borné — jamais un message, une
+ * commande complète ou un secret : des titres et des phrases coupées, des nombres.
+ */
+export interface MiniSummary {
+  /** Les conversations où Jarod répond (au plus 3), et leur nombre total. */
+  working: { title: string; status: string }[]
+  workingCount: number
+  /** Ce qui attend une réponse de l'utilisateur (au plus 3), et leur nombre total. */
+  waiting: { kind: 'approval' | 'clarify' | 'sudo' | 'secret'; text: string }[]
+  waitingCount: number
+  /** Sous-agents en cours. */
+  agents: number
 }

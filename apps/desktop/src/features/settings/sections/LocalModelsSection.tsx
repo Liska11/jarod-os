@@ -1,4 +1,4 @@
-import { IconBrain, IconPlayerPlay, IconPlayerStop, IconRefresh, IconServer } from '@tabler/icons-react'
+import { IconBrain, IconClockPause, IconPlayerPlay, IconPlayerStop, IconRefresh, IconServer } from '@tabler/icons-react'
 import { useEffect, useState } from 'react'
 import { GlassButton, Pill, Toggle } from '../../../components/ui/glass.tsx'
 import { type MessageKey, useT, dateLocale } from '../../../lib/i18n.ts'
@@ -7,7 +7,7 @@ import { useBackendData } from '../../../lib/use-async.ts'
 import { notify } from '../../../store/notifications.ts'
 import { EngineBlock } from './LocalEngineBlock.tsx'
 import { HuggingFaceBlock } from './HuggingFaceBlock.tsx'
-import { contextAdvice, contextProblem, formatBytes, formatDuration, type LocalBackend, type LocalModelActivity, type LocalModelEntry, type LocalModelsView } from './local-models-model.ts'
+import { contextAdvice, contextProblem, formatBytes, formatDuration, idleUnloadLabel, idleUnloadOptions, type LocalBackend, type LocalModelActivity, type LocalModelEntry, type LocalModelsView } from './local-models-model.ts'
 import { isUnsupported } from './providers-model.ts'
 import { errorText, InlineNote, markSaved, SectionTitle, SettingsGroup, SettingsRow } from './shared.tsx'
 
@@ -78,6 +78,7 @@ function ModelsInMemory() {
       {data && (
         <SettingsGroup title={t('localmodels.loadingGroup')}>
           <HotswapRow hotswap={data.hotswap} onChanged={reload} />
+          <IdleUnloadRow minutes={data.idleUnloadMinutes ?? 0} onChanged={reload} />
         </SettingsGroup>
       )}
       {data &&
@@ -107,7 +108,50 @@ function ActivityNote({ activity }: { activity: LocalModelActivity }) {
 
   const duration = activity.durationMs === undefined ? '' : t('localmodels.activity.in', { duration: formatDuration(activity.durationMs) })
 
+  if (!load && activity.reason === 'inactivité') {
+    return <InlineNote tone="info">{t('localmodels.done.unloadIdle', { model: activity.model })}</InlineNote>
+  }
+
   return <InlineNote tone="info">{t(load ? 'localmodels.done.load' : 'localmodels.done.unload', { model: activity.model, duration })}</InlineNote>
+}
+
+/** « Unload after inactivity »: the delay after which Jarod unloads a chat model it loaded and nobody uses (never during a response). */
+function IdleUnloadRow({ minutes, onChanged }: { minutes: number; onChanged: () => void }) {
+  const { t } = useT()
+  const [busy, setBusy] = useState(false)
+
+  const set = async (value: number) => {
+    setBusy(true)
+
+    try {
+      await jarod('local-models-configure', { idleUnloadMinutes: value })
+      markSaved()
+      onChanged()
+    } catch (error) {
+      notify({ title: t('localmodels.idleFailed'), body: errorText(error), level: 'error' })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <SettingsRow icon={<IconClockPause />} label={t('localmodels.idle')} description={t('localmodels.idle.hint')} keywords="idle inactivity unload memory vram ttl inactivité décharger">
+      <select
+        value={minutes}
+        disabled={busy}
+        onChange={event => void set(Number(event.target.value))}
+        aria-label={t('localmodels.idle')}
+        style={{ colorScheme: 'dark' }}
+        className="glass-input h-8 rounded-lg px-2 text-[12.5px] text-fg outline-none"
+      >
+        {idleUnloadOptions(minutes).map(option => (
+          <option key={option} value={option}>
+            {idleUnloadLabel(option)}
+          </option>
+        ))}
+      </select>
+    </SettingsRow>
+  )
 }
 
 function HotswapRow({ hotswap, onChanged }: { hotswap: boolean; onChanged: () => void }) {
@@ -144,12 +188,16 @@ function BackendGroup({ backend, view, onChanged }: { backend: LocalBackend; vie
         <SettingsRow icon={<IconServer />} label={backend === 'lmstudio' ? t('localmodels.notAnswering') : t('localmodels.notSetUp')} description={view.reason ?? t('localmodels.nothingToLoad')} keywords={`${backend} unavailable`} />
       )}
       {view.available && view.models.length === 0 && <SettingsRow icon={<IconServer />} label={t('localmodels.noModels')} description={backend === 'lmstudio' ? t('localmodels.downloadFirst') : t('localmodels.addBelow')} keywords={`${backend} models empty`} />}
+      {view.foreign && <InlineNote tone="info">{t('localmodels.foreign')}</InlineNote>}
       {view.models.map(model => (
         <ModelRow key={model.id} backend={backend} model={model} onChanged={onChanged} />
       ))}
     </SettingsGroup>
   )
 }
+
+const OWNER_LABEL = { jarod: 'localmodels.owner.jarod', incertaine: 'localmodels.owner.incertaine', externe: 'localmodels.owner.externe' } as const
+const OWNER_HINT = { jarod: 'localmodels.owner.jarod.hint', incertaine: 'localmodels.owner.incertaine.hint', externe: 'localmodels.owner.externe.hint' } as const
 
 function ModelRow({ backend, model, onChanged }: { backend: LocalBackend; model: LocalModelEntry; onChanged: () => void }) {
   const { t } = useT()
@@ -230,6 +278,16 @@ function ModelRow({ backend, model, onChanged }: { backend: LocalBackend; model:
         <Pill tone="ok" dot>
           {t('localmodels.loaded')}
         </Pill>
+      )}
+      {model.loaded && model.owner && (
+        <span title={t(OWNER_HINT[model.owner])} data-testid="model-owner">
+          <Pill tone={model.owner === 'jarod' ? 'muted' : 'warn'}>{t(OWNER_LABEL[model.owner])}</Pill>
+        </span>
+      )}
+      {model.loaded && model.owner === 'incertaine' && (
+        <GlassButton size="sm" variant="ghost" disabled={busy} onClick={() => void run(t('localmodels.adoptedTitle'), () => jarod('local-models-adopt', model.id))} aria-label={t('localmodels.adoptAria', { name: model.name })}>
+          {t('localmodels.adopt')}
+        </GlassButton>
       )}
       {backend === 'lmstudio' && (
         <GlassButton size="sm" variant="ghost" disabled={busy} onClick={() => (setCtx(model.contextLength ? String(model.contextLength) : ''), setEditing(true))} aria-label={t('localmodels.contextAria', { name: model.name })}>

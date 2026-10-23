@@ -98,6 +98,8 @@ describe('jarodSpawnPlan', () => {
     expect(plan.args).toEqual([core.gateway, '--init', '--exit-on-stdin-close', '--workspace', '/w'])
     expect(plan.cwd).toBe(core.dir)
     expect(plan.env).toMatchObject({ JAROD_HOME: path.join('/d', 'Jarod-OS', 'profile'), JAROD_GATEWAY_TOKEN: 'tok', PATH: '/bin', OPENAI_API_KEY: 'k' })
+    // Le pilote de fenêtres de l'agent refuse les fenêtres de ce processus.
+    expect(plan.env.JAROD_SHELL_EXE).toBe(path.basename(process.execPath))
   })
 
   it('asks Electron to behave as Node when it is the runtime', () => {

@@ -6,28 +6,20 @@ import { notify } from '../../../store/notifications.ts'
 import { useBackendData } from '../../../lib/use-async.ts'
 import { ChipsEditor, ChoiceRow, NumberRow, reportEngineError, SwitchRow, useJarodSettings } from './jarod-controls.tsx'
 import {
-  DECISION_LABEL,
   domainProblem,
-  type Decision,
   type FallbackEntry,
   intProblem,
   type JarodOptions,
   type JarodSettings,
   moneyProblem,
   moveItem,
-  type PermissionRule,
   programProblem,
   readRootProblem,
   rootProblem,
-  RULE_DURATIONS,
-  ruleExpiryText,
-  ruleKey,
-  ruleListProblem,
-  ruleTargetProblem,
-  ruleToolProblem,
   TOOL_SEARCH_LABEL
 } from './jarod-settings-model.ts'
 import { isUnsupported } from './providers-model.ts'
+import { PermissionRulesEditor } from './PermissionRulesEditor.tsx'
 import { InlineNote, SectionTitle, SettingsGroup, SettingsRow } from './shared.tsx'
 import { t, useT } from '../../../lib/i18n.ts'
 
@@ -130,15 +122,6 @@ function BehaviourGroup({ s, api }: Props) {
 function PermissionsGroup({ s, api }: Props) {
   useT()
   const { save, saving } = api
-  const [rules, setRules] = useState<PermissionRule[] | null>(null)
-  const draft = rules ?? s.permissionsRules
-  const [tool, setTool] = useState('')
-  const [decision, setDecision] = useState<Decision>('ask')
-  const [target, setTarget] = useState('')
-  const [hours, setHours] = useState(0)
-  const toolProblem = tool.trim() ? ruleToolProblem(tool) ?? ruleTargetProblem(target) : null
-  const listProblem = ruleListProblem(draft)
-  const changed = rules !== null && JSON.stringify(rules) !== JSON.stringify(s.permissionsRules)
 
   return (
     <SettingsGroup title={t('settings.agent.permissions')}>
@@ -153,84 +136,8 @@ function PermissionsGroup({ s, api }: Props) {
         icon={<IconListCheck />}
         label={t('settings.agent.rules')}
         description={t('settings.agent.rules.hint')}
-        keywords="permissions rules allow ask deny order tool"
-        below={
-          <div className="flex flex-col gap-2">
-            {draft.length === 0 && <span className="text-[12px] text-fg-4">{t('settings.agent.noRules')}</span>}
-            {draft.map((rule, index) => (
-              <div key={ruleKey(rule)} className="flex items-center gap-2">
-                <span className="w-5 text-right text-[11px] text-fg-4">{index + 1}</span>
-                <span className="min-w-0 flex-1 truncate font-mono text-[12.5px] text-fg-2">{ruleKey(rule)}</span>
-                {ruleExpiryText(rule) && <Pill tone={rule.expiresAt! <= Date.now() ? 'muted' : 'warn'}>{ruleExpiryText(rule)}</Pill>}
-                <select value={rule.decision} disabled={saving} onChange={event => setRules(draft.map((r, i) => (i === index ? { ...r, decision: event.target.value as Decision } : r)))} aria-label={t('settings.agent.decisionFor', { tool: ruleKey(rule) })} style={{ colorScheme: 'dark' }} className="glass-input h-7 rounded-md px-1.5 text-[12px] text-fg outline-none">
-                  {(Object.keys(DECISION_LABEL) as Decision[]).map(d => (
-                    <option key={d} value={d}>
-                      {t(DECISION_LABEL[d])}
-                    </option>
-                  ))}
-                </select>
-                <GlassButton size="sm" variant="ghost" disabled={saving || index === 0} onClick={() => setRules(moveItem(draft, index, index - 1))} aria-label={t('settings.agent.moveUp', { name: ruleKey(rule) })}>
-                  <IconArrowUp />
-                </GlassButton>
-                <GlassButton size="sm" variant="ghost" disabled={saving || index === draft.length - 1} onClick={() => setRules(moveItem(draft, index, index + 1))} aria-label={t('settings.agent.moveDown', { name: ruleKey(rule) })}>
-                  <IconArrowDown />
-                </GlassButton>
-                <GlassButton size="sm" variant="ghost" disabled={saving} onClick={() => setRules(draft.filter((_, i) => i !== index))} aria-label={t('settings.agent.removeRule', { tool: ruleKey(rule) })}>
-                  <IconTrash />
-                </GlassButton>
-              </div>
-            ))}
-            <form
-              className="flex items-center gap-2"
-              onSubmit={event => {
-                event.preventDefault()
-
-                if (tool.trim() && !toolProblem) {
-                  setRules([...draft, { tool: tool.trim(), decision, ...(target.trim() ? { target: target.trim() } : {}), ...(hours ? { expiresAt: Date.now() + hours * 3_600_000 } : {}) }])
-                  setTool('')
-                  setTarget('')
-                }
-              }}
-            >
-              <label className="glass-input flex h-8 min-w-0 flex-1 items-center rounded-lg px-2.5">
-                <span className="sr-only">{t('settings.agent.newRule.tool')}</span>
-                <input value={tool} onChange={event => setTool(event.target.value)} placeholder={t('settings.agent.newRule.placeholder')} spellCheck={false} className="min-w-0 flex-1 bg-transparent font-mono text-[12.5px] outline-none placeholder:text-fg-4" />
-              </label>
-              <label className="glass-input flex h-8 min-w-0 flex-1 items-center rounded-lg px-2.5">
-                <span className="sr-only">{t('settings.agent.newRule.target')}</span>
-                <input value={target} onChange={event => setTarget(event.target.value)} placeholder={t('settings.agent.newRule.targetPlaceholder')} spellCheck={false} className="min-w-0 flex-1 bg-transparent font-mono text-[12.5px] outline-none placeholder:text-fg-4" />
-              </label>
-              <select value={hours} onChange={event => setHours(Number(event.target.value))} aria-label={t('settings.agent.newRule.duration')} style={{ colorScheme: 'dark' }} className="glass-input h-8 rounded-lg px-2 text-[12.5px] text-fg outline-none">
-                {RULE_DURATIONS.map(d => (
-                  <option key={d.hours} value={d.hours}>
-                    {t(d.label)}
-                  </option>
-                ))}
-              </select>
-              <select value={decision} onChange={event => setDecision(event.target.value as Decision)} aria-label={t('settings.agent.newRule.decision')} style={{ colorScheme: 'dark' }} className="glass-input h-8 rounded-lg px-2 text-[12.5px] text-fg outline-none">
-                {(Object.keys(DECISION_LABEL) as Decision[]).map(d => (
-                  <option key={d} value={d}>
-                    {t(DECISION_LABEL[d])}
-                  </option>
-                ))}
-              </select>
-              <GlassButton type="submit" size="sm" variant="secondary" disabled={!tool.trim() || Boolean(toolProblem)}>
-                {t('settings.agent.addRule')}
-              </GlassButton>
-            </form>
-            {(toolProblem || listProblem) && <InlineNote tone="warn">{toolProblem ?? listProblem}</InlineNote>}
-            {changed && (
-              <div className="flex justify-end gap-2">
-                <GlassButton size="sm" variant="ghost" onClick={() => setRules(null)}>
-                  {t('settings.agent.discard')}
-                </GlassButton>
-                <GlassButton size="sm" variant="primary" disabled={saving || Boolean(listProblem)} onClick={() => void save({ permissionsRules: draft }, t('settings.agent.rulesSaved')).then(ok => ok && setRules(null))}>
-                  {t('settings.agent.saveRules')}
-                </GlassButton>
-              </div>
-            )}
-          </div>
-        }
+        keywords="permissions rules allow ask deny order tool autonomy uses duration revoke jarod permissions"
+        below={<PermissionRulesEditor rules={s.permissionsRules} reload={api.reload} />}
       />
     </SettingsGroup>
   )

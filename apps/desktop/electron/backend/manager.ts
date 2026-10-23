@@ -122,7 +122,7 @@ export class BackendManager {
 
     const paths: Record<AudioWsKind, string> = { 'speak-stream': '/api/audio/speak-stream' }
 
-    return { url: `ws://127.0.0.1:${port}${paths[kind]}`, token: this.token }
+    return { url: `ws://127.0.0.1:${port}${paths[kind]}`, token: this.token, auth: this.state.wsAuth }
   }
 
   async rest<T>(request: RestRequest): Promise<T> {
@@ -238,7 +238,9 @@ export class BackendManager {
       }
 
       const wsUrl = `ws://127.0.0.1:${port}/api/ws`
-      this.update({ phase: 'ready', port, baseUrl, wsUrl, wsToken: this.token, error: undefined, sharedGateway: this.sharedGateway()?.pid })
+      // Le noyau Jarod lit le jeton en sous-protocole ; un `hermes serve` local ne l'accepte qu'en `?token=`.
+      const wsAuth = runtime.kind === 'jarod' ? 'subprotocol' : 'query'
+      this.update({ phase: 'ready', port, baseUrl, wsUrl, wsToken: this.token, wsAuth, error: undefined, sharedGateway: this.sharedGateway()?.pid })
       log('backend', `ready on ${baseUrl} via ${runtime.label}`)
     } catch (error) {
       if (generation !== this.startGeneration) {
@@ -280,7 +282,8 @@ export class BackendManager {
 
       const url = new URL(target.baseUrl)
       const port = Number(url.port) || 80
-      this.update({ phase: 'ready', port, baseUrl: target.baseUrl, wsUrl: `ws://${url.host}/api/ws`, wsToken: this.token, error: undefined, sharedGateway: undefined })
+      // Un backend rejoint par JAROD_OS_BACKEND_URL est un Hermes (« the Hermes backend at … ») : `?token=`.
+      this.update({ phase: 'ready', port, baseUrl: target.baseUrl, wsUrl: `ws://${url.host}/api/ws`, wsToken: this.token, wsAuth: 'query', error: undefined, sharedGateway: undefined })
       log('backend', `attached to ${target.baseUrl}`)
     } catch (error) {
       if (generation === this.startGeneration) {

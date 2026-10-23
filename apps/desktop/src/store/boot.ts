@@ -1,5 +1,6 @@
 import { registerOsCommands } from '../commands/index.ts'
 import { bindAgentEvents } from './agents.ts'
+import { bindMiniSummary } from './mini-summary.ts'
 import { bindRecording } from './capture.ts'
 import { bindEditTarget } from './edit-target.ts'
 import { bindBackendStores } from './backend.ts'
@@ -53,6 +54,7 @@ export function bootRenderer(): void {
   bindEngineKind()
   bindNotificationEvents()
   bindAgentEvents()
+  bindMiniSummary()
   bindMissionEvents()
   bindSidebarPrefs()
   bindVoice()

@@ -106,6 +106,19 @@ Code:
 - **Never at quit.** A backup in progress at quit is cancelled, and its folder is removed.
 - **No old backup is ever deleted.**
 
+## Encrypted archive (restic)
+
+Settings › Storage › External backup › **Encrypted archive (restic)**. It is off by default and was added on 2026-10-21.
+
+- **What it does.** After each successful backup, the backup folder is also archived in an encrypted, deduplicated restic repository on the same disk: `<destination>\Jarod-OS-Restic\<instance>`. The Jarod manifest travels inside the snapshot. **Nothing is ever deleted** from the repository: no `forget`, no `prune`.
+- **If archiving fails.** The backup still succeeds; Settings says that the archive failed.
+- **The key.** It is generated in the main process and **stored encrypted by Windows**: Electron's `safeStorage`, which is DPAPI for this account and this app profile. It sits in `restic-key.bin`, in the configuration folder, which backups never copy. It never reaches the window: the screen only shows an 8-character fingerprint.
+- **The recovery sheet.** It holds the key, the repository path and the restic commands to read the repository **without Jarod**. The native "Save as" box of the main process writes it when the archive is turned on, and again on demand. It is refused next to the repository. Until it is saved, Settings says so: losing the PC or its profile loses the key.
+- **An existing repository** is never re-initialised. Without its key, turning the archive on is refused (`repo-without-key`); the wrong key is refused too.
+- **Restore a snapshot.** The snapshot is extracted to a temporary folder, then follows exactly the path of an ordinary restore: checked again against its manifest, staged, and swapped in beside the previous state. Jarod-OS then restarts.
+- **Check the repository.** `restic check`, reading 5 % of the data.
+- **Where restic comes from.** `JAROD_RESTIC`, else `JAROD_ENGINES_DIR\restic`, else the repository's `engines` folder, else `resources\restic` in the package. The Windows package carries restic 0.19.1 with its BSD-2 licence text. `npm run bundle:restic` checks it at every packaging (the official zip, the extracted executable and the licence, against `jarod-core/engines.lock/restic.json`) and stops the packaging on any difference.
+
 ## Tests
 
 | Test | What it covers |

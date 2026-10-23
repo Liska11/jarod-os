@@ -4,8 +4,15 @@ import { existsSync, mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 
+/**
+ * The launched shell is Electron, not Node: an inherited ELECTRON_RUN_AS_NODE=1 (some runners and agent sessions export it) turns electron.exe into a Node
+ * interpreter that refuses --remote-debugging-port, so the launch fails before any test runs (audit X-08). It is dropped from the SHELL's environment only: the
+ * shell sets it itself, for the child that runs the core, where the packaged launch needs it.
+ */
+const NOT_INHERITED = /^ELECTRON_RUN_AS_NODE$/
+
 /** Variables that would let a test reach a real provider or the user's real profile: never inherited. */
-const STRIPPED = /^(OPENAI|ANTHROPIC|GROQ|GEMINI|GOOGLE|OPENROUTER|NOUS|ZAI|QWEN|MISTRAL|DEEPSEEK|XAI|TELEGRAM|DISCORD|SLACK|HF|HUGGING)[A-Z_]*(KEY|TOKEN)$|^JAROD_OS_BACKEND_(URL|TOKEN)$/i
+const STRIPPED =/^(OPENAI|ANTHROPIC|GROQ|GEMINI|GOOGLE|OPENROUTER|NOUS|ZAI|QWEN|MISTRAL|DEEPSEEK|XAI|TELEGRAM|DISCORD|SLACK|HF|HUGGING)[A-Z_]*(KEY|TOKEN)$|^JAROD_OS_BACKEND_(URL|TOKEN)$/i
 
 /** The prefix of every throwaway root; `global-setup.ts` checks that a run leaves none of its own behind. */
 export const ROOT_PREFIX = 'jarod-e2e-'
@@ -25,6 +32,8 @@ export interface LaunchOptions {
   own?: boolean
   /** Extra Chromium/Electron switches (the voice latency test's fake microphone). */
   args?: string[]
+  /** A PACKAGED build to start instead of this checkout (`release/win-unpacked/Jarod-OS.exe`) — same throwaway folders. */
+  executablePath?: string
 }
 
 /** Ids of the processes whose command line holds `needle` (this one excluded); the needle goes through the environment. */
@@ -89,7 +98,7 @@ export async function launchShell(extraEnv: Record<string, string> = {}, options
   const env: Record<string, string> = {}
 
   for (const [key, value] of Object.entries(process.env)) {
-    if (value !== undefined && !STRIPPED.test(key)) {
+    if (value !== undefined && !STRIPPED.test(key) && !NOT_INHERITED.test(key)) {
       env[key] = value
     }
   }
@@ -104,7 +113,9 @@ export async function launchShell(extraEnv: Record<string, string> = {}, options
     ...extraEnv
   })
 
-  const app = await electron.launch({ args: ['.', `--user-data-dir=${user}`, ...(options.args ?? [])], cwd: path.resolve(import.meta.dirname, '..'), env })
+  const app = options.executablePath
+    ? await electron.launch({ executablePath: options.executablePath, args: [`--user-data-dir=${user}`, ...(options.args ?? [])], cwd: root, env })
+    : await electron.launch({ args: ['.', `--user-data-dir=${user}`, ...(options.args ?? [])], cwd: path.resolve(import.meta.dirname, '..'), env })
   const page = await app.firstWindow()
 
   await page.waitForLoadState('domcontentloaded')

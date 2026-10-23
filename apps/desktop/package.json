@@ -20,12 +20,13 @@
     "start": "npm run build && electron .",
     "bundle:core": "node scripts/bundle-core.mjs",
     "bundle:pinokio": "node scripts/bundle-pinokio.mjs",
+    "bundle:restic": "node scripts/bundle-restic.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.electron.json --noEmit",
     "test": "vitest run",
     "test:e2e": "playwright test",
     "dist:mac": "npm run bundle:core && npm run build && electron-builder --mac --arm64 -c.npmRebuild=false --publish never",
     "dist:linux": "npm run bundle:core && npm run build && electron-builder --linux --publish never",
-    "dist:win": "npm run bundle:core && npm run bundle:pinokio && npm run build && electron-builder --win --x64 -c.npmRebuild=false --publish never",
+    "dist:win": "npm run bundle:core && npm run bundle:pinokio && npm run bundle:restic && npm run build && electron-builder --win --x64 -c.npmRebuild=false --publish never",
     "i18n:report": "node scripts/i18n-report.mjs"
   },
   "dependencies": {
@@ -233,6 +234,10 @@
         {
           "from": "../../pinokio-runtime/node_modules",
           "to": "pinokiod/node_modules"
+        },
+        {
+          "from": "../../engines/restic/bundle",
+          "to": "restic"
         }
       ]
     },

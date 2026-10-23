@@ -14,10 +14,28 @@ export interface PermissionRule {
   target?: string
   /** Cockpit, lot 2: a temporary rule stops applying at this instant (ms). */
   expiresAt?: number
+  /** Configurable autonomy: with `allow`, no approval is asked inside the rule's scope (set by `jarod permissions add auto`). */
+  autonomous?: true
+  /** The rule only covers this operation (a tool's `mode`, `sql`…), this conversation, this many more calls. */
+  operation?: string
+  session?: string
+  uses?: number
+  id?: string
+  note?: string
+  createdAt?: number
+  by?: 'réglages' | 'commande'
 }
 
 /** How a rule is named: its tool, and its target when it has one. Two rules never share a name. */
-export const ruleKey = (rule: PermissionRule): string => (rule.target ? `${rule.tool.trim()} → ${rule.target}` : rule.tool.trim())
+export const ruleKey = (rule: PermissionRule): string =>
+  [rule.tool.trim(), rule.target && `→ ${rule.target}`, rule.operation && `[${rule.operation}]`, rule.session && `@${rule.session}`].filter(Boolean).join(' ')
+
+/** A rule with another decision; "no approval" only exists with `allow`, so it is dropped otherwise (the engine refuses the pair). */
+export function withDecision(rule: PermissionRule, decision: Decision): PermissionRule {
+  const { autonomous, ...rest } = rule
+
+  return decision === 'allow' && autonomous ? { ...rest, decision, autonomous } : { ...rest, decision }
+}
 
 /** The durations offered for a new rule; `0` = permanent. */
 export const RULE_DURATIONS: readonly { hours: number; label: MessageKey }[] = [
@@ -52,6 +70,162 @@ export function ruleExpiryText(rule: PermissionRule, now: number = Date.now()): 
   const when = new Date(rule.expiresAt).toLocaleString(dateLocale(), { weekday: 'short', hour: '2-digit', minute: '2-digit' })
 
   return t('settings.agent.rule.until', { when })
+}
+
+/*
+ * Rules are written by the engine's permissions service (`permissions-plan` / `permissions-apply`), the one `jarod permissions` uses: same
+ * checks, same ids, same native confirmation for what gives the agent more power, and the list re-read just before writing.
+ */
+
+/** What a rule decides, as the screen offers it: "auto" is allow without approval. */
+export type RuleKind = Decision | 'auto'
+
+export const kindOf = (rule: PermissionRule): RuleKind => (rule.decision === 'allow' && rule.autonomous ? 'auto' : rule.decision)
+
+export const RULE_KIND_LABEL: Record<RuleKind, MessageKey> = { allow: 'settings.decision.allow', auto: 'settings.agent.decision.auto', ask: 'settings.decision.ask', deny: 'settings.decision.deny' }
+
+/** The durations offered in the rule form; `0` = permanent, `-1` = keep the current end (editing only). */
+export const RULE_FORM_DURATIONS: readonly { hours: number; label: MessageKey }[] = [
+  ...RULE_DURATIONS,
+  { hours: 24 * 30, label: 'settings.agent.duration.month' }
+]
+
+export interface RuleForm {
+  tool: string
+  kind: RuleKind
+  target: string
+  operation: string
+  session: string
+  hours: number
+  uses: string
+  note: string
+  /** Accept "no approval" with no bound at all (the engine refuses it otherwise). */
+  broad: boolean
+}
+
+export const EMPTY_RULE_FORM: RuleForm = { tool: '', kind: 'ask', target: '', operation: '', session: '', hours: 0, uses: '', note: '', broad: false }
+
+/** The form for an existing rule; its end is kept unless another duration is chosen. */
+export function formOf(rule: PermissionRule): RuleForm {
+  return {
+    tool: rule.tool,
+    kind: kindOf(rule),
+    target: rule.target ?? '',
+    operation: rule.operation ?? '',
+    session: rule.session ?? '',
+    hours: rule.expiresAt === undefined ? 0 : -1,
+    uses: rule.uses === undefined ? '' : String(rule.uses),
+    note: rule.note ?? '',
+    broad: false
+  }
+}
+
+export function ruleFormProblem(form: RuleForm): string | null {
+  const tool = ruleToolProblem(form.tool) ?? ruleTargetProblem(form.target)
+
+  if (tool) {
+    return tool
+  }
+
+  if (form.operation.trim() && !/^[A-Za-z0-9_.*:-]+$/.test(form.operation.trim())) {
+    return t('validate.ruleOperation')
+  }
+
+  if (form.session.trim() && !/^[A-Za-z0-9_-]+$/.test(form.session.trim())) {
+    return t('validate.ruleSession')
+  }
+
+  if (form.uses.trim()) {
+    if (!/^\d{1,6}$/.test(form.uses.trim())) {
+      return t('validate.ruleUses')
+    }
+
+    if (form.kind === 'ask' || form.kind === 'deny') {
+      return t('validate.ruleUsesAllowOnly')
+    }
+  }
+
+  // eslint-disable-next-line no-control-regex
+  return /[\u0000-\u001f]/.test(form.note) ? t('validate.ruleTarget') : null
+}
+
+/** The actions of the engine's permissions service (`permissions-plan` / `permissions-apply`). */
+export type PermissionsAction =
+  | { op: 'grant'; input: Record<string, unknown> }
+  | { op: 'update'; ref: string; change: Record<string, unknown> }
+  | { op: 'move'; ref: string; to: number }
+  | { op: 'revoke'; ref: string }
+
+/** How a rule is named to the service: its id, or its position (1 = first) for an old rule written without one. */
+export const ruleRef = (rule: PermissionRule, index: number): string => rule.id ?? String(index + 1)
+
+const kindFields = (kind: RuleKind) => ({ decision: kind === 'auto' ? 'allow' : kind, autonomous: kind === 'auto' })
+
+export function grantAction(form: RuleForm): PermissionsAction {
+  const v = (s: string) => s.trim() || undefined
+
+  return {
+    op: 'grant',
+    input: {
+      tool: form.tool.trim(),
+      ...kindFields(form.kind),
+      ...(v(form.target) ? { target: v(form.target) } : {}),
+      ...(v(form.operation) ? { operation: v(form.operation) } : {}),
+      ...(v(form.session) ? { session: v(form.session) } : {}),
+      ...(form.hours > 0 ? { durationMs: form.hours * 3_600_000 } : {}),
+      ...(v(form.uses) ? { uses: Number(form.uses.trim()) } : {}),
+      ...(v(form.note) ? { note: v(form.note) } : {}),
+      ...(form.broad ? { broad: true } : {})
+    }
+  }
+}
+
+/** Only what the form changes; an emptied field removes that bound (`null`). */
+export function updateAction(ref: string, rule: PermissionRule, form: RuleForm): Extract<PermissionsAction, { op: 'update' }> {
+  const change: Record<string, unknown> = {}
+  const field = (key: 'target' | 'operation' | 'session' | 'note', value: string) => {
+    const next = value.trim()
+
+    if (next !== (rule[key] ?? '')) {
+      change[key] = next || null
+    }
+  }
+
+  if (form.kind !== kindOf(rule)) {
+    Object.assign(change, kindFields(form.kind))
+  }
+
+  field('target', form.target)
+  field('operation', form.operation)
+  field('session', form.session)
+  field('note', form.note)
+
+  const uses = form.uses.trim() ? Number(form.uses.trim()) : undefined
+
+  if (uses !== rule.uses) {
+    change.uses = uses ?? null
+  }
+
+  if (form.hours === 0 && rule.expiresAt !== undefined) {
+    change.durationMs = null
+  } else if (form.hours > 0) {
+    change.durationMs = form.hours * 3_600_000
+  }
+
+  if (form.broad) {
+    change.broad = true
+  }
+
+  return { op: 'update', ref, change }
+}
+
+/** A rule that no longer applies: past its end, or with no use left. */
+export function ruleSpentText(rule: PermissionRule, now: number = Date.now()): string | null {
+  if (rule.expiresAt !== undefined && rule.expiresAt <= now) {
+    return t('settings.agent.rule.expired')
+  }
+
+  return rule.uses !== undefined && rule.uses <= 0 ? t('settings.agent.rule.spent') : null
 }
 
 export interface ShellGuard {

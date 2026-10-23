@@ -2,14 +2,16 @@ import type { BackupActionResult, BackupsState } from '../shared/backups.ts'
 import type { SandboxResult, SandboxesState } from '../shared/sandboxes.ts'
 import type { EnvironmentResult, EnvironmentsState } from '../shared/environments.ts'
 import type { VmResult, VmsState } from '../shared/vms.ts'
+import type { EngineEvent, EngineInfo, EngineResult, EnginesPrefs } from '../shared/engines.ts'
 import type { NetworkPolicy } from '../shared/network-policy.ts'
-import type { DestinationCheck, ExternalEstimate, ExternalPart, ExternalProgress, ExternalResult, ExternalState } from '../shared/external-backup.ts'
+import type { DestinationCheck, ExternalEstimate, ExternalPart, ExternalProgress, ExternalResult, ExternalState, ResticSnapshot } from '../shared/external-backup.ts'
 import type { DataDiskApplyResult, DataDiskState, DriveInfo } from '../shared/data-disk.ts'
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import {
   type AudioWsKind,
   type AudioWsTarget,
   type AuditEntry,
+  type MiniSummary,
   type BackendState,
   type CalendarResult,
   type CatalogGroupView,
@@ -382,6 +384,24 @@ const api = {
     stop: (name: string): Promise<VmResult> => ipcRenderer.invoke(IPC.vmsStop, name),
     remove: (name: string, typed: string): Promise<VmResult> => ipcRenderer.invoke(IPC.vmsRemove, name, typed)
   },
+  engines: {
+    list: (): Promise<{ engines: EngineInfo[]; prefs: EnginesPrefs; dshHome: string }> => ipcRenderer.invoke(IPC.enginesList),
+    setPrefs: (prefs: EnginesPrefs): Promise<EnginesPrefs> => ipcRenderer.invoke(IPC.enginesSetPrefs, prefs),
+    /** Relance Jarod-OS pour appliquer le moteur du cockpit choisi (jamais en cours de session). */
+    relaunch: (): Promise<void> => ipcRenderer.invoke(IPC.enginesRelaunch),
+    onChanged: (listener: () => void): Unsubscribe => subscribe(IPC.enginesChanged, listener),
+    onEvent: (listener: (event: EngineEvent) => void): Unsubscribe => subscribe(IPC.enginesEvent, listener),
+    dsh: {
+      start: (): Promise<EngineResult> => ipcRenderer.invoke(IPC.enginesDshStart),
+      stop: (): Promise<EngineResult> => ipcRenderer.invoke(IPC.enginesDshStop),
+      newSession: (): Promise<EngineResult<string>> => ipcRenderer.invoke(IPC.enginesDshNewSession),
+      sessions: (): Promise<EngineResult<Array<{ sessionId: string; title?: string; updatedAt?: string }>>> => ipcRenderer.invoke(IPC.enginesDshSessions),
+      resume: (sessionId: string): Promise<EngineResult> => ipcRenderer.invoke(IPC.enginesDshResume, sessionId),
+      prompt: (sessionId: string, text: string): Promise<EngineResult> => ipcRenderer.invoke(IPC.enginesDshPrompt, sessionId, text),
+      cancel: (sessionId: string): Promise<EngineResult> => ipcRenderer.invoke(IPC.enginesDshCancel, sessionId),
+      approve: (requestId: string, decision: 'allow' | 'deny', optionId?: string): Promise<EngineResult> => ipcRenderer.invoke(IPC.enginesDshApprove, requestId, decision, optionId)
+    }
+  },
   externalBackup: {
     state: (): Promise<ExternalState> => ipcRenderer.invoke(IPC.externalBackupState),
     estimate: (parts: ExternalPart[]): Promise<ExternalEstimate> => ipcRenderer.invoke(IPC.externalBackupEstimate, parts),
@@ -394,6 +414,15 @@ const api = {
     cancel: (): Promise<boolean> => ipcRenderer.invoke(IPC.externalBackupCancel),
     /** Restore the backup in `folder` (Jarod-OS restarts once it is in place). */
     restore: (folder: string): Promise<ExternalResult> => ipcRenderer.invoke(IPC.externalBackupRestore, folder),
+    /** G4 : l'archive chiffrée restic (la clé reste dans le main ; la feuille de récupération est écrite par sa boîte native). */
+    restic: {
+      enable: (): Promise<{ ok: true; created?: boolean; sheetSaved?: boolean } | { ok: false; error: string }> => ipcRenderer.invoke(IPC.externalBackupResticEnable),
+      disable: (): Promise<{ ok: true }> => ipcRenderer.invoke(IPC.externalBackupResticDisable),
+      saveSheet: (): Promise<{ ok: true; path?: string } | { ok: false; error: string }> => ipcRenderer.invoke(IPC.externalBackupResticSheet),
+      list: (): Promise<ResticSnapshot[]> => ipcRenderer.invoke(IPC.externalBackupResticList),
+      restore: (snapshot: string): Promise<ExternalResult> => ipcRenderer.invoke(IPC.externalBackupResticRestore, snapshot),
+      check: (): Promise<{ ok: boolean; error?: string }> => ipcRenderer.invoke(IPC.externalBackupResticCheck)
+    },
     onProgress: (listener: (progress: ExternalProgress) => void): Unsubscribe => subscribe(IPC.externalBackupProgress, listener)
   },
   remote: {
@@ -447,6 +476,10 @@ const api = {
     getState: (): Promise<WmState> => ipcRenderer.invoke(IPC.wmGetState),
     onState: (listener: (state: WmState) => void): Unsubscribe => subscribe(IPC.wmState, listener),
     action: (action: WmAction): Promise<void> => ipcRenderer.invoke(IPC.wmAction, action)
+  },
+  /** Lot C : le résumé que la mini-fenêtre affiche (envoi seulement ; le main le re-valide et ne l'accepte que de la fenêtre principale). */
+  mini: {
+    state: (summary: MiniSummary): void => ipcRenderer.send(IPC.miniState, summary)
   },
   prefs: {
     get: (): Promise<JarodOSPrefs> => ipcRenderer.invoke(IPC.prefsGet),

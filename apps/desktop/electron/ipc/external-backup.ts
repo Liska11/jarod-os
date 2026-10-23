@@ -18,6 +18,9 @@ import { writeFileAtomic } from '../atomic-write.ts'
 import { jarodDataDir, jarodWorkspace } from '../backend/jarod-core.ts'
 import { cleanLeftovers, dataExclusion, listExternal, makeBackup, type PartSource, planBackup, stageRestore, swapIn, verifyExternal } from '../external-backup.ts'
 import { checkDestination, readVolumes, realish, volumeOf } from '../external-destination.ts'
+import { BACKUPS_FOLDER } from '../external-backup.ts'
+import type { ResticSettings } from '../../shared/external-backup.ts'
+import { ResticArchive } from './external-restic.ts'
 import { log } from '../log.ts'
 import { acquireOperation, busyWith } from '../operation-lock.ts'
 import { listVms } from '../vms.ts'
@@ -41,6 +44,22 @@ export interface ExternalBackupDeps {
   /** The core's maintenance mode: a database snapshot without the vault's values; resolves with how many were removed. */
   snapshotDb: (src: string, dest: string) => Promise<number>
   relaunch: () => void
+  /** G4 : l'archive chiffrée restic (absente = fonction indisponible). */
+  restic?: (service: ExternalBackupService) => ResticArchive
+}
+
+const RESTIC_OFF: ResticSettings = { enabled: false, keyFingerprint: null, sheetSavedAt: null, last: null }
+
+function resticSettingsOf(raw: unknown): ResticSettings {
+  const r = (raw ?? {}) as Partial<ResticSettings>
+  const last = r.last && typeof r.last.at === 'string' ? { at: r.last.at, ok: r.last.ok === true, message: String(r.last.message ?? ''), ...(typeof r.last.snapshot === 'string' ? { snapshot: r.last.snapshot } : {}) } : null
+
+  return {
+    enabled: r.enabled === true,
+    keyFingerprint: typeof r.keyFingerprint === 'string' && /^[a-f0-9]{8}$/.test(r.keyFingerprint) ? r.keyFingerprint : null,
+    sheetSavedAt: typeof r.sheetSavedAt === 'string' ? r.sheetSavedAt : null,
+    last
+  }
 }
 
 const idle: ExternalProgress = { operation: null, phase: 'idle', done: 0, total: 0, current: '' }
@@ -51,8 +70,11 @@ export class ExternalBackupService {
   private last: ExternalState['last'] = null
   private deferred: string | null = null
   private timer: NodeJS.Timeout | null = null
+  readonly restic: ResticArchive | null
 
-  constructor(private readonly deps: ExternalBackupDeps) {}
+  constructor(private readonly deps: ExternalBackupDeps) {
+    this.restic = deps.restic ? deps.restic(this) : null
+  }
 
   // ── Settings ───────────────────────────────────────────────────────────
 
@@ -64,10 +86,19 @@ export class ExternalBackupService {
       const everyHours = HOURS.includes(Number(raw.auto?.everyHours)) ? Number(raw.auto?.everyHours) : 24
       this.last ??= raw.last ?? null
 
-      return { destination, parts: parts.length ? parts : DEFAULT_PARTS, auto: { enabled: raw.auto?.enabled === true, everyHours } }
+      return { destination, parts: parts.length ? parts : DEFAULT_PARTS, auto: { enabled: raw.auto?.enabled === true, everyHours }, restic: resticSettingsOf(raw.restic) }
     } catch {
-      return { destination: null, parts: [...DEFAULT_PARTS], auto: { enabled: false, everyHours: 24 } }
+      return { destination: null, parts: [...DEFAULT_PARTS], auto: { enabled: false, everyHours: 24 }, restic: { ...RESTIC_OFF } }
     }
+  }
+
+  /** G4 : la part restic des réglages (lue et écrite par ResticArchive). */
+  resticSettings(): ResticSettings {
+    return this.settings().restic
+  }
+
+  saveRestic(next: ResticSettings): void {
+    this.save({ ...this.settings(), restic: next })
   }
 
   private save(settings: ExternalSettings): void {
@@ -138,7 +169,11 @@ export class ExternalBackupService {
     const status = await this.destinationStatus(settings.destination)
     const list = settings.destination && status === 'ok' ? await listExternal(settings.destination.path) : []
 
-    return { settings, instance: this.instance(), progress: this.progress, destinationStatus: status, last: this.last, deferred: this.deferred, list }
+    const restic = this.restic
+      ? this.restic.view(settings.destination && status === 'ok' ? settings.destination.path : null)
+      : { available: false, reason: 'no-restic' as const, enabled: false, repo: null, keyFingerprint: null, sheetSaved: false, last: null }
+
+    return { settings, instance: this.instance(), progress: this.progress, destinationStatus: status, last: this.last, deferred: this.deferred, list, restic }
   }
 
   // ── Backup ─────────────────────────────────────────────────────────────
@@ -222,7 +257,22 @@ export class ExternalBackupService {
       )
       log('external-backup', `${manifest.id}: ${manifest.files.length} files, ${manifest.bytes} bytes, ${manifest.secretsRemoved} secret value(s) left out, ${reason}`)
       this.deferred = null
-      this.finish(true, 'complete', manifest.id)
+      // G4 : archivée dans le dépôt restic si l'archive est activée ; un échec d'archive ne fait pas échouer la sauvegarde (elle est complète).
+      let message = 'complete'
+
+      if (this.restic && settings.restic.enabled) {
+        this.emit({ phase: 'archiving', done: 0, total: 0, current: '' })
+
+        try {
+          const archived = await this.restic.archive(settings.destination.path, path.join(settings.destination.path, BACKUPS_FOLDER, instance, manifest.id), abort.signal)
+          log('external-backup', `${manifest.id} archived in restic (snapshot ${archived.snapshot}, ${archived.bytesAdded} new bytes)`)
+        } catch (error) {
+          message = 'complete-archive-failed'
+          log('external-backup', `${manifest.id}: restic archive failed: ${describe(error)}`)
+        }
+      }
+
+      this.finish(true, message, manifest.id)
 
       return { ok: true, id: manifest.id }
     } catch (error) {
@@ -259,6 +309,29 @@ export class ExternalBackupService {
 
     if (!settings.destination || !realish(folder).toLowerCase().startsWith(realish(settings.destination.path).toLowerCase())) return { ok: false, error: 'not-a-backup' }
 
+    return this.restoreFrom(async () => ({ folder }))
+  }
+
+  /**
+   * G4 : restaure un instantané du dépôt restic. Il est extrait dans un dossier temporaire (sous le verrou d'opération), puis suit EXACTEMENT
+   * le chemin d'une restauration ordinaire : revérifié par son manifeste, préparé, mis en place à côté de l'état précédent.
+   */
+  async restoreSnapshot(snapshot: string): Promise<ExternalResult> {
+    const settings = this.settings()
+
+    if (!this.restic || !settings.restic.enabled) return { ok: false, error: 'not-enabled' }
+    if (!settings.destination || (await this.destinationStatus(settings.destination)) !== 'ok') return { ok: false, error: 'destination-absent' }
+
+    const destination = settings.destination.path
+
+    return this.restoreFrom(async () => {
+      this.emit({ operation: 'restore', phase: 'extracting', done: 0, total: 0, current: snapshot })
+
+      return this.restic!.extract(destination, snapshot)
+    })
+  }
+
+  private async restoreFrom(source: () => Promise<{ folder: string; cleanup?: () => Promise<void> }>): Promise<ExternalResult> {
     const release = acquireOperation('external-restore')
 
     if (!release) return { ok: false, error: 'busy' }
@@ -267,8 +340,12 @@ export class ExternalBackupService {
     this.abort = abort
     const wasRunning = this.deps.isCoreRunning()
     let swapped = false
+    let cleanup: (() => Promise<void>) | undefined
 
     try {
+      const got = await source()
+      const folder = got.folder
+      cleanup = got.cleanup
       this.emit({ operation: 'restore', phase: 'verifying', done: 0, total: 0, current: '' })
       const manifest = await verifyExternal(folder, abort.signal, (done, total, current) => this.emit({ done, total, current }))
       const root = process.env.JAROD_OS_ROOT?.trim() || null
@@ -313,8 +390,10 @@ export class ExternalBackupService {
 
       return { ok: false, error: message }
     } finally {
+      await cleanup?.().catch(() => undefined)
       this.abort = null
       release()
+      if (this.progress.operation) this.emit({ ...idle })
     }
   }
 
@@ -409,6 +488,58 @@ export class ExternalBackupService {
     ipcMain.handle(IPC.externalBackupRun, () => this.run('manual'))
     ipcMain.handle(IPC.externalBackupCancel, () => this.cancel())
     ipcMain.handle(IPC.externalBackupRestore, (_event, folder: unknown) => (typeof folder === 'string' ? this.restore(folder) : { ok: false, error: 'not-a-backup' }))
+    // G4 : l'archive chiffrée restic. Aucun canal ne rend la clé : seule la boîte native du main écrit la feuille de récupération.
+    const resticDestination = async (): Promise<string | null> => {
+      const settings = this.settings()
+
+      return settings.destination && (await this.destinationStatus(settings.destination)) === 'ok' ? settings.destination.path : null
+    }
+    ipcMain.handle(IPC.externalBackupResticEnable, async () => {
+      const dest = await resticDestination()
+
+      if (!this.restic) return { ok: false, error: 'no-restic' }
+      if (!dest) return { ok: false, error: 'destination-absent' }
+      if (busyWith()) return { ok: false, error: 'busy' }
+
+      return this.restic.enable(dest)
+    })
+    ipcMain.handle(IPC.externalBackupResticDisable, () => {
+      this.restic?.disable()
+
+      return { ok: true }
+    })
+    ipcMain.handle(IPC.externalBackupResticSheet, async () => {
+      const dest = await resticDestination()
+
+      if (!this.restic || !dest) return { ok: false, error: dest ? 'no-restic' : 'destination-absent' }
+
+      return this.restic.saveSheet(dest)
+    })
+    ipcMain.handle(IPC.externalBackupResticList, async () => {
+      const dest = await resticDestination()
+
+      if (!this.restic || !dest || !this.settings().restic.enabled) return []
+
+      return this.restic.list(dest).catch(error => {
+        log('external-backup', `restic snapshots: ${describe(error)}`)
+
+        return []
+      })
+    })
+    ipcMain.handle(IPC.externalBackupResticRestore, (_event, snapshot: unknown) => (typeof snapshot === 'string' ? this.restoreSnapshot(snapshot) : { ok: false, error: 'not-a-snapshot' }))
+    ipcMain.handle(IPC.externalBackupResticCheck, async () => {
+      const dest = await resticDestination()
+
+      if (!this.restic || !dest || !this.settings().restic.enabled) return { ok: false, error: 'not-enabled' }
+
+      try {
+        await this.restic.check(dest)
+
+        return { ok: true }
+      } catch (error) {
+        return { ok: false, error: describe(error) }
+      }
+    })
   }
 }
 

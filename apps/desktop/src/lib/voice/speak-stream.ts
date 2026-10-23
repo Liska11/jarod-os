@@ -2,7 +2,7 @@
 // int16 PCM out, scheduled gaplessly on a WebAudio context. One instance is one spoken reply.
 import { atom } from 'nanostores'
 import { rest } from '../rest.ts'
-import { gatewayProtocols } from '../ws-auth.ts'
+import { gatewaySocketTarget } from '../ws-auth.ts'
 import { int16ToFloat } from './pcm.ts'
 
 /** Output level 0..1 while Hermes speaks, for the orb. */
@@ -65,10 +65,10 @@ export class SpeakStream {
       return
     }
 
-    let protocols: string[]
+    let open: ReturnType<typeof gatewaySocketTarget>
 
     try {
-      protocols = gatewayProtocols(target.token)
+      open = gatewaySocketTarget(target.url, target.token, target.auth)
     } catch (error) {
       this.finish('error', error instanceof Error ? error.message : String(error))
 
@@ -76,7 +76,7 @@ export class SpeakStream {
     }
 
     await new Promise<void>(resolve => {
-      const socket = new WebSocket(target.url, protocols)
+      const socket = open.protocols ? new WebSocket(open.url, open.protocols) : new WebSocket(open.url)
       socket.binaryType = 'arraybuffer'
       this.socket = socket
       socket.onopen = () => {

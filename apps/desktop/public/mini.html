@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <!-- Lot C : la mini-fenêtre. Aucune ressource externe, aucun script en ligne, aucune connexion : elle affiche ce que le main lui pousse. -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'" />
+    <title>Jarod — mini</title>
+    <link rel="stylesheet" href="mini.css" />
+  </head>
+  <body>
+    <main id="pill" class="pill idle" aria-live="polite">
+      <span class="dot" aria-hidden="true"></span>
+      <div class="text">
+        <div id="line1" class="line1">Jarod</div>
+        <div id="line2" class="line2">Au repos</div>
+      </div>
+      <span id="count" class="count" hidden></span>
+    </main>
+    <script src="mini.js"></script>
+  </body>
+</html>

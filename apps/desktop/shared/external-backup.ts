@@ -18,6 +18,8 @@ export interface ExternalSettings {
   destination: ExternalDestination | null
   parts: ExternalPart[]
   auto: { enabled: boolean; everyHours: number }
+  /** G4 : l'archive chiffrée restic sous les sauvegardes (éteinte par défaut). */
+  restic: ResticSettings
 }
 
 export interface ExternalFileEntry {
@@ -56,7 +58,7 @@ export interface ExternalBackupSummary {
   folder: string
 }
 
-export type ExternalPhase = 'idle' | 'measuring' | 'stopping-core' | 'copying' | 'snapshot' | 'verifying' | 'finishing' | 'staging' | 'swapping'
+export type ExternalPhase = 'idle' | 'measuring' | 'stopping-core' | 'copying' | 'snapshot' | 'verifying' | 'finishing' | 'staging' | 'swapping' | 'archiving' | 'extracting'
 
 export interface ExternalProgress {
   operation: 'backup' | 'restore' | null
@@ -87,6 +89,8 @@ export interface ExternalState {
   /** Why the automatic backup did not run, when it was due. */
   deferred: string | null
   list: ExternalBackupSummary[]
+  /** G4 : l'archive chiffrée restic (jamais la clé). */
+  restic: ResticView
 }
 
 export interface ExternalEstimate {
@@ -96,3 +100,31 @@ export interface ExternalEstimate {
 }
 
 export type ExternalResult = { ok: true; id?: string } | { ok: false; error: string }
+
+/** G4 (2026-10-21) : l'archive chiffrée restic sous la sauvegarde externe — ce qui est rangé dans external-backup.json (jamais la clé). */
+export interface ResticSettings {
+  enabled: boolean
+  /** Huit caractères de l'empreinte de la clé : de quoi la reconnaître sur la feuille, sans la montrer. */
+  keyFingerprint: string | null
+  /** Quand la feuille de récupération a été écrite ; null tant qu'elle ne l'a pas été. */
+  sheetSavedAt: string | null
+  last: { at: string; ok: boolean; message: string; snapshot?: string } | null
+}
+
+export interface ResticView {
+  /** restic présent et une destination choisie. */
+  available: boolean
+  reason: 'no-restic' | 'no-destination' | null
+  enabled: boolean
+  repo: string | null
+  keyFingerprint: string | null
+  sheetSaved: boolean
+  last: ResticSettings['last']
+}
+
+export interface ResticSnapshot {
+  id: string
+  time: string
+  backupId: string | null
+  instance: string | null
+}

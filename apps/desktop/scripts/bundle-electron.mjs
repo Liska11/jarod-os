@@ -43,3 +43,12 @@ await build({
   format: 'cjs',
   external: ['electron']
 })
+
+// Lot C : le preload de la mini-fenêtre (il ne fait que recevoir son résumé).
+await build({
+  ...common,
+  entryPoints: [path.join(root, 'preload/mini.ts')],
+  outfile: path.join(root, 'dist/electron/mini-preload.cjs'),
+  format: 'cjs',
+  external: ['electron']
+})

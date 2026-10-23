@@ -84,6 +84,51 @@ type Guardable = Pick<IpcMain, 'handle' | 'handleOnce' | 'on' | 'once'>
 const installed = new WeakSet<object>()
 
 /**
+ * BL-01 (audit du 2026-10-19), preuve observable : les canaux enregistrés PAR le garde, et ceux qui l'étaient déjà quand il a été posé (qui
+ * lui échapperaient). Le test de bout en bout compare cette liste à TOUS les gestionnaires qu'Electron connaît dans l'application réelle :
+ * l'égalité prouve qu'aucun canal ne contourne le contrôle d'émetteur.
+ */
+export interface IpcGuardReport {
+  before: string[]
+  guarded: string[]
+  /** Présents avant le garde mais pas des canaux de Jarod : l'événement `error` de l'émetteur, et ceux qu'Electron enregistre lui-même. */
+  electron: string[]
+}
+
+/**
+ * Ce qu'Electron (ou l'émetteur d'événements de Node) pose lui-même sur `ipcMain` avant tout code de l'application — mesuré dans l'application
+ * réelle (BL-01, 2026-10-21) : ce ne sont pas des canaux de Jarod, le garde n'a pas à les envelopper. Toute AUTRE présence antérieure est signalée.
+ */
+export const ELECTRON_INTERNAL_CHANNELS: ReadonlySet<string> = new Set(['error', 'IMPORT_SHARED_TEXTURE_RELEASE_RENDERER_TO_MAIN'])
+
+const reports = new WeakMap<object, { before: string[]; electron: string[]; guarded: Set<string> }>()
+
+/** Ce que le garde sait de `ipc` (null s'il n'y est pas posé). */
+export function ipcGuardReport(ipc: object): IpcGuardReport | null {
+  const r = reports.get(ipc)
+
+  return r ? { before: [...r.before], guarded: [...r.guarded].sort(), electron: [...r.electron] } : null
+}
+
+/** Les canaux déjà présents sur `ipc` : écouteurs (`on`) et gestionnaires (`handle`, table interne d'Electron quand elle est lisible). */
+function registeredChannels(ipc: object): string[] {
+  const names = new Set<string>()
+  const emitter = ipc as { eventNames?: () => (string | symbol)[]; _invokeHandlers?: Map<string, unknown> }
+
+  for (const name of emitter.eventNames?.() ?? []) {
+    if (typeof name === 'string') {
+      names.add(name)
+    }
+  }
+
+  for (const name of emitter._invokeHandlers?.keys() ?? []) {
+    names.add(name)
+  }
+
+  return [...names].sort()
+}
+
+/**
  * Wraps `ipc.handle`, `ipc.handleOnce`, `ipc.on` and `ipc.once` so every listener registered afterwards
  * runs only for a trusted sender. A refused `invoke` rejects with a generic error; a refused `send` is
  * dropped. Refusals are logged with the channel, the sender's origin and the reason — never the payload.
@@ -98,6 +143,15 @@ export function installIpcSenderGuard(ipc: Guardable, options: GuardOptions = {}
 
   const isShell = options.isShell ?? (url => isShellPage(url))
   const logger = options.logger ?? (message => log('ipc', message))
+  const present = registeredChannels(ipc)
+  const report = { before: present.filter(c => !ELECTRON_INTERNAL_CHANNELS.has(c)), electron: present.filter(c => ELECTRON_INTERNAL_CHANNELS.has(c)), guarded: new Set<string>() }
+
+  reports.set(ipc, report)
+
+  // Un canal enregistré AVANT le garde lui échappe : le dire fort (le test de bout en bout l'exige vide).
+  if (report.before.length > 0) {
+    logger(`${report.before.length} channel(s) registered before the sender guard, NOT checked: ${report.before.join(', ')}`)
+  }
   const now = options.now ?? Date.now
   const lastLogged = new Map<string, number>()
 
@@ -147,8 +201,10 @@ export function installIpcSenderGuard(ipc: Guardable, options: GuardOptions = {}
       }
     }
 
-  ipc.handle = (channel, listener) => handle(channel, guardInvoke(channel, listener))
-  ipc.handleOnce = (channel, listener) => handleOnce(channel, guardInvoke(channel, listener))
-  ipc.on = ((channel: string, listener: SendListener) => on(channel, guardSend(channel, listener))) as Guardable['on']
-  ipc.once = ((channel: string, listener: SendListener) => once(channel, guardSend(channel, listener))) as Guardable['once']
+  const note = (channel: string) => void report.guarded.add(channel)
+
+  ipc.handle = (channel, listener) => (note(channel), handle(channel, guardInvoke(channel, listener)))
+  ipc.handleOnce = (channel, listener) => (note(channel), handleOnce(channel, guardInvoke(channel, listener)))
+  ipc.on = ((channel: string, listener: SendListener) => (note(channel), on(channel, guardSend(channel, listener)))) as Guardable['on']
+  ipc.once = ((channel: string, listener: SendListener) => (note(channel), once(channel, guardSend(channel, listener)))) as Guardable['once']
 }

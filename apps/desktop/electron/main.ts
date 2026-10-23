@@ -1,10 +1,11 @@
 // Must stay the first import: old variable names are adopted before any module reads process.env.
 import { ADOPTED_LEGACY_ENV } from './legacy-env-adopt.ts'
-import { app, BrowserWindow, dialog, globalShortcut, ipcMain, Notification, protocol, screen, shell } from 'electron'
+import { app, BrowserWindow, dialog, globalShortcut, ipcMain, Notification, protocol, safeStorage, screen, shell } from 'electron'
 import { randomBytes } from 'node:crypto'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { type ControlRunResult, type EnvInfo, type JarodOSPrefs, IPC, type RestRequest, type ShellCommand, type WindowState } from '../shared/ipc.ts'
 import { privilegedPluginSchemes } from '../shared/plugins.ts'
 import { BackendManager } from './backend/manager.ts'
@@ -39,6 +40,7 @@ import { BackupService } from './ipc/backups.ts'
 import { registerSandboxesIpc } from './ipc/sandboxes.ts'
 import { registerEnvironmentsIpc } from './ipc/environments.ts'
 import { registerVmsIpc } from './ipc/vms.ts'
+import { applyBackendChoice, registerEnginesIpc } from './ipc/engines.ts'
 import { applyDataRoot } from './data-root.ts'
 import { NetworkPolicyService, setActiveNetworkPolicy } from './network.ts'
 import { cutDisallowed, installSocketGuard } from './net-guard.ts'
@@ -57,7 +59,7 @@ import { registerNotificationHistoryIpc } from './notifications-history.ts'
 import { osEnv } from './env.ts'
 import { claimSingleInstance } from './single-instance.ts'
 import { SwitchService } from './switches.ts'
-import { appUserModelId, hermesHome, jarodOsDataDir, isDev, legacyShellConfigDir, shellConfigDir } from './paths.ts'
+import { appUserModelId, devServerUrl, hermesHome, jarodOsDataDir, isDev, legacyShellConfigDir, shellConfigDir } from './paths.ts'
 import { readPrefs, writePrefs } from './prefs.ts'
 import { isOmarchy, readOmarchyTheme } from './theme/omarchy.ts'
 import { prefsForTheme } from './theme/themes.ts'
@@ -81,11 +83,18 @@ import { appIconPath, createMainWindow, loadShell, MAIN_WINDOW_MIN } from './win
 import { CrashPolicy, isSafeMode, recoveryAction, recoveryPage, relaunchArgs } from './recovery.ts'
 import { readWindowState, restoreBounds, roundingDrift, withoutDrift, writeWindowState } from './window-state.ts'
 import { ShellTray, trayLanguage } from './tray.ts'
-import { installIpcSenderGuard } from './ipc/sender-guard.ts'
+import { MiniWindow, miniPaths, normalizeMiniSummary } from './mini-window.ts'
+import { ResticArchive } from './ipc/external-restic.ts'
+import { ResticKeyStore } from './restic-key.ts'
+import { resticBinary } from './restic-binary.ts'
+import { installIpcSenderGuard, type IpcGuardReport, ipcGuardReport } from './ipc/sender-guard.ts'
 
 // Every IPC channel answers only the shell's own page (audit A-06): installed before the first
 // registration, so no channel is left out — none of the modules above registers at import time.
 installIpcSenderGuard(ipcMain)
+// BL-01 : la liste des canaux passés par le garde, lisible depuis le processus principal seulement (le test de bout en bout la compare à
+// tous les gestionnaires qu'Electron connaît). Aucune fenêtre n'y accède : isolation de contexte, pas de Node dans les pages.
+;(globalThis as { __jarodIpcGuard?: () => IpcGuardReport | null }).__jarodIpcGuard = () => ipcGuardReport(ipcMain)
 
 app.setName('Jarod-OS')
 // First, before anything touches data or opens a socket (the lock is keyed on the name set just above).
@@ -105,8 +114,38 @@ const tray = new ShellTray(appIconPath(), safeMode, {
       mainWindow.focus()
     }
   },
-  relaunch: safe => relaunch(safe)
+  relaunch: safe => relaunch(safe),
+  // Lot C : la mini-fenêtre, allumée ou éteinte depuis le menu de l'icône (préférence `miniWindow`, éteinte par défaut).
+  miniWindow: {
+    get: () => readPrefs().miniWindow === true,
+    set: on => {
+      const next = writePrefs({ miniWindow: on })
+
+      mini.setEnabled(next.miniWindow === true)
+      for (const win of shellWindows()) {
+        win.webContents.send(IPC.prefsChanged, next)
+      }
+    }
+  }
 })
+// Lot C : la mini-fenêtre (mini-window.ts). Sa page et son preload sont à part : elle n'a aucun canal du shell.
+const mini = new MiniWindow({
+  createWindow: options => new BrowserWindow(options),
+  workArea: () => screen.getPrimaryDisplay().workArea,
+  ...miniPaths(path.dirname(fileURLToPath(import.meta.url)), devServerUrl() ?? null),
+  openMain: () => {
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) {
+        mainWindow.restore()
+      }
+
+      mainWindow.show()
+      mainWindow.focus()
+    }
+  }
+})
+/** Les fenêtres du shell : toutes, sauf la mini-fenêtre (qui ne reçoit que son résumé). */
+const shellWindows = (): BrowserWindow[] => BrowserWindow.getAllWindows().filter(win => win !== mini.window)
 const coreLocation = { packaged: app.isPackaged, resourcesPath: process.resourcesPath, appPath: app.getAppPath() }
 
 // Jarod-OS's own disk, when the person chose one (data-root.ts): applied before anything resolves the data paths.
@@ -121,6 +160,10 @@ process.env.JAROD_NETWORK_POLICY = network.file
 installSocketGuard(host => network.allows(host))
 network.onChange(() => cutDisallowed(host => network.allows(host)))
 const networkSessions = electronNetworkSessions()
+
+// The cockpit's engine chosen in Settings › Engines (docs/MULTI-RUNTIME-FAISABILITE.md), unless the environment names one: applied before
+// anything resolves a path. Hermes chosen there gets a home of Jarod's own, never the one Hermes Desktop serves.
+const backendChoice = applyBackendChoice(shellConfigDir())
 
 // With the Jarod core as backend, the shell keeps its Hermes-style files (plugins, themes, audit, notes) in a home of its own, never in a Hermes install of this machine.
 // Left alone when the person set HERMES_HOME, or attached the shell to a backend they run themselves.
@@ -157,8 +200,33 @@ for (const line of primary && !osEnv('CONFIG_DIR') ? migrateShellConfig(process.
 }
 
 const backend = new BackendManager(coreLocation)
+/** The engines registered once the app is ready (DSH driven over ACP): stopped with the rest when Jarod-OS quits. */
+let engines: { stop: () => Promise<void> } | null = null
+
+if (backendChoice) {
+  log('engines', `cockpit engine from Settings: ${backendChoice}`)
+}
 const externalBackups = new ExternalBackupService({
   configDir: shellConfigDir(),
+  // G4 : l'archive chiffrée restic ; clé rangée par DPAPI (safeStorage) dans le dossier de configuration, jamais sauvegardé.
+  restic: service =>
+    new ResticArchive({
+      binary: () => resticBinary(),
+      keys: new ResticKeyStore(path.join(shellConfigDir(), 'restic-key.bin'), {
+        available: () => safeStorage.isEncryptionAvailable(),
+        encrypt: plain => safeStorage.encryptString(plain),
+        decrypt: blob => safeStorage.decryptString(blob)
+      }),
+      settings: () => service.resticSettings(),
+      save: next => service.saveRestic(next),
+      instance: () => service.instance(),
+      saveDialog: async defaultName => {
+        const options = { title: 'Feuille de récupération du dépôt restic', defaultPath: path.join(app.getPath('documents'), defaultName), filters: [{ name: 'Texte', extensions: ['txt'] }] }
+        const picked = await (mainWindow ? dialog.showSaveDialog(mainWindow, options) : dialog.showSaveDialog(options))
+
+        return picked.canceled || !picked.filePath ? null : picked.filePath
+      }
+    }),
   isCoreRunning: () => ['ready', 'starting', 'resolving', 'restarting'].includes(backend.getState().phase),
   stopCore: () => backend.stop(),
   startCore: () => void backend.start(),
@@ -614,8 +682,13 @@ function registerCoreIpc(): void {
       }
     }
 
-    // Every surface window sees the same preferences.
-    for (const win of BrowserWindow.getAllWindows()) {
+    if ('miniWindow' in patch) {
+      mini.setEnabled(next.miniWindow === true)
+      tray.refresh()
+    }
+
+    // Every surface window sees the same preferences (not the mini window: it only gets its summary).
+    for (const win of shellWindows()) {
       if (win.webContents !== event.sender) {
         win.webContents.send(IPC.prefsChanged, next)
       }
@@ -677,6 +750,17 @@ function registerCoreIpc(): void {
   registerSandboxesIpc()
   registerEnvironmentsIpc()
   registerVmsIpc()
+  engines = registerEnginesIpc({
+    backend,
+    coreLocation,
+    configDir: shellConfigDir(),
+    broadcast: (channel, payload) => {
+      for (const win of shellWindows()) {
+        win.webContents.send(channel, payload)
+      }
+    },
+    relaunch: () => relaunch(false)
+  })
   registerNetworkIpc(network)
   registerRemoteMachinesIpc(network)
   registerUpdatesCheckIpc(shellConfigDir(), backendGate)
@@ -769,6 +853,8 @@ function attachMainWindow(win: BrowserWindow): void {
   win.on('closed', () => {
     if (mainWindow === win) {
       mainWindow = null
+      // Sans fenêtre principale, la mini-fenêtre n'a plus rien à montrer — et l'application doit pouvoir se fermer.
+      mini.setEnabled(false)
     }
   })
 }
@@ -826,12 +912,25 @@ app.whenReady().then(async () => {
   startEventSources()
   switches.start()
   backend.onState(state => {
-    for (const win of BrowserWindow.getAllWindows()) {
+    for (const win of shellWindows()) {
       win.webContents.send(IPC.backendState, state)
     }
   })
   createWindow()
   tray.start(trayLanguage(readPrefs().language, app.getLocale()))
+  mini.setEnabled(readPrefs().miniWindow === true)
+  // Le résumé pour la mini-fenêtre : envoyé par la fenêtre principale SEULEMENT (en plus du contrôle d'émetteur), re-validé ici.
+  ipcMain.on(IPC.miniState, (event, raw: unknown) => {
+    if (!mainWindow || event.sender !== mainWindow.webContents) {
+      return
+    }
+
+    const summary = normalizeMiniSummary(raw)
+
+    if (summary) {
+      mini.push(summary)
+    }
+  })
   // Cmd+Ctrl+F is the standard macOS fullscreen toggle; register it as a local shortcut so the
   // user can always leave the environment. Only this shortcut follows focus: the voice hotkey
   // (ipc/voice.ts) must keep working while another app is in front.
@@ -895,6 +994,7 @@ app.on('before-quit', event => {
   // A backup in progress is cancelled (its unfinished folder removed): quitting is never held up by it.
   externalBackups.stop()
   tray.stop()
+  mini.setEnabled(false)
   plugins.stop()
   emojiPanel?.stop()
   control?.stop()
@@ -903,5 +1003,5 @@ app.on('before-quit', event => {
   notifications?.stop()
   panels?.stop()
   appHost?.stop()
-  void Promise.allSettled([backend.stop(), pinokio.stop()]).finally(() => app.quit())
+  void Promise.allSettled([backend.stop(), pinokio.stop(), engines?.stop()]).finally(() => app.quit())
 })

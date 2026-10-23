@@ -10,7 +10,12 @@
  * `GatewayClientOptions.socketFactory` : c'est le point d'insertion, sans toucher à l'amont.
  *
  * Doit rester aligné sur `jarod-core/packages/cli/src/gateway/ws.ts` (`WS_PROTOCOL` / `WS_TOKEN_PREFIX`).
+ *
+ * Exception : un backend Hermes (`wsAuth: 'query'`) ne connaît pas ce sous-protocole et n'accepte en local que
+ * `?token=` (vérifié sur v0.22.4) ; sans cette forme, le shell ne pouvait plus s'y connecter.
  */
+import type { GatewayAuth } from '../../shared/ipc.ts'
+
 export const GATEWAY_PROTOCOL = 'jarod-gw'
 export const GATEWAY_TOKEN_PREFIX = 'jarod.token.'
 
@@ -29,4 +34,27 @@ export function gatewayProtocols(token: string | null | undefined): string[] {
   }
 
   return [GATEWAY_PROTOCOL, `${GATEWAY_TOKEN_PREFIX}${token}`]
+}
+
+/** L'URL et les sous-protocoles d'un socket de la passerelle, selon la forme que le backend accepte. */
+export function gatewaySocketTarget(url: string, token: string | null | undefined, auth: GatewayAuth = 'subprotocol'): { url: string; protocols?: string[] } {
+  if (auth === 'subprotocol') {
+    return { url, protocols: gatewayProtocols(token) }
+  }
+
+  if (!token) {
+    return { url }
+  }
+
+  const withToken = new URL(url)
+  withToken.searchParams.set('token', token)
+
+  return { url: withToken.toString() }
+}
+
+/** Ouvre ce socket : `new WebSocket` sans sous-protocole quand il n'y en a pas (un `[]` serait refusé par certains serveurs). */
+export function openGatewaySocket(url: string, token: string | null | undefined, auth?: GatewayAuth): WebSocket {
+  const target = gatewaySocketTarget(url, token, auth)
+
+  return target.protocols ? new WebSocket(target.url, target.protocols) : new WebSocket(target.url)
 }

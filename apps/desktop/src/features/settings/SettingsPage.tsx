@@ -1,5 +1,5 @@
 import { useStore } from '@nanostores/react'
-import { IconAccessible, IconApps, IconBell, IconCircleCheckFilled, IconPuzzle, IconDatabase, IconGauge, IconArchive, IconBolt, IconBrain, IconDeviceMobile, IconFileSearch, IconLock, IconMessages, IconPlug, IconShieldCog, IconSparkles, IconUserCircle, IconInfoCircle, IconKey, IconListDetails, IconMicrophone, IconPalette, IconPlayerPause, IconRobot, IconSettings, IconShield, IconShieldCheck, IconRadar, IconListCheck, IconWifi } from '@tabler/icons-react'
+import { IconAccessible, IconApps, IconBell, IconCircleCheckFilled, IconCpu, IconPuzzle, IconDatabase, IconGauge, IconArchive, IconBolt, IconBrain, IconDeviceMobile, IconFileSearch, IconLock, IconMessages, IconPlug, IconShieldCog, IconSparkles, IconUserCircle, IconInfoCircle, IconKey, IconListDetails, IconMicrophone, IconPalette, IconPlayerPause, IconRobot, IconSettings, IconShield, IconShieldCheck, IconRadar, IconListCheck, IconWifi } from '@tabler/icons-react'
 import { type ComponentType, useEffect, useState } from 'react'
 import { GlassButton, PageHeader, SearchField } from '../../components/ui/glass.tsx'
 import { cn } from '../../lib/cn.ts'
@@ -21,6 +21,7 @@ import { ProvidersSection } from './sections/ProvidersSection.tsx'
 import { PluginsSection } from './sections/PluginsSection.tsx'
 import { PlatformSection } from './sections/PlatformSection.tsx'
 import { CapabilitiesSection } from './sections/CapabilitiesSection.tsx'
+import { EnginesSection } from './sections/EnginesSection.tsx'
 import { TasksSection } from './sections/TasksSection.tsx'
 import { ContextSection } from './sections/ContextSection.tsx'
 import { ArtifactsSection } from './sections/ArtifactsSection.tsx'
@@ -50,6 +51,7 @@ const SECTIONS: { id: SectionId; label: string; icon: ComponentType<{ size?: num
   { id: 'appearance', label: 'Appearance', icon: IconPalette, view: AppearanceSection },
   { id: 'software', label: 'Software', icon: IconApps, view: SoftwareSection },
   { id: 'plugins', label: 'Plugins', icon: IconPuzzle, view: PluginsSection },
+  { id: 'engines', label: 'Engines', icon: IconCpu, view: EnginesSection },
   { id: 'agents', label: 'Hermes & agents', icon: IconRobot, view: AgentsSection },
   { id: 'providers', label: 'Providers & keys', icon: IconKey, view: ProvidersSection },
   { id: 'models', label: 'Local models', icon: IconBrain, view: LocalModelsSection },

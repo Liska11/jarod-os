@@ -9,7 +9,8 @@ import {
   type ServerRequestHandler
 } from '@jarod-os/client'
 import { atom } from 'nanostores'
-import { gatewayProtocols } from '../lib/ws-auth.ts'
+import type { GatewayAuth } from '../../shared/ipc.ts'
+import { openGatewaySocket } from '../lib/ws-auth.ts'
 import { $backend } from './backend.ts'
 
 export const $connection = atom<ConnectionState>('idle')
@@ -19,6 +20,7 @@ export const $connectionEpoch = atom(0)
 
 /** Set with the backend URL, before any dial: the factory below reads it on every (re)connect. */
 let wsToken: string | null = null
+let wsAuth: GatewayAuth | undefined
 
 const client = new JsonRpcGatewayClient({
   requestIdPrefix: 'os',
@@ -27,7 +29,8 @@ const client = new JsonRpcGatewayClient({
   requestTimeoutMs: 180_000,
   // Le jeton part en sous-protocole plutôt que dans l'URL : une URL finit dans les journaux, l'historique
   // et les messages d'erreur. Un navigateur ne peut pas poser d'en-tête sur un WebSocket (voir lib/ws-auth.ts).
-  socketFactory: url => new WebSocket(url, gatewayProtocols(wsToken))
+  // Un backend Hermes ne lit que `?token=` : le gestionnaire le dit par `wsAuth`.
+  socketFactory: url => openGatewaySocket(url, wsToken, wsAuth)
 })
 
 let targetUrl: string | null = null
@@ -82,6 +85,7 @@ export function bindGatewayToBackend(): () => void {
   return $backend.subscribe(state => {
     const next = state.phase === 'ready' && state.wsUrl ? state.wsUrl : null
     wsToken = next ? state.wsToken ?? null : null
+    wsAuth = next ? state.wsAuth : undefined
 
     if (next === targetUrl) {
       return

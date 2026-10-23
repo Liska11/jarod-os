@@ -1,5 +1,23 @@
 import { describe, expect, it } from 'vitest'
-import { GATEWAY_PROTOCOL, gatewayProtocols } from './ws-auth.ts'
+import { GATEWAY_PROTOCOL, gatewayProtocols, gatewaySocketTarget } from './ws-auth.ts'
+
+describe('gatewaySocketTarget', () => {
+  it('garde le jeton hors de l’URL pour le noyau Jarod (défaut)', () => {
+    expect(gatewaySocketTarget('ws://127.0.0.1:9/api/ws', 'abc_DEF-123')).toEqual({ url: 'ws://127.0.0.1:9/api/ws', protocols: [GATEWAY_PROTOCOL, 'jarod.token.abc_DEF-123'] })
+  })
+
+  it('met le jeton en `?token=` pour un backend Hermes, sans sous-protocole', () => {
+    expect(gatewaySocketTarget('ws://127.0.0.1:9/api/ws', 'abc_DEF-123', 'query')).toEqual({ url: 'ws://127.0.0.1:9/api/ws?token=abc_DEF-123' })
+  })
+
+  it('encode un jeton Hermes et conserve les paramètres existants', () => {
+    expect(gatewaySocketTarget('ws://127.0.0.1:9/api/ws?x=1', 'a+b/c=', 'query').url).toBe('ws://127.0.0.1:9/api/ws?x=1&token=a%2Bb%2Fc%3D')
+  })
+
+  it('n’ajoute rien sans jeton', () => {
+    expect(gatewaySocketTarget('ws://127.0.0.1:9/api/ws', null, 'query')).toEqual({ url: 'ws://127.0.0.1:9/api/ws' })
+  })
+})
 
 describe('gatewayProtocols', () => {
   it('offre le nom du protocole puis le jeton en sous-protocole', () => {

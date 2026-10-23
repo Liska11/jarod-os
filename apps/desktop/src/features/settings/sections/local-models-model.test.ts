@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { contextAdvice, contextProblem, draftOf, fitSummary, formatBytes, formatCount, formatDuration, hfErrorText, isHfCancelled, percent, presetFromDraft, presetProblems } from './local-models-model.ts'
+import { contextAdvice, contextProblem, draftOf, fitSummary, formatBytes, formatCount, formatDuration, hfErrorText, IDLE_UNLOAD_CHOICES, idleUnloadLabel, idleUnloadOptions, isHfCancelled, percent, presetFromDraft, presetProblems } from './local-models-model.ts'
 
 describe('formatting', () => {
   it('bytes in binary units, one decimal under 100, none above; unknown is a dash', () => {
@@ -118,5 +118,21 @@ describe('preset draft', () => {
     ])
     expect(presetProblems({ ...draftOf({ ...preset, extraArgs: [] }), ctxSize: '', gpuLayers: '-1' })).toEqual(['Context size: required.'])
     expect(presetProblems({ ...draftOf({ ...preset, extraArgs: [] }), name: 'x'.repeat(61) })).toEqual(['Name: 1 to 60 characters.'])
+  })
+})
+
+describe('unload after inactivity', () => {
+  it('offers never and a few delays; a value set another way (45 min) is kept in the list, an impossible one is not', () => {
+    expect(IDLE_UNLOAD_CHOICES[0]).toBe(0)
+    expect(idleUnloadOptions(15)).toEqual([...IDLE_UNLOAD_CHOICES])
+    expect(idleUnloadOptions(45)).toEqual([0, 5, 15, 30, 45, 60, 120, 480])
+    expect(idleUnloadOptions(5000)).toEqual([...IDLE_UNLOAD_CHOICES])
+  })
+
+  it('reads as never, minutes, hours, or both', () => {
+    expect(idleUnloadLabel(0)).toBe('Never')
+    expect(idleUnloadLabel(15)).toBe('15 min')
+    expect(idleUnloadLabel(120)).toBe('2 h')
+    expect(idleUnloadLabel(90)).toBe('1 h 30 min')
   })
 })

@@ -133,7 +133,8 @@ export interface SpawnPlan {
  * input closes (the only clean stop on Windows, and it never outlives the app). Provider keys (OPENAI_API_KEY…) pass through from the environment.
  */
 export function jarodSpawnPlan(core: JarodCore, options: { token: string; dataDir: string; workspace: string; env: NodeJS.ProcessEnv }): SpawnPlan {
-  const env: NodeJS.ProcessEnv = { ...options.env, JAROD_HOME: path.join(options.dataDir, 'profile'), JAROD_GATEWAY_TOKEN: options.token }
+  // JAROD_SHELL_EXE : le pilote de fenêtres de l'agent refuse les fenêtres de ce processus (réglages, confirmations natives).
+  const env: NodeJS.ProcessEnv = { ...options.env, JAROD_HOME: path.join(options.dataDir, 'profile'), JAROD_GATEWAY_TOKEN: options.token, JAROD_SHELL_EXE: path.basename(process.execPath) }
 
   if (core.runAsNode) {
     env.ELECTRON_RUN_AS_NODE = '1'
