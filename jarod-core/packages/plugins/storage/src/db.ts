@@ -576,6 +576,40 @@ export const MIGRATIONS: string[] = [
   );
   CREATE INDEX IF NOT EXISTS artifacts_created ON artifacts(created_at);
   `,
+  /**
+   * V-18 : historique de la mémoire. Chaque ajout, modification ou retrait d'une ligne de `memories` — par l'agent, `refine`, l'écran, un
+   * import, peu importe l'écrivain — laisse une ligne ici, écrite par des déclencheurs SQL (rien à oublier côté code). Borné aux 2 000
+   * dernières lignes ; vidable (`MemoryService.purgeHistory`) : un souvenir retiré exprès ne doit pas survivre ici contre l'avis de la
+   * personne. Additive, rejouable (IF NOT EXISTS) ; les lignes déjà en base n'ont pas d'historique (il commence à la migration).
+   */
+  `
+  CREATE TABLE IF NOT EXISTS memory_history (
+    seq INTEGER PRIMARY KEY AUTOINCREMENT,
+    memory_id TEXT NOT NULL,
+    action TEXT NOT NULL,
+    type_before TEXT,
+    type_after TEXT,
+    content_before TEXT,
+    content_after TEXT,
+    at INTEGER NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS memory_history_memory ON memory_history(memory_id, seq);
+  CREATE TRIGGER IF NOT EXISTS memories_history_ai AFTER INSERT ON memories BEGIN
+    INSERT INTO memory_history (memory_id, action, type_after, content_after, at) VALUES (new.id, 'add', new.type, new.content, new.updated_at);
+  END;
+  CREATE TRIGGER IF NOT EXISTS memories_history_au AFTER UPDATE OF content, type ON memories
+    WHEN old.content IS NOT new.content OR old.type IS NOT new.type BEGIN
+    INSERT INTO memory_history (memory_id, action, type_before, type_after, content_before, content_after, at)
+      VALUES (new.id, 'update', old.type, new.type, old.content, new.content, new.updated_at);
+  END;
+  CREATE TRIGGER IF NOT EXISTS memories_history_ad AFTER DELETE ON memories BEGIN
+    INSERT INTO memory_history (memory_id, action, type_before, content_before, at)
+      VALUES (old.id, 'delete', old.type, old.content, CAST(strftime('%s', 'now') AS INTEGER) * 1000);
+  END;
+  CREATE TRIGGER IF NOT EXISTS memory_history_cap AFTER INSERT ON memory_history BEGIN
+    DELETE FROM memory_history WHERE seq <= new.seq - 2000;
+  END;
+  `,
 ];
 
 const SQLITE_HEADER = "SQLite format 3\u0000";
