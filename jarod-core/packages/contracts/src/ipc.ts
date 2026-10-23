@@ -49,6 +49,10 @@ export const JAROD_INVOKE_CHANNELS = [
   "plugins-list",
   "plugin-set-enabled",
   "plugin-set-trust",
+  // V-06 (2026-10-23) : approuver (signer) le contenu d'un plugin, revenir à la version approuvée précédente, retirer l'approbation.
+  "plugin-approve",
+  "plugin-rollback",
+  "plugin-revoke",
   // Coffre d'identifiants : la valeur part du renderer vers le main et n'en revient jamais.
   "vault-list",
   "vault-save",

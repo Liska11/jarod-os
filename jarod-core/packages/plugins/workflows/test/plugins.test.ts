@@ -12,6 +12,7 @@ import type { LlmService } from "@jarod/plugin-llm";
 import { WebhookService } from "@jarod/plugin-scheduler";
 import { type Db, memoryKeyStore } from "@jarod/plugin-storage";
 import { afterEach, describe, expect, it } from "vitest";
+import { approveOnReload } from "./approve.js";
 import { EXAMPLE_PLUGIN, type PluginHost } from "../src/index.js";
 
 afterEach(cleanup);
@@ -47,7 +48,7 @@ export async function newCore() {
   plugins.workflows = { seed: false, load: false };
   const app = (await bootApp(plugins)) as unknown as { pluginHost: PluginHost; llm: LlmService; storage: { db: Db } };
   const webhooks = new WebhookService({ db: app.storage.db, port: 0, router: app.llm.router, onHook: () => {} });
-  const core = { plugins: app.pluginHost, router: app.llm.router, webhooks, dispose: async () => app.pluginHost.unloadAll() };
+  const core = { plugins: approveOnReload(app.pluginHost), router: app.llm.router, webhooks, dispose: async () => app.pluginHost.unloadAll() };
   return { core, dataDir, app };
 }
 

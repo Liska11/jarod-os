@@ -13,7 +13,7 @@
 import { fork } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
-import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
+import { cp, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { CommandContext, CommandRegistry, CommandResult } from "@jarod/plugin-agent";
@@ -21,6 +21,7 @@ import type { RouteHandler, RouteReply, Router } from "@jarod/plugin-llm";
 import { Router as DefaultRouter } from "@jarod/plugin-llm";
 import type { NotificationService, SettingsService } from "@jarod/plugin-storage";
 import type { ToolContext, ToolDef, ToolRegistry } from "@jarod/plugin-tools";
+import type { PluginGovernance } from "./governance.js";
 
 /** Ce qu'un plugin peut déclarer. Toute autre valeur rend le manifeste invalide. */
 export const PLUGIN_PERMISSIONS = ["tools", "commands", "hooks", "routes", "pages", "notify", "network"] as const;
@@ -39,7 +40,8 @@ export interface PluginManifest {
 
 export interface PluginInfo extends PluginManifest {
   enabled: boolean;
-  state: "active" | "disabled" | "error";
+  /** `blocked` (V-06) : le contenu n'est pas celui qu'une signature de confiance a approuvé ; il ne tourne pas, `error` dit pourquoi. */
+  state: "active" | "disabled" | "error" | "blocked";
   error?: string;
   tools: string[];
   /** Les routes que ce plugin a prises, et les pages qu'il déclare. */
@@ -122,6 +124,31 @@ export async function digestOf(root: string): Promise<string> {
   };
   await walk(root, "");
   return h.digest("hex");
+}
+
+/**
+ * V-06 — garde une COPIE de la version approuvée (tout sauf `data/`) sous `<versions>/<empreinte>/` : c'est ce qui permet le retour arrière et
+ * l'annulation d'une mise à jour qui échoue, même après que le dossier du plugin a été modifié.
+ */
+export async function saveVersion(root: string, versions: string, digest: string): Promise<void> {
+  const dest = join(versions, digest);
+  if (existsSync(dest)) return;
+  await mkdir(dest, { recursive: true });
+  for (const e of await readdir(root, { withFileTypes: true })) {
+    if (e.name === "data") continue;
+    await cp(join(root, e.name), join(dest, e.name), { recursive: true, verbatimSymlinks: true });
+  }
+}
+
+/** Remet dans `root` la version gardée sous cette empreinte (le dossier `data/` du plugin est conservé) ; faux si elle n'est pas gardée. */
+export async function restoreVersion(root: string, versions: string, digest: string): Promise<boolean> {
+  const src = join(versions, digest);
+  if (!existsSync(src)) return false;
+  for (const e of await readdir(root, { withFileTypes: true })) {
+    if (e.name !== "data") await rm(join(root, e.name), { recursive: true, force: true });
+  }
+  for (const e of await readdir(src, { withFileTypes: true })) await cp(join(src, e.name), join(root, e.name), { recursive: true, verbatimSymlinks: true });
+  return (await digestOf(root)) === digest;
 }
 
 /** Un processus de plugin, vu de l'hôte : `utilityProcess` (Electron) et `ChildProcess` s'y ramènent. */
@@ -294,6 +321,11 @@ export interface IsolationOptions {
   callTimeoutMs?: number;
   /** Délai de démarrage + `activate` ; défaut 15 s. */
   activateTimeoutMs?: number;
+  /**
+   * V-06 — l'admission par la plateforme (plugin-platform, câblée par `apply`) : rend `null` si ce contenu exact est approuvé et signé, sinon la
+   * raison ; le plugin reste alors `blocked`, son code n'est jamais lancé. Absente seulement dans un test qui construit l'hôte à la main.
+   */
+  admit?: (plugin: { id: string; version: string; permissions: PluginPermission[]; digest: string }) => string | null;
 }
 
 /**
@@ -302,10 +334,13 @@ export interface IsolationOptions {
  */
 export class PluginHost {
   private loaded = new Map<string, Loaded>();
+  /** V-06 : l'approbation par la plateforme (posée par `apply` quand plugin-platform est là) ; l'écran et `/plugin` passent par elle. */
+  governance: PluginGovernance | null = null;
   private readonly spawnIsolate: IsolateSpawner;
   private readonly runner: string;
   private readonly callTimeoutMs: number;
   private readonly activateTimeoutMs: number;
+  private readonly admit: IsolationOptions["admit"];
 
   constructor(
     readonly dir: string,
@@ -319,6 +354,7 @@ export class PluginHost {
     this.runner = isolation.runner ?? RUNNER_PATH;
     this.callTimeoutMs = isolation.callTimeoutMs ?? 60_000;
     this.activateTimeoutMs = isolation.activateTimeoutMs ?? 15_000;
+    this.admit = isolation.admit;
   }
 
   async seed(): Promise<void> {
@@ -338,63 +374,114 @@ export class PluginHost {
     await mkdir(this.dir, { recursive: true });
     const disabled = new Set(this.settings.get("disabledPlugins"));
     for (const entry of await readdir(this.dir, { withFileTypes: true })) {
-      if (!entry.isDirectory()) continue;
-      const root = join(this.dir, entry.name);
-      const manifestPath = join(root, "plugin.json");
-      if (!existsSync(manifestPath)) continue;
-      let manifest: PluginManifest;
-      try {
-        manifest = validateManifest(JSON.parse(await readFile(manifestPath, "utf8")));
-      } catch (e) {
-        const info: PluginInfo = {
-          id: entry.name,
-          name: entry.name,
-          version: "?",
-          main: "",
-          enabled: false,
-          state: "error",
-          error: `Manifeste invalide : ${(e as Error).message}`,
-          tools: [],
-          routes: [],
-          pages: [],
-          commands: [],
-          permissions: [],
-          pid: null,
-          digest: "",
-          trusted: [],
-        };
-        this.loaded.set(entry.name, this.entry(info, root));
-        continue;
+      if (entry.isDirectory()) await this.loadOne(entry.name, disabled);
+    }
+    return this.list();
+  }
+
+  /**
+   * V-06 — recharge UN plugin (celui que la plateforme active, désactive, met à jour ou ramène en arrière) sans redémarrer les autres : ni
+   * leurs processus, ni leurs notifications d'erreur. Le dossier est celui où le plugin a été trouvé, sinon `<plugins>/<id>`.
+   */
+  async refresh(id: string): Promise<PluginInfo[]> {
+    const current = this.loaded.get(id);
+    const folder = current ? relative(this.dir, current.root) : id;
+    if (current) {
+      await this.stop(current).catch(() => undefined);
+      this.removeContributions(id);
+      this.loaded.delete(id);
+    }
+    if (existsSync(join(this.dir, folder))) await this.loadOne(folder, new Set(this.settings.get("disabledPlugins")));
+    return this.list();
+  }
+
+  /**
+   * V-06 — charge seulement les dossiers APPARUS depuis le dernier chargement (sans toucher aux autres) : un plugin déposé se voit tout de suite
+   * à l'écran, bloqué tant qu'il n'est pas approuvé. Un dossier disparu est retiré de la liste. Un plugin dont le CONTENU a changé est rechargé
+   * seul : s'il n'est plus celui qui a été approuvé, il s'arrête et passe « bloqué » tout de suite, sans attendre le prochain démarrage.
+   */
+  async scanNew(): Promise<PluginInfo[]> {
+    await mkdir(this.dir, { recursive: true });
+    const known = new Set([...this.loaded.values()].map((l) => relative(this.dir, l.root)));
+    const disabled = new Set(this.settings.get("disabledPlugins"));
+    for (const entry of await readdir(this.dir, { withFileTypes: true })) {
+      if (entry.isDirectory() && !known.has(entry.name)) await this.loadOne(entry.name, disabled);
+    }
+    for (const [id, l] of [...this.loaded]) {
+      if (!existsSync(l.root)) {
+        await this.stop(l).catch(() => undefined);
+        this.removeContributions(id);
+        this.loaded.delete(id);
+      } else if (l.info.digest && (await digestOf(l.root)) !== l.info.digest) {
+        await this.refresh(id);
       }
+    }
+    return this.list();
+  }
+
+  /** Lit, admet et lance le plugin du dossier `folder` (le corps de `reload`). */
+  private async loadOne(folder: string, disabled: ReadonlySet<string>): Promise<void> {
+    const root = join(this.dir, folder);
+    const manifestPath = join(root, "plugin.json");
+    if (!existsSync(manifestPath)) return;
+    let manifest: PluginManifest;
+    try {
+      manifest = validateManifest(JSON.parse(await readFile(manifestPath, "utf8")));
+    } catch (e) {
       const info: PluginInfo = {
-        ...manifest,
-        enabled: !disabled.has(manifest.id),
-        state: "disabled",
+        id: folder,
+        name: folder,
+        version: "?",
+        main: "",
+        enabled: false,
+        state: "error",
+        error: `Manifeste invalide : ${(e as Error).message}`,
         tools: [],
         routes: [],
         pages: [],
         commands: [],
-        permissions: [...(manifest.permissions ?? [])],
+        permissions: [],
         pid: null,
-        digest: await digestOf(root),
+        digest: "",
         trusted: [],
       };
-      this.dropStaleTrust(info);
-      const loaded = this.entry(info, root);
-      this.loaded.set(manifest.id, loaded);
-      if (!info.enabled) continue;
-      try {
-        await this.activate(root, loaded);
-        info.state = "active";
-      } catch (e) {
-        info.state = "error";
-        info.error = (e as Error).message;
-        this.removeContributions(manifest.id);
-        await this.stop(loaded);
-        this.notifications.add("error", `Plugin ${manifest.name} en erreur`, info.error);
-      }
+      this.loaded.set(folder, this.entry(info, root));
+      return;
     }
-    return this.list();
+    const info: PluginInfo = {
+      ...manifest,
+      enabled: !disabled.has(manifest.id),
+      state: "disabled",
+      tools: [],
+      routes: [],
+      pages: [],
+      commands: [],
+      permissions: [...(manifest.permissions ?? [])],
+      pid: null,
+      digest: await digestOf(root),
+      trusted: [],
+    };
+    this.dropStaleTrust(info);
+    const loaded = this.entry(info, root);
+    this.loaded.set(manifest.id, loaded);
+    // Désactivé par la personne : « disabled », approuvé ou non (l'écran montre l'approbation à part). Sinon, l'admission décide.
+    if (!info.enabled) return;
+    const refusal = this.admit?.({ id: info.id, version: info.version, permissions: info.permissions, digest: info.digest }) ?? null;
+    if (refusal) {
+      info.state = "blocked";
+      info.error = refusal;
+      return;
+    }
+    try {
+      await this.activate(root, loaded);
+      info.state = "active";
+    } catch (e) {
+      info.state = "error";
+      info.error = (e as Error).message;
+      this.removeContributions(manifest.id);
+      await this.stop(loaded);
+      this.notifications.add("error", `Plugin ${manifest.name} en erreur`, info.error);
+    }
   }
 
   /** Vrai si l'utilisateur a classé cet outil « sans accord » POUR LE CONTENU ACTUEL du plugin. */
@@ -464,6 +551,14 @@ export class PluginHost {
     return tools;
   }
 
+  /** V-06 : inscrit seulement le choix de la personne (`disabledPlugins`), sans rien recharger : la gouvernance relance ce plugin seul. */
+  markEnabled(id: string, enabled: boolean): void {
+    const disabled = new Set(this.settings.get("disabledPlugins"));
+    if (enabled) disabled.delete(id);
+    else disabled.add(id);
+    this.settings.set("disabledPlugins", [...disabled]);
+  }
+
   async setEnabled(id: string, enabled: boolean): Promise<PluginInfo[]> {
     const disabled = new Set(this.settings.get("disabledPlugins"));
     if (enabled) disabled.delete(id);
@@ -520,6 +615,11 @@ export class PluginHost {
    */
   service<T = unknown>(_id: string): T | null {
     return null;
+  }
+
+  /** V-06 : le dossier du plugin (celui où il a été trouvé ; sinon `<plugins>/<id>`). */
+  rootOf(id: string): string {
+    return this.loaded.get(id)?.root ?? join(this.dir, id);
   }
 
   /** Le dossier que `api.dataDir` a donné au plugin (`<plugins>/<id>/data`), ou null s'il n'est pas chargé. */

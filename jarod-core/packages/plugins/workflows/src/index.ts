@@ -7,13 +7,16 @@
  * Config : `seed`, `load` (défaut vrai ; le CLI sans `init()` les coupe), `spawn` (desktop :
  * utilityProcess), `callTimeoutMs`.
  */
+import { existsSync } from "node:fs";
 import { join } from "node:path";
 import type { AgentRuntime } from "@jarod/plugin-agent";
 import type {} from "@jarod/plugin-llm";
 import type {} from "@jarod/plugin-storage";
 import type { Context } from "cordis";
-import { type IsolateSpawner, PluginHost } from "./plugins.js";
+import { type PlatformPort, PluginGovernance } from "./governance.js";
+import { EXAMPLE_PLUGIN, type IsolateSpawner, PluginHost } from "./plugins.js";
 
+export * from "./governance.js";
 export * from "./plugins.js";
 
 declare module "cordis" {
@@ -31,7 +34,8 @@ export interface WorkflowsConfig {
 }
 
 export const name = "workflows";
-export const inject = ["storage", "llm", "agent"];
+// V-06 : la plateforme (ordre 88, chargée avant) décide quels plugins tournent ; absente, aucun ne tourne.
+export const inject = { storage: { required: true }, llm: { required: true }, agent: { required: true }, plugins: { required: false } };
 
 /** `/plugin` : liste, trust, distrust. Le texte dit ce qui est réellement enregistré, pas ce que le plugin prétend. */
 function pluginCommand(host: PluginHost, runtime: AgentRuntime, args: string): string {
@@ -65,7 +69,11 @@ function pluginCommand(host: PluginHost, runtime: AgentRuntime, args: string): s
 
 export async function apply(ctx: Context, config: WorkflowsConfig = {}): Promise<void> {
   const runtime = (ctx as unknown as { agent: AgentRuntime }).agent;
+  const platform = ctx.get("plugins") as unknown as PlatformPort | undefined;
+  let governance: PluginGovernance | null = null;
   const host = new PluginHost(join(ctx.storage.dataDir, "plugins"), runtime.tools, runtime.commands, ctx.storage.settings, ctx.storage.notifications, {
+    // Fail-closed : sans plateforme, aucun plugin ne tourne (rien ne dirait si son contenu est celui qui a été approuvé).
+    admit: (p) => (governance ? governance.admit(p) : "la plateforme de plugins n'est pas chargée : aucun plugin ne tourne sans elle"),
     ...(config?.spawn ? { spawn: config.spawn } : {}),
     ...(config?.callTimeoutMs ? { callTimeoutMs: config.callTimeoutMs } : {}),
     ...(config?.activateTimeoutMs ? { activateTimeoutMs: config.activateTimeoutMs } : {}),
@@ -91,7 +99,16 @@ export async function apply(ctx: Context, config: WorkflowsConfig = {}): Promise
     },
     "workflows:plugins",
   );
+  if (platform) {
+    governance = new PluginGovernance(host, platform, join(ctx.storage.dataDir, "plugin-versions"));
+    host.governance = governance;
+  }
   ctx.provide("pluginHost", host);
+  const firstRun = !existsSync(host.dir);
   if (config?.seed ?? true) await host.seed();
-  if (config?.load ?? true) await host.reload();
+  if (config?.load ?? true) {
+    await host.reload();
+    // Le plugin d'exemple que Jarod pose au tout premier lancement : approuvé d'office (il était activé d'office avant V-06).
+    if (firstRun && (config?.seed ?? true) && governance) await governance.approveSeeded(EXAMPLE_PLUGIN.manifest.id).catch(() => undefined);
+  }
 }

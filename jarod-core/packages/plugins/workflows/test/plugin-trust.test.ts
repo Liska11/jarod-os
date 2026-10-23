@@ -6,6 +6,7 @@ import { bootApp, cleanup, discoverPlugins, tempDir } from "@jarod/kernel/testin
 import { executeGuardedTool } from "@jarod/plugin-agent";
 import { memoryKeyStore } from "@jarod/plugin-storage";
 import { afterEach, describe, expect, it } from "vitest";
+import { approveOnReload } from "./approve.js";
 import { digestOf, type PluginHost } from "../src/index.js";
 
 afterEach(cleanup);
@@ -39,7 +40,7 @@ async function boot() {
   plugins.agent = { runtimeLock: false, curatorTimer: false };
   plugins.workflows = { seed: false, load: false };
   const app = (await bootApp(plugins)) as Any;
-  const host: PluginHost = app.pluginHost;
+  const host: PluginHost = approveOnReload(app.pluginHost);
   return { app, host, dataDir, tools: app.agent.tools, settings: app.agent.settings };
 }
 
@@ -116,7 +117,7 @@ describe("un outil de plugin est dangereux tant que l'utilisateur ne l'a pas cla
     expect(host.list()[0]!.trusted).toEqual(["outils_lire"]);
   });
 
-  it("le classement est lié au CONTENU : un plugin modifié (même nom, même version) redevient dangereux, et l'utilisateur en est prévenu", async () => {
+  it("le classement est lié au CONTENU : un plugin modifié (même nom, même version) perd son classement, et l'utilisateur en est prévenu ; depuis V-06 il ne tourne même plus", async () => {
     const { app, host, dataDir, tools, settings } = await boot();
     const root = installTools(dataDir, "outils");
     await host.reload();
@@ -127,8 +128,10 @@ describe("un outil de plugin est dangereux tant que l'utilisateur ne l'a pas cla
     appendFileSync(join(root, "index.js"), "\n// modifié après le classement\n");
     await host.reload();
     expect(host.list()[0]!.digest).not.toBe(before);
-    expect(tools.get("outils_lire").dangerous).toBe(true);
-    expect(tools.get("outils_ecrire").dangerous).toBe(true);
+    // V-06 : un contenu modifié depuis son approbation n'est plus lancé du tout — ses outils ne sont plus enregistrés.
+    expect(host.list()[0]).toMatchObject({ state: "blocked", error: expect.stringMatching(/contenu modifié depuis l'approbation/) });
+    expect(tools.get("outils_lire")).toBeUndefined();
+    expect(tools.get("outils_ecrire")).toBeUndefined();
     expect(settings.get("pluginTrust")).toEqual({});
     const note = app.storage.notifications.list().find((n: { title: string }) => /confiance retirée/.test(n.title));
     expect(note?.body).toMatch(/outils_lire/);
