@@ -40,7 +40,8 @@ declare module "cordis" {
 }
 
 export const name = "gateways";
-export const inject = ["storage", "llm", "agent"];
+// V-07 : la quarantaine (ordre 34, chargée avant) admet chaque fichier venu de l'extérieur ; absente = tout fichier refusé, jamais admis sans analyse.
+export const inject = { storage: { required: true }, llm: { required: true }, agent: { required: true }, quarantine: { required: false } };
 export const Config = GatewaysConfig;
 
 export function apply(ctx: Context, input: GatewaysConfig): void {
@@ -51,6 +52,10 @@ export function apply(ctx: Context, input: GatewaysConfig): void {
     // `core.transcribe` (core.ts:1112-1114) : même fonction que `ctx.voice.transcribe`.
     transcribe: (audio, mime) => transcribe(ctx.llm.providers, ctx.storage.settings, audio, mime),
     options: config,
+    admit: (data, label, provenance) => {
+      const quarantine = ctx.get("quarantine") as unknown as { admitBytes?: (d: Buffer, l: string, p: { source: string }) => { admitted: boolean; reason?: string } } | undefined;
+      return quarantine?.admitBytes ? quarantine.admitBytes(data, label, provenance) : { admitted: false, reason: "la quarantaine n'est pas chargée" };
+    },
   });
   hub.on("gateway", (st: GatewayStatus) => ctx.emit("gateway:status", st));
   // `/pair` (core.ts:2025-2045) vit avec l'appairage.

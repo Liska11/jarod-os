@@ -51,6 +51,12 @@ export interface GatewayHubDeps {
   /** Speech-to-text (`core.transcribe`, core.ts:1112-1114). */
   transcribe(audio: Buffer, mime: string): Promise<string>;
   options?: GatewaysConfig;
+  /**
+   * V-07 — l'admission par la quarantaine de chaque fichier venu de l'extérieur (messagerie, téléphone) avant qu'il devienne une pièce
+   * jointe. Fournie par le plugin (`ctx.quarantine`, ou un refus systématique si la quarantaine manque) ; absente seulement dans un test
+   * qui construit le hub à la main.
+   */
+  admit?: (data: Buffer, label: string, provenance: { source: string }) => { admitted: boolean; reason?: string };
 }
 
 /** Ce que le cœur émettait (`core.emit("gateway", st)`) ; plugin-gateways le relaie en `gateway:status`. */
@@ -66,11 +72,13 @@ export class GatewayHub extends Emitter<{ gateway: GatewayStatus; remote: Remote
   private readonly live: Live = { telegram: null, discord: null, slack: null, email: null, whatsapp: null };
   private readonly core: AgentRuntime;
   private readonly transcribeWith: GatewayHubDeps["transcribe"];
+  private readonly admit: GatewayHubDeps["admit"];
 
   constructor(d: GatewayHubDeps) {
     super();
     this.core = d.runtime;
     this.transcribeWith = d.transcribe;
+    this.admit = d.admit;
     this.options = d.options ?? {};
     // core.ts:605-610
     this.pairing = new PairingService({
@@ -113,6 +121,13 @@ export class GatewayHub extends Emitter<{ gateway: GatewayStatus; remote: Remote
   }
   get attachments() {
     return this.core.attachments;
+  }
+
+  /** V-07 — un fichier externe devient une pièce jointe seulement si la quarantaine l'admet ; sinon une erreur qui dit pourquoi. */
+  admitAttachment(name: string, mime: string, data: Buffer, source: string): Attachment {
+    const verdict = this.admit?.(data, name, { source });
+    if (verdict && !verdict.admitted) throw new Error(`refusé par la quarantaine : ${verdict.reason ?? "non admis"}`);
+    return this.core.attachments.save(name, mime, data);
   }
   get backgroundHooks() {
     return this.core.backgroundHooks;
@@ -386,7 +401,7 @@ export class GatewayHub extends Emitter<{ gateway: GatewayStatus; remote: Remote
    * Turns files received through a gateway into attachments; voice and audio messages are
    * transcribed into text instead (when speech-to-text is configured). (core.ts:1315-1342)
    */
-  private async receiveFiles(files: IncomingFile[]): Promise<{ attachments: Attachment[]; notes: string[] }> {
+  private async receiveFiles(files: IncomingFile[], source: string): Promise<{ attachments: Attachment[]; notes: string[] }> {
     const attachments: Attachment[] = [];
     const notes: string[] = [];
     for (const f of files) {
@@ -403,7 +418,7 @@ export class GatewayHub extends Emitter<{ gateway: GatewayStatus; remote: Remote
             notes.push(`[Message vocal non transcrit : ${(e as Error).message}]`);
           }
         }
-        attachments.push(this.attachments.save(f.name, f.mime, data));
+        attachments.push(this.admitAttachment(f.name, f.mime, data, source));
       } catch (e) {
         notes.push(`[Pièce jointe « ${f.name} » ignorée : ${(e as Error).message}]`);
       }
@@ -444,7 +459,7 @@ export class GatewayHub extends Emitter<{ gateway: GatewayStatus; remote: Remote
       if (r?.action === "send" && r.payload) prompt = r.payload;
       else return r?.text ?? (r?.action ? "Commande disponible uniquement dans l'application." : "OK");
     }
-    const { attachments, notes } = await this.receiveFiles(files);
+    const { attachments, notes } = await this.receiveFiles(files, gateway);
     prompt = [prompt, ...notes].filter((p) => p.trim()).join("\n\n");
     if (!prompt && attachments.length === 0) return notes.join("\n") || "(message vide)";
     const result = await this.runAndWait(sessionId, prompt, this.backgroundHooks, attachments);

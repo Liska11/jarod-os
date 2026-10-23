@@ -22,19 +22,22 @@ export interface CoreOptions extends Omit<GatewaysConfig, "autoStart"> {
   dataDir?: string;
   keyStores?: KeyStore[];
   cipher?: Cipher;
+  /** V-07 : un autre verdict pour l'analyseur de la quarantaine (`bootApp` le règle sur « propre » par défaut). */
+  scan?: "clean" | "infected" | "unavailable";
 }
 
 /** Les champs `JarodCore.telegram`… (core.ts:270-274) : écrits, ils vont au hub. */
 const LIVE = new Set<string | symbol>(["telegram", "discord", "slack", "email", "whatsapp"]);
 
 export async function makeCore(opts: CoreOptions = {}) {
-  const { dataDir, keyStores, cipher, ...gateways } = opts;
+  const { dataDir, keyStores, cipher, scan, ...gateways } = opts;
   const plugins: Record<string, Record<string, unknown>> = {};
   for (const p of discoverPlugins()) plugins[p.name] = {};
   plugins.storage = { dataDir: dataDir ?? tempDir(), keyStores: keyStores ?? [testKeys], ...(cipher ? { cipher } : {}) };
   // Comme `new JarodCore()` sans `init()` : ni tick planifié, ni passerelle démarrée d'office.
   plugins.scheduler = { autoStart: false };
   plugins.gateways = { autoStart: false, ...gateways };
+  if (scan) plugins.quarantine = { scanner: { scan: () => ({ verdict: scan, scanner: "test" }) } };
   const app = await bootApp(plugins);
   const hub = app.gateways;
   const base = Object.assign(app.agent, { app, dispose: () => shutdown(app) });

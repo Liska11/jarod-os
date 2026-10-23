@@ -598,7 +598,7 @@ export class RemoteHost extends Emitter<{ status: RemoteStatus }> implements App
         if (data.length > MAX_REMOTE_FILE_BYTES) throw new Error("Fichier trop volumineux (4 Mo au plus)");
         if (!contentMatches(mime, data)) throw new Error("Le contenu ne correspond pas au type annoncé");
         const name = String(p.name ?? "").trim() || "fichier";
-        const attachment = core.attachments.save(name, mime, data);
+        const attachment = core.admitAttachment(name, mime, data, "phone");
         const text = String(p.text ?? "").slice(0, MAX_TEXT);
         const r = await core.submit(s.id, text, this.hooksFor(c), [attachment]);
         if (r.kind === "busy") core.attachments.deleteUnreferenced([attachment.id]);
