@@ -66,6 +66,14 @@ export function resolveRealPath(file: string, platform: NodeJS.Platform = proces
   }
 }
 
+/**
+ * Credential stores under the home folder, the same set as the core's file gate, confined shell and system tools
+ * (contracts/v1/credential-stores.reference.json; path-guard.test.ts fails when they drift). The tools that need a
+ * credential (git, aws, kubectl, ssh, docker) keep running it from the terminal: this only closes the window's own
+ * file channels, which a compromised renderer could otherwise use to read or rewrite them.
+ */
+export const CREDENTIAL_HOME_ENTRIES = ['.ssh', '.gnupg', '.aws', '.azure', '.kube', '.docker', '.config/gh', '.git-credentials', '.npmrc']
+
 /** Locations the shell never writes to itself, whatever the person asks. */
 export function protectedRoots(home: string, platform: NodeJS.Platform = process.platform, env: NodeJS.ProcessEnv = process.env): string[] {
   if (platform === 'win32') {
@@ -80,8 +88,7 @@ export function protectedRoots(home: string, platform: NodeJS.Platform = process
     const programData = env.ProgramData ?? 'C:\\ProgramData'
 
     return [
-      lib.join(home, '.ssh'),
-      lib.join(home, '.gnupg'),
+      ...CREDENTIAL_HOME_ENTRIES.map(entry => lib.join(home, ...entry.split('/'))),
       // Credential Manager, DPAPI and the certificate stores keep their blobs and master keys in these folders.
       lib.join(roaming, 'Microsoft', 'Credentials'),
       lib.join(roaming, 'Microsoft', 'Protect'),
@@ -106,7 +113,7 @@ export function protectedRoots(home: string, platform: NodeJS.Platform = process
   const hermes = env.HERMES_HOME?.trim() || path.posix.join(home, '.hermes')
 
   return [
-    path.posix.join(home, '.ssh'),
+    ...CREDENTIAL_HOME_ENTRIES.map(entry => path.posix.join(home, ...entry.split('/'))),
     path.posix.join(home, 'Library', 'Keychains'),
     path.posix.join(hermes, 'jarod-os'),
     path.posix.join(hermes, 'herald-os'),

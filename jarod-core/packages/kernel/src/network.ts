@@ -11,8 +11,10 @@
 //   2. `toolVerdict` : la porte des outils (`executeGuardedTool`) refuse ce qui sort par Internet, et ce qui lance un programme
 //      que Jarod ne peut pas couper du réseau (run_shell, serveurs MCP), sauf exception explicite « commandes locales ».
 //   3. Les enfants (`run_shell`, `ssh`…) ne sont PAS isolés du réseau par le noyau : c'est pourquoi la couche 2 les refuse.
-import { readFileSync, statSync, watchFile } from "node:fs";
+import { existsSync, readFileSync, statSync, watchFile } from "node:fs";
 import net from "node:net";
+import { homedir } from "node:os";
+import { join } from "node:path";
 
 export interface NetworkPolicy {
   version: 1;
@@ -188,10 +190,40 @@ export function applyNetworkPolicyFromEnv(env: NodeJS.ProcessEnv = process.env):
   return true;
 }
 
+/**
+ * Le fichier de politique que doit suivre un point d'entrée AUTONOME (`jarod serve`, `jarod ask`, MCP, ACP : lancés sans le shell) :
+ * celui que nomme `JAROD_NETWORK_POLICY`, sinon celui du shell installé sur la machine (`JAROD_OS_CONFIG_DIR`, puis `%APPDATA%\Jarod-OS\config`).
+ * Aucun fichier trouvé : null, c'est-à-dire pas d'interrupteur configuré (Internet permis, comme avant). Un fichier TROUVÉ mais illisible
+ * est appliqué prudemment (Internet coupé) par `policyReader`, jamais ignoré.
+ */
+export function resolvePolicyFile(env: NodeJS.ProcessEnv = process.env, platform: NodeJS.Platform = process.platform, home: string = homedir()): string | null {
+  const named = env.JAROD_NETWORK_POLICY?.trim();
+  if (named) return named;
+  const candidates: string[] = [];
+  const configDir = env.JAROD_OS_CONFIG_DIR?.trim();
+  if (configDir) candidates.push(join(configDir, "network-policy.json"));
+  if (platform === "win32") candidates.push(join(env.APPDATA ?? join(home, "AppData", "Roaming"), "Jarod-OS", "config", "network-policy.json"));
+  return candidates.find((f) => existsSync(f)) ?? null;
+}
+
+/**
+ * Point d'entrée des processus qui ne passent pas par le shell : applique la politique AVANT toute connexion (ouverture du cœur, fournisseurs,
+ * passerelles, MCP). Rend le fichier appliqué, ou null. Écrit son chemin dans `env.JAROD_NETWORK_POLICY` pour que les enfants du noyau
+ * (qui ne l'héritent que par ce nom, jamais une valeur secrète) sachent qu'une politique est en vigueur.
+ */
+export function applyNetworkPolicyForEntry(env: NodeJS.ProcessEnv = process.env): string | null {
+  const file = resolvePolicyFile(env);
+  if (!file) return null;
+  env.JAROD_NETWORK_POLICY = file;
+  return applyNetworkPolicyFromEnv(env) ? file : null;
+}
+
 // ── Outils ────────────────────────────────────────────────────────────────────
 
 /** Outils dont le travail EST d'aller sur Internet : refusés hors ligne. */
-const INTERNET_TOOLS = new Set(["web_search", "web_fetch", "http_request", "connected_browser", "skill_hub_install", "skill_hub_search", "pinokio_install", "pinokio_search"]);
+const INTERNET_TOOLS = new Set(["web_search", "web_fetch", "http_request", "media_fetch",
+  // G10 : télécharge une image de conteneur depuis son registre (la VM a le réseau le temps du téléchargement).
+  "linux_prepare", "connected_browser", "skill_hub_install", "skill_hub_search", "pinokio_install", "pinokio_search"]);
 /** Outils qui lancent un programme quelconque : Jarod ne peut pas le couper du réseau, refusés hors ligne sauf exception « commandes locales ». */
 const PROCESS_TOOLS = new Set(["run_shell"]);
 

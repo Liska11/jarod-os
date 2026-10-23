@@ -15,6 +15,7 @@
 import { spawn } from "node:child_process";
 import { existsSync, lstatSync, mkdirSync, realpathSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
+import { childEnv } from "@jarod/kernel/child-env";
 
 export class HyperVError extends Error {}
 
@@ -48,7 +49,7 @@ export const powershellExecutor: PsExecutor = (script, params) =>
   new Promise((done) => {
     const child = spawn("powershell.exe", ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", script], {
       windowsHide: true,
-      env: { ...process.env, JAROD_HV: JSON.stringify(params) },
+      env: childEnv("engine", { explicit: { JAROD_HV: JSON.stringify(params) } }),
     });
     let stdout = "";
     let stderr = "";

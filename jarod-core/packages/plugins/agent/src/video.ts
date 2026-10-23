@@ -11,6 +11,7 @@ import { existsSync, statSync } from "node:fs";
 import { delimiter, extname, join, relative } from "node:path";
 import { killTree } from "@jarod/kernel/util";
 import { type ArtifactStore, inWorkspace } from "./artifacts.js";
+import { childEnv } from "@jarod/kernel/child-env";
 
 export const VIDEO_FORMATS: Record<string, string> = { ".mp4": "mp4", ".webm": "webm", ".mov": "mov", ".gif": "gif" };
 const QUALITIES = ["draft", "standard", "high"] as const;
@@ -28,7 +29,7 @@ export const realRunner: Runner = (file, args, o) =>
       child = spawn(viaCmd ? (process.env.ComSpec ?? "cmd.exe") : file, viaCmd ? ["/d", "/c", file, ...args] : args, {
         cwd: o.cwd,
         windowsHide: true,
-        env: { ...process.env, DO_NOT_TRACK: "1", HYPERFRAMES_NO_TELEMETRY: "1" },
+        env: childEnv("engine", { explicit: { DO_NOT_TRACK: "1", HYPERFRAMES_NO_TELEMETRY: "1" } }),
       });
     } catch (e) {
       resolve({ code: null, stdout: "", stderr: (e as Error).message });

@@ -11,6 +11,7 @@
     "./redact": "./src/redact.ts",
     "./secret": "./src/secret.ts",
     "./network": "./src/network.ts",
+    "./child-env": "./src/child-env.ts",
     "./legacy-env": "./src/legacy-env.ts",
     "./legacy-env-adopt": "./src/legacy-env-adopt.ts"
   },

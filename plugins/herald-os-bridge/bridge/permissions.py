@@ -42,10 +42,23 @@ DEFAULT_TIER_MODES: dict[Tier, str] = {
     Tier.DESTRUCTIVE: "confirm",
 }
 
-# Never read, moved, opened for editing, or deleted by the bridge, regardless of policy.
-BUILTIN_PROTECTED = (
+# Credential stores under the home folder: the same set as contracts/v1/credential-stores.reference.json (test_credential_stores.py
+# fails when they drift). The tools that need one (git, aws, kubectl, ssh, docker) still run it from the user's shell.
+CREDENTIAL_HOME_PROTECTED = (
     "~/.ssh",
     "~/.gnupg",
+    "~/.aws",
+    "~/.azure",
+    "~/.kube",
+    "~/.docker",
+    "~/.config/gh",
+    "~/.git-credentials",
+    "~/.npmrc",
+)
+
+# Never read, moved, opened for editing, or deleted by the bridge, regardless of policy.
+BUILTIN_PROTECTED = (
+    *CREDENTIAL_HOME_PROTECTED,
     "~/Library/Keychains",
     "~/Library/Cookies",
     "$HERMES_HOME/.env",
@@ -88,7 +101,7 @@ WINDOWS_PROTECTED = (
 def builtin_protected(platform: str = sys.platform) -> tuple[str, ...]:
     """The protected locations that apply on ``platform`` (the POSIX roots mean nothing on Windows)."""
     if platform.startswith("win"):
-        return ("~/.ssh", "~/.gnupg", "$HERMES_HOME/.env", "$HERMES_HOME/auth.json", *WINDOWS_PROTECTED)
+        return (*CREDENTIAL_HOME_PROTECTED, "$HERMES_HOME/.env", "$HERMES_HOME/auth.json", *WINDOWS_PROTECTED)
     return BUILTIN_PROTECTED
 
 

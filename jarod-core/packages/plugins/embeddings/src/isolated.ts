@@ -14,6 +14,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { EmbeddingsMetrics } from "@jarod/contracts";
 import type { EmbeddingsEngine } from "./index.js";
+import { childEnv } from "@jarod/kernel/child-env";
 
 /** Le processus dédié, vu de l'hôte : `utilityProcess` (Electron) et `ChildProcess` s'y ramènent. */
 export interface EmbeddingsWorkerProcess {
@@ -36,7 +37,7 @@ export function forkEmbeddingsSpawner(o: { env?: Record<string, string> } = {}):
       execArgv: [],
       serialization: "advanced",
       // Sous Electron sans utilityProcess, l'exécutable est electron.exe : il doit se comporter en Node.
-      env: { ...process.env, ...(process.versions.electron ? { ELECTRON_RUN_AS_NODE: "1" } : {}), ...o.env },
+      env: childEnv("engine", { explicit: { ...(process.versions.electron ? { ELECTRON_RUN_AS_NODE: "1" } : {}), ...o.env } }),
       stdio: ["ignore", "inherit", "inherit", "ipc"],
       windowsHide: true,
     });

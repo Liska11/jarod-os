@@ -39,3 +39,46 @@ export const KEYED_SECRET = /(\b[\w-]*(?:password|passwd|pwd|secret|token|api[-_
 export function redactKeyedText(text: string): string {
   return redactText(text).replace(KEYED_SECRET, "$1[masqué]");
 }
+
+/** Options de ligne de commande qui portent un secret séparé par un blanc (`--password abc`, `-token abc`) : la règle à clé explicite ne les voit pas. */
+const FLAG_SECRET = /(\s--?[\w-]*(?:password|passwd|pwd|secret|token|api[-_]?key)[\w-]*\s+)(?!\[masqué\])(?!-)([^\s"',;&]+)/gi;
+
+/** Comme `redactKeyedText`, plus les options de ligne de commande à valeur séparée. Pour une commande qui sera journalisée. */
+export function redactCommandText(text: string): string {
+  return redactKeyedText(text).replace(FLAG_SECRET, "$1[masqué]");
+}
+
+/** Nom de champ qui porte un secret : sa valeur est masquée EN ENTIER, quelle que soit sa longueur ou sa forme. */
+const SECRET_FIELD = /(password|passwd|pwd|passphrase|secret|token|api[-_]?key|apikey|authorization|credential|private[-_]?key|cookie|bearer|session[-_]?id)/i;
+/** Un compte (`max_tokens: 4096`) n'est pas un secret : seul un nombre sous un nom en `…tokens` échappe au masque de champ. */
+const COUNT_FIELD = /tokens$/i;
+const MAX_DEPTH = 8;
+
+/**
+ * Les arguments d'un outil, MASQUÉS AVANT d'être sérialisés pour un journal : les champs dont le nom désigne un secret sont remplacés en entier
+ * (court ou long), les chaînes passent par la détection de formes connues et par les options de ligne de commande. Les arguments ne sont jamais
+ * modifiés (copie). Ce n'est pas une garantie de détecter tout secret inconnu dans un texte libre : c'est la défense en profondeur du journal.
+ */
+export function redactValue(value: unknown, depth = 0): unknown {
+  if (typeof value === "string") return redactCommandText(value);
+  if (value === null || typeof value !== "object") return value;
+  if (depth >= MAX_DEPTH) return "[trop profond]";
+  if (Array.isArray(value)) return value.map((v) => redactValue(v, depth + 1));
+  const out: Record<string, unknown> = {};
+  for (const [key, v] of Object.entries(value as Record<string, unknown>)) {
+    if (SECRET_FIELD.test(key) && v !== null && v !== undefined && !(typeof v === "number" && COUNT_FIELD.test(key))) out[key] = "[masqué]";
+    else out[key] = redactValue(v, depth + 1);
+  }
+  return out;
+}
+
+/** Les arguments d'un appel d'outil, prêts pour le journal : masqués d'abord (structure), sérialisés ensuite, tronqués en dernier. */
+export function auditArgs(args: unknown, max = 500): string {
+  let json: string;
+  try {
+    json = JSON.stringify(redactValue(args ?? {}));
+  } catch {
+    json = '"[arguments illisibles]"';
+  }
+  return json.length > max ? `${json.slice(0, max)}…` : json;
+}

@@ -21,6 +21,7 @@ import { fork } from "node:child_process";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { CompiledModel, WakeWordRuntime } from "./wakeword.js";
+import { childEnv } from "@jarod/kernel/child-env";
 
 /** Le processus dédié, vu de l'hôte : `utilityProcess` (Electron) et `ChildProcess` s'y ramènent. */
 export interface WorkerProcess {
@@ -43,7 +44,7 @@ export function forkWorkerSpawner(): WorkerSpawner {
       execArgv: [],
       serialization: "advanced",
       // Sous Electron sans utilityProcess, l'exécutable est electron.exe : il doit se comporter en Node.
-      env: process.versions.electron ? { ...process.env, ELECTRON_RUN_AS_NODE: "1" } : process.env,
+      env: childEnv("engine", { explicit: process.versions.electron ? { ELECTRON_RUN_AS_NODE: "1" } : {} }),
       stdio: ["ignore", "inherit", "inherit", "ipc"],
       windowsHide: true,
     });

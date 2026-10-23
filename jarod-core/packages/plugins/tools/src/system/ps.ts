@@ -6,6 +6,7 @@
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
+import { childEnv } from "@jarod/kernel/child-env";
 
 const PRELUDE = String.raw`
 $ErrorActionPreference = 'Stop'
@@ -64,7 +65,7 @@ export function realPsRunner(exe: string | null = powershellExe()): PsRunner {
         const child = spawn(exe, argv, {
           windowsHide: true,
           stdio: ["ignore", "pipe", "pipe"],
-          env: { ...process.env, ...(args ? { JAROD_OS_ARGS: JSON.stringify(args) } : {}) },
+          env: childEnv("engine", { explicit: args ? { JAROD_OS_ARGS: JSON.stringify(args) } : {} }),
         });
         const out: Buffer[] = [];
         const err: Buffer[] = [];

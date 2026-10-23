@@ -116,7 +116,8 @@ const inside = (root: string, target: string): boolean => {
 };
 
 /** Les dossiers du dossier personnel qui portent des clés : jamais lisibles par une commande confinée, ni eux ni un dossier qui les contient. */
-const PROTECTED_HOME_DIRS = [".ssh", ".aws", ".gnupg", ".azure", ".kube", ".docker"];
+// Même ensemble que `contracts/v1/credential-stores.reference.json` (test de cohérence : tests/repo/credential-stores.test.ts).
+export const PROTECTED_HOME_DIRS = [".ssh", ".aws", ".gnupg", ".azure", ".kube", ".docker", ".config/gh", ".git-credentials", ".npmrc"];
 
 const samePath = (a: string, b: string): boolean => (process.platform === "win32" ? a.toLowerCase() === b.toLowerCase() : a === b);
 

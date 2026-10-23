@@ -23,13 +23,14 @@ import { asList, powershellExe, type PsRunner, realPsRunner } from "./ps.js";
 import * as A from "./scripts-act.js";
 import * as S from "./scripts.js";
 import type { SystemToolDeps } from "./tools.js";
+import { childEnv } from "@jarod/kernel/child-env";
 
 /** Lance un programme détaché et rend la main dès qu'il a démarré. Remplaçable dans les tests. */
 export type Launcher = (file: string, args: readonly string[], opts?: { verbatim?: boolean }) => Promise<void>;
 
 export const realLauncher: Launcher = (file, args, opts) =>
   new Promise((resolve, reject) => {
-    const child = spawn(file, [...args], { detached: true, stdio: "ignore", windowsVerbatimArguments: opts?.verbatim === true });
+    const child = spawn(file, [...args], { detached: true, stdio: "ignore", windowsVerbatimArguments: opts?.verbatim === true, env: childEnv("agent-shell") });
     child.once("error", reject);
     child.once("spawn", () => {
       child.unref();

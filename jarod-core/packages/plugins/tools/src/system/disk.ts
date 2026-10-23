@@ -7,7 +7,8 @@ import { isAbsolute, join, relative, resolve, sep } from "node:path";
 
 /** Emplacements dont ce module ne mesure rien : clés, jetons, magasins d'identifiants, certificats, dossiers du système et des programmes. */
 export function protectedRoots(env: NodeJS.ProcessEnv = process.env, home: string = homedir()): string[] {
-  const roots = [join(home, ".ssh"), join(home, ".gnupg")];
+  // Même ensemble que `contracts/v1/credential-stores.reference.json` (test de cohérence : tests/repo/credential-stores.test.ts).
+  const roots = [".ssh", ".gnupg", ".aws", ".azure", ".kube", ".docker", join(".config", "gh"), ".git-credentials", ".npmrc"].map((n) => join(home, n));
   const under = (base: string | undefined, ...rest: string[]) => {
     if (base) roots.push(join(base, ...rest));
   };

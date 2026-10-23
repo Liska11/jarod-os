@@ -4,6 +4,7 @@ import { createHash } from "node:crypto";
 import { isAbsolute } from "node:path";
 import type { ToolDef, ToolRegistry } from "@jarod/plugin-tools";
 import { toolName } from "@jarod/plugin-tools";
+import { childEnv } from "@jarod/kernel/child-env";
 import { Emitter, killTree, parseJson, SseParser, truncate } from "@jarod/kernel/util";
 import type { McpServerConfig } from "@jarod/plugin-storage";
 
@@ -88,7 +89,8 @@ export class McpClient implements McpConnection {
     const useShell = process.platform === "win32" && !isAbsolute(command) && !/\.exe$/i.test(command);
     const quote = cmdQuote;
     const proc = spawn(useShell ? quote(command) : command, useShell ? args.map(quote) : args, {
-      env: { ...process.env, ...this.config.env },
+      // A third-party server gets the system environment and what ITS configuration names — no internal token, no provider key, no secret-shaped variable.
+      env: childEnv("mcp", { explicit: this.config.env }),
       stdio: ["pipe", "pipe", "pipe"],
       shell: useShell,
       windowsHide: true,
