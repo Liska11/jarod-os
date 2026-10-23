@@ -14,6 +14,25 @@ export interface McpServer {
   command?: string
   args: string[]
   env: Record<string, string>
+  /** V-14: the allowlist (the server's own tool names); absent means every tool. */
+  allowedTools?: string[]
+}
+
+/** V-14: one tool as `mcp-server-tools` returns it, read live from the server. */
+export interface McpToolChoice {
+  name: string
+  description: string
+  allowed: boolean
+  pinState: 'approved' | 'changed' | 'new' | 'unknown'
+}
+
+export type McpToolsView = { success: true; restricted: boolean; allowed: string[] | null; tools: McpToolChoice[] } | { success: false; error: string }
+
+/** V-14: names on the saved list that the server no longer announces — said, never silently dropped. */
+export function missingTools(allowed: readonly string[] | null, tools: readonly McpToolChoice[]): string[] {
+  const present = new Set(tools.map(tool => tool.name))
+
+  return (allowed ?? []).filter(name => !present.has(name))
 }
 
 export interface McpDraft {

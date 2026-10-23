@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { describeServer, draftOf, draftProblems, emptyDraft, envNames, inputOf, type McpServer, parseEnv, SECRET_MASK } from './mcp-model.ts'
+import { describeServer, missingTools, draftOf, draftProblems, emptyDraft, envNames, inputOf, type McpServer, parseEnv, SECRET_MASK } from './mcp-model.ts'
 
 const stdio: McpServer = { name: 'fs', type: 'stdio', enabled: true, detail: 'npx', command: 'npx', args: ['-y', 'pkg', '--root', 'C:\\data'], env: { TOKEN: SECRET_MASK, MODE: SECRET_MASK } }
 const http: McpServer = { name: 'web', type: 'http', enabled: true, detail: 'https://x.test/mcp', url: 'https://x.test/mcp', args: [], env: {} }
@@ -53,5 +53,18 @@ describe('summaries', () => {
     expect(describeServer(stdio)).toBe('npx -y pkg --root C:\\data')
     expect(describeServer(http)).toBe('https://x.test/mcp')
     expect(envNames(stdio)).toEqual(['TOKEN', 'MODE'])
+  })
+})
+
+describe('missingTools (V-14)', () => {
+  const tools = [
+    { name: 'echo', description: '', allowed: true, pinState: 'approved' as const },
+    { name: 'boom', description: '', allowed: false, pinState: 'approved' as const }
+  ]
+
+  it('names the chosen tools the server no longer announces; none without a list', () => {
+    expect(missingTools(['echo', 'gone'], tools)).toEqual(['gone'])
+    expect(missingTools(['echo'], tools)).toEqual([])
+    expect(missingTools(null, tools)).toEqual([])
   })
 })

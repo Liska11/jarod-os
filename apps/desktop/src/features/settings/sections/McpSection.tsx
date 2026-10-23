@@ -4,7 +4,7 @@ import { GlassButton, Pill, Toggle } from '../../../components/ui/glass.tsx'
 import { jarod } from '../../../lib/jarod.ts'
 import { useBackendData } from '../../../lib/use-async.ts'
 import { notify } from '../../../store/notifications.ts'
-import { CONTEXT_MODE_VERSION, contextModeDraft, describeServer, draftOf, draftProblems, emptyDraft, envNames, inputOf, type McpDraft, type McpServer } from './mcp-model.ts'
+import { CONTEXT_MODE_VERSION, contextModeDraft, describeServer, draftOf, draftProblems, emptyDraft, envNames, inputOf, type McpDraft, type McpServer, type McpToolsView, missingTools } from './mcp-model.ts'
 import { reportEngineError } from './jarod-controls.tsx'
 import { isUnsupported } from './providers-model.ts'
 import { errorText, InlineNote, markSaved, SectionTitle, SettingsGroup, SettingsRow } from './shared.tsx'
@@ -23,6 +23,7 @@ export function McpSection() {
   const [editing, setEditing] = useState<{ original?: string; draft: McpDraft } | null>(null)
   const [busy, setBusy] = useState(false)
   const [tests, setTests] = useState<Record<string, string>>({})
+  const [picking, setPicking] = useState<string | null>(null)
 
   if (isUnsupported(servers.error)) {
     return (
@@ -90,8 +91,17 @@ export function McpSection() {
               </>
             }
             keywords={`mcp server ${server.name} ${server.type}`}
+            below={picking === server.name && <ToolPicker server={server} busy={busy} onCancel={() => setPicking(null)} onSave={tools => run(t('settings.mcp.tools.saved'), () => jarod<Result>('set-mcp-server-tools', server.name, tools)).then(ok => ok && setPicking(null))} />}
           >
             <Pill tone="muted">{server.type}</Pill>
+            {server.allowedTools && (
+              <span data-testid={`mcp-allowlist-${server.name}`}>
+                <Pill tone="muted">{t('settings.mcp.tools.restricted', { count: server.allowedTools.length })}</Pill>
+              </span>
+            )}
+            <GlassButton size="sm" variant="ghost" disabled={busy} onClick={() => setPicking(current => (current === server.name ? null : server.name))} aria-label={t('settings.mcp.tools.aria', { name: server.name })}>
+              {t('settings.mcp.tools')}
+            </GlassButton>
             <GlassButton size="sm" variant="ghost" disabled={busy} onClick={() => void test(server)} aria-label={t('settings.devices.ssh.test.aria', { name: server.name })}>
               {t('settings.devices.ssh.test')}
             </GlassButton>
@@ -118,6 +128,81 @@ export function McpSection() {
         )}
       </SettingsGroup>
     </>
+  )
+}
+
+/*
+ * V-14: the server's tools, read live (a temporary connection, nothing registered), each one checkable. "All tools" saves no list; otherwise only the
+ * checked tools reach the agent, and a tool the server adds later stays out. Descriptions are a third party's text, shown as text only.
+ */
+function ToolPicker({ server, busy, onCancel, onSave }: { server: McpServer; busy: boolean; onCancel: () => void; onSave: (tools: string[] | null) => Promise<unknown> }) {
+  useT()
+  const view = useBackendData(() => jarod<McpToolsView>('mcp-server-tools', server.name))
+  const [all, setAll] = useState(!server.allowedTools)
+  const [chosen, setChosen] = useState<Set<string>>(() => new Set(server.allowedTools ?? []))
+  const data = view.data
+
+  if (!data) {
+    return <InlineNote tone="info">{view.error ? t('settings.mcp.tools.failed', { reason: view.error }) : t('settings.mcp.tools.loading')}</InlineNote>
+  }
+
+  if (!data.success) {
+    return <InlineNote tone="danger">{t('settings.mcp.tools.failed', { reason: data.error })}</InlineNote>
+  }
+
+  const missing = missingTools(data.allowed, data.tools)
+  const toggle = (name: string, on: boolean) =>
+    setChosen(current => {
+      const next = new Set(current)
+
+      if (on) {
+        next.add(name)
+      } else {
+        next.delete(name)
+      }
+
+      return next
+    })
+
+  return (
+    <form
+      className="flex flex-col gap-2"
+      data-testid={`mcp-tools-${server.name}`}
+      onSubmit={event => {
+        event.preventDefault()
+        void onSave(all ? null : data.tools.map(tool => tool.name).filter(name => chosen.has(name)))
+      }}
+    >
+      <label className="flex items-center gap-2 text-[12.5px] text-fg">
+        <input type="checkbox" checked={all} onChange={event => setAll(event.target.checked)} />
+        {t('settings.mcp.tools.all')}
+      </label>
+      <span className="text-[11.5px] text-fg-3">{all ? t('settings.mcp.tools.allHint') : t('settings.mcp.tools.pickHint')}</span>
+      <ul className="flex flex-col gap-1">
+        {data.tools.map(tool => (
+          <li key={tool.name}>
+            <label className={`flex items-start gap-2 text-[12px] ${all ? 'text-fg-3' : 'text-fg'}`}>
+              <input type="checkbox" disabled={all} checked={all || chosen.has(tool.name)} onChange={event => toggle(tool.name, event.target.checked)} aria-label={tool.name} />
+              <span>
+                <span className="font-mono">{tool.name}</span>
+                {tool.pinState === 'changed' && <span className="text-warn"> · {t('settings.mcp.tools.changed')}</span>}
+                {tool.pinState === 'new' && <span className="text-fg-2"> · {t('settings.mcp.tools.new')}</span>}
+                {tool.description && <span className="block text-fg-3">{tool.description}</span>}
+              </span>
+            </label>
+          </li>
+        ))}
+      </ul>
+      {missing.length > 0 && <InlineNote tone="warn">{t('settings.mcp.tools.missing', { names: missing.join(', ') })}</InlineNote>}
+      <div className="flex justify-end gap-2">
+        <GlassButton type="button" size="sm" variant="ghost" onClick={onCancel}>
+          {t('settings.devices.cancel')}
+        </GlassButton>
+        <GlassButton type="submit" size="sm" variant="primary" disabled={busy}>
+          {t('settings.devices.save')}
+        </GlassButton>
+      </div>
+    </form>
   )
 }
 
