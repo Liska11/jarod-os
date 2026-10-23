@@ -173,14 +173,13 @@ export function readRerankerConfig(file: string): RerankerFileConfig | null {
 /** Les services de la plateforme, vus par des ports structurels (le desktop ne dépend pas de ces paquets). */
 interface PlatformSources {
   plugins?: { list(): Array<{ manifest: { name: string; version: string }; status: string; failures: number; reason?: string }> };
-  sandbox?: { list(): Array<{ id: string; profile: string; state: string; createdAt: number }> };
   quarantine?: { list(): Array<{ id: string; label: string; size: number; status: string; scan: { verdict: string } | null }> };
   hyperv?: { status(): Promise<{ cmdlets: boolean; admin: boolean; detail: string }> };
 }
 
 /** Un instantané en lecture seule : noms, états, tailles ; jamais un chemin, un contenu ni une description écrite par un tiers. */
 export function platformPortOf(k: PlatformSources): DesktopKernel["platform"] | undefined {
-  if (!k.plugins && !k.sandbox && !k.quarantine && !k.hyperv) return undefined;
+  if (!k.plugins && !k.quarantine && !k.hyperv) return undefined;
   return {
     async snapshot() {
       let hyperv: { cmdlets: boolean; admin: boolean; detail: string } | null = null;
@@ -193,7 +192,6 @@ export function platformPortOf(k: PlatformSources): DesktopKernel["platform"] | 
       }
       return {
         plugins: (k.plugins?.list() ?? []).map((p) => ({ name: p.manifest.name, version: p.manifest.version, status: p.status, failures: p.failures, ...(p.reason ? { reason: p.reason.slice(0, 200) } : {}) })),
-        sandboxes: (k.sandbox?.list() ?? []).map((x) => ({ id: x.id, profile: x.profile, state: x.state, createdAt: x.createdAt })),
         quarantine: (k.quarantine?.list() ?? []).map((q) => ({ id: q.id, label: q.label, size: q.size, status: q.status, verdict: q.scan?.verdict ?? null })),
         hyperv,
       };
@@ -226,7 +224,6 @@ export function desktopKernelOf(app: JarodApp, where: { profile: string; dataRoo
     llm?: { engine: NonNullable<DesktopKernel["localEngine"]>["engine"]; localModels?: NonNullable<DesktopKernel["localEngine"]>["models"]; detectHardware(): ReturnType<NonNullable<DesktopKernel["localEngine"]>["hardware"]> };
     permissions?: PermissionsService;
     plugins?: PlatformSources["plugins"];
-    sandbox?: PlatformSources["sandbox"];
     quarantine?: PlatformSources["quarantine"];
     hyperv?: PlatformSources["hyperv"];
   };
@@ -327,7 +324,6 @@ export async function openDesktopKernel(o: OpenKernelOptions): Promise<OpenedKer
     llm?: { engine: NonNullable<DesktopKernel["localEngine"]>["engine"]; localModels?: NonNullable<DesktopKernel["localEngine"]>["models"]; detectHardware(): ReturnType<NonNullable<DesktopKernel["localEngine"]>["hardware"]> };
     permissions?: PermissionsService;
     plugins?: PlatformSources["plugins"];
-    sandbox?: PlatformSources["sandbox"];
     quarantine?: PlatformSources["quarantine"];
     hyperv?: PlatformSources["hyperv"];
   };

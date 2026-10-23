@@ -1,4 +1,4 @@
-import { IconArchive, IconBox, IconCpu, IconPlugConnected, IconPuzzle, IconRefresh, IconShieldCheck } from '@tabler/icons-react'
+import { IconArchive, IconCpu, IconPlugConnected, IconPuzzle, IconRefresh, IconShieldCheck } from '@tabler/icons-react'
 import { useState } from 'react'
 import { GlassButton, Pill } from '../../../components/ui/glass.tsx'
 import { t, useT } from '../../../lib/i18n.ts'
@@ -17,7 +17,6 @@ import { InlineNote, markSaved, SectionTitle, SettingsGroup, SettingsRow } from 
 
 export interface PlatformStatus {
   plugins: { name: string; version: string; status: string; failures: number; reason?: string }[]
-  sandboxes: { id: string; profile: string; state: string; createdAt: number }[]
   quarantine: { id: string; label: string; size: number; status: string; verdict: string | null }[]
   hyperv: { cmdlets: boolean; admin: boolean; detail: string } | null
   mcp: { id: string; name: string; enabled: boolean; state: string; error?: string; tools: string[]; pending: { tool: string; reason: 'changed' | 'new' }[] }[]
@@ -102,15 +101,6 @@ export function PlatformSection() {
         {data?.quarantine.map(item => (
           <SettingsRow key={item.id} icon={<IconArchive />} label={item.label} description={`${sizeText(item.size)}${item.verdict ? ` · ${item.verdict}` : ''}`} keywords="quarantine file">
             <Pill tone={item.status === 'promoted' ? 'ok' : item.verdict === 'infected' ? 'danger' : 'muted'}>{item.status}</Pill>
-          </SettingsRow>
-        ))}
-      </SettingsGroup>
-
-      <SettingsGroup title={t('settings.platform.sandboxes')}>
-        {(data?.sandboxes.length ?? 0) === 0 && <SettingsRow icon={<IconBox />} label={t('settings.platform.sandboxes.none')} description={t('settings.platform.sandboxes.none.hint')} keywords="sandbox empty" />}
-        {data?.sandboxes.map(box => (
-          <SettingsRow key={box.id} icon={<IconBox />} label={box.id} description={t('settings.platform.sandboxes.profile', { profile: box.profile })} keywords="sandbox">
-            <Pill tone={box.state === 'running' ? 'progress' : 'muted'}>{box.state}</Pill>
           </SettingsRow>
         ))}
       </SettingsGroup>

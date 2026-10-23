@@ -15,7 +15,7 @@ export function createPlatformHandlers(ctx: HandlerContext) {
   return {
     "platform-status": async (): Promise<PlatformStatus> => {
       const k = ctx.kernel();
-      const snap: PlatformSnapshot = k.platform ? await k.platform.snapshot() : { plugins: [], sandboxes: [], quarantine: [], hyperv: null };
+      const snap: PlatformSnapshot = k.platform ? await k.platform.snapshot() : { plugins: [], quarantine: [], hyperv: null };
       return { ...snap, mcp: k.mcp?.list?.() ?? [] };
     },
     "mcp-approve-tool": (serverId: unknown, tool: unknown): { success: boolean; error?: string } => {

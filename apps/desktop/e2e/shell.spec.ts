@@ -111,14 +111,13 @@ test.describe('platform', () => {
 
     await expect(page.getByRole('heading', { name: 'Plateforme', level: 2 })).toBeVisible()
 
-    for (const name of ['Outils MCP à approuver', 'Plugins de la plateforme', 'Quarantaine', 'Bacs à sable', 'Hyper-V']) {
+    for (const name of ['Outils MCP à approuver', 'Plugins de la plateforme', 'Quarantaine', 'Hyper-V']) {
       await expect(page.getByRole('heading', { name, level: 3 })).toBeVisible()
     }
 
-    // A fresh profile has nothing held back, nothing in quarantine and no sandbox.
+    // A fresh profile has nothing held back, nothing in quarantine.
     await expect(page.getByText('Aucune divergence')).toBeVisible()
     await expect(page.getByText('Rien en quarantaine')).toBeVisible()
-    await expect(page.getByText('Aucun bac à sable')).toBeVisible()
 
     // Hyper-V is asked for real (read-only): the answer depends on the machine, never on a guess.
     await expect(page.getByText('Machines virtuelles isolées')).toBeVisible()

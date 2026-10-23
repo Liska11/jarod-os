@@ -33,7 +33,6 @@ export interface McpServerView {
 /** Ce que l'écran « Plateforme » montre : rien d'exécutable, aucun chemin, aucun contenu. */
 export interface PlatformSnapshot {
   plugins: Array<{ name: string; version: string; status: string; failures: number; reason?: string }>;
-  sandboxes: Array<{ id: string; profile: string; state: string; createdAt: number }>;
   quarantine: Array<{ id: string; label: string; size: number; status: string; verdict: string | null }>;
   hyperv: { cmdlets: boolean; admin: boolean; detail: string } | null;
 }

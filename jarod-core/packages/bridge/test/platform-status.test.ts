@@ -26,9 +26,8 @@ const server = (env: Record<string, string> = {}) => ({ id: "sdk", name: "sdk", 
 describe("platform-status", () => {
   it("rend un instantané des services réels : rien d'exécutable, aucun chemin", async () => {
     const { call } = await setup();
-    const s = (await call("platform-status")) as { plugins: unknown[]; sandboxes: unknown[]; quarantine: unknown[]; hyperv: { cmdlets: boolean; admin: boolean; detail: string } | null; mcp: unknown[] };
+    const s = (await call("platform-status")) as { plugins: unknown[]; quarantine: unknown[]; hyperv: { cmdlets: boolean; admin: boolean; detail: string } | null; mcp: unknown[] };
     expect(Array.isArray(s.plugins)).toBe(true);
-    expect(Array.isArray(s.sandboxes)).toBe(true);
     expect(Array.isArray(s.quarantine)).toBe(true);
     expect(Array.isArray(s.mcp)).toBe(true);
     // Hyper-V est interrogé pour de vrai (lecture seule) : la machine peut ne pas l'avoir, mais la réponse est toujours structurée.
@@ -36,12 +35,10 @@ describe("platform-status", () => {
     expect(JSON.stringify(s)).not.toMatch(/[A-Za-z]:\\\\/);
   }, 60_000);
 
-  it("montre un bac à sable créé et une pièce en quarantaine, par nom et état seulement", async () => {
+  it("V-13 : plus de liste de bacs jetables — plugin-sandbox retiré, l'instantané ne l'annonce plus", async () => {
     const { call, app } = await setup();
-    const box = (app as unknown as { sandbox?: { create(p?: string): { id: string } } }).sandbox?.create();
-    const s = (await call("platform-status")) as { sandboxes: { id: string; profile: string; state: string }[] };
-    if (box) expect(s.sandboxes.map((x) => x.id)).toContain(box.id);
-    expect(s.sandboxes.every((x) => Object.keys(x).sort().join() === "createdAt,id,profile,state")).toBe(true);
+    expect((app as unknown as { sandbox?: unknown }).sandbox).toBeUndefined();
+    expect(Object.keys((await call("platform-status")) as object)).not.toContain("sandboxes");
   }, 60_000);
 });
 

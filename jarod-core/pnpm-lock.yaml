@@ -612,24 +612,6 @@ importers:
         specifier: 4.0.0-rc.10
         version: 4.0.0-rc.10
 
-  packages/plugins/sandbox:
-    dependencies:
-      '@jarod/contracts':
-        specifier: workspace:*
-        version: link:../../contracts
-      '@jarod/kernel':
-        specifier: workspace:*
-        version: link:../../kernel
-      '@jarod/plugin-permissions':
-        specifier: workspace:*
-        version: link:../permissions
-      '@jarod/plugin-tools':
-        specifier: workspace:*
-        version: link:../tools
-      cordis:
-        specifier: 4.0.0-rc.10
-        version: 4.0.0-rc.10
-
   packages/plugins/scheduler:
     dependencies:
       '@jarod/contracts':
