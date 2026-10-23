@@ -63,6 +63,8 @@ export function cockpitService(s: CockpitServices, host: ProbeHost = nodeProbeHo
       }
       return { enabled: true, url: c.url, providers: arr<string>(c.providers), healthy };
     },
+    // Vague G : réglages non sensibles lus par les sondes (ex. `localTraces`) ; le coffre n'est jamais un réglage.
+    setting: (key) => s.settings?.get(key),
     // Sans porte de permissions, rien n'est présumé permis : « ask ».
     decide: (name) => {
       const d = gate?.decide(name);

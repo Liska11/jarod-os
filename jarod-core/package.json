@@ -15,7 +15,9 @@
     "check:ignored": "tsx scripts/check-ignored.ts",
     "decisions:index": "tsx scripts/decisions-index.ts",
     "check:staged": "tsx scripts/check-staged-files.ts",
-    "bundle:gateway": "node scripts/bundle-gateway.mjs --out dist/gateway"
+    "sbom:scan": "tsx scripts/sbom.ts",
+    "mcp:inspect": "tsx scripts/mcp-inspector.ts",
+    "bundle:gateway":"node scripts/bundle-gateway.mjs --out dist/gateway"
   },
   "devDependencies": {
     "@types/node": "^24.13.6",

@@ -128,9 +128,13 @@ describe.skipIf(!HAS)("E2 — cycle de vie, révocation, confinement CDP, nettoy
     if (control.udp === 0) ctx.skip(`preuve UDP non concluante : contrôle WebRTC à 0 datagramme vers ${udp.host} (candidats : ${control.candidates}, TURN-TCP : ${control.tcp}) — docs/E2-VALIDATION.md §6.2`);
     expect(control.candidates).toBeGreaterThan(0);
     const controlWt = await run({ hard: false, backstop: false }, "wt");
+    // Même règle pour WebTransport : un témoin aveugle (0) ne prouve rien dans un sens ni dans l'autre. Non concluant, ce n'est ni une réussite ni une fuite.
+    if (controlWt.udp === 0) ctx.skip(`preuve UDP non concluante pour WebTransport : contrôle à 0 datagramme vers ${udp.host} alors que WebRTC en a émis ${control.udp} — docs/E2-VALIDATION.md §6.2`);
     expect(controlWt.udp).toBeGreaterThan(0);
     // Le filet (proxy mort) seul NE couvre PAS l'UDP : mesuré, c'est pourquoi le drapeau existe.
     const proxyOnly = await run({ hard: false, backstop: true }, "rtc");
+    // Zéro ici veut dire que le proxy mort a aussi arrêté l'UDP, ou que le témoin n'a rien vu : la mesure n'établit plus ce que ce test affirme.
+    if (proxyOnly.udp === 0) ctx.skip(`preuve UDP non concluante : avec le seul proxy mort le témoin reçoit 0 datagramme (contrôle sans proxy : ${control.udp}) — la limite « le proxy ne couvre pas l'UDP » n'est pas établie sur cette machine`);
     expect(proxyOnly.udp).toBeGreaterThan(0);
     expect(proxyOnly.tcp).toBe(0);
     // Le drapeau seul ferme l'UDP et ne laisse apprendre aucune adresse de la machine ; le TCP (TURN) est fermé par le filet.

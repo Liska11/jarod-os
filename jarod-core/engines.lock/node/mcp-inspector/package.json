@@ -1,0 +1,5 @@
+{
+  "name": "jarod-engine-mcp-inspector",
+  "private": true,
+  "dependencies": { "@modelcontextprotocol/inspector": "2.9.0" }
+}

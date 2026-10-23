@@ -24,9 +24,12 @@ export type CapabilityState =
  *  - `agent-tool`      : un outil du registre l'exécute (nommé dans `tools`), derrière la porte unique ;
  *  - `skill`           : des instructions chargées à la demande (`load_skill`), sans exécution propre ;
  *  - `detection-only`  : Jarod détecte et diagnostique l'installation ; aucun outil ne l'exécute encore ;
- *  - `external-app`    : une application séparée ; Jarod peut au mieux la détecter (et l'ouvrir par `system_open`).
+ *  - `external-app`    : une application séparée ; Jarod peut au mieux la détecter (et l'ouvrir par `system_open`) ;
+ *  - `dev-tool`        : outil de DÉVELOPPEMENT ou de QA (inventaire, inspection, banc d'essai), lancé à la demande, jamais dans la boucle
+ *                        de l'utilisateur ni présenté comme une capacité de l'agent ;
+ *  - `infrastructure`  : un mécanisme interne de Jarod (ex. traces locales), sans outil ni action propre.
  */
-export type IntegrationLevel = "agent-tool" | "skill" | "detection-only" | "external-app";
+export type IntegrationLevel = "agent-tool" | "skill" | "detection-only" | "external-app" | "dev-tool" | "infrastructure";
 
 export type Risk = "read" | "act" | "mutate" | "destructive";
 
@@ -87,5 +90,5 @@ export interface CapabilityView extends CapabilityManifest {
   /** Horodatage de la dernière sonde (ms), `null` si jamais sondée. */
   checkedAt: number | null;
   /** Provenance : dépôt, licence, version épinglée — copiées de l'adaptateur, jamais d'une page web. */
-  provenance?: { repo: string; license: string; pinned: string | null; status: string };
+  provenance?: { repo: string; license: string; pinned: string | null; status: string; stage?: string; stageReason?: string };
 }

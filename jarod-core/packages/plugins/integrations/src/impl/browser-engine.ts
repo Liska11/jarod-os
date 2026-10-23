@@ -13,6 +13,7 @@ import { join, resolve, sep } from "node:path";
 import { AdapterRefused, AdapterUnavailable } from "./common.js";
 import { type BrowserBackend, type BrowserPolicy, type TabRef, urlPermitted } from "./browser.js";
 import { NetworkGuard } from "./browser-guard.js";
+import { childEnv } from "@jarod/kernel/child-env";
 
 const A = "E2";
 const PROFILE_PREFIX = "jarod-e2-";
@@ -84,43 +85,127 @@ export function browserArgs(userData: string, opts: Pick<LaunchOptions, "headles
   ];
 }
 
-/** Lance un Chrome neuf sur un profil jetable. Jamais d'argument qui désigne un autre profil. */
-export async function launchDisposableBrowser(opts: LaunchOptions): Promise<DisposableBrowser> {
+/**
+ * Le contenu de `DevToolsActivePort`, rendu seulement s'il est COMPLET : ligne 1 = port (1..65535), ligne 2 = chemin `/devtools/browser/<guid>`.
+ * Un fichier tronqué (écriture en cours) rend null : l'appelant attend, il ne se contente jamais d'un port seul.
+ */
+export function parseDevToolsActivePort(raw: string): { port: number; browserPath: string } | null {
+  const lines = raw.split(/\r?\n/);
+  if (lines.length < 2) return null;
+  const port = (lines[0] ?? "").trim();
+  const browserPath = (lines[1] ?? "").trim();
+  if (!/^\d{1,5}$/.test(port)) return null;
+  const n = Number(port);
+  if (n < 1 || n > 65535) return null;
+  if (!/^\/devtools\/browser\/[0-9A-Za-z-]+$/.test(browserPath)) return null;
+  return { port: n, browserPath };
+}
+
+/** Interroge `/json/version` du port découvert et rend le chemin du WebSocket navigateur annoncé, ou lève si le point d'entrée ne répond pas. */
+async function fetchBrowserPath(port: number, timeoutMs: number): Promise<string> {
+  const res = await fetch(`http://127.0.0.1:${port}/json/version`, { signal: AbortSignal.timeout(timeoutMs) });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const body = (await res.json()) as { webSocketDebuggerUrl?: unknown };
+  if (typeof body.webSocketDebuggerUrl !== "string") throw new Error("pas de webSocketDebuggerUrl");
+  return new URL(body.webSocketDebuggerUrl).pathname;
+}
+
+/** Les dépendances du lancement, remplaçables pour les essais déterministes seulement. */
+export interface LaunchDeps {
+  spawn?: typeof spawn;
+  now?: () => number;
+  sleep?: (ms: number) => Promise<void>;
+  /** Chemin WebSocket annoncé par le point d'entrée DevTools de ce port. */
+  fetchBrowserPath?: (port: number) => Promise<string>;
+  /** Vrai si un processus porte encore ce profil (le lanceur parti, le navigateur peut tourner sous un autre numéro). */
+  profileHasProcess?: (profileDir: string) => boolean;
+  /** Nettoyage : remplacé par les essais qui n'ont pas de vrai navigateur. */
+  killProfile?: (profileDir: string) => number;
+}
+
+const LAUNCH_POLL_MS = 100;
+/** Le lanceur parti sans fichier de port : combien de contrôles consécutifs « plus aucun processus ne porte le profil » avant de conclure à l'échec. */
+const ORPHAN_CHECKS = 5;
+
+/**
+ * Lance un Chrome neuf sur un profil jetable. Jamais d'argument qui désigne un autre profil.
+ *
+ * Attente BORNÉE qui distingue : sortie du lanceur (n'est PAS un échec en soi : Chrome peut se relancer sous un autre numéro), disponibilité
+ * réelle (fichier de port complet ET point d'entrée qui répond avec le même identifiant de navigateur), échec (lanceur parti ET plus aucun
+ * processus sur le profil), annulation et délai dépassé. Dans chaque cas d'échec le navigateur et le profil sont nettoyés.
+ */
+export async function launchDisposableBrowser(opts: LaunchOptions & { signal?: AbortSignal }, deps: LaunchDeps = {}): Promise<DisposableBrowser> {
   if (!existsSync(opts.chromeBin)) throw new AdapterUnavailable(A, `navigateur introuvable : ${opts.chromeBin}`);
+  if (opts.signal?.aborted) throw new AdapterUnavailable(A, "démarrage du navigateur annulé");
+  const doSpawn = deps.spawn ?? spawn;
+  const now = deps.now ?? Date.now;
+  const sleep = deps.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
+  const probe = deps.fetchBrowserPath ?? ((port: number) => fetchBrowserPath(port, 3000));
+  const hasProcess = deps.profileHasProcess ?? ((dir: string) => profileProcessIds(dir).length > 0);
+  const killProfile = deps.killProfile ?? killProfileProcesses;
   const profileDir = mkdtempSync(join(tmpdir(), PROFILE_PREFIX));
   if (!isDisposableProfile(profileDir)) throw new AdapterRefused(A, "profil non jetable");
   const userData = join(profileDir, "chrome");
   const args = browserArgs(userData, opts);
-  const child: ChildProcess = spawn(opts.chromeBin, args, { stdio: "ignore", windowsHide: true });
+  const child: ChildProcess = doSpawn(opts.chromeBin, args, { stdio: "ignore", windowsHide: true, env: childEnv("engine") });
+  let spawnError: Error | null = null;
+  child.once("error", (e) => {
+    spawnError = e;
+  });
   // Marqueur de propriété : ce que `sweepStaleSessions` exige avant de toucher à un dossier ou à un processus (jamais le reste du système).
-  writeMarker(profileDir, { ownerPid: process.pid, chromePid: child.pid ?? 0, createdAt: Date.now() });
+  writeMarker(profileDir, { ownerPid: process.pid, chromePid: child.pid ?? 0, createdAt: now() });
   const kill = async () => {
-    if (child.exitCode === null) {
-      child.kill();
-      await new Promise<void>((r) => {
+    if (child.exitCode === null && !spawnError) {
+      // L'écouteur d'abord : un `exit` émis pendant `kill()` ne doit pas coûter les 4 s d'attente.
+      const exited = new Promise<void>((r) => {
         const t = setTimeout(r, 4000);
         child.once("exit", () => (clearTimeout(t), r()));
       });
+      child.kill();
+      await exited;
     }
     // Ce qui porte encore le profil (Chrome relancé sous un autre numéro) : sinon il survit et recrée son dossier.
-    killProfileProcesses(profileDir);
+    killProfile(profileDir);
     for (let i = 0; i < 10; i++) {
       if (removeDisposableProfile(profileDir)) return;
-      await new Promise((r) => setTimeout(r, 300));
+      await sleep(300);
     }
   };
+  const fail = async (why: string): Promise<never> => {
+    await kill();
+    throw new AdapterUnavailable(A, why);
+  };
   const portFile = join(userData, "DevToolsActivePort");
-  const deadline = Date.now() + (opts.timeoutMs ?? 20_000);
-  while (Date.now() < deadline) {
-    if (child.exitCode !== null) break;
-    if (existsSync(portFile)) {
-      const port = readFileSync(portFile, "utf8").split(/\r?\n/)[0]?.trim();
-      if (port && /^\d{2,5}$/.test(port)) return { cdpUrl: `http://127.0.0.1:${port}`, profileDir, close: kill };
+  const startedAt = now();
+  const deadline = startedAt + (opts.timeoutMs ?? 20_000);
+  let orphanChecks = 0;
+  let lastProblem = "";
+  while (now() < deadline) {
+    if (opts.signal?.aborted) return fail("démarrage du navigateur annulé");
+    if (spawnError) return fail(`le navigateur n'a pas pu être lancé : ${(spawnError as Error).message}`);
+    let found: { port: number; browserPath: string } | null = null;
+    try {
+      // Le profil est neuf : un fichier de port ne peut venir que de CE lancement. Complet seulement, sinon on attend la fin de l'écriture.
+      if (existsSync(portFile)) found = parseDevToolsActivePort(readFileSync(portFile, "utf8"));
+    } catch {
+      /* en cours d'écriture ou verrouillé : au prochain tour */
     }
-    await new Promise((r) => setTimeout(r, 100));
+    if (found) {
+      try {
+        const announced = await probe(found.port);
+        if (announced === found.browserPath) return { cdpUrl: `http://127.0.0.1:${found.port}`, profileDir, close: kill };
+        lastProblem = "le point d'entrée DevTools n'annonce pas le navigateur attendu";
+      } catch (e) {
+        lastProblem = `connexion au point d'entrée DevTools impossible (${e instanceof Error ? e.message : String(e)})`;
+      }
+    } else if (child.exitCode !== null) {
+      // Le lanceur est parti sans fichier de port : le navigateur peut tourner sous un autre numéro. Échec seulement si plus rien ne porte le profil.
+      orphanChecks = hasProcess(profileDir) ? 0 : orphanChecks + 1;
+      if (orphanChecks >= ORPHAN_CHECKS) return fail(`le navigateur s'est arrêté avant de démarrer (code ${child.exitCode})`);
+    }
+    await sleep(LAUNCH_POLL_MS);
   }
-  await kill();
-  throw new AdapterUnavailable(A, "le navigateur jetable n'a pas démarré");
+  return fail(lastProblem ? `le navigateur jetable n'a pas démarré : ${lastProblem}` : "le navigateur jetable n'a pas démarré (délai dépassé)");
 }
 
 const MARKER = "owner.json";
@@ -208,13 +293,20 @@ export function commandLineOf(pid: number): string | null {
  * (suffixe aléatoire, vérifié jetable) ne désigne que ce navigateur ; il est passé par l'environnement, jamais collé dans une commande.
  */
 export function killProfileProcesses(profileDir: string): number {
-  if (!isDisposableProfile(profileDir)) return 0;
+  const pids = profileProcessIds(profileDir);
+  for (const pid of pids) killTree(pid);
+  return pids.length;
+}
+
+/** Les processus (hors le nôtre) dont la ligne de commande contient CE profil jetable ; vide si le dossier n'est pas jetable. */
+export function profileProcessIds(profileDir: string): number[] {
+  if (!isDisposableProfile(profileDir)) return [];
   const needle = resolve(profileDir);
   let pids: number[] = [];
   try {
     if (process.platform === "win32") {
       const script = "Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -and $_.CommandLine.IndexOf($env:JAROD_PROFILE, [StringComparison]::OrdinalIgnoreCase) -ge 0 -and $_.ProcessId -ne $PID } | ForEach-Object { $_.ProcessId }";
-      const out = execFileSync("powershell", ["-NoProfile", "-NonInteractive", "-Command", script], { encoding: "utf8", timeout: 15_000, windowsHide: true, env: { ...process.env, JAROD_PROFILE: needle } });
+      const out = execFileSync("powershell", ["-NoProfile", "-NonInteractive", "-Command", script], { encoding: "utf8", timeout: 15_000, windowsHide: true, env: childEnv("engine", { explicit: { JAROD_PROFILE: needle } }) });
       pids = out.split(/\r?\n/).map(Number).filter((n) => Number.isInteger(n) && n > 0);
     } else {
       for (const n of readdirSync("/proc")) {
@@ -227,11 +319,9 @@ export function killProfileProcesses(profileDir: string): number {
       }
     }
   } catch {
-    return 0;
+    return [];
   }
-  pids = pids.filter((pid) => pid !== process.pid);
-  for (const pid of pids) killTree(pid);
-  return pids.length;
+  return pids.filter((pid) => pid !== process.pid);
 }
 
 function killTree(pid: number): void {

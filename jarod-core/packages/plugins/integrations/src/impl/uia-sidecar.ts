@@ -25,6 +25,8 @@ export class SidecarUiaBackend implements UiaBackend {
   private proc: LineProcess | null = null;
   private seq = 0;
   private readonly pending = new Map<number, Pending>();
+  /** Appelé quand le moteur signale l'arrêt d'urgence (Ctrl+Alt+Fin). */
+  onEmergency?: () => void;
 
   constructor(readonly engine: "flaui" | "pywinauto", private readonly spawn: () => LineProcess, private readonly timeoutMs = 15_000) {}
 
@@ -32,10 +34,15 @@ export class SidecarUiaBackend implements UiaBackend {
     if (this.proc) return this.proc;
     const p = this.spawn();
     p.onLine((line) => {
-      let msg: { id?: number; ok?: boolean; result?: unknown; error?: string };
+      let msg: { id?: number; ok?: boolean; result?: unknown; error?: string; event?: string };
       try {
         msg = JSON.parse(line);
       } catch {
+        return;
+      }
+      // Un événement spontané du moteur (l'arrêt d'urgence lu au clavier physique), sans requête correspondante.
+      if (msg.event === "emergency_stop") {
+        this.onEmergency?.();
         return;
       }
       const pend = typeof msg.id === "number" ? this.pending.get(msg.id) : undefined;
@@ -75,6 +82,11 @@ export class SidecarUiaBackend implements UiaBackend {
     this.proc = null;
   }
 
+  /** Le moteur tourne (un processus est lancé). */
+  get running(): boolean {
+    return this.proc !== null;
+  }
+
   listWindows = () => this.call<WindowRef[]>("list_windows");
   findElement = (q: ElementQuery) => this.call<ElementInfo[]>("find_element", { ...q });
   readText = (window: string, element: string) => this.call<string>("read_text", { window, element });
@@ -82,6 +94,10 @@ export class SidecarUiaBackend implements UiaBackend {
   typeText = (window: string, element: string, text: string) => this.call<void>("type_text", { window, element, text });
   focusWindow = (window: string) => this.call<void>("focus_window", { window });
   pressKey = (window: string, key: string) => this.call<void>("press_key", { window, key });
+  pressKeys = (window: string, combo: string) => this.call<void>("press_keys", { window, combo });
+  typeKeys = (window: string, text: string) => this.call<void>("type_keys", { window, text });
+  mouseClick = (window: string, x: number, y: number, button: "left" | "right" | "double") => this.call<{ restored?: boolean }>("mouse_click", { window, x, y, button });
+  mouseScroll = (window: string, x: number, y: number, amount: number) => this.call<{ restored?: boolean }>("mouse_scroll", { window, x, y, amount });
 }
 
 /** Un processus enfant en lignes de texte (sans shell : le programme et ses arguments sont séparés). */

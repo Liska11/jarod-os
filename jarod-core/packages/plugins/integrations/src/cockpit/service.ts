@@ -21,6 +21,8 @@ export interface CapabilityDeps {
   contextProxy?: () => Promise<ProbeContext["contextProxy"]>;
   /** La porte de permissions existante, pour un nom d'outil. */
   decide: (tool: string) => "allow" | "ask" | "deny";
+  /** Vague G : un réglage non sensible, lu par sa clé (ex. `localTraces`). */
+  setting?: (key: string) => unknown;
   now?: () => number;
 }
 
@@ -98,7 +100,12 @@ export class CapabilityService {
     let result: ProbeResult;
     try {
       const contextProxy = e.owner === "F1" ? await this.deps.contextProxy?.() : undefined;
-      result = await e.probe(this.deps.host, { skills: this.deps.skills(), mcpServers: this.deps.mcpServers(), ...(contextProxy ? { contextProxy } : {}) });
+      result = await e.probe(this.deps.host, {
+        skills: this.deps.skills(),
+        mcpServers: this.deps.mcpServers(),
+        ...(contextProxy ? { contextProxy } : {}),
+        ...(this.deps.setting ? { setting: this.deps.setting } : {}),
+      });
     } catch (err) {
       result = { state: "error", detail: `la sonde a échoué : ${(err as Error).message}` };
     }
@@ -119,7 +126,7 @@ export class CapabilityService {
       state: blocked && result.state === "available" ? "blocked-permission" : result.state,
       permissions,
       checkedAt: at,
-      ...(a ? { provenance: { repo: a.repo, license: a.license, pinned: a.pinned, status: a.status } } : {}),
+      ...(a ? { provenance: { repo: a.repo, license: a.license, pinned: a.pinned, status: a.status, ...(a.stage ? { stage: a.stage } : {}), ...(a.stageReason ? { stageReason: a.stageReason } : {}) } } : {}),
     };
   }
 

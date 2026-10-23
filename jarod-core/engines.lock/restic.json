@@ -1,0 +1,19 @@
+{
+  "comment": "G4 — restic embarqué dans le paquet Windows (resources/restic). Vérifié par apps/desktop/scripts/bundle-restic.mjs à chaque empaquetage : l'archive officielle contre SHA256SUMS de la release, l'exécutable extrait, le texte de licence.",
+  "version": "0.19.1",
+  "release": "https://github.com/restic/restic/releases/tag/v0.19.1",
+  "zip": {
+    "name": "restic_0.19.1_windows_amd64.zip",
+    "sha256": "da948ad707ed690426473aaba2046cd61f8f90f6f0e7dab6be0d5796531de67d"
+  },
+  "exe": {
+    "name": "restic_0.19.1_windows_amd64.exe",
+    "sha256": "b0dd1fd21eea5d8fe1325f55f7118213c21f36de8a261e04c0624a5ab9fd7830"
+  },
+  "license": {
+    "spdx": "BSD-2-Clause",
+    "source": "https://raw.githubusercontent.com/restic/restic/v0.19.1/LICENSE",
+    "path": "jarod-core/licenses/G4-restic-LICENSE.txt",
+    "sha256": "6f08a01a9fab5b24e139a09f15cc24a73087c7bc09e3bacf099fdf2d767bf897"
+  }
+}

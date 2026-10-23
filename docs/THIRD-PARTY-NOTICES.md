@@ -47,6 +47,23 @@ n'est pas `integrated` (voir `docs/INTEGRATIONS.md`) ; la ligne existe pour la t
 | F8 | storytold/artcraft | MIT OR Apache-2.0 | unknown | double licence au choix ; application séparée, rien n'est embarqué |
 | F9 | morluto/rea | MIT | permissive | copyright et texte MIT |
 | F10 | usestrix/strix | Apache-2.0 | permissive | NOTICE Apache-2.0 ; détecté seulement |
+| G1 | anchore/syft | Apache-2.0 | permissive | NOTICE Apache-2.0 ; outil de développement, jamais embarqué |
+| G2 | open-telemetry/opentelemetry-js | Apache-2.0 | permissive | NOTICE Apache-2.0 ; @opentelemetry/api, sdk-trace-base, core, resources, semantic-conventions groupés dans la passerelle (licenses/G2.md) |
+| G3 | ethz-spylab/agentdojo | MIT | permissive | copyright et texte MIT ; banc de test, jamais embarqué |
+| G4 | restic/restic | BSD-2-Clause | permissive | **embarqué** dans le paquet Windows (`resources\restic\restic.exe`, 0.19.1) avec son texte BSD-2 (`resources\restic\LICENSE.txt`, copie de `jarod-core/licenses/G4-restic-LICENSE.txt`, tag v0.19.1) |
+| G5 | yt-dlp/yt-dlp | Unlicense | unknown | évalué ; domaine public (Unlicense) |
+| G6 | mostlygeek/llama-swap | MIT | permissive | évalué |
+| G7 | CursorTouch/Windows-MCP | MIT | permissive | évalué |
+| G8 | reladraw/reladraw | Apache-2.0 | permissive | évalué |
+| G9 | modelcontextprotocol/inspector | MIT (transition vers Apache-2.0 ; SPDX NOASSERTION) | unknown | outil de développement, jamais embarqué ; contributions MIT et Apache-2.0 mêlées |
+| G10 | smol-machines/smolvm | Apache-2.0 | permissive | intégré (lot C, 2026-10-21 ; `engines/smolvm`, non embarqué dans le paquet) |
+| G11 | bytedance/UI-TARS-desktop | Apache-2.0 | permissive | différé ; licence du modèle de vision à relever séparément |
+| G12 | Louis-CFM/coucou | MIT (code) ; nom, Mochi et sons © Louis Raillé | unknown | différé ; seuls les concepts et le code MIT sont réutilisables |
+| G13 | osquery/osquery | Apache-2.0 OR GPL-2.0-only | copyleft | évalué ; double licence au choix (Apache-2.0 retenue s'il est embarqué) |
+| G14 | LaurieWired/GhidraMCP | Apache-2.0 | permissive | évalué ; bethington/ghidra-mcp (Apache-2.0) écarté |
+| G15 | sandboxie-plus/Sandboxie | GPL-3.0 (informationnel : usage personnel) | copyleft | bloqué (pilote et élévation) ; application séparée, rien n'est embarqué |
+| G16 | alibaba/open-code-review | Apache-2.0 | permissive | NOTICE Apache-2.0 ; moteur hors paquet (engines/) |
+| G17 | trycua/cua | MIT | permissive | différé |
 
 Autres composants cités par la mission : Darwinian Evolver (AGPL, utilisable y compris en runtime) : dépôt et
 licence à relever lors de son éventuel embarquement, puis à ajouter ici.

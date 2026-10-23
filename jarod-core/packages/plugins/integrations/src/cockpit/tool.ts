@@ -30,6 +30,7 @@ function detail(c: CapabilityView): string {
     `vérification : ${c.verification}`,
     `limites : ${c.limits.join(" ; ")}`,
     c.provenance ? `provenance : ${c.provenance.repo} @ ${c.provenance.pinned} (${c.provenance.license})` : "",
+    c.provenance?.stage ? `étape : ${c.provenance.stage}${c.provenance.stageReason ? ` — ${c.provenance.stageReason}` : ""}` : "",
   ]
     .filter(Boolean)
     .join("\n");

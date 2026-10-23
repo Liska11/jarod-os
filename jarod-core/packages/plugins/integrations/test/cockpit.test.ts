@@ -32,9 +32,10 @@ const service = (h: ProbeHost, extra: Partial<ConstructorParameters<typeof Capab
   new CapabilityService({ host: h, tools: noTools, skills: () => [], mcpServers: () => [], decide: () => "allow", ...extra });
 
 describe("cockpit : les dix intégrations dans le registre des adaptateurs", () => {
+  const WAVE_F = COCKPIT_ADAPTERS.filter((a) => a.wave === "F");
   it("dix adaptateurs F1..F10, épinglés, licence vérifiée, détection seule (aucune exécution), politique respectée", () => {
-    expect(COCKPIT_ADAPTERS.map((a) => a.id)).toEqual(["F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10"]);
-    for (const a of COCKPIT_ADAPTERS) {
+    expect(WAVE_F.map((a) => a.id)).toEqual(["F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10"]);
+    for (const a of WAVE_F) {
       expect(a.pinned, a.id).toMatch(/^[0-9a-f]{40}$|^Ghidra_/);
       expect(a.execution, a.id).toBe("none");
       expect(a.licenseCheckedAt, a.id).toBe("2026-10-20");
@@ -44,7 +45,7 @@ describe("cockpit : les dix intégrations dans le registre des adaptateurs", () 
   });
 
   it("les licences sont celles vérifiées dans les dépôts, pas celles qu'affiche l'API", () => {
-    const byRepo = Object.fromEntries(COCKPIT_ADAPTERS.map((a) => [a.repo, a.license]));
+    const byRepo = Object.fromEntries(WAVE_F.map((a) => [a.repo, a.license]));
     expect(byRepo).toEqual({
       "ranxianglei/billion-context": "MIT",
       "mksglu/context-mode": "Elastic-2.0",
@@ -59,8 +60,70 @@ describe("cockpit : les dix intégrations dans le registre des adaptateurs", () 
     });
   });
 
+  it("vague G : les 17 dépôts du prompt plus3, par leur URL exacte, avec une étape réelle et une raison quand elle bloque", () => {
+    const G = COCKPIT_ADAPTERS.filter((a) => a.wave === "G");
+    expect(G.map((a) => a.repo)).toEqual([
+      "anchore/syft",
+      "open-telemetry/opentelemetry-js",
+      "ethz-spylab/agentdojo",
+      "restic/restic",
+      "yt-dlp/yt-dlp",
+      "mostlygeek/llama-swap",
+      "CursorTouch/Windows-MCP",
+      "reladraw/reladraw",
+      "modelcontextprotocol/inspector",
+      "smol-machines/smolvm",
+      "bytedance/UI-TARS-desktop",
+      "Louis-CFM/coucou",
+      "osquery/osquery",
+      "LaurieWired/GhidraMCP",
+      "sandboxie-plus/Sandboxie",
+      "alibaba/open-code-review",
+      "trycua/cua",
+    ]);
+    for (const a of G) {
+      expect(a.stage, a.id).toBeTruthy();
+      expect(a.licenseCheckedAt, a.id).toBe("2026-10-20");
+      if (a.stage === "blocked" || a.stage === "deferred") expect(a.stageReason, a.id).toBeTruthy();
+      // Un dépôt seulement évalué, bloqué ou différé n'est jamais présenté comme prêt.
+      if (["evaluated", "blocked", "deferred"].includes(a.stage!)) expect(a.status, a.id).toBe("planned");
+      expect(REGISTRY).toContainEqual(a);
+    }
+    // 2026-10-21 : G15 et G10 installés et raccordés (accord de l'utilisateur ; Mode développeur activé par lui) — plus aucun dépôt bloqué.
+    expect(G.filter((a) => a.stage === "blocked").map((a) => a.id)).toEqual([]);
+    // Seuls ces dépôts passent par un outil de l'agent (donc par la porte unique) ; les autres n'exécutent rien.
+    expect(G.filter((a) => a.execution === "via-guarded-tool").map((a) => a.id)).toEqual(["G5", "G8", "G10", "G13", "G15", "G16"]);
+  });
+
+  it("vague G : les outils de développement et de QA sont marqués comme tels, jamais comme capacités de l'agent", () => {
+    const caps = COCKPIT_INTEGRATIONS.filter((i) => i.adapter.startsWith("G")).flatMap((i) => i.capabilities);
+    expect(caps.filter((c) => c.integration === "dev-tool").map((c) => c.owner)).toEqual(["G1", "G3", "G9"]);
+    expect(caps.filter((c) => c.integration === "agent-tool").map((c) => [c.owner, c.tools])).toEqual([
+      ["G5", ["media_fetch"]],
+      ["G8", ["diagram_export"]],
+      ["G10", ["linux_prepare", "linux_run", "linux_reset"]],
+      ["G13", ["system_diagnostics"]],
+      ["G15", ["sandbox_run", "sandbox_changes", "sandbox_discard"]],
+      ["G16", ["code_review_plan"]],
+    ]);
+  });
+
+  it("vague G : un dépôt seulement évalué rend « non installé » avec sa raison, jamais « disponible »", async () => {
+    const s = service(fakeHost().host);
+    for (const id of ["ui-tars.visual-agent", "ghidra-mcp.bridge", "cua.computer-use"]) {
+      const v = await s.check(id);
+      expect(v.state, id).toBe("not-installed");
+      expect(v.detail, id).toMatch(/évalué|différé|différée/);
+    }
+    // G8, raccordé le 2026-10-21 (diagram_export) : sans moteur, « non installé » qui nomme le moteur, jamais « disponible ».
+    expect(await s.check("reladraw.diagram")).toMatchObject({ state: "not-installed", detail: expect.stringMatching(/moteur reladraw introuvable/) });
+    expect((await s.check("otel.local-traces")).state).toBe("installed-unconfigured");
+    const on = service(fakeHost().host, { setting: (k) => (k === "localTraces" ? { enabled: true, retentionDays: 3 } : undefined) });
+    expect(await on.check("otel.local-traces")).toMatchObject({ state: "available", detail: expect.stringMatching(/3 j/) });
+  });
+
   it("chaque intégration déclare au moins une capacité, avec les champs du registre vivant", () => {
-    expect(COCKPIT_INTEGRATIONS).toHaveLength(10);
+    expect(COCKPIT_INTEGRATIONS).toHaveLength(28); // + D1 (pilote de fenêtres), raccordé le 2026-10-21
     for (const i of COCKPIT_INTEGRATIONS) {
       expect(i.capabilities.length, i.adapter).toBeGreaterThan(0);
       for (const c of i.capabilities) {

@@ -1,0 +1,8 @@
+{
+  "name": "jarod-engine-reladraw",
+  "private": true,
+  "description": "G8 — reladraw épinglé pour diagram_export (sources .reladraw → SVG). Installé dans engines/reladraw par npm ci --ignore-scripts.",
+  "dependencies": {
+    "reladraw": "0.16.0"
+  }
+}

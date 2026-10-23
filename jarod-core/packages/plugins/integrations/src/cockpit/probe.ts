@@ -11,6 +11,8 @@
 import { execFile } from "node:child_process";
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { delimiter, join } from "node:path";
+import type { ProbeResult } from "./types.js";
+import { childEnv } from "@jarod/kernel/child-env";
 
 export interface RunResult {
   code: number | null;
@@ -62,7 +64,7 @@ export function nodeProbeHost(): ProbeHost {
         execFile(
           exe,
           argv,
-          { timeout: timeoutMs, windowsHide: true, maxBuffer: 1024 * 1024, encoding: "utf8", env: { ...process.env, DO_NOT_TRACK: "1", HYPERFRAMES_NO_TELEMETRY: "1" } },
+          { timeout: timeoutMs, windowsHide: true, maxBuffer: 1024 * 1024, encoding: "utf8", env: childEnv("engine", { explicit: { DO_NOT_TRACK: "1", HYPERFRAMES_NO_TELEMETRY: "1" } }) },
           (err, stdout, stderr) => {
             const e = err as (NodeJS.ErrnoException & { killed?: boolean; code?: number | string }) | null;
             resolve({
@@ -98,6 +100,22 @@ export function which(host: ProbeHost, name: string): string | null {
 /** Le premier numéro de version d'un texte (`v1.2.3`, `1.2`, `12.1.4`). */
 export function firstVersion(text: string): string | undefined {
   return /\bv?(\d+\.\d+(?:\.\d+)?(?:[-+][\w.]+)?)\b/.exec(text)?.[1];
+}
+
+export const notInstalled = (what: string, detail?: string): ProbeResult => ({ state: "not-installed", detail: detail ?? `${what} introuvable`, missing: [what] });
+
+/** Un programme du PATH et sa version : non installé, en erreur (il ne répond pas), ou trouvé. */
+export async function cli(host: ProbeHost, name: string, label: string, args: string[] = ["--version"]) {
+  const file = which(host, name);
+  if (!file) return { kind: "absent" as const, result: notInstalled(label, `${label} introuvable dans le PATH (${name})`) };
+  return program(host, file, label, args);
+}
+
+/** Un programme à un chemin connu et sa version. */
+export async function program(host: ProbeHost, file: string, _label: string, args: string[] = ["--version"]) {
+  const v = await versionOf(host, file, args);
+  if (!v.ok) return { kind: "error" as const, result: { state: "error", detail: v.why, found: [file] } as ProbeResult };
+  return { kind: "ok" as const, file, version: v.version };
 }
 
 /** Lance `<prog> <args>` et rend sa version, ou la raison de l'échec — sans jamais lever. */

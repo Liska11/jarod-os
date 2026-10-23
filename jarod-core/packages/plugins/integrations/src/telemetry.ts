@@ -8,7 +8,7 @@
  * (et compté), pas masqué : un masque laisse deviner la forme de ce qu'il cache.
  */
 
-export const SPAN_NAMES = ["conversation.turn", "model.select", "llm.request", "tool.permission.wait", "subagent.run", "memory.checkpoint"] as const;
+export const SPAN_NAMES = ["conversation.turn", "model.select", "llm.request", "tool.call", "tool.permission.wait", "tool.execute", "subagent.run", "memory.checkpoint"] as const;
 
 const ALLOWED: Record<string, "id" | "number" | "status" | "category"> = {
   "session.id": "id",

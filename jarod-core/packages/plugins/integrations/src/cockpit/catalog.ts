@@ -6,11 +6,14 @@
  * `external-app`. Une sonde ne lance que le programme de l'intégration avec un argument de diagnostic constant.
  */
 import type { AdapterManifest } from "../adapters.js";
-import { type ProbeHost, versionOf, which } from "./probe.js";
+import { PLUS3_ADAPTERS, PLUS3_INTEGRATIONS } from "./catalog-plus3.js";
+import { cli, notInstalled, type ProbeHost, versionOf, which } from "./probe.js";
 import type { CapabilityManifest, ProbeResult } from "./types.js";
 
 /** Ce qu'une sonde peut lire en plus de l'hôte : l'état déclaré dans Jarod, jamais un document. */
 export interface ProbeContext {
+  /** Vague G : un réglage de Jarod, lu par sa clé (valeur non sensible : jamais le coffre). */
+  setting?: (key: string) => unknown;
   skills: string[];
   mcpServers: { name: string; command: string; args: string[]; enabled: boolean }[];
   /** Lot 4 : le proxy de compression branché au transport (réglage `contextProxy`) et sa santé mesurée ; absent = non branché. */
@@ -53,20 +56,11 @@ export const COCKPIT_ADAPTERS: AdapterManifest[] = [
   adapter("F8", "storytold/artcraft", "MIT OR Apache-2.0", "7a2935cf9e3922e90e4ed5f3556b1cb107013148", "application séparée ; génération distante"),
   adapter("F9", "morluto/rea", "MIT", "b4938aed58737293a6987630476632619713f5cd", "analyse statique en ligne de commande ; détection seule"),
   adapter("F10", "usestrix/strix", "Apache-2.0", "a0f8ea2cd379c4bf56e665d3db2ba8a4f7c0683c", "tests de sécurité applicative ; exige Docker et un modèle configuré ; détection seule"),
+  // Vague G (2026-10-20) : les 17 dépôts du prompt « plus3 », même registre (catalog-plus3.ts).
+  ...PLUS3_ADAPTERS,
 ];
 
 // ---- aides de sonde ----
-
-const notInstalled = (what: string, detail?: string): ProbeResult => ({ state: "not-installed", detail: detail ?? `${what} introuvable`, missing: [what] });
-
-/** Un programme du PATH et sa version : non installé, en erreur (il ne répond pas), ou trouvé. */
-async function cli(host: ProbeHost, name: string, label: string, args: string[] = ["--version"]) {
-  const file = which(host, name);
-  if (!file) return { kind: "absent" as const, result: notInstalled(label, `${label} introuvable dans le PATH (${name})`) };
-  const v = await versionOf(host, file, args);
-  if (!v.ok) return { kind: "error" as const, result: { state: "error", detail: v.why, found: [file] } as ProbeResult };
-  return { kind: "ok" as const, file, version: v.version };
-}
 
 const join = (...parts: string[]) => parts.join("\\");
 
@@ -399,4 +393,41 @@ export const COCKPIT_INTEGRATIONS: CockpitIntegration[] = [
       },
     ],
   },
+  {
+    // D1 raccordé (2026-10-21) : le pilote de fenêtres FlaUI, deux outils de l'agent sous les permissions configurables.
+    adapter: "D1",
+    capabilities: [
+      {
+        ...base,
+        id: "flaui.desktop-control",
+        name: "Fenêtres Windows : lire et agir (FlaUI)",
+        description:
+          "Lit les fenêtres de ce bureau et y agit : éléments nommés (lire, cliquer, saisir, touches), clavier brut et souris par coordonnées relatives à la fenêtre. La fenêtre (processus:titre) est la cible d'une règle de permissions, l'action son opération (read.*, ui.*, keyboard.*, mouse.*).",
+        categories: ["bureau", "automatisation"],
+        intents: ["cliquer dans une application", "remplir un formulaire windows", "taper dans une fenêtre", "automatiser une fenêtre windows"],
+        owner: "D1",
+        tools: ["desktop_windows", "desktop_control"],
+        integration: "agent-tool",
+        output: "fenêtres, éléments, texte lu ; actions avec accord ou règle autonome",
+        risk: "act",
+        sideEffects: "entrées clavier et souris dans la fenêtre visée",
+        locality: "local",
+        requires: ["moteur FlaUI (JAROD_FLAUI_WORKER ou JAROD_ENGINES_DIR\\flaui\\uia-flaui-worker.exe)", "runtime .NET 8 ou plus"],
+        verification: "le moteur est présent (la liste des fenêtres le démarre)",
+        limits: [
+          "accord à chaque action, sauf règle autonome pour la fenêtre et l'opération (jarod permissions add auto desktop_control --cible \"notepad.exe:*\" --operation \"keyboard.*\")",
+          "clavier brut et souris : opérations réservées, refusées sans règle de l'utilisateur",
+          "un seul contrôleur actif par bureau ; arrêt d'urgence Ctrl+Alt+Fin (la reprise demande l'utilisateur)",
+          "jamais : gestionnaires de mots de passe, invites d'élévation, sécurité Windows, champ de mot de passe ; ni touche Windows, Alt+Tab, Ctrl+Alt+…",
+          "agit sur le VRAI bureau (pas de bureau isolé) : premier plan constaté avant les touches, point de clic constaté sur la fenêtre visée",
+        ],
+        probe: async (host) => {
+          if (host.platform !== "win32") return { state: "not-installed", detail: "Windows seulement", missing: ["Windows"] };
+          const file = [host.env.JAROD_FLAUI_WORKER, host.env.JAROD_ENGINES_DIR && `${host.env.JAROD_ENGINES_DIR}\\flaui\\uia-flaui-worker.exe`].find((p): p is string => Boolean(p) && host.exists(p!));
+          return file ? { state: "available", detail: "moteur FlaUI présent", found: [file] } : notInstalled("moteur FlaUI (uia-flaui-worker.exe)");
+        },
+      },
+    ],
+  },
+  ...PLUS3_INTEGRATIONS,
 ];

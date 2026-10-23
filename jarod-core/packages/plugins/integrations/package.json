@@ -16,6 +16,8 @@
   },
   "dependencies": {
     "@jarod/kernel": "workspace:*",
+    "@opentelemetry/api": "1.9.1",
+    "@opentelemetry/sdk-trace-base": "2.11.0",
     "cordis": "4.0.0-rc.10"
   },
   "devDependencies": {
