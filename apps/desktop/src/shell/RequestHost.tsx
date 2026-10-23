@@ -1,16 +1,21 @@
 import { useStore } from '@nanostores/react'
 import type { ApprovalChoice, ApprovalRequestParams, ClarifyRequestParams } from '@jarod-os/client'
 import { IconKey, IconLock, IconQuestionMark, IconShieldCheck } from '@tabler/icons-react'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Button } from '../components/ui/button.tsx'
 import { Badge } from '../components/ui/primitives.tsx'
 import { type MessageKey, t, useT } from '../lib/i18n.ts'
 import { thisDevice } from '../lib/platform-labels.ts'
+import { takeRequestFocus } from '../lib/request-focus.ts'
 import { $pendingRequests, type PendingRequest, resolveRequest } from '../store/requests.ts'
 
 /**
  * One host for every server->client question. Cards stack bottom-right; the oldest is on top so
  * the agent thread that has waited longest unblocks first. Gestures never grant approval.
+ *
+ * V-20 (upstream #172): no answer is ever focused. A card that arrives while someone types left "Allow once" focused, so a
+ * stray Enter approved; and the next card reused the previous one (no key), focused button included, so a second Enter answered
+ * it unseen. Each request now has its own card, which takes the focus itself (never an answer) only when nothing is being typed.
  */
 export function RequestHost() {
   const pending = useStore($pendingRequests)
@@ -25,9 +30,22 @@ export function RequestHost() {
   return (
     <div className="pointer-events-none absolute right-5 bottom-[92px] z-(--z-request) flex w-[420px] flex-col items-stretch gap-2">
       {rest.length > 0 && <div className="pointer-events-auto self-end text-[11px] text-fg-3">{tn('request.more', rest.length)}</div>}
-      <div className="float pointer-events-auto rounded-2xl p-4 animate-rise">
+      <FocusedCard key={current.request.id} id={current.request.id}>
         <RequestCard entry={current} />
-      </div>
+      </FocusedCard>
+    </div>
+  )
+}
+
+/** The card of one request: focusable itself (Enter and Space do nothing on it), focused on arrival unless a field has the focus. */
+function FocusedCard({ id, children }: { id: string; children: React.ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => (ref.current ? takeRequestFocus(ref.current) : undefined), [])
+
+  return (
+    <div ref={ref} tabIndex={-1} data-request-card={id} className="float pointer-events-auto rounded-2xl p-4 animate-rise outline-none">
+      {children}
     </div>
   )
 }
@@ -92,7 +110,6 @@ function ApprovalCard({ id, params }: { id: string; params: ApprovalRequestParam
             key={choice}
             variant={choice === 'deny' ? 'danger' : choice === 'once' ? 'primary' : 'secondary'}
             size="sm"
-            autoFocus={choice === 'once'}
             onClick={() => resolveRequest(id, { choice })}
           >
             {t(CHOICE_LABEL[choice])}
@@ -193,7 +210,6 @@ function ValueCard({ id, icon, title, description, secret }: { id: string; icon:
       </div>
       <input
         type={secret ? 'password' : 'text'}
-        autoFocus
         value={value}
         onChange={event => setValue(event.target.value)}
         onKeyDown={event => {
