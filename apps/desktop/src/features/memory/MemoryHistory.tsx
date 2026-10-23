@@ -86,12 +86,12 @@ export function MemoryHistory({ onChanged }: { onChanged: () => void }) {
                       <span key={index}>{part.text}</span>
                     ) : part.kind === 'del' ? (
                       // biome-ignore lint/suspicious/noArrayIndexKey: the parts of one diff never move
-                      <del key={index} className="bg-danger/15 text-danger">
+                      <del key={index} className="rounded-sm bg-danger/15 px-0.5 text-danger">
                         {part.text}
                       </del>
                     ) : (
                       // biome-ignore lint/suspicious/noArrayIndexKey: the parts of one diff never move
-                      <ins key={index} className="bg-ok/15 text-ok no-underline">
+                      <ins key={index} className="ml-0.5 rounded-sm bg-ok/15 px-0.5 text-ok no-underline">
                         {part.text}
                       </ins>
                     )
