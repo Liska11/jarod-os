@@ -4,7 +4,8 @@ import { defineConfig } from "vitest/config";
 // se disputent le premier plan et l'une échoue (« la fenêtre n'a pas pu passer au premier plan »). Elles tournent donc UN FICHIER À LA FOIS ; les tests
 // sans moteur restent en parallèle. Les deux projets ne tournent PAS en même temps (`npm test` les enchaîne) : mesuré, la charge des tests sans moteur
 // suffit à faire échouer l'amenée au premier plan d'une fenêtre fabriquée.
-const common = { environment: "node" as const, testTimeout: 30_000 };
+// hookTimeout : les hooks bootent un vrai noyau (stockage, plugins) ; sur un runner Windows chargé, cela a dépassé les 10 s par défaut.
+const common = { environment: "node" as const, testTimeout: 30_000, hookTimeout: 30_000 };
 
 export default defineConfig({
   test: {
