@@ -230,6 +230,7 @@ Comme tout outil MCP dans Jarod :
 - un accord est demandé à **chaque appel** ;
 - les outils sont refusés hors ligne sans « commandes locales » ;
 - l'empreinte de chaque outil est figée : une description qui change est bloquée.
+- depuis V-14 (2026-10-23), chaque serveur peut avoir sa **liste blanche** d'outils (Réglages › Serveurs MCP › Outils) : seuls les outils cochés rejoignent le registre de l'agent ; un outil hors liste, ou que le serveur ajoute plus tard, n'existe pas pour l'agent (ni enregistré, ni proposé à l'accord). Sans liste, tous les outils du serveur. La liste vaut pour tout serveur, côté Jarod : pour Windows-MCP elle s'ajoute à `--tools`, qui filtre côté serveur.
 
 **Limites :**
 - les coordonnées sont celles de l'**écran entier**, donc aucune fenêtre ne peut servir de cible de règle : une règle autonome ne peut le borner que par l'outil, l'opération et la durée ;
