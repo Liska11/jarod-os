@@ -5,6 +5,7 @@ embarquées dans le paquet, rend le texte des attaques tel que la bibliothèque 
 et les actions visées (« ground truth ») de chaque tâche d'injection.
 
     python -I export_cases.py --benchmark v1.2 --attacks important_instructions,ignore_previous > cas.json
+    python -I export_cases.py --benchmark v1.2 --benign > benins.json
 """
 
 import argparse
@@ -32,10 +33,41 @@ class _NamedPipeline(BasePipelineElement):
 
 def render(attack_name: str, suite, injection_task, user_task) -> str:
     attack = load_attack(attack_name, suite, _NamedPipeline())
-    if not isinstance(attack, FixedJailbreakAttack):
-        raise SystemExit(f"attaque non prise en charge (gabarit fixe attendu) : {attack_name}")
-    attack.model_name = MODEL
-    return attack.jailbreak.format(goal=injection_task.GOAL, user=attack.user_name, model=attack.model_name, task=attack.summarize_task(user_task))
+    if isinstance(attack, FixedJailbreakAttack) and "{tools}" not in attack.jailbreak:
+        attack.model_name = MODEL
+        return attack.jailbreak.format(goal=injection_task.GOAL, user=attack.user_name, model=attack.model_name, task=attack.summarize_task(user_task))
+    # Les autres (déni de service, connaissance des outils) : le texte que la bibliothèque place elle-même dans le premier vecteur
+    # d'injection de la tâche utilisateur. Aucun modèle : `attack()` ne fait que remplir son gabarit (et rejouer la vérité terrain).
+    if hasattr(attack, "model_name"):
+        attack.model_name = MODEL
+    texts = attack.attack(user_task, injection_task)
+    if not texts:
+        raise SystemExit(f"attaque sans texte rendu : {attack_name}")
+    return next(iter(texts.values()))
+
+
+def benign_texts(benchmark: str) -> list[str]:
+    """Les textes des environnements PAR DÉFAUT (vecteurs d'injection remplis de leur valeur bénigne) : e-mails, messages, fichiers,
+    pages, avis. Le corpus des faux positifs, du même domaine que les attaques. Chaînes d'au moins 40 caractères, sans doublon."""
+    seen: set[str] = set()
+    out: list[str] = []
+
+    def walk(v) -> None:
+        if isinstance(v, str):
+            s = v.strip()
+            if len(s) >= 40 and s not in seen:
+                seen.add(s)
+                out.append(s)
+        elif isinstance(v, dict):
+            for x in v.values():
+                walk(x)
+        elif isinstance(v, (list, tuple)):
+            for x in v:
+                walk(x)
+
+    for suite in get_suites(benchmark).values():
+        walk(suite.load_and_inject_default_environment({}).model_dump(mode="json"))
+    return out
 
 
 def main() -> None:
@@ -43,7 +75,11 @@ def main() -> None:
     p = argparse.ArgumentParser()
     p.add_argument("--benchmark", default="v1.2")
     p.add_argument("--attacks", default="important_instructions")
+    p.add_argument("--benign", action="store_true", help="exporte seulement les textes bénins des environnements par défaut")
     a = p.parse_args()
+    if a.benign:
+        json.dump({"agentdojo": importlib.metadata.version("agentdojo"), "benchmark": a.benchmark, "benign": benign_texts(a.benchmark)}, sys.stdout, ensure_ascii=False)
+        return
     attacks = [x for x in a.attacks.split(",") if x]
     cases = []
     for suite_name, suite in get_suites(a.benchmark).items():

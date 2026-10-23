@@ -70,6 +70,24 @@
         "failed",
         "unverifiable"
       ]
+    },
+    "injection": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "override-instructions",
+          "addresses-assistant",
+          "task-hijack",
+          "fake-authority",
+          "exfiltration-request",
+          "tool-call-impersonation",
+          "hidden-text",
+          "audit-tampering"
+        ]
+      },
+      "description": "V-04 (2026-10-23): injection categories found in the tool's OUTPUT by `@jarod/kernel/injection` (observe mode: the output reaches the model unchanged). Categories only, never an excerpt. Absent when nothing is found or the tool produced no output."
     }
   },
   "additionalProperties": false

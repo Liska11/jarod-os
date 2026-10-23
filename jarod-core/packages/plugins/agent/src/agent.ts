@@ -26,6 +26,7 @@ import type { TaskLedger } from "./tasks.js";
 import type { OutputStore } from "./outputs.js";
 import type { Attachment, Message, ToolCall } from "@jarod/contracts";
 import { auditArgs, redactCommandText } from "@jarod/kernel/redact";
+import { detect as detectInjection, type InjectionCategory } from "@jarod/kernel/injection";
 import { activePolicy, toolVerdict } from "@jarod/kernel/network";
 import { newId, truncate } from "@jarod/kernel/util";
 import { explainResolution, type Resolution, reservedReason, type ToolGate } from "@jarod/plugin-permissions";
@@ -1209,6 +1210,26 @@ export interface AuditEntry {
   durationMs?: number;
   /** V-02 : le verdict de la vérification de l'effet, quand l'outil en a une (ou qu'il est sensible). */
   proof?: Proof["status"];
+  /**
+   * V-04 : les catégories d'injection repérées dans la SORTIE de l'outil (mode observation : la sortie passe inchangée au modèle). Jamais
+   * l'extrait. Absent quand rien n'est repéré ou que l'outil n'a pas rendu de sortie.
+   */
+  injection?: InjectionCategory[];
+}
+
+/** Les noms sous lesquels l'assistant est connu : un document qui l'interpelle par son nom est un signal d'injection (V-04). */
+const ASSISTANT_NAMES = ["Jarod", "Jarod-OS"] as const;
+/** Au-delà, seul le début de la sortie est examiné : le détecteur reste borné sur une sortie énorme (la sortie elle-même n'est pas coupée). */
+const INJECTION_SCAN_CHARS = 200_000;
+
+/** V-04, mode observation : les catégories d'injection d'une sortie d'outil, ou rien. Un détecteur qui lève ne casse jamais l'appel. */
+function injectionIn(out: string): InjectionCategory[] | undefined {
+  try {
+    const found = detectInjection(out.length > INJECTION_SCAN_CHARS ? out.slice(0, INJECTION_SCAN_CHARS) : out, { assistantNames: ASSISTANT_NAMES });
+    return found.length ? [...new Set(found.map((f) => f.category))] : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 /** `sensible` : outil `dangerous` ; `audité` : lecture sans accord qui doit laisser sa trace (`audited`) ; `ordinaire` : le reste. */
@@ -1281,7 +1302,7 @@ async function runGuardedTool(
   // inconnue (null) : un deny ou ask ciblé s'applique alors tel quel (fail-closed). Déclarée ici pour que l'audit la porte dès qu'elle est connue.
   let target: string | null = null;
   // V-02 : chaque appel laisse une ligne — qui a demandé, quoi, sur quoi, qui a décidé, combien de temps, avec quelle preuve.
-  const audit = (decision: AuditEntry["decision"], ok?: boolean, proof?: Proof["status"]) =>
+  const audit = (decision: AuditEntry["decision"], ok?: boolean, proof?: Proof["status"], injection?: InjectionCategory[]) =>
     extra.audit?.({
       sessionId,
       tool: call.name,
@@ -1294,6 +1315,7 @@ async function runGuardedTool(
       ...(target !== null ? { target: truncate(redactCommandText(target), 200) } : {}),
       durationMs: Date.now() - started,
       ...(proof ? { proof } : {}),
+      ...(injection ? { injection } : {}),
     });
   if (!tool || s.disabledTools.includes(call.name)) {
     audit("refusé (invalide)");
@@ -1476,7 +1498,8 @@ async function runGuardedTool(
       proof = { status: "unverifiable", evidence: "aucune vérification prévue pour cet outil" };
     }
     const failed = proof?.status === "failed";
-    audit(decision ?? "sans accord", !failed, proof?.status);
+    // V-04 : la sortie est examinée (observation seulement : elle passe inchangée au modèle) ; les catégories vont dans la ligne d'audit.
+    audit(decision ?? "sans accord", !failed, proof?.status, injectionIn(out));
     if (task) tasks!.finish(task.id, failed ? "failed" : "done", proof ? { proof } : {});
     const note = tool.verify && proof ? `\n\n[Vérification : ${PROOF_LABEL[proof.status]}] ${proof.evidence}` : "";
     // Cockpit, lot 3 : une sortie volumineuse reste hors du contexte (aperçu + référence), entière et cherchable ; la preuve reste visible.
