@@ -322,7 +322,10 @@ export class BackendManager {
       const plan = jarodSpawnPlan(core, { token: this.token, dataDir: jarodData, workspace, env: process.env })
       command = plan.command
       args = plan.args
-      env = plan.env
+      // V-12 : la porte de contrôle du shell, comme pour le backend Hermes. Sans elle, le registre des capacités ne voyait ni la surface du
+      // shell ni le registre de la fenêtre, et le cœur ne pouvait pas demander au shell de démarrer Pinokio. Le cœur ne la transmet à aucun
+      // de ses enfants (kernel/child-env.ts retire ces deux variables).
+      env = { ...plan.env, ...(this.control ? { JAROD_OS_CONTROL_SOCKET: this.control.endpoint(), JAROD_OS_CONTROL_TOKEN: this.control.token } : {}) }
       cwd = plan.cwd
     } else {
       const [executable, ...head] = runtime.command
