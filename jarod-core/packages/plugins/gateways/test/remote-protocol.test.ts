@@ -52,6 +52,20 @@ describe("relay protocol", () => {
     await expect(hostChannel.open(JSON.stringify({ n: f3.n, c: b64uEncode(bytes) }))).rejects.toThrow();
   });
 
+  it("hands out concurrently sealed frames in counter order, so sending each as it comes is safe", async () => {
+    // The host pushes a reply and a run's events at the same time. AES-GCM runs off the main
+    // thread: a small frame sealed after a large one could finish first and go out ahead of it.
+    const { clientChannel, hostChannel } = await pair();
+    const wire: string[] = [];
+    const big = "x".repeat(4 * 1024 * 1024);
+    await Promise.all(
+      Array.from({ length: 40 }, (_, i) => hostChannel.seal(i % 10 === 0 ? { i, big } : { i }).then((f) => wire.push(f))),
+    );
+    const got: number[] = [];
+    for (const f of wire) got.push(((await clientChannel.open(f)) as { i: number }).i);
+    expect(got).toEqual(Array.from({ length: 40 }, (_, i) => i));
+  });
+
   it("detects a relay that swaps in its own host key", async () => {
     const realHost = await generateKeyPair();
     const attacker = await generateKeyPair();

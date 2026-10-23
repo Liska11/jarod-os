@@ -140,6 +140,8 @@ interface Frame {
 export class SecureChannel {
   private sent = 0;
   private received = 0;
+  /** The last frame handed out; the next one waits for it. */
+  private previous: Promise<unknown> = Promise.resolve();
 
   constructor(
     private readonly sendKey: CryptoKey,
@@ -152,14 +154,24 @@ export class SecureChannel {
     return iv;
   }
 
-  async seal(message: unknown): Promise<string> {
+  /**
+   * Frames resolve in counter order, however many are sealed at once, so a caller can send each one
+   * as soon as it has it. AES-GCM runs off the main thread: without this, a small frame sealed right
+   * after a large one finishes first and the peer rejects the large one as reordered.
+   */
+  seal(message: unknown): Promise<string> {
     const n = ++this.sent;
-    const c = await subtle.encrypt(
-      { name: "AES-GCM", iv: SecureChannel.iv(n) as BufferSource, additionalData: enc.encode(PROTOCOL_VERSION) },
-      this.sendKey,
-      enc.encode(JSON.stringify(message)),
-    );
-    return JSON.stringify({ n, c: b64uEncode(new Uint8Array(c)) } satisfies Frame);
+    const sealed = (async () =>
+      new Uint8Array(
+        await subtle.encrypt(
+          { name: "AES-GCM", iv: SecureChannel.iv(n) as BufferSource, additionalData: enc.encode(PROTOCOL_VERSION) },
+          this.sendKey,
+          enc.encode(JSON.stringify(message)),
+        ),
+      ))();
+    const frame = Promise.all([sealed, this.previous]).then(([c]) => JSON.stringify({ n, c: b64uEncode(c) } satisfies Frame));
+    this.previous = frame.catch(() => undefined);
+    return frame;
   }
 
   /** Throws on tampering, a wrong key or a replayed / reordered frame. */
