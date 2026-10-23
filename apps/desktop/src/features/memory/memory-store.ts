@@ -260,30 +260,31 @@ const errorMessage = (err: unknown) => (err instanceof Error ? err.message : Str
 
 let generation = 0
 
-async function readMemoryFile(hermesHome: string, file: MemoryFile, listing: readonly DirEntry[]): Promise<MemoryFileState> {
+/** A file's state plus its exact text (null when absent), which a write checks it is replacing (V-20, upstream #140). */
+async function readMemoryFileRaw(hermesHome: string, file: MemoryFile, listing: readonly DirEntry[]): Promise<{ state: MemoryFileState; raw: string | null }> {
   const path = memoryPath(hermesHome, file)
   const dirEntry = listing.find(entry => entry.name === file)
 
   if (!dirEntry) {
-    return { file, path, exists: false, modifiedAt: 0, truncated: false, texts: [] }
+    return { state: { file, path, exists: false, modifiedAt: 0, truncated: false, texts: [] }, raw: null }
   }
 
   const preview = await window.jarodOS.fs.readFile(path)
 
   if (preview.kind !== 'text') {
     // Binary or too large to preview: show nothing rather than a garbled list, and never write back.
-    return { file, path, exists: true, modifiedAt: dirEntry.modifiedAt, truncated: true, texts: [] }
+    return { state: { file, path, exists: true, modifiedAt: dirEntry.modifiedAt, truncated: true, texts: [] }, raw: null }
   }
 
+  const raw = preview.content ?? ''
+
   return {
-    file,
-    path,
-    exists: true,
-    modifiedAt: dirEntry.modifiedAt,
-    truncated: Boolean(preview.truncated),
-    texts: parse(preview.content ?? '')
+    state: { file, path, exists: true, modifiedAt: dirEntry.modifiedAt, truncated: Boolean(preview.truncated), texts: parse(raw) },
+    raw
   }
 }
+
+const readMemoryFile = async (hermesHome: string, file: MemoryFile, listing: readonly DirEntry[]) => (await readMemoryFileRaw(hermesHome, file, listing)).state
 
 // ---------------------------------------------------------------------------------------------
 // A backend that keeps the lists itself (the Jarod gateway).
@@ -360,62 +361,165 @@ export async function loadMemory(hermesHome: string): Promise<void> {
   }
 }
 
-/** Replace one file's entries: optimistic cache update, write, then re-read from disk (honest). */
-async function commitFile(hermesHome: string, file: MemoryFile, texts: string[]): Promise<void> {
-  const state = $memory.get()
-  const current = state.files?.[file]
+/** Thrown when the entry being edited or forgotten is no longer in its file. */
+export class MemoryEntryGoneError extends Error {
+  constructor(entry: MemoryEntry) {
+    super(`"${entry.title}" is no longer in ${entry.file}. It was changed or removed outside the Memory page; the list now shows what is there.`)
+    this.name = 'MemoryEntryGoneError'
+  }
+}
 
-  if (current?.truncated) {
-    throw new Error(`${file} is too large to edit safely from here`)
+/** Where `entry` is now among `texts`: its old position if the text is still there, else the first copy of its text. */
+function locate(texts: readonly string[], entry: MemoryEntry): number {
+  const index = texts[entry.index] === entry.text ? entry.index : texts.indexOf(entry.text)
+
+  if (index < 0) {
+    throw new MemoryEntryGoneError(entry)
   }
 
-  if (state.files && current) {
-    const next: MemoryFileState = { ...current, texts, exists: true, modifiedAt: Date.now() }
-    const files = { ...state.files, [file]: next }
-    $memory.set({ ...state, files, entries: MEMORY_FILES.flatMap(name => buildEntries(files[name])) })
+  return index
+}
+
+// This window's own writes run one at a time, so each one re-reads what the previous one wrote.
+let writes: Promise<unknown> = Promise.resolve()
+
+/** How long a write waits for Hermes (or another window) to let go of a memory file's lock. */
+export const LOCK_TIMEOUT_MS = 10_000
+/** How many times a write re-reads and re-applies its change when the file changed under it (no lock here, or a writer that ignores it). */
+export const WRITE_ATTEMPTS = 5
+
+export const lockPath = (hermesHome: string, file: MemoryFile) => `${memoryPath(hermesHome, file)}.lock`
+
+/** Thrown when Hermes (or another window) held a memory file's lock for longer than `LOCK_TIMEOUT_MS`. */
+export class MemoryLockTimeoutError extends Error {
+  constructor(file: MemoryFile) {
+    super(`${file} stayed locked by another writer (Hermes's memory tool or another window) for ${LOCK_TIMEOUT_MS / 1000} s, so nothing was written. Try again in a moment.`)
+    this.name = 'MemoryLockTimeoutError'
+  }
+}
+
+let warnedUnlocked = false
+
+/** Run `work` holding the lock Hermes's memory tool takes on `file`, or without it when it can't be taken here (no Python). */
+async function withFileLock<T>(hermesHome: string, file: MemoryFile, work: () => Promise<T>): Promise<T> {
+  const lock = await window.jarodOS.fs.lock(lockPath(hermesHome, file), LOCK_TIMEOUT_MS)
+
+  if (lock.status === 'timeout') {
+    throw new MemoryLockTimeoutError(file)
+  }
+
+  if (lock.status === 'unavailable') {
+    if (!warnedUnlocked) {
+      warnedUnlocked = true
+      console.warn(`[memory] cannot take ${file}.lock (${lock.reason}); checking the file just before each write instead`)
+    }
+
+    return work()
   }
 
   try {
-    if (current?.remote ?? (await memorySource()) === 'gateway') {
-      await rest.put(`/api/memory/files/${encodeURIComponent(file)}`, { texts })
-    } else {
-      if (!current?.exists) {
-        try {
-          await window.jarodOS.fs.mkdir(memoriesDir(hermesHome))
-        } catch {
-          // Folder probably exists already; the write below reports real failures.
-        }
-      }
-
-      await window.jarodOS.fs.writeText(memoryPath(hermesHome, file), serialize(texts))
-    }
+    return await work()
   } finally {
-    await loadMemory(hermesHome)
+    await window.jarodOS.fs.unlock(lock.id)
   }
 }
 
-const textsOf = (file: MemoryFile) => [...($memory.get().files?.[file]?.texts ?? [])]
+/** Show a file's new entries at once (the re-read that follows every write stays the truth). */
+function showWritten(file: MemoryFile, next: MemoryFileState): void {
+  const state = $memory.get()
+
+  if (state.files) {
+    const files = { ...state.files, [file]: next }
+    $memory.set({ ...state, files, entries: MEMORY_FILES.flatMap(name => buildEntries(files[name])) })
+  }
+}
+
+/**
+ * Change one file's entries (V-20, upstream #140). `change` always gets the entries as they are NOW, never the copy loaded when
+ * the page opened: Hermes's memory tool (or the Jarod core) writes the same lists, and a write from the stale copy lost what it had
+ * written in between, while edits and forgets picked entries by a position that had moved.
+ * - On disk: the read, change and write happen under the exclusive lock Hermes takes on `<file>.lock`, and the write replaces the
+ *   file only if it still holds the text just read (checked just before the rename); otherwise it re-reads and re-applies.
+ * - On the Jarod gateway: the lists are fetched again just before the write.
+ */
+function commitFile<T>(hermesHome: string, file: MemoryFile, change: (texts: string[]) => { texts: string[]; result: T }): Promise<T> {
+  const run = writes.then(async () => {
+    try {
+      if ($memory.get().files?.[file]?.remote ?? (await memorySource()) === 'gateway') {
+        const current = fromRemote(await rest.get<RemoteMemoryFiles>('/api/memory/files')).find(state => state.file === file)!
+        const { texts, result } = change([...current.texts])
+        await rest.put(`/api/memory/files/${encodeURIComponent(file)}`, { texts })
+        showWritten(file, { ...current, texts, exists: true, modifiedAt: Date.now() })
+
+        return result
+      }
+
+      return await withFileLock(hermesHome, file, async () => {
+        for (let attempt = 1; ; attempt++) {
+          let listing: DirEntry[] = []
+
+          try {
+            listing = await window.jarodOS.fs.readDir(memoriesDir(hermesHome))
+          } catch {
+            // No memories folder yet: the file is simply absent.
+          }
+
+          const { state: current, raw } = await readMemoryFileRaw(hermesHome, file, listing)
+
+          if (current.truncated) {
+            throw new Error(`${file} is too large to edit safely from here`)
+          }
+
+          const { texts, result } = change([...current.texts])
+
+          if (!current.exists) {
+            try {
+              await window.jarodOS.fs.mkdir(memoriesDir(hermesHome))
+            } catch {
+              // Folder probably exists already; the write below reports real failures.
+            }
+          }
+
+          if (await window.jarodOS.fs.writeText(memoryPath(hermesHome, file), serialize(texts), { atomic: true, expect: raw })) {
+            showWritten(file, { ...current, texts, exists: true, modifiedAt: Date.now() })
+
+            return result
+          }
+
+          if (attempt >= WRITE_ATTEMPTS) {
+            throw new Error(`${file} kept changing while it was being saved, so nothing was written. Try again in a moment.`)
+          }
+
+          // Random, so two writers that just collided don't collide again on the next try.
+          await new Promise(resolve => setTimeout(resolve, Math.random() * 25 * attempt))
+        }
+      })
+    } finally {
+      await loadMemory(hermesHome)
+    }
+  })
+  writes = run.catch(() => undefined)
+
+  return run
+}
 
 export function updateEntry(hermesHome: string, entry: MemoryEntry, text: string): Promise<void> {
-  const texts = textsOf(entry.file)
-  texts[entry.index] = text.trim()
+  return commitFile(hermesHome, entry.file, texts => {
+    texts[locate(texts, entry)] = text.trim()
 
-  return commitFile(hermesHome, entry.file, texts)
+    return { texts, result: undefined }
+  })
 }
 
 export function forgetEntry(hermesHome: string, entry: MemoryEntry): Promise<void> {
-  return commitFile(
-    hermesHome,
-    entry.file,
-    textsOf(entry.file).filter((_, index) => index !== entry.index)
-  )
+  return commitFile(hermesHome, entry.file, texts => {
+    const index = locate(texts, entry)
+
+    return { texts: texts.filter((_, i) => i !== index), result: undefined }
+  })
 }
 
-/** Append an entry and return the id it will have once written. */
-export async function addEntry(hermesHome: string, file: MemoryFile, text: string): Promise<string> {
-  const texts = textsOf(file)
-  const id = `${file}:${texts.length}`
-  await commitFile(hermesHome, file, [...texts, text.trim()])
-
-  return id
+/** Append an entry and return the id it has once written. */
+export function addEntry(hermesHome: string, file: MemoryFile, text: string): Promise<string> {
+  return commitFile(hermesHome, file, texts => ({ texts: [...texts, text.trim()], result: `${file}:${texts.length}` }))
 }

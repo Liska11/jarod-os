@@ -3,7 +3,9 @@ import { type FSWatcher, watch as watchFs } from 'node:fs'
 import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
-import { type DirEntry, type FilePreview, IPC, type TreeEntry } from '../../shared/ipc.ts'
+import { type DirEntry, type FileLockResult, type FilePreview, IPC, type TreeEntry, type WriteTextOptions } from '../../shared/ipc.ts'
+import { writeTextAtomic } from '../atomic-write.ts'
+import { type FileLock, lockFile } from '../file-lock.ts'
 import { isRecycleBin } from '../../shared/trash.ts'
 import { log } from '../log.ts'
 import { run } from '../platform/exec.ts'
@@ -328,6 +330,34 @@ export function isIsolatedProfile(env: NodeJS.ProcessEnv = process.env): boolean
   return env.JAROD_OS_ISOLATED === '1'
 }
 
+/** V-20: how long `fs.lock` may wait for Hermes, and how long a window may hold the lock (Hermes waits on it without a timeout). */
+const LOCK_WAIT_MAX_MS = 60_000
+const LOCK_HOLD_MAX_MS = 30_000
+const heldLocks = new Map<string, { owner: WebContents; lock: FileLock; expiry: ReturnType<typeof setTimeout> }>()
+let lockCounter = 0
+
+function holdLock(owner: WebContents, lock: FileLock): string {
+  const id = `lock-${++lockCounter}`
+  const expiry = setTimeout(() => void releaseLock(owner, id), LOCK_HOLD_MAX_MS)
+  heldLocks.set(id, { owner, lock, expiry })
+  // A window that closes or crashes without unlocking must not leave Hermes waiting.
+  owner.once('destroyed', () => void releaseLock(owner, id))
+
+  return id
+}
+
+async function releaseLock(owner: WebContents, id: string): Promise<void> {
+  const held = heldLocks.get(id)
+
+  if (!held || held.owner !== owner) {
+    return
+  }
+
+  heldLocks.delete(id)
+  clearTimeout(held.expiry)
+  await held.lock.release()
+}
+
 export function registerFsIpc(getWindow: () => BrowserWindow | null): void {
   ipcMain.handle(IPC.fsListTree, (_event, target: string, limit: number) => listTree(target, Math.max(1, Math.min(10_000, Number(limit) || 3000))))
   ipcMain.handle(IPC.fsWatchTree, (event, target: string) => watchTree(event.sender, target))
@@ -359,10 +389,32 @@ export function registerFsIpc(getWindow: () => BrowserWindow | null): void {
 
     return Number.isFinite(width) && Number.isFinite(height) ? { width, height } : null
   })
-  ipcMain.handle(IPC.fsWriteText, async (_event, target: string, content: string) => {
+  ipcMain.handle(IPC.fsWriteText, async (_event, target: string, content: string, options?: WriteTextOptions) => {
     const file = assertWritable(target)
+
+    if (options?.atomic) {
+      return writeTextAtomic(file, String(content), options.expect === undefined ? {} : { expect: options.expect === null ? null : String(options.expect) })
+    }
+
     await fs.mkdir(path.dirname(file), { recursive: true })
     await fs.writeFile(file, String(content), 'utf8')
+
+    return true
+  })
+  // V-20 (upstream #140): the lock Hermes's memory tool takes on `<file>.lock`, held for a window until it unlocks, goes away, or LOCK_HOLD_MAX_MS.
+  ipcMain.handle(IPC.fsLock, async (event, target: string, timeoutMs: number): Promise<FileLockResult> => {
+    const file = assertWritable(target)
+    await fs.mkdir(path.dirname(file), { recursive: true })
+    const outcome = await lockFile(file, Math.max(0, Math.min(LOCK_WAIT_MAX_MS, Number(timeoutMs) || 0)))
+
+    if (outcome.status !== 'locked') {
+      return outcome
+    }
+
+    return { status: 'locked', id: holdLock(event.sender, outcome.lock) }
+  })
+  ipcMain.handle(IPC.fsUnlock, async (event, id: string) => {
+    await releaseLock(event.sender, String(id))
   })
   ipcMain.handle(IPC.fsMkdir, async (_event, target: string) => {
     await fs.mkdir(assertWritable(target), { recursive: true })

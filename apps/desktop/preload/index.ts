@@ -33,6 +33,7 @@ import {
   type DirEntry,
   type EditAction,
   type EnvInfo,
+  type FileLockResult,
   type FilePreview,
   type JarodOSPrefs,
   type ImageInfo,
@@ -68,7 +69,8 @@ import {
   type WebViewEvent,
   type WindowState,
   type WmAction,
-  type WmState
+  type WmState,
+  type WriteTextOptions
 } from '../shared/ipc.ts'
 import type { BrandingPatch, BrandingView } from '../shared/branding.ts'
 import type { MenuExtensions } from '../shared/menu-extensions.ts'
@@ -132,7 +134,11 @@ const api = {
     find: (query: string, limit = 10): Promise<RecentFile[]> => ipcRenderer.invoke(IPC.fsFind, query, limit),
     thumbnail: (target: string, size = 512): Promise<string | null> => ipcRenderer.invoke(IPC.fsThumbnail, target, size),
     imageInfo: (target: string): Promise<ImageInfo | null> => ipcRenderer.invoke(IPC.fsImageInfo, target),
-    writeText: (target: string, content: string): Promise<void> => ipcRenderer.invoke(IPC.fsWriteText, target, content),
+    /** False only when `options.expect` no longer held, in which case nothing was written. */
+    writeText: (target: string, content: string, options?: WriteTextOptions): Promise<boolean> => ipcRenderer.invoke(IPC.fsWriteText, target, content, options),
+    /** Hold the exclusive lock on `lockPath` (as Hermes's memory tool does), waiting up to `timeoutMs`. */
+    lock: (lockPath: string, timeoutMs: number): Promise<FileLockResult> => ipcRenderer.invoke(IPC.fsLock, lockPath, timeoutMs),
+    unlock: (id: string): Promise<void> => ipcRenderer.invoke(IPC.fsUnlock, id),
     mkdir: (target: string): Promise<void> => ipcRenderer.invoke(IPC.fsMkdir, target),
     rename: (from: string, to: string): Promise<void> => ipcRenderer.invoke(IPC.fsRename, from, to),
     trash: (targets: string[]): Promise<void> => ipcRenderer.invoke(IPC.fsTrash, targets),

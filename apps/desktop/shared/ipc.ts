@@ -379,6 +379,17 @@ export interface FilePreview {
   mime?: string
 }
 
+/** What `fs.lock` got: the lock (until `fs.unlock(id)`), a wait that ran out, or no way to take it here (V-20, upstream #140). */
+export type FileLockResult = { status: 'locked'; id: string } | { status: 'timeout' } | { status: 'unavailable'; reason: string }
+
+/** `fs.writeText` options (V-20, upstream #140). */
+export interface WriteTextOptions {
+  /** Replace the file through a renamed temporary, so readers never see it half written. */
+  atomic?: boolean
+  /** With `atomic`: write only if the file still holds exactly this text (`null`: only if absent). */
+  expect?: string | null
+}
+
 export interface TerminalCreateOptions {
   cwd?: string
   cols: number
@@ -853,6 +864,9 @@ export const IPC = {
   fsImageInfo: 'jarod-os:fs:image-info',
   fsWriteText: 'jarod-os:fs:write-text',
   fsMkdir: 'jarod-os:fs:mkdir',
+  /** Take or release the exclusive lock Hermes's memory tool takes on a `.lock` file (V-20). */
+  fsLock: 'jarod-os:fs:lock',
+  fsUnlock: 'jarod-os:fs:unlock',
   fsRename: 'jarod-os:fs:rename',
   fsTrash: 'jarod-os:fs:trash',
   fsExportPdf: 'jarod-os:fs:export-pdf',

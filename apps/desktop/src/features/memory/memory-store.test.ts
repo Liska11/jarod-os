@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { $memory, addEntry, buildEntries, forgetEntry, fromRemote, loadMemory, memorySource, type RemoteMemoryFiles, updateEntry } from './memory-store.ts'
+import { $memory, addEntry, buildEntries, forgetEntry, fromRemote, loadMemory, MemoryEntryGoneError, MemoryLockTimeoutError, memorySource, type RemoteMemoryFiles, updateEntry } from './memory-store.ts'
 
 interface Call {
   method: string
@@ -7,10 +7,13 @@ interface Call {
   body?: unknown
 }
 
+let lockAnswer: { status: 'locked'; id: string } | { status: 'timeout' } | { status: 'unavailable'; reason: string } = { status: 'locked', id: 'L1' }
+
 /** A fake Electron bridge: REST answers come from `routes`, files from `disk`. */
 function bridge(routes: Record<string, (call: Call) => unknown>, disk: Record<string, string> = {}) {
   const calls: Call[] = []
   const writes: Record<string, string> = {}
+  const locks: string[] = []
   const rest = vi.fn(async (req: Call) => {
     calls.push(req)
     const route = routes[`${req.method} ${req.path}`]
@@ -29,14 +32,30 @@ function bridge(routes: Record<string, (call: Call) => unknown>, disk: Record<st
         readDir: async (dir: string) => Object.keys(disk).filter(p => p.startsWith(dir)).map(p => ({ name: p.slice(dir.length + 1), modifiedAt: 1000 })),
         readFile: async (path: string) => ({ kind: 'text', content: disk[path] ?? '' }),
         mkdir: async () => undefined,
-        writeText: async (path: string, text: string) => {
+        // Like the main process: with `expect`, nothing is written unless the file still holds that text (null: absent).
+        writeText: async (path: string, text: string, options: { atomic?: boolean; expect?: string | null } = {}) => {
+          if (options.expect !== undefined && (disk[path] ?? null) !== options.expect) {
+            return false
+          }
+
           writes[path] = text
+          disk[path] = text
+
+          return true
+        },
+        lock: async (path: string) => {
+          locks.push(`lock ${path}`)
+
+          return lockAnswer
+        },
+        unlock: async (id: string) => {
+          locks.push(`unlock ${id}`)
         }
       }
     }
   }
 
-  return { calls, writes, rest }
+  return { calls, writes, rest, locks, disk }
 }
 
 const JAROD_STATUS = () => ({ status: 'ok', backend: 'jarod' })
@@ -150,7 +169,8 @@ describe('loadMemory and edits against the Jarod gateway', () => {
     await loadMemory('h')
     await expect(updateEntry('h', $memory.get().entries[0]!, 'changed')).rejects.toThrow(/Trop d'entrées/)
     expect($memory.get().entries[0]!.text).toBe('Prefers short answers')
-    expect(calls.filter(c => c.path === '/api/memory/files' && c.method === 'GET')).toHaveLength(2)
+    // Load, the fresh read just before the write (V-20), and the re-read after it.
+    expect(calls.filter(c => c.path === '/api/memory/files' && c.method === 'GET')).toHaveLength(3)
   })
 
   it('reports a read error without losing what was already shown', async () => {
@@ -176,5 +196,99 @@ describe('a real Hermes backend still uses the files on disk', () => {
     await addEntry('H', 'MEMORY.md', 'three')
     expect(writes['H/memories/MEMORY.md']).toBe('one\n§\ntwo\n§\nthree')
     expect(calls.some(c => c.method === 'PUT')).toBe(false)
+  })
+})
+
+describe('V-20 (upstream #140): edits re-read the lists and never write from a stale copy', () => {
+  const disk = (memory: string) => ({ 'H/memories/MEMORY.md': memory, 'H/memories/USER.md': '' })
+
+  it('an entry Hermes wrote after the page loaded survives an add', async () => {
+    const fake = bridge({ 'GET /api/status': HERMES_STATUS }, disk('A\n§\nB'))
+    await loadMemory('H')
+    fake.disk['H/memories/MEMORY.md'] = 'A\n§\nB\n§\nsaved by Hermes'
+    await addEntry('H', 'MEMORY.md', 'added here')
+    expect(fake.writes['H/memories/MEMORY.md']).toBe('A\n§\nB\n§\nsaved by Hermes\n§\nadded here')
+    // Under Hermes's lock, released after the write.
+    expect(fake.locks).toEqual(['lock H/memories/MEMORY.md.lock', 'unlock L1'])
+  })
+
+  it('forgetting an entry never brings back one Hermes removed', async () => {
+    const fake = bridge({ 'GET /api/status': HERMES_STATUS }, disk('A\n§\nB\n§\nC'))
+    await loadMemory('H')
+    fake.disk['H/memories/MEMORY.md'] = 'B\n§\nC'
+    await forgetEntry('H', $memory.get().entries.find(e => e.text === 'C')!)
+    expect(fake.writes['H/memories/MEMORY.md']).toBe('B')
+  })
+
+  it('an edit finds its entry by text when its position moved, and refuses one that is gone', async () => {
+    const fake = bridge({ 'GET /api/status': HERMES_STATUS }, disk('A\n§\nB'))
+    await loadMemory('H')
+    const b = $memory.get().entries.find(e => e.text === 'B')!
+    fake.disk['H/memories/MEMORY.md'] = 'X\n§\nA\n§\nB'
+    await updateEntry('H', b, 'B2')
+    expect(fake.writes['H/memories/MEMORY.md']).toBe('X\n§\nA\n§\nB2')
+
+    const a = $memory.get().entries.find(e => e.text === 'A')!
+    fake.disk['H/memories/MEMORY.md'] = 'X\n§\nB2'
+    await expect(updateEntry('H', a, 'A2')).rejects.toBeInstanceOf(MemoryEntryGoneError)
+    expect(fake.disk['H/memories/MEMORY.md']).toBe('X\n§\nB2')
+  })
+
+  it('without the lock (no Python), a file that changed under the write is read again and the change re-applied', async () => {
+    lockAnswer = { status: 'unavailable', reason: 'no Python 3 interpreter found' }
+
+    try {
+      const fake = bridge({ 'GET /api/status': HERMES_STATUS }, disk('A'))
+      await loadMemory('H')
+      const files = (globalThis as unknown as { window: { jarodOS: { fs: { writeText: (...a: unknown[]) => Promise<boolean> } } } }).window.jarodOS.fs
+      const real = files.writeText
+      let first = true
+      files.writeText = async (...args: unknown[]) => {
+        if (first) {
+          // Another writer slips in between the read and the rename.
+          first = false
+          fake.disk['H/memories/MEMORY.md'] = 'A\n§\nfrom elsewhere'
+        }
+
+        return real(...args)
+      }
+      await addEntry('H', 'MEMORY.md', 'mine')
+      expect(fake.disk['H/memories/MEMORY.md']).toBe('A\n§\nfrom elsewhere\n§\nmine')
+      expect(fake.locks).toEqual(['lock H/memories/MEMORY.md.lock'])
+    } finally {
+      lockAnswer = { status: 'locked', id: 'L1' }
+    }
+  })
+
+  it('a lock Hermes keeps too long writes nothing and says so', async () => {
+    lockAnswer = { status: 'timeout' }
+
+    try {
+      const fake = bridge({ 'GET /api/status': HERMES_STATUS }, disk('A'))
+      await loadMemory('H')
+      await expect(addEntry('H', 'MEMORY.md', 'mine')).rejects.toBeInstanceOf(MemoryLockTimeoutError)
+      expect(fake.writes).toEqual({})
+    } finally {
+      lockAnswer = { status: 'locked', id: 'L1' }
+    }
+  })
+
+  it('on the Jarod gateway, an entry the core added after the page loaded is kept', async () => {
+    const lists = { memory: ['Prefers short answers'], user: [] as string[] }
+    const put: unknown[] = []
+    bridge({
+      'GET /api/status': JAROD_STATUS,
+      'GET /api/memory/files': () => remoteFiles(lists.memory, lists.user),
+      'PUT /api/memory/files/MEMORY.md': call => {
+        put.push(call.body)
+        lists.memory = (call.body as { texts: string[] }).texts
+
+        return { ok: true }
+      }
+    })
+    await loadMemory('h')
+    lists.memory = [...lists.memory, 'added by the core']
+    await addEntry('h', 'MEMORY.md', 'added here')
+    expect(put).toEqual([{ texts: ['Prefers short answers', 'added by the core', 'added here'] }])
   })
 })
