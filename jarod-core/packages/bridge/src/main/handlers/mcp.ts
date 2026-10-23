@@ -44,7 +44,23 @@ interface McpResult {
   tools?: Array<{ name: string; description: string }>;
 }
 
-const SERVER_NAME_RE = /^[A-Za-z0-9][A-Za-z0-9_-]*$/;
+/** V-14 : ce que voit l'écran de la liste blanche d'un serveur. */
+type McpToolsView =
+  | { success: true; restricted: boolean; allowed: string[] | null; tools: Array<{ name: string; description: string; allowed: boolean; pinState: string }> }
+  | { success: false; error: string };
+
+// biome-ignore lint/suspicious/noControlCharactersInRegex: intended, a tool name with a control character is refused
+const CONTROL_RE = /[\u0000-\u001f\u007f]/;
+
+/** V-14 : `null` → tous les outils ; une liste de noms valides → triée, sans doublon ; tout le reste → `undefined` (refus). */
+function toolList(tools: unknown): string[] | null | undefined {
+  if (tools === null) return null;
+  if (!Array.isArray(tools) || tools.length > 500) return undefined;
+  if (!tools.every((t) => typeof t === "string" && t.length > 0 && t.length <= 200 && !CONTROL_RE.test(t))) return undefined;
+  return [...new Set(tools as string[])].sort();
+}
+
+const SERVER_NAME_RE =/^[A-Za-z0-9][A-Za-z0-9_-]*$/;
 const ENV_NAME_RE = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
 /** `validateServerInput` (mcp-servers.ts:338-400), corps verbatim ; entrée non objet refusée en plus. */
@@ -128,7 +144,8 @@ function toConfig(input: unknown, previous: McpServerConfig | undefined): { ok: 
   if (!v.ok) return v;
   const s = v.value;
   if (s.auth) return { ok: false, error: `Jarod-One ne prend pas en charge l'authentification MCP « ${s.auth} » (en-têtes statiques seulement).` };
-  const base = { id: previous?.id ?? randomUUID(), name: s.name, enabled: previous?.enabled ?? true };
+  // V-14 : la liste blanche suit le serveur modifié — elle ne fait que restreindre, la garder ne déplace aucun droit.
+  const base = { id: previous?.id ?? randomUUID(), name: s.name, enabled: previous?.enabled ?? true, ...(previous?.allowedTools ? { allowedTools: [...previous.allowedTools] } : {}) };
   if (s.type === "http") {
     const sameOrigin = previous?.url !== undefined && originOf(previous.url) === originOf(s.url);
     const headers = sameOrigin ? previous?.headers : undefined;
@@ -226,6 +243,44 @@ export function createMcpHandlers(ctx: HandlerContext) {
         return { success: true, tools: tools.map((t) => ({ name: t.name, description: t.description ?? "" })) };
       } catch (err) {
         return failure(err, "Failed to test MCP server.");
+      }
+    },
+    /**
+     * V-14 : les outils que le serveur annonce MAINTENANT (connexion temporaire, rien d'enregistré), chacun avec sa place dans la
+     * liste blanche et son état d'épingle. Le texte des descriptions est celui d'un tiers, nettoyé et tronqué par plugin-mcp.
+     */
+    "mcp-server-tools": async (name: unknown, profile?: unknown): Promise<McpToolsView> => {
+      assertProfile(ctx, profile);
+      const target = find(name);
+      if (!target) return { success: false, error: `MCP server "${String(name)}" not found.` };
+      const mcp = ctx.kernel().mcp;
+      if (!mcp?.preview) return { success: false, error: "MCP server testing is not available: plugin-mcp is disabled." };
+      try {
+        const tools = await mcp.preview(target);
+        return { success: true, restricted: !!target.allowedTools, allowed: target.allowedTools ? [...target.allowedTools] : null, tools: tools.map((t) => ({ name: t.name, description: t.description, allowed: t.allowed, pinState: t.pinState })) };
+      } catch (err) {
+        return { success: false, error: (err as Error)?.message || "Failed to read the MCP server's tools." };
+      }
+    },
+    /**
+     * V-14 : écrit la liste blanche (`null` = tous les outils), puis relance le serveur pour que le registre la suive. Des noms
+     * d'outils seulement : au plus 500, 200 caractères chacun, sans caractère de contrôle ; doublons retirés.
+     */
+    "set-mcp-server-tools": async (name: unknown, tools: unknown, profile?: unknown): Promise<McpResult> => {
+      assertProfile(ctx, profile);
+      const target = find(name);
+      if (!target) return { success: false, error: `MCP server "${String(name)}" not found.` };
+      const allowed = toolList(tools);
+      if (allowed === undefined) return { success: false, error: "tools must be null or a list of tool names." };
+      const { allowedTools: _old, ...rest } = target;
+      const next: McpServerConfig = allowed === null ? rest : { ...rest, allowedTools: allowed };
+      try {
+        return await save(
+          servers().map((s) => (s.id === target.id ? next : s)),
+          next,
+        );
+      } catch (err) {
+        return failure(err, "Failed to update MCP server.");
       }
     },
     "list-mcp-catalog": (profile?: unknown) => {

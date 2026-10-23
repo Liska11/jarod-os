@@ -132,6 +132,9 @@ export const JAROD_INVOKE_CHANNELS = [
   "audit-recent",
   // Timeline par tour (V-08, 2026-10-23) : les fichiers qu'un tour a changés, avec un diff borné tiré des points de reprise (lecture seule).
   "audit-turn-changes",
+  // Liste blanche MCP (V-14, 2026-10-23) : les outils d'un serveur avec leur place dans la liste (connexion temporaire), et l'écriture de la liste.
+  "mcp-server-tools",
+  "set-mcp-server-tools",
   // Écran « Contexte » (cockpit, lots 3-4) : sorties gardées hors du contexte, proxy de compression et sa santé (lecture seule).
   "context-status",
   // Écran « Artefacts » (cockpit, lot 5) : lister, aperçu borné (cadre sans script), ouvrir avec l'application associée, retirer de la liste.

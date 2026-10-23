@@ -33,6 +33,8 @@ export interface McpServerInfo {
   env: Record<string, string>;
   auth?: string;
   tools?: unknown;
+  /** V-14 : liste blanche des outils (noms du serveur) ; absente = tous. Des noms, jamais un secret. */
+  allowedTools?: string[];
 }
 
 export function toMcpServerInfo(c: McpServerConfig): McpServerInfo {
@@ -46,6 +48,7 @@ export function toMcpServerInfo(c: McpServerConfig): McpServerInfo {
     ...(c.url ? { url: c.url } : c.command ? { command: c.command } : {}),
     args: c.url ? [] : [...(c.args ?? [])],
     env: Object.fromEntries(Object.keys(c.env ?? {}).map((k) => [k, SECRET_MASK])),
+    ...(c.allowedTools ? { allowedTools: [...c.allowedTools] } : {}),
   };
 }
 

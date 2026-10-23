@@ -77,6 +77,8 @@ export interface DesktopKernel {
   mcp?: {
     sync(configs: McpServerConfig[]): Promise<void>;
     probe(config: McpServerConfig): Promise<Array<{ name: string; description?: string }>>;
+    /** V-14 : connexion temporaire, outils avec leur empreinte, leur état d'épingle et leur place dans la liste blanche. */
+    preview?(config: McpServerConfig): Promise<Array<{ name: string; description: string; allowed: boolean; pinState: string }>>;
     /** État des serveurs, dont les outils retenus parce que leur description a changé (épinglage SHA-256). */
     list?(): McpServerView[];
     /** Accepte la description actuelle d'un outil retenu. */

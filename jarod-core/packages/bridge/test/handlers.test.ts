@@ -1271,7 +1271,8 @@ describe("W8 handlers : carte et garde", () => {
     // + 1 canal de la vue unique des journaux (2026-10-23, V-03 : audit-recent, lecture seule).
     // + 3 canaux de la plateforme de plugins (2026-10-23, V-06 : plugin-approve, plugin-rollback, plugin-revoke).
     // + 1 canal de la timeline par tour (2026-10-23, V-08 : audit-turn-changes, lecture seule).
-    expect(keys).toHaveLength(294);
+    // + 2 canaux de la liste blanche MCP (2026-10-23, V-14 : mcp-server-tools, set-mcp-server-tools).
+    expect(keys).toHaveLength(296);
     const hermes = keys.filter((k) => (HERMES_INVOKE_CHANNELS as readonly string[]).includes(k));
     expect(hermes).toHaveLength(207);
     expect(keys.filter((k) => !hermes.includes(k)).sort()).toEqual([...JAROD_INVOKE_CHANNELS].filter((k) => !k.startsWith("terminal-")).sort());
