@@ -64,8 +64,11 @@ const sha256 = (b: Buffer): string => createHash("sha256").update(b).digest("hex
 
 export class PluginPlatform {
   private records = new Map<string, PluginRecord>();
+  /** L'hôte réel : fourni à la construction, ou attaché plus tard par le plugin qui sait charger (V-06 : plugin-workflows). */
+  private host: PluginHost;
 
   constructor(private readonly d: PlatformDeps) {
+    this.host = d.host;
     if (existsSync(d.stateFile)) {
       const raw = JSON.parse(readFileSync(d.stateFile, "utf8")) as Record<string, PluginRecord>;
       this.records = new Map(Object.entries(raw));
@@ -81,6 +84,26 @@ export class PluginPlatform {
     const tmp = `${this.d.stateFile}.tmp`;
     writeFileSync(tmp, JSON.stringify(Object.fromEntries(this.records), null, 2));
     renameSync(tmp, this.d.stateFile);
+  }
+
+  /** V-06 : l'hôte qui charge vraiment les plugins (un seul ; le dernier attaché gagne). */
+  attachHost(host: PluginHost): void {
+    this.host = host;
+  }
+
+  /** V-06 : le canal d'accord des permissions, attaché par qui le porte (l'approbation passe par la confirmation native avant d'arriver ici). */
+  attachApprover(approve: PermissionApprover): void {
+    (this.d as { approve?: PermissionApprover | null }).approve = approve;
+  }
+
+  /** Vrai si ce manifeste porte une signature valide d'une clé de confiance (sans rien installer). */
+  verifies(manifest: PluginManifest): boolean {
+    try {
+      verifyManifest(manifest, this.d.trusted);
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   list(): PluginRecord[] {
@@ -177,11 +200,11 @@ export class PluginPlatform {
       const r = this.get(n);
       if (r.status === "enabled") continue;
       try {
-        await this.d.host.activate(r.manifest);
+        await this.host.activate(r.manifest);
         started.push(n);
-        if (!(await this.d.host.health(n))) throw new PlatformError(`${n} : contrôle de santé échoué à l'activation`);
+        if (!(await this.host.health(n))) throw new PlatformError(`${n} : contrôle de santé échoué à l'activation`);
       } catch (e) {
-        for (const s of started.reverse()) await this.d.host.deactivate(s).catch(() => undefined);
+        for (const s of started.reverse()) await this.host.deactivate(s).catch(() => undefined);
         r.failures += 1;
         this.persist();
         this.emit(n, "enable-failed", { error: (e as Error).message.slice(0, 200) });
@@ -210,7 +233,7 @@ export class PluginPlatform {
 
   private async stop(name: string, status: PluginStatus, reason?: string): Promise<void> {
     const r = this.get(name);
-    await this.d.host.deactivate(name).catch(() => undefined);
+    await this.host.deactivate(name).catch(() => undefined);
     r.status = status;
     if (reason) r.reason = reason;
     this.emit(name, status === "quarantined" ? "quarantine" : "disable", reason ? { reason } : {});
@@ -238,18 +261,18 @@ export class PluginPlatform {
       if (!ok) throw new PlatformError(`${manifest.name} : les nouvelles permissions (${added.join(", ")}) ne sont pas accordées`);
     }
     const wasEnabled = rec.status === "enabled";
-    if (wasEnabled) await this.d.host.deactivate(manifest.name);
+    if (wasEnabled) await this.host.deactivate(manifest.name);
     rec.previous = old;
     rec.manifest = manifest;
     if (wasEnabled) {
       try {
-        await this.d.host.activate(manifest);
-        if (!(await this.d.host.health(manifest.name))) throw new PlatformError("contrôle de santé échoué");
+        await this.host.activate(manifest);
+        if (!(await this.host.health(manifest.name))) throw new PlatformError("contrôle de santé échoué");
       } catch (e) {
-        await this.d.host.deactivate(manifest.name).catch(() => undefined);
+        await this.host.deactivate(manifest.name).catch(() => undefined);
         rec.manifest = old;
         delete rec.previous;
-        await this.d.host.activate(old);
+        await this.host.activate(old);
         this.persist();
         this.emit(manifest.name, "update-rolled-back", { from: old.version, to: manifest.version, error: (e as Error).message.slice(0, 200) });
         throw new PlatformError(`${manifest.name} ${manifest.version} a échoué (${(e as Error).message}) : ${old.version} est rétabli`);
@@ -265,11 +288,11 @@ export class PluginPlatform {
     const rec = this.get(name);
     if (!rec.previous) throw new PlatformError(`${name} : aucune version précédente`);
     const wasEnabled = rec.status === "enabled";
-    if (wasEnabled) await this.d.host.deactivate(name);
+    if (wasEnabled) await this.host.deactivate(name);
     const from = rec.manifest.version;
     rec.manifest = rec.previous;
     delete rec.previous;
-    if (wasEnabled) await this.d.host.activate(rec.manifest);
+    if (wasEnabled) await this.host.activate(rec.manifest);
     this.persist();
     this.emit(name, "rollback", { from, to: rec.manifest.version });
   }
@@ -278,7 +301,7 @@ export class PluginPlatform {
     this.get(name);
     const users = dependents(this.manifests(), this.records.keys(), name);
     if (users.length) throw new PlatformError(`${name} est nécessaire à : ${users.join(", ")}`);
-    if (this.get(name).status === "enabled") await this.d.host.deactivate(name).catch(() => undefined);
+    if (this.get(name).status === "enabled") await this.host.deactivate(name).catch(() => undefined);
     this.records.delete(name);
     this.persist();
     this.emit(name, "remove");
@@ -298,7 +321,7 @@ export class PluginPlatform {
     if (rec.status !== "enabled") return false;
     let ok = false;
     try {
-      ok = await this.d.host.health(name);
+      ok = await this.host.health(name);
     } catch {
       ok = false;
     }

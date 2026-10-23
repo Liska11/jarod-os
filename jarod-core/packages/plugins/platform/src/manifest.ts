@@ -21,6 +21,14 @@ export const PERMISSIONS = [
   "agent.tools",
   "ui.panel",
   "gpu",
+  // V-06 : les surfaces des plugins utilisateur (plugin-workflows, `PLUGIN_PERMISSIONS`), signées telles quelles.
+  "tools",
+  "commands",
+  "hooks",
+  "routes",
+  "pages",
+  "notify",
+  "network",
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 

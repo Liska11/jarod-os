@@ -8,7 +8,7 @@
   },
   "jarod": {
     "plugin": "platform",
-    "order": 96
+    "order": 88
   },
   "scripts": {
     "test": "vitest run",
