@@ -337,7 +337,9 @@ describe("(5b-F) 429 : message clair, Retry-After honoré, UNE requête, aucune 
   const future = (s: number) => new Date(Date.now() + s * 1000).toUTCString();
 
   it("hf-search et hf-repo (API) : HF_RATE_LIMITED avec le délai en secondes ou « plus tard »", async () => {
-    for (const [retryAfter, expected] of [["30", /dans 30 s/], [future(45), /dans (4[0-6]) s/], [undefined, /plus tard/]] as const) {
+    // Une DATE : le délai restant, en secondes, à partir de maintenant — le démarrage de l'environnement en consomme une part (plus de 5 s
+    // sur un runner Windows chargé), d'où une borne basse de 1 s, jamais plus de 46.
+    for (const [retryAfter, expected] of [["30", /dans 30 s/], [future(45), /dans ([1-9]|[1-3]\d|4[0-6]) s/], [undefined, /plus tard/]] as const) {
       const e = await env({ "m.gguf": SMALL }, { fake: { apiRateLimit: { retryAfter } } });
       await failsWith(e.call("hf-search", { query: "tiny" }), new RegExp(`^HF_RATE_LIMITED: .*${expected.source}`));
       expect(e.fake.log).toHaveLength(1);

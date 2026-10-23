@@ -149,7 +149,8 @@ describe("plugin-hyperv", () => {
       );
       expect(parsed.status, `${key}: ${parsed.stderr}`).toBe(0);
     }
-  });
+    // Un PowerShell démarré PAR script : plus de 30 s sur un runner Windows chargé.
+  }, 120_000);
 
   onWindows("la sonde réelle répond sans droits particuliers et ne modifie rien", async () => {
     const status = await new HyperVService({ root: temp() }).status();
