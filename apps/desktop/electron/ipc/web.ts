@@ -1,4 +1,4 @@
-import { BrowserWindow, dialog, ipcMain, net, session, type WebContents, WebContentsView } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, Notification, net, session, type WebContents, WebContentsView } from 'electron'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
@@ -6,7 +6,9 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 import { IPC, type WebOpenOptions, type WebViewBounds, type WebViewEvent } from '../../shared/ipc.ts'
 import { isViewable } from '../../shared/viewer.ts'
 import { chromeUserAgent, isSiteId, PASSKEY_GUARD, type SiteDef, SITES, siteMayOpen, sitePartition } from '../../shared/web-sites.ts'
+import { defenderScan, quarantineDownload } from '../download-quarantine.ts'
 import { log } from '../log.ts'
+import { downloadsDir, jarodOsDataDir } from '../paths.ts'
 import { isLoopbackOrigin } from '../pinokio/guard.ts'
 
 /*
@@ -221,7 +223,27 @@ function prepareSitePartition(site: SiteDef, parent: BrowserWindow | null): void
   if (!site.permissions.includes('downloads')) {
     guest.on('will-download', event => event.preventDefault())
   } else {
-    guest.on('will-download', (_event, item) => log('web', `${site.id}: download ${item.getFilename()}`))
+    // V-07 : transit, analyse Defender, puis Téléchargements — ou suppression et la raison (download-quarantine.ts).
+    guest.on('will-download', (_event, item) => {
+      void quarantineDownload(item, site.id, {
+        stagingRoot: path.join(jarodOsDataDir(), 'quarantine', 'downloads'),
+        downloadsDir: () => downloadsDir(() => app.getPath('downloads')),
+        scan: file => defenderScan(file),
+        notify: (title, body) => {
+          if (Notification.isSupported()) {
+            new Notification({ title, body, silent: true }).show()
+          }
+        },
+        journal: entry => {
+          try {
+            fs.appendFileSync(path.join(jarodOsDataDir(), 'download-quarantine.jsonl'), `${JSON.stringify(entry)}\n`)
+          } catch {
+            // Un journal qui échoue ne retient pas la décision : elle est déjà prise et notifiée.
+          }
+        },
+        log: line => log('web', line)
+      })
+    })
   }
 }
 
