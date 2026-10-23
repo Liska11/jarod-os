@@ -304,11 +304,13 @@ export interface McpServerStatus {
   tools: string[];
   /** Outils non enregistrés en attendant un nouvel accord (`McpManager.approve`). */
   pending: McpPendingTool[];
+  /** V-14 : outils du serveur laissés dehors par sa liste blanche (`allowedTools`), noms du serveur. */
+  filtered: string[];
 }
 
 /** Événement du journal : jamais le texte d'une description, seulement des noms et des empreintes. */
 export interface McpAuditEvent {
-  kind: "pinned" | "changed" | "new" | "approved";
+  kind: "pinned" | "changed" | "new" | "approved" | "filtered";
   server: string;
   tool?: string;
   pinned?: string;
@@ -386,8 +388,13 @@ export interface McpPreviewTool {
   /** Description nettoyée et tronquée : c'est du texte écrit par un tiers, jamais une consigne. */
   description: string;
   pinState: "approved" | "changed" | "new" | "unknown";
+  /** V-14 : retenu par la liste blanche du serveur (toujours vrai sans liste). */
+  allowed: boolean;
   dangerous: true;
 }
+
+/** V-14 : l'outil passe-t-il la liste blanche du serveur ? Sans liste, oui. */
+export const toolAllowed = (cfg: Pick<McpServerConfig, "allowedTools">, tool: string): boolean => !cfg.allowedTools || cfg.allowedTools.includes(tool);
 
 // biome-ignore lint/suspicious/noControlCharactersInRegex: intended, strips control characters from untrusted text
 const stripControl = (s: string): string => s.replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f\u200b-\u200f\u202a-\u202e\u2066-\u2069]/g, "");
@@ -428,7 +435,7 @@ export class McpManager extends Emitter<{ changed: McpServerStatus[] }> {
       const fingerprint = fingerprintTool(t);
       const accepted = pinned?.[t.name];
       const pinState: McpPreviewTool["pinState"] = !pinned ? "unknown" : accepted === undefined ? "new" : accepted === fingerprint ? "approved" : "changed";
-      return { name: t.name, fingerprint, description: stripControl(t.description ?? "").slice(0, 300), pinState, dangerous: true as const };
+      return { name: t.name, fingerprint, description: stripControl(t.description ?? "").slice(0, 300), pinState, allowed: toolAllowed(cfg, t.name), dangerous: true as const };
     });
   }
 
@@ -458,7 +465,7 @@ export class McpManager extends Emitter<{ changed: McpServerStatus[] }> {
     for (const id of [...this.clients.keys()]) if (!wanted.has(id)) this.stopOne(id);
     for (const id of [...this.status.keys()]) if (!configs.some((c) => c.id === id)) this.status.delete(id);
     for (const c of configs) {
-      if (!c.enabled) this.status.set(c.id, { id: c.id, name: c.name, enabled: false, state: "stopped", tools: [], pending: [] });
+      if (!c.enabled) this.status.set(c.id, { id: c.id, name: c.name, enabled: false, state: "stopped", tools: [], pending: [], filtered: [] });
     }
     this.emit("changed", this.list());
     await Promise.all(
@@ -466,7 +473,7 @@ export class McpManager extends Emitter<{ changed: McpServerStatus[] }> {
         .filter((c) => c.enabled && !this.clients.has(c.id))
         .map((c) => {
           if ((this.failures.get(c.id) ?? 0) >= this.maxFailures) {
-            this.status.set(c.id, { id: c.id, name: c.name, enabled: false, state: "error", error: `désactivé après ${this.maxFailures} échecs de démarrage`, tools: [], pending: [] });
+            this.status.set(c.id, { id: c.id, name: c.name, enabled: false, state: "error", error: `désactivé après ${this.maxFailures} échecs de démarrage`, tools: [], pending: [], filtered: [] });
             this.emit("changed", this.list());
             return Promise.resolve();
           }
@@ -495,7 +502,7 @@ export class McpManager extends Emitter<{ changed: McpServerStatus[] }> {
   }
 
   private async startOne(cfg: McpServerConfig): Promise<void> {
-    const st: McpServerStatus = { id: cfg.id, name: cfg.name, enabled: true, state: "starting", tools: [], pending: [] };
+    const st: McpServerStatus = { id: cfg.id, name: cfg.name, enabled: true, state: "starting", tools: [], pending: [], filtered: [] };
     this.held.delete(cfg.id);
     this.status.set(cfg.id, st);
     this.emit("changed", this.list());
@@ -512,6 +519,11 @@ export class McpManager extends Emitter<{ changed: McpServerStatus[] }> {
         this.audit({ kind: "pinned", server: cfg.id, count: tools.length });
       }
       for (const t of tools) {
+        // V-14 : hors liste blanche, l'outil n'est ni enregistré ni mis en attente d'accord — il n'existe pas pour l'agent.
+        if (!toolAllowed(cfg, t.name)) {
+          st.filtered.push(t.name);
+          continue;
+        }
         const def: ToolDef = {
           name: toolName(`${prefix}_${t.name}`),
           description: `[MCP ${cfg.name}] ${t.description ?? t.name}`,
@@ -538,6 +550,7 @@ export class McpManager extends Emitter<{ changed: McpServerStatus[] }> {
         this.tools.register(def);
         st.tools.push(def.name);
       }
+      if (st.filtered.length) this.audit({ kind: "filtered", server: cfg.id, count: st.filtered.length });
       st.state = "running";
       this.failures.delete(cfg.id);
     } catch (e) {
@@ -555,7 +568,7 @@ export class McpManager extends Emitter<{ changed: McpServerStatus[] }> {
     this.clients.delete(id);
     this.tools.unregisterWhere((t) => (t as ToolDef & { mcpServer?: string }).mcpServer === id);
     const st = this.status.get(id);
-    if (st) Object.assign(st, { state: "stopped", tools: [], pending: [] });
+    if (st) Object.assign(st, { state: "stopped", tools: [], pending: [], filtered: [] });
     this.held.delete(id);
   }
 

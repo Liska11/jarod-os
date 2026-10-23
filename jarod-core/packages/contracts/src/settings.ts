@@ -338,6 +338,11 @@ export interface McpServerConfig {
   url?: string;
   /** HTTP headers sent to a remote server, e.g. { Authorization: "Bearer …" }. */
   headers?: Record<string, string>;
+  /**
+   * V-14 — liste blanche, par nom d'outil MCP (celui du serveur, pas `mcp_<serveur>_<outil>`) : seuls ces outils rejoignent
+   * le registre ; un outil absent, ou apparu plus tard, reste dehors. Absent = tous les outils (épingles et accord inchangés).
+   */
+  allowedTools?: string[];
 }
 
 /** G2 — traces locales (OpenTelemetry) : fichiers JSONL dans `<profil>/traces/`, jamais exportées. */

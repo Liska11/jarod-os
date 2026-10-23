@@ -32,8 +32,13 @@ export function apply(ctx: Context, config: McpPluginConfig = {}): void {
     // Journal d'audit existant, lisible par la vue d'audit : une divergence y figure comme un refus.
     audit: (e) => {
       const tool = `mcp:${e.server}${e.tool ? `/${e.tool}` : ""}`;
-      const args = e.kind === "pinned" ? `${e.count} outil(s) épinglé(s)` : `sha256 ${e.pinned?.slice(0, 12) ?? "-"} -> ${e.current?.slice(0, 12) ?? "-"}`;
-      const decision = e.kind === "pinned" ? "automatique" : e.kind === "approved" ? "accordé" : "refusé";
+      const args =
+        e.kind === "pinned"
+          ? `${e.count} outil(s) épinglé(s)`
+          : e.kind === "filtered"
+            ? `${e.count} outil(s) hors liste blanche`
+            : `sha256 ${e.pinned?.slice(0, 12) ?? "-"} -> ${e.current?.slice(0, 12) ?? "-"}`;
+      const decision = e.kind === "pinned" || e.kind === "filtered" ? "automatique" : e.kind === "approved" ? "accordé" : "refusé";
       ctx.storage.events.append("audit", "mcp-pin", { sessionId: "mcp", tool, args, decision, ...(e.kind === "approved" ? { ok: true } : {}) });
     },
   });
