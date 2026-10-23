@@ -11,8 +11,9 @@
  *    aucun (audio seul, à transcrire localement). Rien n'est dit des images : seul le texte est traité.
  */
 import { execFile, spawn } from "node:child_process";
-import { existsSync, mkdirSync, readdirSync, readFileSync, statfsSync, statSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statfsSync, statSync } from "node:fs";
 import { isIP } from "node:net";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { AdapterRefused, AdapterUnavailable } from "./common.js";
 
@@ -208,6 +209,21 @@ export async function fetchMediaText(o: {
   return { info: i, mode: "audio", textOrigin: "aucun", file: path, note: "audio seul : aucun texte n'existe encore ; la transcription se fait localement (voix de Jarod)" };
 }
 
+/**
+ * V-07 — l'admission d'un fichier par la quarantaine (`QuarantineService.admitFile`, vue par sa forme) : rend le chemin admis dans `destDir`
+ * ou lève une erreur qui dit pourquoi.
+ */
+export type AdmitFile = (source: string, provenance: { source: string; url?: string }, destDir: string) => string;
+
+/**
+ * Le fichier qu'a rapporté yt-dlp, du dossier de transit vers `<dossier de travail>/.jarod-media/`, seulement s'il est admis. Sans quarantaine,
+ * rien n'entre : un fichier venu d'Internet n'est jamais rangé sans analyse.
+ */
+export function admitMediaFile(file: string, url: string, workspace: string, admit: AdmitFile | null): string {
+  if (!admit) throw new Error("la quarantaine n'est pas chargée : aucun fichier venu d'Internet n'entre sans analyse");
+  return admit(file, { source: "media_fetch", url }, join(workspace, ".jarod-media"));
+}
+
 /** La forme d'un `ToolDef` de plugin-tools (sans en dépendre). */
 export interface MediaToolDef {
   name: "media_fetch";
@@ -224,7 +240,7 @@ export interface MediaToolDef {
  * Outil de l'agent : métadonnées, sous-titres ou audio d'UNE vidéo en ligne, rangés dans `<dossier de travail>/.jarod-media/`. Il va sur
  * Internet : accord à chaque appel (la cible présentée est l'hôte), refus hors ligne par la porte. Le texte rendu dit son origine.
  */
-export function mediaTool(bin: () => string | null): MediaToolDef {
+export function mediaTool(bin: () => string | null, admit: () => AdmitFile | null = () => null): MediaToolDef {
   return {
     name: "media_fetch",
     description:
@@ -254,21 +270,34 @@ export function mediaTool(bin: () => string | null): MediaToolDef {
       const b = bin();
       if (!b) return "Indisponible : yt-dlp introuvable — régler JAROD_YTDLP ou JAROD_ENGINES_DIR (voir engines.lock/README.md).";
       if (!ctx.workspace) return "Indisponible : aucun dossier de travail pour ranger le fichier.";
+      // V-07 : yt-dlp écrit dans un dossier de transit ; le fichier n'atteint le dossier de travail qu'admis par la quarantaine.
+      const staging = mkdtempSync(join(tmpdir(), "jarod-media-"));
       try {
-        const r = await fetchMediaText({
+        const fetched = await fetchMediaText({
           bin: b,
           url: String(args.url ?? ""),
           mode: String(args.mode) as MediaMode,
-          outDir: join(ctx.workspace, ".jarod-media"),
+          outDir: staging,
           ...(Array.isArray(args.langs) ? { langs: args.langs.map(String) } : {}),
           allowAuto: args.allowAuto === true,
           ...(ctx.signal ? { signal: ctx.signal } : {}),
         });
+        let r = fetched;
+        if (fetched.file) {
+          try {
+            r = { ...fetched, file: admitMediaFile(fetched.file, String(args.url ?? ""), ctx.workspace, admit()) };
+          } catch (e) {
+            // Refusé : ni le fichier ni le texte qu'il contient ne sont rendus.
+            return `Refusé : ${(e as Error).message}`;
+          }
+        }
         const head = `« ${r.info.title} »${r.info.uploader ? ` — ${r.info.uploader}` : ""}${r.info.durationSec ? ` — ${Math.round(r.info.durationSec)} s` : ""} (${r.info.page})`;
         const langs = `sous-titres originaux : ${r.info.subtitles.join(", ") || "aucun"} ; automatiques : ${r.info.automaticCaptions.length ? `${r.info.automaticCaptions.length} langue(s)` : "aucun"}`;
         return [head, langs, `origine du texte : ${r.textOrigin}${r.language ? ` (${r.language})` : ""} — ${r.note}`, r.file ? `fichier : ${r.file}` : "", r.text ?? ""].filter(Boolean).join("\n");
       } catch (e) {
         return `Échec : ${(e as Error).message}`;
+      } finally {
+        rmSync(staging, { recursive: true, force: true });
       }
     },
   };

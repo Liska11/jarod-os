@@ -9,7 +9,7 @@ import { join } from "node:path";
 import { assertAdapters, REGISTRY } from "./adapters.js";
 import { type CapabilityService, type CockpitServices, capabilitiesTool, cockpitService } from "./cockpit/index.js";
 import { codeReviewPlanTool, ocrBinary } from "./impl/code-review.js";
-import { mediaTool, ytdlpBinary } from "./impl/media.js";
+import { type AdmitFile, mediaTool, ytdlpBinary } from "./impl/media.js";
 import { DesktopController, desktopTools, flauiWorker } from "./impl/desktop.js";
 import { sandboxieDir, sandboxTools } from "./impl/sandboxie.js";
 import { linuxTools, smolvmBinary } from "./impl/smolvm.js";
@@ -49,6 +49,8 @@ export const inject = {
   skills: { required: false },
   permissions: { required: false },
   agent: { required: false },
+  // V-07 : ce que `media_fetch` rapporte d'Internet passe par la quarantaine (absente = rien n'entre).
+  quarantine: { required: false },
 };
 
 export function apply(ctx: Context): void {
@@ -69,7 +71,9 @@ export function apply(ctx: Context): void {
   // G13 : diagnostics système prédéfinis (osqueryi, sans démon ni élévation), en lecture seule et audités ; Windows seulement (requêtes et binaire Windows).
   if (tools && process.platform === "win32") ctx.effect(() => tools.registry.register(osqueryTool(() => osqueryBinary())), "integrations:system-diagnostics");
   // G5 : texte d'une vidéo en ligne (yt-dlp) ; outil Internet (refusé hors ligne par la porte), accord à chaque appel.
-  if (tools) ctx.effect(() => tools.registry.register(mediaTool(() => ytdlpBinary())), "integrations:media-fetch");
+  const quarantine = ctx.get("quarantine") as unknown as { admitFile?: AdmitFile } | undefined;
+  const admitFile: AdmitFile | null = quarantine?.admitFile ? (source, provenance, destDir) => quarantine.admitFile!(source, provenance, destDir) : null;
+  if (tools) ctx.effect(() => tools.registry.register(mediaTool(() => ytdlpBinary(), () => admitFile)), "integrations:media-fetch");
   // G15 (2026-10-21, Sandboxie-Plus installé par l'utilisateur) : lancer un programme dans le bac de Jarod (réseau coupé par défaut, réseau
   // ouvert = opération réservée), revoir et vider ce qu'il a écrit. Présent seulement si Sandboxie est installé (relu à chaque appel).
   if (tools && process.platform === "win32") {

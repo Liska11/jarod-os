@@ -1,6 +1,7 @@
 // G5 — contrat sans moteur : choix de piste (originale / automatique jamais confondues), texte des sous-titres, adresses refusées.
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { checkMediaUrl, type MediaInfo, pickTrack, safeUrl, subtitleText } from "../src/impl/media.js";
+import { admitMediaFile, checkMediaUrl, type MediaInfo, pickTrack, safeUrl, subtitleText } from "../src/impl/media.js";
 
 const info = (subtitles: string[], automaticCaptions: string[]): MediaInfo => ({ title: "t", isLive: false, page: "p", subtitles, automaticCaptions });
 
@@ -31,5 +32,19 @@ describe("G5 — adresses", () => {
 
   it("une adresse rendue ne garde jamais la requête ni le fragment", () => {
     expect(safeUrl(new URL("https://video.example/w?token=abc#t=1"))).toBe("https://video.example/w");
+  });
+});
+
+describe("V-07 — ce que media_fetch rapporte passe par la quarantaine", () => {
+  it("admis : rangé dans .jarod-media du dossier de travail, avec l'URL pour provenance ; sans quarantaine : refusé", () => {
+    const calls: unknown[][] = [];
+    const admit = (source: string, provenance: { source: string; url?: string }, destDir: string) => {
+      calls.push([source, provenance, destDir]);
+      return join(destDir, "v.vtt");
+    };
+    expect(admitMediaFile("T:/transit/v.vtt", "https://video.example/1", "W:/espace", admit)).toBe(join("W:/espace", ".jarod-media", "v.vtt"));
+    expect(calls).toEqual([["T:/transit/v.vtt", { source: "media_fetch", url: "https://video.example/1" }, join("W:/espace", ".jarod-media")]]);
+    expect(() => admitMediaFile("T:/transit/v.vtt", "https://video.example/1", "W:/espace", null)).toThrow(/quarantaine n'est pas chargée/);
+    expect(() => admitMediaFile("x", "u", "w", () => { throw new Error("refusé par la quarantaine : menace détectée"); })).toThrow(/menace/);
   });
 });
