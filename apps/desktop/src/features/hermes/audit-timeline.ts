@@ -17,7 +17,53 @@ export interface AuditLine {
   target?: string
   durationMs?: number
   proof?: 'verified' | 'failed' | 'unverifiable'
+  /** V-08 : ce que la vérification a constaté (« notes.txt relu : 12 octets, contenu identique »), déjà masqué par le cœur. */
+  evidence?: string
   at: number
+}
+
+/** V-08 — un fichier qu'un tour a changé, tel que le cœur le rend (`audit-turn-changes`, depuis les points de reprise). */
+export interface FileChange {
+  path: string
+  status: 'created' | 'modified' | 'deleted' | 'unchanged'
+  added: number
+  removed: number
+  hunks?: { kind: 'same' | 'add' | 'del'; text: string }[][]
+  note?: string
+}
+
+/** Les outils dont l'écriture garde un point de reprise (plugin-agent, `/rewind`) : leurs changements ont un diff. */
+export const DIFF_TOOLS: ReadonlySet<string> = new Set(['write_file', 'edit_file'])
+
+/** Les outils qui lancent une commande. */
+export const COMMAND_TOOLS: ReadonlySet<string> = new Set(['run_shell', 'android_shell', 'remote_exec', 'ssh_exec'])
+
+/** V-08 — la carte de résultat d'un tour : ce qui a été fait, refusé, échoué, et combien de temps l'ensemble a pris. */
+export interface TurnSummary {
+  calls: number
+  refused: number
+  failed: number
+  /** Fichiers distincts écrits par un outil qui a tourné (write_file, edit_file). */
+  files: number
+  commands: number
+  durationMs: number
+  /** Un appel d'écriture qui a tourné : c'est par lui que le cœur retrouve le tour (`audit-turn-changes`). */
+  diffCallId: string | null
+}
+
+export function turnSummary(lines: AuditLine[]): TurnSummary {
+  const ran = (line: AuditLine) => !isRefusal(decisionKind(line.decision)) && decisionKind(line.decision) !== 'cancelled'
+  const writes = lines.filter(line => DIFF_TOOLS.has(line.tool) && ran(line) && line.ok !== false)
+
+  return {
+    calls: lines.length,
+    refused: lines.filter(line => isRefusal(decisionKind(line.decision))).length,
+    failed: lines.filter(line => line.ok === false && ran(line)).length,
+    files: new Set(writes.map(line => line.target ?? line.callId)).size,
+    commands: lines.filter(line => COMMAND_TOOLS.has(line.tool) && ran(line)).length,
+    durationMs: lines.reduce((sum, line) => sum + (typeof line.durationMs === 'number' ? line.durationMs : 0), 0),
+    diffCallId: writes.find(line => line.callId)?.callId ?? null
+  }
 }
 
 export type DecisionKind = 'granted' | 'refused' | 'automatic' | 'plan' | 'ruleRefused' | 'ruleAllowed' | 'free' | 'cancelled' | 'invalid' | 'other'
