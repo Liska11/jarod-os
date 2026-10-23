@@ -84,6 +84,12 @@ export interface SkillsHubDeps {
   fetch?: typeof fetch;
   /** Optional GitHub token (raises the anonymous limit of 60 requests an hour). */
   githubToken?: () => string | undefined;
+  /**
+   * V-07 — each file of a PUBLIC skill passes the quarantine (`ctx.quarantine.admitBytes`) before it is written. Wired by the plugin (a
+   * refusal for every file when the quarantine is missing); absent only in a test that builds the hub by hand. Bundled packs ship with
+   * Jarod and do not pass it.
+   */
+  admit?: (data: Buffer, label: string, provenance: { source: string; url?: string }) => { admitted: boolean; reason?: string };
 }
 
 type Target =
@@ -357,6 +363,12 @@ export class SkillsHubService {
     if (!id) throw new Error("Nom de skill invalide.");
     if (scan.verdict === "dangerous") {
       throw new Error(`Installation bloquée : l'analyse a trouvé des motifs dangereux dans ${identifier}.`);
+    }
+    if (bundle.source !== "bundled" && this.d.admit) {
+      for (const f of bundle.files) {
+        const verdict = this.d.admit(f.data, f.path, { source: "skill", ...(bundle.url ? { url: bundle.url } : {}) });
+        if (!verdict.admitted) throw new Error(`Installation bloquée : ${f.path} refusé par la quarantaine (${verdict.reason ?? "non admis"}). Rien n'a été écrit.`);
+      }
     }
     const lock = await this.lock();
     const target = join(this.d.skills.dir, id);

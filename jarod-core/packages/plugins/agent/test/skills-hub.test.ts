@@ -199,3 +199,39 @@ describe("skills hub", () => {
     expect(res.kind === "command" && res.result.text).toMatch(/Aucune skill installée depuis le hub/);
   });
 });
+
+describe("V-07 — une skill publique passe par la quarantaine", () => {
+  it("un fichier refusé bloque toute l'installation, et rien n'est écrit", async () => {
+    const core = await makeCore();
+    await core.init();
+    const { f } = fakeFetch(githubRoutes());
+    const seen: { label: string; source: string }[] = [];
+    const hub = new SkillsHubService({
+      skills: core.skills,
+      fetch: f,
+      admit: (_data, label, provenance) => {
+        seen.push({ label, source: provenance.source });
+        return label.endsWith(".py") ? { admitted: false, reason: "menace détectée par test" } : { admitted: true };
+      },
+    });
+    const refused = hub.install("acme/skills/pdf");
+    await expect(refused).rejects.toThrow(/scripts\/fill\.py refusé par la quarantaine/);
+    await expect(refused).rejects.toThrow(/Rien n'a été écrit/);
+    expect(existsSync(join(core.skills.dir, "pdf"))).toBe(false);
+    expect(seen.every((s) => s.source === "skill")).toBe(true);
+  });
+
+  it("branché par le plugin : la vraie quarantaine du kernel analyse chaque fichier et en garde la trace", async () => {
+    const core = await makeCore();
+    await core.init();
+    const { f } = fakeFetch(githubRoutes());
+    // Le service du plugin, tel que câblé, avec le faux réseau à la place du vrai (champ privé `http`) : aucun appel ne sort du test.
+    (core.app.skillsHub as unknown as { http: typeof fetch }).http = f;
+    await core.app.skillsHub.install("acme/skills/pdf");
+    const traces = (core.app as unknown as { quarantine: { list(): { label: string; status: string; provenance: { source: string } }[] } }).quarantine.list();
+    expect(traces.map((t) => [t.label, t.status, t.provenance.source]).sort()).toEqual([
+      ["SKILL.md", "promoted", "skill"],
+      ["fill.py", "promoted", "skill"],
+    ]);
+  });
+});

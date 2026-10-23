@@ -20,7 +20,8 @@ declare module "cordis" {
 }
 
 export const name = "skills";
-export const inject = ["storage"];
+// V-07 : la quarantaine (ordre 34, chargée avant) admet chaque fichier d'une skill publique ; absente = installation refusée.
+export const inject = { storage: { required: true }, quarantine: { required: false } };
 
 /** Asynchrone : le kernel n'est prêt qu'une fois les skills chargées (un effet async n'est pas attendu). */
 export async function apply(ctx: Context, config: { seed?: boolean } = {}): Promise<void> {
@@ -40,6 +41,10 @@ export async function apply(ctx: Context, config: { seed?: boolean } = {}): Prom
     new SkillsHubService({
       skills,
       githubToken: () => process.env.GITHUB_TOKEN || process.env.GH_TOKEN || undefined,
+      admit: (data, label, provenance) => {
+        const quarantine = ctx.get("quarantine") as unknown as { admitBytes?: (d: Buffer, l: string, p: { source: string; url?: string }) => { admitted: boolean; reason?: string } } | undefined;
+        return quarantine?.admitBytes ? quarantine.admitBytes(data, label, provenance) : { admitted: false, reason: "la quarantaine n'est pas chargée" };
+      },
     }),
   );
 }
