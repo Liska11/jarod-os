@@ -23,7 +23,8 @@ else
 fi
 
 echo "==> every commit"
-gitleaks_run git --redact --no-banner .
+# --verbose : fichier, ligne et empreinte de chaque détection (valeur masquée par --redact), pour la relire avant .gitleaksignore.
+gitleaks_run git --redact --verbose --no-banner .
 echo "==> staged changes"
 gitleaks_run git --pre-commit --staged --redact --no-banner .
 echo "==> unstaged changes"

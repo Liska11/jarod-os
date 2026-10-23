@@ -10,7 +10,7 @@
  */
 import { execFile } from "node:child_process";
 import { existsSync, readFileSync, statSync } from "node:fs";
-import { delimiter, join } from "node:path";
+import { posix, win32 } from "node:path";
 import type { ProbeResult } from "./types.js";
 import { childEnv } from "@jarod/kernel/child-env";
 
@@ -85,7 +85,8 @@ export function which(host: ProbeHost, name: string): string | null {
   const path = host.env.PATH ?? host.env.Path ?? "";
   const win = host.platform === "win32";
   const exts = win ? (host.env.PATHEXT ?? ".COM;.EXE;.BAT;.CMD").split(";").filter(Boolean).map((e) => e.toLowerCase()) : [""];
-  const sep = win ? ";" : delimiter;
+  // Les chemins suivent la plateforme de l'HÔTE sondé, pas celle du processus (un hôte Windows simulé reste Windows sous Linux).
+  const { delimiter: sep, join } = win ? win32 : posix;
   for (const dir of path.split(sep)) {
     if (!dir) continue;
     for (const ext of exts) {

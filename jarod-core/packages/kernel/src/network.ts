@@ -11,7 +11,7 @@
 //   2. `toolVerdict` : la porte des outils (`executeGuardedTool`) refuse ce qui sort par Internet, et ce qui lance un programme
 //      que Jarod ne peut pas couper du réseau (run_shell, serveurs MCP), sauf exception explicite « commandes locales ».
 //   3. Les enfants (`run_shell`, `ssh`…) ne sont PAS isolés du réseau par le noyau : c'est pourquoi la couche 2 les refuse.
-import { existsSync, readFileSync, statSync, watchFile } from "node:fs";
+import { existsSync, readFileSync, statSync, unwatchFile, watchFile } from "node:fs";
 import net from "node:net";
 import { homedir } from "node:os";
 import { join } from "node:path";
@@ -159,7 +159,12 @@ export function uninstallNetworkGuard(): void {
     original = null;
     open.clear();
   }
+  // Sinon la surveillance d'un fichier supprimé lit « absent » (prudent) et coupe les connexions du test suivant.
+  for (const file of watched.splice(0)) unwatchFile(file);
 }
+
+/** Fichiers de politique surveillés par `applyNetworkPolicyFromEnv`. */
+const watched: string[] = [];
 
 // ── Politique active du processus ─────────────────────────────────────────────
 
@@ -187,6 +192,7 @@ export function applyNetworkPolicyFromEnv(env: NodeJS.ProcessEnv = process.env):
   installNetworkGuard(allowed);
   // Une bascule vers « coupé » ferme aussi ce qui était déjà ouvert (réponse de modèle en cours, attente longue d'une messagerie).
   watchFile(file, { interval: 500, persistent: false }, () => cutDisallowed(allowed));
+  watched.push(file);
   return true;
 }
 

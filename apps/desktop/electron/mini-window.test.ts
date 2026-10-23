@@ -1,3 +1,4 @@
+import path from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import { IPC } from '../shared/ipc.ts'
 import { MINI_SIZE, MiniWindow, miniPaths, miniPosition, normalizeMiniSummary } from './mini-window.ts'
@@ -32,7 +33,8 @@ describe('mini-fenêtre : le résumé re-validé par le main', () => {
 
   it('centrée en haut de la zone de travail ; page et preload à part du shell', () => {
     expect(miniPosition({ x: 0, y: 0, width: 1920 })).toEqual({ x: (1920 - MINI_SIZE.width) / 2, y: 8 })
-    expect(miniPaths('C:\\app\\dist\\electron', null)).toEqual({ preloadPath: 'C:\\app\\dist\\electron\\mini-preload.cjs', page: { file: 'C:\\app\\dist\\renderer\\mini.html' } })
+    const dist = path.resolve('app', 'dist')
+    expect(miniPaths(path.join(dist, 'electron'), null)).toEqual({ preloadPath: path.join(dist, 'electron', 'mini-preload.cjs'), page: { file: path.join(dist, 'renderer', 'mini.html') } })
     expect(miniPaths('/d/e', 'http://127.0.0.1:5180/').page).toEqual({ url: 'http://127.0.0.1:5180/mini.html' })
   })
 })

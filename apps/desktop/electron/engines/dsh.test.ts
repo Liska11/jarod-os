@@ -13,7 +13,8 @@ describe('resolveDsh', () => {
   const pkg = (version: string) => JSON.stringify({ name: '@deepseek-ai/dsh', version })
 
   it('trouve la CLI sur le PATH, avec le node à côté et la version du paquet, sans l’exécuter', () => {
-    const dir = path.join('C:', 'tools', 'node')
+    // Chemin natif : sous Linux et macOS, « C: » serait coupé par le délimiteur « : » du PATH.
+    const dir = path.resolve('tools', 'node')
     const files = new Set([path.join(dir, 'dsh.cmd'), path.join(dir, BIN), path.join(dir, 'node.exe')])
     const found = resolveDsh({
       env: { PATH: dir },
