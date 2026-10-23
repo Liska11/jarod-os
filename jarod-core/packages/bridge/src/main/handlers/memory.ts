@@ -14,6 +14,8 @@
  */
 import { assertProfile, type HandlerContext } from "./context.js";
 
+/** V-18 : un identifiant de souvenir (newId, ou un identifiant importé) : court, sans séparateur de chemin ni caractère de contrôle. */
+const MEMORY_ID = /^[A-Za-z0-9_.:-]{1,80}$/;
 const ENTRY_DELIMITER = "\n§\n";
 const NO_LIMIT = Number.MAX_SAFE_INTEGER;
 const USER_LIMIT = 4000; // MAX_PROFILE_CHARS (plugin-memory/user-profile.ts:8)
@@ -105,5 +107,34 @@ export function createMemoryHandlers(ctx: HandlerContext) {
      * fournisseur externe (mémoire intégrée, plugin-memory) : même réponse, `[]`.
      */
     "discover-memory-providers": guard(0, (_profile?: unknown): never[] => []),
+    /** V-18 : les changements de la mémoire, du plus récent au plus ancien (un souvenir, ou tous). Lecture seule. */
+    "memory-history": (memoryId?: unknown, limit?: unknown) => {
+      if (memoryId !== undefined && memoryId !== null && (typeof memoryId !== "string" || !MEMORY_ID.test(memoryId))) throw new Error("[oneai] souvenir invalide");
+      return agent().memory.history({
+        ...(typeof memoryId === "string" ? { memoryId } : {}),
+        ...(typeof limit === "number" && Number.isFinite(limit) ? { limit } : {}),
+      });
+    },
+    /** V-18 : défait un changement (rétablit un souvenir retiré, un texte d'avant, retire un ajout) ; le geste laisse sa propre ligne. */
+    "memory-restore": (seq: unknown) => {
+      if (typeof seq !== "number" || !Number.isSafeInteger(seq) || seq < 1) throw new Error("[oneai] changement invalide");
+      return agent().memory.restore(seq);
+    },
+    /**
+     * V-18 : efface l'historique (d'un souvenir, ou tout). Irréversible, et c'est le moyen pour qu'un souvenir retiré exprès ne survive
+     * pas dans l'historique : confirmation native, « Annuler » par défaut.
+     */
+    "memory-history-purge": async (memoryId?: unknown): Promise<{ purged: number } | false> => {
+      if (memoryId !== undefined && memoryId !== null && (typeof memoryId !== "string" || !MEMORY_ID.test(memoryId))) throw new Error("[oneai] souvenir invalide");
+      if (!ctx.shell.confirm) throw new Error("[oneai] confirmation native indisponible, refusé");
+      const one = typeof memoryId === "string";
+      const ok = await ctx.shell.confirm(
+        one ? "Effacer l'historique de ce souvenir ?" : "Effacer tout l'historique de la mémoire ?",
+        "Les versions passées et les souvenirs retirés qu'il garde sont effacés pour de bon : ils ne pourront plus être rétablis. Les souvenirs actuels ne changent pas.",
+        "Effacer",
+      );
+      if (!ok) return false;
+      return { purged: agent().memory.purgeHistory(one ? (memoryId as string) : undefined) };
+    },
   };
 }

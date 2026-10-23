@@ -1272,7 +1272,8 @@ describe("W8 handlers : carte et garde", () => {
     // + 3 canaux de la plateforme de plugins (2026-10-23, V-06 : plugin-approve, plugin-rollback, plugin-revoke).
     // + 1 canal de la timeline par tour (2026-10-23, V-08 : audit-turn-changes, lecture seule).
     // + 2 canaux de la liste blanche MCP (2026-10-23, V-14 : mcp-server-tools, set-mcp-server-tools).
-    expect(keys).toHaveLength(296);
+    // + 3 canaux de l'historique de la mémoire (2026-10-24, V-18 : memory-history, memory-restore, memory-history-purge).
+    expect(keys).toHaveLength(299);
     const hermes = keys.filter((k) => (HERMES_INVOKE_CHANNELS as readonly string[]).includes(k));
     expect(hermes).toHaveLength(207);
     expect(keys.filter((k) => !hermes.includes(k)).sort()).toEqual([...JAROD_INVOKE_CHANNELS].filter((k) => !k.startsWith("terminal-")).sort());

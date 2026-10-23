@@ -134,6 +134,10 @@ export const JAROD_INVOKE_CHANNELS = [
   "audit-turn-changes",
   // Liste blanche MCP (V-14, 2026-10-23) : les outils d'un serveur avec leur place dans la liste (connexion temporaire), et l'écriture de la liste.
   "mcp-server-tools",
+  // Historique de la mémoire (V-18, 2026-10-24) : lire, rétablir un changement, effacer l'historique (confirmation native).
+  "memory-history",
+  "memory-restore",
+  "memory-history-purge",
   "set-mcp-server-tools",
   // Écran « Contexte » (cockpit, lots 3-4) : sorties gardées hors du contexte, proxy de compression et sa santé (lecture seule).
   "context-status",
