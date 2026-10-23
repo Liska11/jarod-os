@@ -19,10 +19,10 @@
     "@jarod/kernel": "workspace:*",
     "@jarod/plugin-storage": "workspace:*",
     "@jarod/plugin-tools": "workspace:*",
-    "cordis": "4.0.0-rc.10"
+    "cordis": "4.0.0-rc.11"
   },
   "devDependencies": {
     "@modelcontextprotocol/sdk": "1.32.1",
-    "zod": "4.6.5"
+    "zod": "4.6.7"
   }
 }

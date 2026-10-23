@@ -44,7 +44,7 @@
     "@jarod/plugin-storage": "workspace:*",
     "@jarod/plugin-tools": "workspace:*",
     "@jarod/plugin-voice": "workspace:*",
-    "@receptron/laya": "0.1.2",
+    "@receptron/laya": "0.2.0",
     "better-sqlite3-multiple-ciphers": "13.0.3"
   }
 }
