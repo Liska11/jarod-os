@@ -6,7 +6,7 @@ import { useBackendData } from '../../../lib/use-async.ts'
 import { notify } from '../../../store/notifications.ts'
 import { reportEngineError } from './jarod-controls.tsx'
 import { isUnsupported } from './providers-model.ts'
-import { type ActionDraft, draftProblems, emptyAction, emptyRule, inputOf, type Plugin, pluginSummary, type Rule, type RuleDraft, ruleSummary, untrustedTools } from './rules-model.ts'
+import { type ActionDraft, approvalAction, draftProblems, emptyAction, emptyRule, inputOf, type Plugin, pluginSummary, type Rule, type RuleDraft, ruleSummary, untrustedTools } from './rules-model.ts'
 import { InlineNote, markSaved, SectionTitle, SettingsGroup, SettingsRow } from './shared.tsx'
 import { t, useT } from '../../../lib/i18n.ts'
 
@@ -203,16 +203,39 @@ function PluginsBlock() {
       {plugins.data.length === 0 && <SettingsRow icon={<IconPuzzle />} label={t('settings.rules.noPlugin')} description={t('settings.rules.noPlugin.hint')} keywords="plugins user empty" />}
       {plugins.data.map(plugin => {
         const open = untrustedTools(plugin)
+        const approval = plugin.approval
+        const action = approvalAction(plugin)
 
         return (
           <SettingsRow key={plugin.id} icon={<IconPuzzle />} label={plugin.name} description={<span className="line-clamp-2">{[plugin.description, pluginSummary(plugin)].filter(Boolean).join(' — ')}</span>} keywords={`plugin ${plugin.name} ${plugin.id}`}>
-            {plugin.state === 'error' && <Pill tone="danger">{t('settings.rules.error')}</Pill>}
+            <span data-testid={`plugin-${plugin.id}`} data-state={plugin.state} data-approval={approval?.status ?? 'none'} className="contents">
+              {plugin.state === 'error' && <Pill tone="danger">{t('settings.rules.error')}</Pill>}
+              {approval?.status === 'unapproved' && <Pill tone="warn">{t('settings.rules.unapproved')}</Pill>}
+              {approval?.status === 'modified' && <Pill tone="warn">{t('settings.rules.modified')}</Pill>}
+              {approval?.status === 'quarantined' && <Pill tone="danger">{t('settings.rules.quarantined')}</Pill>}
+              {approval?.status === 'approved' && <Pill tone="muted">{approval.signer?.startsWith('local') ? t('settings.rules.approvedLocal', { version: approval.version ?? '' }) : t('settings.rules.approvedBy', { signer: approval.signer ?? '', version: approval.version ?? '' })}</Pill>}
+            </span>
+            {action && (
+              <GlassButton size="sm" variant="primary" disabled={busy} onClick={() => void run(t('settings.rules.approved'), () => jarod('plugin-approve', plugin.id))}>
+                {action === 'update' ? t('settings.rules.approveUpdate') : t('settings.rules.approve')}
+              </GlassButton>
+            )}
+            {approval?.previous && (
+              <GlassButton size="sm" variant="ghost" disabled={busy} onClick={() => void run(t('settings.rules.rolledBack', { version: approval.previous ?? '' }), () => jarod('plugin-rollback', plugin.id))}>
+                {t('settings.rules.rollback', { version: approval.previous })}
+              </GlassButton>
+            )}
+            {approval && approval.status !== 'unapproved' && (
+              <GlassButton size="sm" variant="ghost" disabled={busy} onClick={() => void run(t('settings.rules.revoked'), () => jarod('plugin-revoke', plugin.id))}>
+                {t('settings.rules.revoke')}
+              </GlassButton>
+            )}
             {plugin.state === 'active' && plugin.tools.length > 0 && (
               <GlassButton size="sm" variant="ghost" disabled={busy} onClick={() => void run(open.length ? t('settings.rules.trusted') : t('settings.rules.askAgain.done'), () => jarod('plugin-set-trust', plugin.id, [], open.length > 0))} aria-label={t(open.length ? 'settings.rules.trust.aria' : 'settings.rules.askAgain.aria', { name: plugin.name })}>
                 {open.length ? t('settings.rules.trust') : t('settings.rules.askAgain')}
               </GlassButton>
             )}
-            <Toggle checked={plugin.enabled} label={t('settings.rules.toggle', { name: plugin.name })} disabled={busy} onChange={value => void run(value ? t('settings.rules.pluginOn') : t('settings.rules.pluginOff'), () => jarod('plugin-set-enabled', plugin.id, value))} />
+            <Toggle checked={plugin.enabled} label={t('settings.rules.toggle', { name: plugin.name })} disabled={busy || action === 'approve'} onChange={value => void run(value ? t('settings.rules.pluginOn') : t('settings.rules.pluginOff'), () => jarod('plugin-set-enabled', plugin.id, value))} />
           </SettingsRow>
         )
       })}

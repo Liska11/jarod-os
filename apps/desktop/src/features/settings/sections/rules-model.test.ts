@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { actionText, cronProblem, draftProblems, emptyAction, emptyRule, inputOf, type Plugin, pluginSummary, type Rule, ruleSummary, triggerText, untrustedTools } from './rules-model.ts'
+import { actionText, approvalAction, cronProblem, draftProblems, emptyAction, emptyRule, inputOf, type Plugin, pluginSummary, type Rule, ruleSummary, triggerText, untrustedTools } from './rules-model.ts'
 
 describe('cronProblem', () => {
   it('accepts five-field expressions with lists, ranges and steps', () => {
@@ -63,5 +63,20 @@ describe('summaries', () => {
     expect(pluginSummary(p)).toBe('v1.2 · Ann · 2 tools · asks for network')
     expect(pluginSummary({ ...p, state: 'error', error: 'boom', tools: [], permissions: [], author: '' })).toBe('v1.2 · error: boom · asks for no permission')
     expect(untrustedTools(p)).toEqual(['b'])
+    // V-06 : un plugin bloqué dit pourquoi, sans le préfixe d'erreur.
+    expect(pluginSummary({ ...p, state: 'blocked', error: 'non approuvé', tools: [] })).toBe('v1.2 · Ann · non approuvé · asks for network')
+  })
+
+  it('V-06 : le geste d’approbation proposé — approuver un nouveau, approuver une modification, rien sinon', () => {
+    const p: Plugin = { id: 'p', name: 'P', version: '1.0.0', description: '', author: '', enabled: true, state: 'blocked', error: '', tools: [], trusted: [], permissions: [], digest: 'abc' }
+
+    expect(approvalAction({ ...p, approval: { status: 'unapproved' } })).toBe('approve')
+    expect(approvalAction({ ...p, approval: { status: 'modified', version: '1.0.0' } })).toBe('update')
+    expect(approvalAction({ ...p, approval: { status: 'quarantined', version: '1.0.0' } })).toBe('update')
+    expect(approvalAction({ ...p, state: 'active', approval: { status: 'approved', version: '1.0.0' } })).toBeNull()
+    expect(approvalAction({ ...p, state: 'error', approval: { status: 'unapproved' } })).toBeNull()
+    // Moteur sans plateforme, ou plus ancien : aucun geste proposé.
+    expect(approvalAction({ ...p, approval: null })).toBeNull()
+    expect(approvalAction(p)).toBeNull()
   })
 })

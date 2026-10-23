@@ -27,12 +27,34 @@ export interface Plugin {
   description: string
   author: string
   enabled: boolean
-  state: 'active' | 'disabled' | 'error'
+  /** `blocked` (V-06) : pas approuvé, ou modifié depuis son approbation ; il ne tourne pas, `error` dit pourquoi. */
+  state: 'active' | 'disabled' | 'error' | 'blocked'
   error: string
   tools: string[]
   trusted: string[]
   permissions: string[]
   digest: string
+  /** V-06 : ce que la plateforme dit de son approbation ; absent d'un moteur plus ancien, null sans plateforme. */
+  approval?: PluginApproval | null
+}
+
+export interface PluginApproval {
+  status: 'approved' | 'unapproved' | 'modified' | 'disabled' | 'quarantined'
+  version?: string
+  previous?: string
+  signer?: string
+  reason?: string
+}
+
+/** Le geste d'approbation que l'écran propose : approuver un plugin nouveau, approuver le contenu modifié (mise à jour), ou rien. */
+export function approvalAction(plugin: Plugin): 'approve' | 'update' | null {
+  const status = plugin.approval?.status
+
+  if (!plugin.approval || plugin.state === 'error') {
+    return null
+  }
+
+  return status === 'unapproved' ? 'approve' : status === 'modified' || status === 'quarantined' ? 'update' : null
 }
 
 export type ActionDraft =
@@ -144,7 +166,7 @@ export function ruleSummary(rule: Rule): string {
 
 /** Plugins run code in their own process; say what state they are in and what they may touch. */
 export function pluginSummary(plugin: Plugin): string {
-  const parts = [`v${plugin.version}`, plugin.author, plugin.state === 'error' ? `error: ${plugin.error}` : null, plugin.tools.length ? `${plugin.tools.length} tool${plugin.tools.length === 1 ? '' : 's'}` : null, plugin.permissions.length ? `asks for ${plugin.permissions.join(', ')}` : 'asks for no permission'].filter(Boolean)
+  const parts = [`v${plugin.version}`, plugin.author, plugin.state === 'error' ? `error: ${plugin.error}` : plugin.state === 'blocked' ? plugin.error : null, plugin.tools.length ? `${plugin.tools.length} tool${plugin.tools.length === 1 ? '' : 's'}` : null, plugin.permissions.length ? `asks for ${plugin.permissions.join(', ')}` : 'asks for no permission'].filter(Boolean)
 
   return parts.join(' · ')
 }
