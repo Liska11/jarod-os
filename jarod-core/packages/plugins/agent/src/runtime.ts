@@ -83,6 +83,9 @@ export interface RuntimeDeps {
 /** Sans plugin chargé : `PluginHost.beforeSend` rend le texte tel quel (services/plugins.ts:236-257). */
 export const noPlugins: PluginHost = { beforeSend: (text) => text, afterResponse: () => {}, list: () => [] };
 
+/** Combien de lignes d'audit, depuis la fin du journal, `auditOf` parcourt pour retrouver celles d'une conversation. */
+const AUDIT_SCAN = 10_000;
+
 export class AgentRuntime {
   readonly db: Db;
   readonly settings: SettingsService;
@@ -211,10 +214,22 @@ export class AgentRuntime {
 
   /** The most recent audit lines, newest first. (core.ts:310-316) */
   auditLog(limit = 50): (AuditEntry & { at: number })[] {
+    // Lu depuis la FIN du journal : les `limit` lignes les plus récentes (avant, les 10 000 premières, qui ne sont plus les dernières dès que le journal grossit).
     return this.events
-      .list({ stream: "audit", limit: 10_000 })
-      .slice(-limit)
+      .list({ stream: "audit", limit, newest: true })
       .reverse()
+      .map((e) => ({ ...(e.data as AuditEntry), at: e.at }));
+  }
+
+  /**
+   * V-02 — la timeline d'une conversation : ses lignes d'audit, dans l'ordre où elles ont été écrites. Cherchées dans les `AUDIT_SCAN`
+   * dernières lignes du journal (toutes conversations confondues) : une conversation très ancienne peut n'y avoir plus rien.
+   */
+  auditOf(sessionId: string, limit = 500): (AuditEntry & { at: number })[] {
+    return this.events
+      .list({ stream: "audit", limit: AUDIT_SCAN, newest: true })
+      .filter((e) => (e.data as AuditEntry | null)?.sessionId === sessionId)
+      .slice(-limit)
       .map((e) => ({ ...(e.data as AuditEntry), at: e.at }));
   }
 

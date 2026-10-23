@@ -11,6 +11,12 @@ const stop = (reason = 'stop'): Chunk => ({ choices: [{ delta: {}, finish_reason
 
 export const say = (text: string): Chunk[] => [delta({ content: text }), stop()]
 
+/** One tool call by the scripted model, with the id the conversation will show for it. */
+export const toolCall = (id: string, name: string, args: Record<string, unknown>): Chunk[] => [
+  delta({ tool_calls: [{ index: 0, id, type: 'function', function: { name, arguments: JSON.stringify(args) } }] }),
+  stop('tool_calls')
+]
+
 export const browserCall = (args: Record<string, unknown>): Chunk[] => [
   delta({ tool_calls: [{ index: 0, id: `call-${Math.random().toString(36).slice(2, 8)}`, type: 'function', function: { name: 'connected_browser', arguments: JSON.stringify(args) } }] }),
   stop('tool_calls')
@@ -25,7 +31,11 @@ export interface FakeModel {
   close: () => Promise<void>
 }
 
-export async function startFakeModel(): Promise<FakeModel> {
+/**
+ * `toolTurnsOnly`: the scripted replies go only to requests that offer tools (agent turns); any other request the app makes on its own (a title, a
+ * probe) gets a plain answer and leaves the queue alone, whenever it happens to arrive.
+ */
+export async function startFakeModel(options: { toolTurnsOnly?: boolean } = {}): Promise<FakeModel> {
   const queue: Chunk[][] = []
   const offered: string[][] = []
   const server: Server = createServer((req, res) => {
@@ -41,7 +51,8 @@ export async function startFakeModel(): Promise<FakeModel> {
         offered.push([])
       }
 
-      const chunks = queue.shift() ?? say('(nothing planned)')
+      const aside = options.toolTurnsOnly && offered.at(-1)!.length === 0
+      const chunks = (aside ? undefined : queue.shift()) ?? say(aside ? 'Titre' : '(nothing planned)')
 
       res.writeHead(200, { 'content-type': 'text/event-stream' })
 

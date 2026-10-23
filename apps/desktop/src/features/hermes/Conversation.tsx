@@ -10,6 +10,8 @@ import { $activeSpace } from '../../store/spaces.ts'
 import { Markdown } from '../chat/Markdown.tsx'
 import { $chatArtifacts, $selectedArtifact, artifactsInWindow, dayLabel, formatTime, selectArtifact } from './artifact-store.ts'
 import { ArtifactCard } from './ArtifactCard.tsx'
+import { linesForTurn, toolIdsOf } from './audit-timeline.ts'
+import { AuditTimeline, useAuditLines } from './AuditTimeline.tsx'
 import { ComposerBar, ModelPicker } from './ComposerBar.tsx'
 import { HermesComposer } from './HermesComposer.tsx'
 import { SuggestionChips } from './SuggestionChips.tsx'
@@ -129,6 +131,8 @@ function Transcript({ chat, online }: { chat: ChatState; online: boolean }) {
   const scroller = useRef<HTMLDivElement>(null)
   const pinned = useRef(true)
   const turns = useMemo(() => groupTurns(chat.messages), [chat.messages])
+  const auditLines = useAuditLines(chat)
+  const shownIds = useMemo(() => toolIdsOf(chat.messages), [chat.messages])
 
   useEffect(() => {
     const el = scroller.current
@@ -182,6 +186,7 @@ function Transcript({ chat, online }: { chat: ChatState; online: boolean }) {
               {blocksOf(turn.items).map(block =>
                 block.kind === 'tools' ? <ToolSummaryRow key={block.id} tools={block.tools} /> : block.message.role === 'assistant' ? <AssistantBubble key={block.id} message={block.message} /> : <SystemRow key={block.id} message={block.message} />
               )}
+              <AuditTimeline lines={linesForTurn(auditLines, turn, shownIds)} />
               {finished && produced.map(artifact => <ArtifactCard key={artifact.path} artifact={artifact} selected={selected?.path === artifact.path} onSelect={() => selectArtifact(artifact.path)} />)}
               {isLast && lastComplete && <SuggestionChips hasArtifact={artifacts.some((a: Artifact) => a.kind === 'file')} disabled={!online} onPick={text => void sendPrompt(text)} />}
             </div>

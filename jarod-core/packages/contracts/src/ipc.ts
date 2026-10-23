@@ -118,6 +118,8 @@ export const JAROD_INVOKE_CHANNELS = [
   // Écran « Tâches » (cockpit, lot 2) : les actions de la porte unique (étapes, preuve) ; annuler une tâche vivante par son identifiant.
   "tasks-list",
   "task-cancel",
+  // Timeline auditée (V-02, 2026-10-23) : les lignes d'audit d'une conversation, en lecture seule, pour la vue sous chaque tour du chat.
+  "audit-session",
   // Écran « Contexte » (cockpit, lots 3-4) : sorties gardées hors du contexte, proxy de compression et sa santé (lecture seule).
   "context-status",
   // Écran « Artefacts » (cockpit, lot 5) : lister, aperçu borné (cadre sans script), ouvrir avec l'application associée, retirer de la liste.

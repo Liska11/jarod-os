@@ -15,6 +15,8 @@ export interface EventFilter {
   /** Only entries with a strictly greater seq — lets a subscriber resume where it stopped. */
   after?: number;
   limit?: number;
+  /** The LAST `limit` entries instead of the first ones, still returned in seq order (a journal read from its end). */
+  newest?: boolean;
 }
 
 export interface StreamSummary {
@@ -143,9 +145,10 @@ export class EventStoreService {
     const clause = where.length ? `WHERE ${where.join(" AND ")}` : "";
     const limit = Math.max(1, Math.min(filter.limit ?? DEFAULT_LIMIT, 10_000));
     const rows = this.db.all<{ seq: number; stream: string; type: string; data: string; at: number }>(
-      `SELECT seq, stream, type, data, at FROM events ${clause} ORDER BY seq ASC LIMIT ${limit}`,
+      `SELECT seq, stream, type, data, at FROM events ${clause} ORDER BY seq ${filter.newest ? "DESC" : "ASC"} LIMIT ${limit}`,
       ...params,
     );
+    if (filter.newest) rows.reverse();
     return rows.map((row) => ({ ...row, data: parsePayload(row.data) }));
   }
 

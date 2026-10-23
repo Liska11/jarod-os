@@ -1265,7 +1265,8 @@ describe("W8 handlers : carte et garde", () => {
     // + 2 canaux de l'écran « Tâches » (2026-10-20, cockpit lot 2 : tasks-list, task-cancel).
     // + 1 canal de l'écran « Contexte » (2026-10-20, cockpit lots 3-4 : context-status).
     // + 4 canaux de l'écran « Artefacts » (2026-10-20, cockpit lot 5 : artifacts-list, artifact-preview, artifact-open, artifact-forget).
-    expect(keys).toHaveLength(285);
+    // + 1 canal de la timeline auditée (2026-10-23 : audit-session, lecture seule).
+    expect(keys).toHaveLength(286);
     const hermes = keys.filter((k) => (HERMES_INVOKE_CHANNELS as readonly string[]).includes(k));
     expect(hermes).toHaveLength(207);
     expect(keys.filter((k) => !hermes.includes(k)).sort()).toEqual([...JAROD_INVOKE_CHANNELS].filter((k) => !k.startsWith("terminal-")).sort());

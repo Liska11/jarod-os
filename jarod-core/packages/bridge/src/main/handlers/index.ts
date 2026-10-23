@@ -39,6 +39,7 @@ import { createSkillsHandlers } from "./skills.js";
 import { createToolsHandlers } from "./tools.js";
 import { createCapabilityHandlers } from "./capabilities.js";
 import { createTaskHandlers } from "./tasks.js";
+import { createAuditHandlers } from "./audit.js";
 import { createContextHandlers } from "./context-view.js";
 import { createArtifactHandlers } from "./artifacts.js";
 import { createSshHostHandlers } from "./ssh-hosts.js";
@@ -83,6 +84,7 @@ export function createHandlers(ctx: HandlerContext): Record<string, OneaiHandler
     ...createToolsHandlers(ctx),
     ...createCapabilityHandlers(ctx),
     ...createTaskHandlers(ctx),
+    ...createAuditHandlers(ctx),
     ...createContextHandlers(ctx),
     ...createArtifactHandlers(ctx),
     ...createMcpHandlers(ctx),
