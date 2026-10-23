@@ -2,7 +2,8 @@ import { ipcMain } from 'electron'
 import fs from 'node:fs/promises'
 import { writeFileAtomic } from '../atomic-write.ts'
 import path from 'node:path'
-import { type AuditEntry, IPC } from '../../shared/ipc.ts'
+import { type AuditEntry, type AuditJournals, IPC } from '../../shared/ipc.ts'
+import { tailJournal } from '../journal-tail.ts'
 import { jarodOsDataDir } from '../paths.ts'
 
 const DEFAULT_POLICY = `# Jarod-OS system bridge policy. See docs/SYSTEM-BRIDGE.md.
@@ -52,5 +53,11 @@ export function registerBridgeIpc(): void {
     }
 
     return entries.reverse()
+  })
+  // V-03 : la part du shell dans la vue unique des journaux. Les deux fichiers sont fixés ici ; la fenêtre ne donne qu'un nombre de lignes.
+  ipcMain.handle(IPC.auditJournalsRead, (_event, limit: unknown): AuditJournals => {
+    const n = typeof limit === 'number' && Number.isInteger(limit) && limit > 0 ? Math.min(limit, 500) : 500
+
+    return { bridge: tailJournal(auditFile(), n), control: tailJournal(path.join(jarodOsDataDir(), 'control-audit.jsonl'), n) }
   })
 }

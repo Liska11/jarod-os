@@ -659,6 +659,12 @@ export interface AuditEntry {
   args?: Record<string, unknown>
 }
 
+/** V-03 : les dernières lignes BRUTES des journaux du shell — `audit.jsonl` (pont système) et `control-audit.jsonl` (contrôle, shell et hôte Rust). */
+export interface AuditJournals {
+  bridge: string[]
+  control: string[]
+}
+
 export interface WindowState {
   fullscreen: boolean
   focused: boolean
@@ -1108,6 +1114,8 @@ export const IPC = {
   bridgePolicyRead: 'jarod-os:bridge:policy-read',
   bridgePolicyWrite: 'jarod-os:bridge:policy-write',
   bridgeAuditRead: 'jarod-os:bridge:audit-read',
+  /** V-03 : les deux journaux d'audit que le shell possède, en lignes brutes (vue unique des journaux). */
+  auditJournalsRead: 'jarod-os:audit:journals-read',
 
   envInfo: 'jarod-os:env:info',
 

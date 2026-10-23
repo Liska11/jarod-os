@@ -11,6 +11,7 @@ import {
   type AudioWsKind,
   type AudioWsTarget,
   type AuditEntry,
+  type AuditJournals,
   type MiniSummary,
   type BackendState,
   type CalendarResult,
@@ -535,6 +536,10 @@ const api = {
     readPolicy: (): Promise<string> => ipcRenderer.invoke(IPC.bridgePolicyRead),
     writePolicy: (text: string): Promise<void> => ipcRenderer.invoke(IPC.bridgePolicyWrite, text),
     readAudit: (limit = 200): Promise<AuditEntry[]> => ipcRenderer.invoke(IPC.bridgeAuditRead, limit)
+  },
+  /** V-03 : la part du shell dans la vue unique des journaux (lecture seule ; aucun chemin ne vient de la fenêtre). */
+  audit: {
+    journals: (limit = 500): Promise<AuditJournals> => ipcRenderer.invoke(IPC.auditJournalsRead, limit)
   },
   env: (): Promise<EnvInfo> => ipcRenderer.invoke(IPC.envInfo)
 }

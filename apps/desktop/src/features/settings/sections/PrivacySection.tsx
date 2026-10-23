@@ -6,7 +6,7 @@ import { useLocalData } from '../../../lib/use-async.ts'
 import { $env } from '../../../store/backend.ts'
 import { $continuity, forgetThreads, setContinuityEnabled, setExclusions } from '../../../store/continuity.ts'
 import { notify } from '../../../store/notifications.ts'
-import { AuditRow } from './AgentsSection.tsx'
+import { UnifiedAuditLog } from './UnifiedAuditLog.tsx'
 import { errorText, markSaved, SectionTitle, SettingsBlock, SettingsGroup, SettingsRow } from './shared.tsx'
 import { t, useT } from '../../../lib/i18n.ts'
 
@@ -108,7 +108,6 @@ export function PrivacySection() {
   const [draft, setDraft] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [showAudit, setShowAudit] = useState(false)
-  const audit = useLocalData(() => (showAudit ? window.jarodOS.bridge.readAudit(200) : Promise.resolve([])), [showAudit])
   const text = draft ?? policy.data ?? ''
   const dirty = draft !== null && draft !== policy.data
 
@@ -177,24 +176,9 @@ export function PrivacySection() {
           icon={<IconHistory />}
           label={t('settings.privacy.auditLog')}
           description={t('settings.privacy.auditLog.hint')}
-          keywords="history activity"
-          below={
-            showAudit ? (
-              <div className="animate-rise flex max-h-[360px] flex-col overflow-y-auto rounded-lg border border-line bg-black/20">
-                {audit.loading && !audit.data?.length && <div className="p-3 text-[12px] text-fg-4">{t('settings.privacy.loading')}</div>}
-                {!audit.loading && (audit.data?.length ?? 0) === 0 && <div className="p-3 text-[12px] text-fg-4">{t('settings.privacy.noActivity')}</div>}
-                {(audit.data ?? []).map((entry, index) => (
-                  <AuditRow key={`${entry.ts}-${index}`} entry={entry} />
-                ))}
-              </div>
-            ) : undefined
-          }
+          keywords="history activity agent bridge control mcp journal"
+          below={showAudit ? <UnifiedAuditLog /> : undefined}
         >
-          {showAudit && (
-            <GlassButton size="sm" variant="ghost" onClick={audit.reload}>
-              {t('settings.privacy.refresh')}
-            </GlassButton>
-          )}
           <LinkAction onClick={() => setShowAudit(o => !o)}>{showAudit ? t('settings.privacy.hideLog') : t('settings.privacy.viewLog')}</LinkAction>
         </SettingsRow>
       </SettingsGroup>
