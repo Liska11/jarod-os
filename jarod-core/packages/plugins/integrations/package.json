@@ -16,9 +16,9 @@
   },
   "dependencies": {
     "@jarod/kernel": "workspace:*",
-    "@opentelemetry/api": "1.9.1",
-    "@opentelemetry/sdk-trace-base": "2.11.0",
-    "cordis": "4.0.0-rc.10"
+    "@opentelemetry/api": "1.10.0",
+    "@opentelemetry/sdk-trace-base": "2.12.0",
+    "cordis": "4.0.0-rc.11"
   },
   "devDependencies": {
     "better-sqlite3-multiple-ciphers": "13.0.3",
