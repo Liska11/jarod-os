@@ -15,6 +15,7 @@
 import { execFile } from "node:child_process";
 import { type Dirent, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { join, relative } from "node:path";
+import { childEnv } from "@jarod/kernel/child-env";
 import { AdapterRefused, AdapterUnavailable } from "./common.js";
 
 const DEFAULT_DIR = "C:\\Program Files\\Sandboxie-Plus";
@@ -63,9 +64,15 @@ interface RunResult {
   timedOut: boolean;
 }
 
+/**
+ * L'environnement de Start.exe, que le programme du bac reçoit : celui d'un enfant NON FIABLE (famille « mcp » : système seulement), jamais
+ * `process.env` — un programme lancé dans le bac n'a ni à lire les jetons de contrôle de Jarod, ni les secrets de l'utilisateur.
+ */
+export const sandboxedEnv = (): NodeJS.ProcessEnv => childEnv("mcp");
+
 function run(file: string, args: string[], timeoutMs: number, signal?: AbortSignal): Promise<RunResult> {
   return new Promise((resolve) => {
-    execFile(file, args, { windowsHide: true, timeout: timeoutMs, maxBuffer: 8 * 1024 * 1024, ...(signal ? { signal } : {}) }, (err, stdout, stderr) => {
+    execFile(file, args, { env: sandboxedEnv(), windowsHide: true, timeout: timeoutMs, maxBuffer: 8 * 1024 * 1024, ...(signal ? { signal } : {}) }, (err, stdout, stderr) => {
       const e = err as (NodeJS.ErrnoException & { code?: number | string; killed?: boolean }) | null;
       resolve({ code: e ? (typeof e.code === "number" ? e.code : null) : 0, stdout: String(stdout), stderr: String(stderr), timedOut: Boolean(e?.killed) });
     });

@@ -16,6 +16,7 @@
 import { execFile, spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
+import { childEnv } from "@jarod/kernel/child-env";
 import { AdapterRefused, AdapterUnavailable } from "./common.js";
 
 /** La machine de l'agent. Le banc utilise la sienne, supprimée à la fin. */
@@ -37,10 +38,13 @@ interface Out {
   timedOut: boolean;
 }
 
+/** L'environnement de smolvm : celui d'un moteur lancé par Jarod, sans jeton de contrôle ni clé de fournisseur. */
+export const smolvmEnv = (): NodeJS.ProcessEnv => childEnv("engine");
+
 /** Une commande smolvm qui rend la main (create, update, exec, stop, delete, ls) ; ses sorties sont lues. */
 function run(bin: string, args: string[], timeoutMs: number, signal?: AbortSignal): Promise<Out> {
   return new Promise((resolve) => {
-    execFile(bin, args, { windowsHide: true, timeout: timeoutMs, maxBuffer: 16 * 1024 * 1024, ...(signal ? { signal } : {}) }, (err, stdout, stderr) => {
+    execFile(bin, args, { env: smolvmEnv(), windowsHide: true, timeout: timeoutMs, maxBuffer: 16 * 1024 * 1024, ...(signal ? { signal } : {}) }, (err, stdout, stderr) => {
       const e = err as (NodeJS.ErrnoException & { code?: number | string; killed?: boolean }) | null;
       resolve({ code: e ? (typeof e.code === "number" ? e.code : null) : 0, stdout: String(stdout), stderr: String(stderr), timedOut: Boolean(e?.killed) });
     });
@@ -50,7 +54,7 @@ function run(bin: string, args: string[], timeoutMs: number, signal?: AbortSigna
 /** `machine start` : la VM qu'il lance hérite de ses sorties — elles ne sont PAS lues (sinon on attendrait l'arrêt de la VM). */
 function start(bin: string, name: string, timeoutMs: number): Promise<number | null> {
   return new Promise((resolve) => {
-    const child = spawn(bin, ["machine", "start", "--name", name], { windowsHide: true, stdio: "ignore" });
+    const child = spawn(bin, ["machine", "start", "--name", name], { env: smolvmEnv(), windowsHide: true, stdio: "ignore" });
     const timer = setTimeout(() => {
       child.kill();
       resolve(null);

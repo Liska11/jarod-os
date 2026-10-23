@@ -278,7 +278,7 @@ function alive(pid: number): boolean {
 export function commandLineOf(pid: number): string | null {
   try {
     if (process.platform === "win32") {
-      const out = execFileSync("powershell", ["-NoProfile", "-NonInteractive", "-Command", `(Get-CimInstance Win32_Process -Filter 'ProcessId=${Math.trunc(pid)}').CommandLine`], { encoding: "utf8", timeout: 15_000, windowsHide: true }).trim();
+      const out = execFileSync("powershell", ["-NoProfile", "-NonInteractive", "-Command", `(Get-CimInstance Win32_Process -Filter 'ProcessId=${Math.trunc(pid)}').CommandLine`], { encoding: "utf8", timeout: 15_000, windowsHide: true, env: childEnv("engine") }).trim();
       return out || null;
     }
     return readFileSync(`/proc/${Math.trunc(pid)}/cmdline`, "utf8").split("\0").join(" ").trim() || null;
