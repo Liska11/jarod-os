@@ -53,6 +53,17 @@ export interface QuarantineEvent {
 
 export class QuarantineError extends Error {}
 
+/** Ce que l'admission d'une entrée externe a décidé (`admitBytes`). */
+export interface AdmitResult {
+  admitted: boolean;
+  record: QuarantineRecord;
+  /** Pourquoi c'est refusé, en clair, pour la personne. */
+  reason?: string;
+}
+
+/** La forme de l'admission que les plugins consommateurs reçoivent (sans dépendre de ce paquet). */
+export type AdmitExternal = (data: Buffer, label: string, provenance: Provenance) => AdmitResult;
+
 const ID = /^[0-9a-f]{64}$/;
 
 const sha256 = (bytes: Buffer): string => createHash("sha256").update(bytes).digest("hex");
@@ -222,6 +233,75 @@ export class QuarantineService {
     record.promotedTo = target;
     this.save(record);
     this.emit(id, "promote", { size: record.size });
+    return target;
+  }
+
+  /**
+   * V-07 — l'ADMISSION d'une entrée externe (pièce jointe d'une messagerie ou du téléphone, fichier rapporté par un outil Internet, skill
+   * publique) : le contenu entre, est empreinté et analysé, et n'est admis que si l'analyseur l'a dit propre. Infecté, non analysable ou
+   * altéré : refusé. Dans tous les cas la copie en quarantaine est détruite après la décision (aucune copie en clair d'une pièce jointe que
+   * le magasin chiffre) ; la trace reste : empreinte, provenance, verdict.
+   *
+   * Pas de canal d'approbation ici, à la différence de `promote` : la porte a déjà été ouverte par la personne (passerelle configurée,
+   * téléphone appairé, appel d'outil accordé) ; la quarantaine ajoute l'analyse, elle ne redemande pas l'accord.
+   */
+  admitBytes(data: Buffer, label: string, provenance: Provenance): AdmitResult {
+    const id = sha256(data);
+    writeFileSync(this.blob(id), data);
+    const record: QuarantineRecord = {
+      id,
+      size: data.length,
+      label: safeLabel(label),
+      provenance: { source: String(provenance.source).slice(0, 40), ...(provenance.url ? { url: String(provenance.url).slice(0, 500) } : {}) },
+      intakeAt: Date.now(),
+      status: "quarantined",
+      scan: null,
+    };
+    this.save(record);
+    this.emit(id, "intake", { size: data.length, source: record.provenance.source });
+    const scanned = this.scan(id);
+    rmSync(this.blob(id), { force: true });
+    if (scanned.status === "clean") {
+      scanned.status = "promoted";
+      scanned.promotedTo = `admis (${scanned.provenance.source})`;
+      this.save(scanned);
+      this.emit(id, "promote", { size: scanned.size, admitted: true });
+      return { admitted: true, record: scanned };
+    }
+    const reason =
+      scanned.status === "infected"
+        ? `menace détectée par ${scanned.scan?.scanner ?? "l'analyseur"}`
+        : scanned.status === "tampered"
+          ? "le contenu a changé pendant l'analyse"
+          : `aucune analyse possible (${scanned.scan?.scanner ?? "analyseur"} indisponible) : un fichier non analysé n'entre pas`;
+    this.emit(id, "refused", { why: reason });
+    return { admitted: false, record: scanned, reason };
+  }
+
+  /**
+   * L'admission d'un FICHIER déjà écrit par un outil dans un dossier de transit : propre, il est copié (empreinte revérifiée) vers
+   * `destDir` et le chemin créé est rendu ; sinon `QuarantineError`. Le dossier de transit appartient à l'appelant, qui le vide.
+   */
+  admitFile(source: string, provenance: Provenance, destDir: string, name?: string): string {
+    const info = lstatSync(source);
+    if (info.isSymbolicLink() || !info.isFile()) throw new QuarantineError("la source n'est pas un fichier ordinaire (un lien n'est jamais suivi)");
+    const bytes = readFileSync(source);
+    const verdict = this.admitBytes(bytes, name ?? source, provenance);
+    if (!verdict.admitted) throw new QuarantineError(`refusé par la quarantaine : ${verdict.reason}`);
+    mkdirSync(destDir, { recursive: true });
+    const dir = resolve(destDir);
+    if (lstatSync(dir).isSymbolicLink() || !statSync(dir).isDirectory()) throw new QuarantineError("la destination n'est pas un dossier ordinaire");
+    const target = join(realpathSync.native(dir), safeLabel(name ?? source));
+    if (existsSync(target)) {
+      // Le même contenu, déjà admis là (la même vidéo demandée deux fois) : rien à écrire. Un AUTRE contenu n'écrase jamais.
+      if (lstatSync(target).isFile() && sha256(readFileSync(target)) === verdict.record.id) return target;
+      throw new QuarantineError("la destination existe déjà : rien n'est écrasé");
+    }
+    writeFileSync(target, bytes);
+    if (sha256(readFileSync(target)) !== verdict.record.id) {
+      rmSync(target, { force: true });
+      throw new QuarantineError("la copie ne correspond pas à l'empreinte : retirée");
+    }
     return target;
   }
 
