@@ -45,14 +45,22 @@ export function createLocalModelsHandlers(ctx: HandlerContext) {
     "local-models-load": (backend: unknown, id: unknown): Promise<LocalModelsView> => service().load(backendOf(backend), idOf(id)),
 
     "local-models-unload": (backend: unknown, id: unknown): Promise<LocalModelsView> => service().unload(backendOf(backend), idOf(id)),
+    // Reprendre un modèle LM Studio chargé par Jarod AVANT un redémarrage (propriété incertaine) : geste de l'utilisateur seulement.
+    "local-models-adopt": (id: unknown): Promise<LocalModelsView> => service().adopt(idOf(id)),
 
-    // Un réglage par appel : `{ hotswap }`, ou `{ contextLength: { model, tokens } }` (LM Studio ; `tokens: null` = celle de LM Studio).
+    // Un réglage par appel : `{ hotswap }`, `{ contextLength: { model, tokens } }` (LM Studio ; `tokens: null` = celle de LM Studio), ou
+    // `{ idleUnloadMinutes }` (2026-10-21 : déchargement après inactivité, 0 = jamais).
     "local-models-configure": (patch: unknown): Promise<LocalModelsView> => {
       if (!patch || typeof patch !== "object" || Array.isArray(patch)) return bad("réglages attendus");
       const o = patch as Record<string, unknown>;
-      const extra = Object.keys(o).filter((k) => k !== "hotswap" && k !== "contextLength");
+      const extra = Object.keys(o).filter((k) => k !== "hotswap" && k !== "contextLength" && k !== "idleUnloadMinutes");
       if (extra.length) return bad(`champ(s) non accepté(s) : ${extra.join(", ")}`);
-      if (Object.keys(o).length !== 1) return bad("un seul réglage à la fois (« hotswap » ou « contextLength »)");
+      if (Object.keys(o).length !== 1) return bad("un seul réglage à la fois (« hotswap », « contextLength » ou « idleUnloadMinutes »)");
+      if ("idleUnloadMinutes" in o) {
+        const n = o.idleUnloadMinutes;
+        if (!(typeof n === "number" && Number.isInteger(n) && n >= 0 && n <= 1440)) return bad("« idleUnloadMinutes » : entier de 0 (jamais) à 1440 attendu");
+        return service().setIdleUnload(n);
+      }
       if ("hotswap" in o) {
         if (typeof o.hotswap !== "boolean") return bad("« hotswap » : booléen attendu");
         return service().setHotswap(o.hotswap);

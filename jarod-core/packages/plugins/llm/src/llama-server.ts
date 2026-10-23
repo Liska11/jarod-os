@@ -76,6 +76,15 @@ export class LlamaServerSupervisor {
     };
   }
 
+  /**
+   * Un serveur répond sur ce port sans être l'enfant de ce superviseur (lancé par un autre programme, ou survivant d'une session précédente) :
+   * il n'est jamais arrêté ici, seulement signalé.
+   */
+  async foreignOn(port: number): Promise<boolean> {
+    if (this.child) return false;
+    return this.d.probe(`http://127.0.0.1:${port}/health`, 1_000);
+  }
+
   /** Construit argv sans shell : une ligne de commande concaténée est une injection qui attend. */
   static args(config: LlamaServerConfig): string[] {
     const args = ["-m", config.model, "--port", String(config.port), "--host", "127.0.0.1"];

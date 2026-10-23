@@ -348,6 +348,12 @@ export class EngineService {
     return run;
   }
 
+  /** Something answers on the engine's port that this process did not start: never stopped by Jarod, only shown. */
+  async foreignServer(): Promise<boolean> {
+    const sup = this.d.supervisor as { foreignOn?: (port: number) => Promise<boolean> };
+    return sup.foreignOn ? sup.foreignOn(this.config().port).catch(() => false) : false;
+  }
+
   /** The preset the running server was started with; null when nothing runs (or it was restarted with something else). */
   loadedPreset(): EnginePreset | null {
     const st = this.d.supervisor.status();

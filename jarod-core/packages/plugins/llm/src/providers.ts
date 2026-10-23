@@ -20,11 +20,14 @@ export const secretKeyFor = (providerId: string): string => `provider:${provider
 export const extraKeyFor = (providerId: string, n: number): string => `${secretKeyFor(providerId)}:${n}`;
 
 /** Resolves provider definitions + user overrides + stored keys into ready-to-use clients. */
+/** The step run before a chat call (local models: load what it names). It may return a release, called once the call is over. */
+export type Preparer = (model: string, signal?: AbortSignal) => Promise<(() => void) | void>;
+
 export class ProviderRouter {
   /** The key that answered last, per provider: the next turn starts with it. */
   private preferred = new Map<string, number>();
   /** Ce qu'il faut faire AVANT un appel à ce fournisseur (hotswap des modèles locaux : charger le modèle demandé). */
-  private readonly preparers = new Map<string, (model: string, signal?: AbortSignal) => Promise<void>>();
+  private readonly preparers = new Map<string, Preparer>();
 
   constructor(private readonly settings: SettingsService) {}
 
@@ -85,7 +88,7 @@ export class ProviderRouter {
    * Registers (or removes, with null) the step run before every chat call to a provider. Used by the local models' hotswap: the model the call
    * names is loaded first. The provider's address is read again AFTER that step (loading may (re)start the server that serves it).
    */
-  setPreparer(id: string, prepare: ((model: string, signal?: AbortSignal) => Promise<void>) | null): void {
+  setPreparer(id: string, prepare: Preparer | null): void {
     if (prepare) this.preparers.set(id, prepare);
     else this.preparers.delete(id);
   }
@@ -96,8 +99,14 @@ export class ProviderRouter {
     if (!this.preparers.has(id)) return direct;
     return {
       chat: async (req, handlers) => {
-        await this.preparers.get(id)?.(req.model, req.signal);
-        return this.directClient(id, keyIndex).chat(req, handlers);
+        // The step may hand back a lease: held for the WHOLE call (the stream included), released however it ends. The local models use
+        // it to know which model a response is still running on — a swap waits for it instead of stopping the server under it.
+        const release = await this.preparers.get(id)?.(req.model, req.signal);
+        try {
+          return await this.directClient(id, keyIndex).chat(req, handlers);
+        } finally {
+          if (typeof release === "function") release();
+        }
       },
       listModels: () => direct.listModels(),
     };

@@ -175,9 +175,10 @@ describe("modèles locaux : liste, chargement, déchargement", () => {
 });
 
 describe("hotswap", () => {
-  it("allumé : un seul modèle de chat local — charger l'un décharge les autres, jamais les embeddings", async () => {
-    const { service, engine, lmstudio } = await setup([{ key: "qwen", instances: ["qwen"] }, { key: "nomic", type: "embedding", instances: ["nomic"] }, { key: "jean" }]);
+  it("allumé : un seul modèle de chat local — charger l'un décharge les autres (ceux de Jarod), jamais les embeddings", async () => {
+    const { service, engine, lmstudio } = await setup([{ key: "qwen" }, { key: "nomic", type: "embedding", instances: ["nomic"] }, { key: "jean" }]);
     await service.setHotswap(true);
+    await service.load("lmstudio", "qwen");
     await engine.start("pa");
     let v = await service.load("lmstudio", "jean");
     expect(loadedOf(v)).toEqual({ llamacpp: [], lmstudio: ["nomic", "jean"] });
@@ -215,11 +216,12 @@ describe("hotswap", () => {
     void service;
   });
 
-  it("un appel du chat vers LM Studio charge le modèle nommé et décharge l'autre modèle de chat", async () => {
-    const { service, core, lmstudio } = await setup([{ key: "qwen", instances: ["qwen"] }, { key: "jean" }]);
+  it("un appel du chat vers LM Studio charge le modèle nommé et décharge l'autre modèle de chat (chargé par Jarod)", async () => {
+    const { service, core, lmstudio } = await setup([{ key: "qwen" }, { key: "jean" }]);
     await service.setHotswap(true);
+    await service.load("lmstudio", "qwen");
     await core.providers.client("lmstudio").chat({ model: "jean", system: "", messages: [], tools: [], maxAttempts: 1 }, {}).catch(() => undefined);
-    expect(lmstudio.calls.filter((c) => !c.startsWith("list"))).toEqual(["unload qwen", "load jean"]);
+    expect(lmstudio.calls.filter((c) => !c.startsWith("list"))).toEqual(["load qwen", "unload qwen", "load jean"]);
   });
 
   it("éteint : un appel du chat ne charge ni ne décharge rien", async () => {
@@ -272,8 +274,9 @@ describe("activité : ce que la fenêtre montre pendant et après un chargement"
   const brief = (a: LocalModelActivity) => `${a.phase} ${a.action} ${a.backend} ${a.model}`;
 
   it("un chargement hotswap annonce les déchargements qu'il fait, puis le chargement : début et fin, même identifiant, durée", async () => {
-    const { service, engine } = await setup([{ key: "qwen", instances: ["qwen"] }, { key: "nomic", type: "embedding", instances: ["nomic"] }, { key: "jean" }]);
+    const { service, engine } = await setup([{ key: "qwen" }, { key: "nomic", type: "embedding", instances: ["nomic"] }, { key: "jean" }]);
     await service.setHotswap(true);
+    await service.load("lmstudio", "qwen");
     await engine.start("pa");
     const seen: LocalModelActivity[] = [];
     const off = service.onActivity((a) => seen.push(a));
@@ -398,5 +401,63 @@ describe("longueur de contexte (LM Studio) : demandée au chargement, rechargée
     const v = await service.list();
     expect(v.backends.llamacpp.models.map((m) => m.contextLength)).toEqual(engine.config().presets.map((p) => p.ctxSize));
     expect(v.backends.llamacpp.models.every((m) => (m.contextLength ?? 0) > 0 && m.loadedContext === null)).toBe(true);
+  });
+});
+
+describe("propriété et réconciliation après redémarrage (2026-10-21)", () => {
+  const owners = (v: Awaited<ReturnType<LocalModelsService["list"]>>) => Object.fromEntries(v.backends.lmstudio.models.map((m) => [m.id, m.owner]));
+
+  it("un modèle chargé par quelqu'un d'autre est « externe » : ni le hotswap ni l'inactivité ne le déchargent ; l'utilisateur le peut", async () => {
+    const { service, lmstudio } = await setup([{ key: "autre", instances: ["autre"] }, { key: "jean" }]);
+    await service.setHotswap(true);
+    await service.setIdleUnload(1);
+    let v = await service.load("lmstudio", "jean");
+    expect(owners(v)).toEqual({ autre: "externe", jean: "jarod" });
+    expect(lmstudio.calls).not.toContain("unload autre");
+    await service.idleCheck();
+    await service.idleCheck();
+    expect(lmstudio.calls).not.toContain("unload autre");
+    // Le geste explicite de l'utilisateur, lui, décharge.
+    v = await service.unload("lmstudio", "autre");
+    expect(owners(v).autre).toBeNull();
+  });
+
+  it("après un redémarrage : l'instance que Jarod avait chargée est « incertaine », jamais déchargée seule ; « Reprendre » la rend à Jarod", async () => {
+    const first = await setup([{ key: "jean" }, { key: "qwen" }]);
+    await first.service.load("lmstudio", "jean");
+    expect(first.core.settings.get("localModels").lmstudioLoaded).toMatchObject([{ key: "jean", instance: "jean" }]);
+    // Redémarrage : un nouveau service sur le même profil et le même LM Studio (l'instance est toujours en mémoire).
+    const service = new LocalModelsService({ settings: first.core.settings, engine: first.engine, providers: first.core.providers, minuteMs: 1, idleCheckMs: 3_600_000 });
+    await service.setHotswap(true);
+    await service.setIdleUnload(1);
+    expect(owners(await service.list())).toEqual({ jean: "incertaine", qwen: null });
+    await service.idleCheck();
+    await new Promise((r) => setTimeout(r, 5));
+    await service.idleCheck();
+    await service.load("lmstudio", "qwen"); // hotswap : charger qwen ne décharge PAS l'instance incertaine
+    expect(first.lmstudio.calls).not.toContain("unload jean");
+    await expect(service.adopt("qwen")).rejects.toThrow(/rien à reprendre/);
+    const v = await service.adopt("jean");
+    expect(owners(v)).toEqual({ jean: "jarod", qwen: "jarod" });
+    service.dispose();
+  });
+
+  it("une instance disparue entre-temps est oubliée ; rechargée par quelqu'un d'autre sous un autre identifiant, elle est « externe »", async () => {
+    const first = await setup([{ key: "jean" }]);
+    await first.service.load("lmstudio", "jean");
+    first.lmstudio.state[0]!.instances = ["jean:2"];
+    const service = new LocalModelsService({ settings: first.core.settings, engine: first.engine, providers: first.core.providers });
+    expect(owners(await service.list())).toEqual({ jean: "externe" });
+    expect(first.core.settings.get("localModels").lmstudioLoaded).toEqual([]);
+    service.dispose();
+  });
+
+  it("llama.cpp : le serveur supervisé est à Jarod ; un serveur qui répond sur le port sans être le sien est signalé, jamais arrêté", async () => {
+    const { service, engine } = await setup();
+    await engine.start("pa");
+    expect((await service.list()).backends.llamacpp.models.find((m) => m.id === "pa")?.owner).toBe("jarod");
+    const foreign = new LlamaServerSupervisor({ spawn: () => ({ pid: 1, kill: () => true, on: () => {} }) as SpawnedProcess, probe: async () => true });
+    expect(await foreign.foreignOn(8080)).toBe(true);
+    expect(await foreign.stop()).toBe(false); // rien de lancé par lui : rien à arrêter
   });
 });

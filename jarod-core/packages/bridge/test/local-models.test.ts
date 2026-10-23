@@ -6,6 +6,7 @@ import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { cleanup } from "@jarod/kernel/testing";
 import { afterEach, describe, expect, it } from "vitest";
+import type { LocalModelsView } from "@jarod/plugin-llm";
 import { bindLocalModelsEvents } from "../src/main/handlers/local-models.js";
 import { setupKernel } from "./ui-parite-helpers.js";
 
@@ -52,10 +53,8 @@ async function fakeLmStudio() {
   return { base: `http://127.0.0.1:${(server.address() as AddressInfo).port}/v1`, calls };
 }
 
-interface View {
-  hotswap: boolean;
-  backends: Record<"llamacpp" | "lmstudio", { available: boolean; models: { id: string; loaded: boolean; kind: string }[] }>;
-}
+/** The real contract (owner, contextLength, … included), not a hand-copied subset: a fixture that drifts from it fails the typecheck. */
+type View = LocalModelsView;
 
 async function wired() {
   const k = await setupKernel();
@@ -93,8 +92,36 @@ describe("modèles locaux : canaux", () => {
     await rejects(() => call("local-models-load", "lmstudio", "inconnu"), /ne connaît pas/);
   });
 
-  it("hotswap : choisir un modèle LM Studio dans le chat (set-model-config) le charge tout de suite et décharge l'autre modèle de chat, jamais les embeddings", async () => {
+  it("propriété : chaque modèle chargé dit qui l'a chargé ; « reprendre » refuse un modèle externe", async () => {
+    const { call } = await wired();
+    let v = (await call("local-models-list")) as View;
+    expect(v.backends.lmstudio.models.map((m) => [m.id, m.owner])).toEqual([
+      ["qwen", "externe"],
+      ["jean", null],
+      ["nomic", "externe"],
+    ]);
+    v = (await call("local-models-load", "lmstudio", "jean")) as typeof v;
+    expect(v.backends.lmstudio.models.find((m) => m.id === "jean")!.owner).toBe("jarod");
+    await rejects(() => call("local-models-adopt", "qwen"), /rien à reprendre/);
+    await rejects(() => call("local-models-adopt", ""), /identifiant/);
+  });
+
+  it("déchargement après inactivité (2026-10-21) : un entier de 0 à 1440 minutes, un réglage à la fois, rendu dans la vue", async () => {
+    const { call, app } = await wired();
+    await rejects(() => call("local-models-configure", { idleUnloadMinutes: -1 }), /0 \(jamais\) à 1440/);
+    await rejects(() => call("local-models-configure", { idleUnloadMinutes: "10" }), /entier/);
+    await rejects(() => call("local-models-configure", { idleUnloadMinutes: 10, hotswap: true }), /un seul réglage/);
+    const v = (await call("local-models-configure", { idleUnloadMinutes: 15 })) as View & { idleUnloadMinutes: number };
+    expect(v.idleUnloadMinutes).toBe(15);
+    expect(app.agent.settings.get("localModels").idleUnloadMinutes).toBe(15);
+  });
+
+  it("hotswap : choisir un modèle LM Studio dans le chat (set-model-config) le charge tout de suite et décharge l'autre modèle de chat chargé par Jarod, jamais les embeddings", async () => {
     const { call, lm, app } = await wired();
+    // qwen est en mémoire SANS que Jarod l'ait chargé (externe) : l'utilisateur le décharge puis le charge depuis Jarod, il devient le sien.
+    await call("local-models-unload", "lmstudio", "qwen");
+    await call("local-models-load", "lmstudio", "qwen");
+    lm.calls.length = 0;
     const v = (await call("local-models-configure", { hotswap: true })) as View;
     expect(v.hotswap).toBe(true);
     expect(app.agent.settings.get("localModels").hotswap).toBe(true);
@@ -108,6 +135,8 @@ describe("modèles locaux : canaux", () => {
   it("chaque chargement / déchargement part vers la fenêtre (événement local-models-activity), y compris ceux du hotswap ; débranché ensuite", async () => {
     const { call, kernel } = await wired();
     const sent: [string, { phase: string; action: string; model: string }][] = [];
+    await call("local-models-unload", "lmstudio", "qwen");
+    await call("local-models-load", "lmstudio", "qwen"); // chargé par Jarod : le hotswap pourra le décharger
     const off = bindLocalModelsEvents(kernel.localEngine?.models, (channel, a) => sent.push([channel, a as never]));
     await call("local-models-configure", { hotswap: true });
     await call("local-models-load", "lmstudio", "jean");

@@ -103,6 +103,9 @@ export class LlmService extends Service {
       logs: () => [...this.engineLog],
     });
     this.localModels = new LocalModelsService({ settings, engine: this.engine, providers: this.providers });
+    // Le contrôle d'inactivité (2026-10-21) s'arrête avec le plugin.
+    const localModels = this.localModels;
+    ctx.effect(() => () => localModels.dispose(), "llm:local-models-idle");
     // Jarod stops what it started when it quits (engine.ts, en-tête).
     const supervisor = this.localServer;
     ctx.effect(() => async () => void (await supervisor.stop()), "llm:local-server");
