@@ -69,6 +69,25 @@ Les cinq niveaux demandés correspondent à ceci :
 
 Une autonomie **sans aucune borne** est possible, mais seulement par choix explicite (`--large`), et elle est affichée comme telle.
 
+## Profils d'accès et limites dures (V-09, 2026-10-23)
+
+Un **préréglage** au-dessus des règles, choisi dans Réglages › Agent et sécurité › Profil d'accès (`accessProfile`), lu à chaque appel :
+
+| Profil | Ce qui demande l'accord |
+|---|---|
+| **Demander** (`ask`) | tout, lectures comprises ; ni « Toujours autoriser », ni règle « sans accord » |
+| **M'approuver** (`approve`) | les outils sensibles ; les lectures revues passent ; l'interrupteur global « sans demander » est ignoré |
+| **Plein** (`full`) | seulement les **limites dures** et ce qu'une règle « demander » impose |
+| **Personnalisé** (`custom`, défaut) | exactement le comportement d'avant : interrupteur global, « Toujours autoriser », règles |
+
+**Limites dures** : les outils qui ont perdu « Toujours autoriser » (`NEVER_ALWAYS` : `run_shell`, `android_shell`, `skill_hub_install`, `cronjob`, `http_request`, `web_fetch`, `system_files`, `system_kill_process`, `system_quit_app`) demandent l'accord à chaque appel sous **tous** les préréglages, Plein compris. Seule une règle explicite, bornée, confirmée par la personne (`allow` + `autonomous`) peut en dispenser : un geste par outil et par périmètre, jamais l'effet d'un préréglage.
+
+Aucun profil ne lève : une règle « refuser » (refusé sans même demander), une opération réservée, l'interrupteur Internet, le mode Plan, le garde propre à l'outil, le journal, la tâche et l'annulation.
+
+**Changer de profil** : ce qui donne plus de pouvoir (Demander → M'approuver, → Plein, → un Personnalisé dont l'interrupteur global est allumé) passe par la **confirmation native**, qui dit ce qui change et nomme les limites dures ; durcir ne demande rien. L'agent ne peut pas changer de profil (aucun outil n'écrit les réglages), et le profil n'est jamais importé d'un paquet de profil (liste blanche du portage). Hors de Personnalisé, l'interrupteur « Utiliser les outils sans demander » est grisé : c'est le profil qui décide.
+
+Preuves : `plugins/agent/test/access-profile.test.ts` (table de décision), `access-profile.engine.test.ts` (boucle réelle : Plein écrit sans accord mais `run_shell` demande ; Plein ne lève pas un refus ; Demander demande une lecture et ignore une règle « sans accord » ; M'approuver ignore l'interrupteur global ; Personnalisé inchangé), `bridge/test/jarod-settings.test.ts` (confirmation native), e2e `access-profile.spec.ts` (application construite).
+
 ## La commande
 
 ```
