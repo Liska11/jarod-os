@@ -61,6 +61,8 @@ interface Line {
   tier?: string
   target?: string
   durationMs?: number
+  proof?: string
+  evidence?: string
 }
 
 /** Opens the conversation page, where each turn shows its audit timeline. */
@@ -169,6 +171,8 @@ test('the core serves the same three lines, in order, with their call ids, tiers
   ])
   expect(lines[0]!.ok).toBe(true)
   expect(lines[1]!.target).toContain('echo audit-e2e')
+  // V-10 : la commande a sa preuve — le code de sortie relevé par le système, et ce qu'elle a changé dans le dossier de travail (rien).
+  expect(lines[1]).toMatchObject({ proof: 'verified', evidence: expect.stringMatching(/^code de sortie 0 \(relevé par le système\) ; aucun fichier changé/) })
   expect(lines[2]!.target).toContain('refus.txt')
   // The approval wait is part of a call's duration; every line has one.
   expect(lines.every(l => typeof l.durationMs === 'number' && l.durationMs >= 0)).toBe(true)
