@@ -15,7 +15,7 @@ describe("réglages Agent", () => {
     const v = (await call("get-jarod-settings")) as Record<string, unknown>;
     // La liste blanche exacte : une clé de plus (ou de moins) doit se voir ici.
     expect(Object.keys(v).sort()).toEqual(
-      ["alwaysAllowTools", "android", "apiServer", "anthropicFallbacks", "autoApproveTools", "agentMode", "autoTitle", "browserPersistent", "browserVisible", "compactThreshold", "connectedBrowser", "contextProxy", "desktop", "disabledSkills", "ecosystem", "fallbacks", "imageDescription", "learning", "maxAgentSteps", "memoryInject", "mobile", "permissionsRules", "phoneApprovals", "rag", "sessionBudget", "shellGuard", "terminalShell", "toolSearch", "voice"].sort(),
+      ["alwaysAllowTools", "android", "apiServer", "anthropicFallbacks", "autoApproveTools", "agentMode", "autoTitle", "browserPersistent", "browserVisible", "compactThreshold", "connectedBrowser", "contextProxy", "desktop", "disabledSkills", "ecosystem", "fallbacks", "imageDescription", "learning", "localTraces", "maxAgentSteps", "memoryInject", "mobile", "permissionsRules", "phoneApprovals", "rag", "sessionBudget", "shellGuard", "terminalShell", "toolSearch", "voice"].sort(),
     );
     expect(v).toMatchObject({
       autoApproveTools: false,
@@ -60,6 +60,18 @@ describe("réglages Agent", () => {
     expect([s.agentMode, s.maxAgentSteps, s.compactThreshold, s.memoryInject, s.autoTitle, s.anthropicFallbacks, s.toolSearch]).toEqual(["plan", 60, 0, false, false, false, "off"]);
     expect(s.sessionBudget).toMatchObject({ maxTokens: 500_000, maxCostUsd: 2.5 });
     expect(s.learning).toEqual({ enabled: false, reviewEvery: 20 });
+  });
+
+  it("localTraces (G2) : éteint par défaut, bornes validées avant écriture", async () => {
+    const { call, app } = await setupKernel();
+    expect(app.agent.settings.get("localTraces")).toMatchObject({ enabled: false, retentionDays: 7 });
+    const after = (await call("set-jarod-settings", { localTraces: { enabled: true, retentionDays: 3 } })) as Record<string, unknown>;
+    expect(after.localTraces).toMatchObject({ enabled: true, retentionDays: 3, maxFiles: 20 });
+    const before = app.agent.settings.get("localTraces");
+    for (const bad of [{ enabled: "oui" }, { retentionDays: 0 }, { retentionDays: 365 }, { maxFileBytes: 10 }, { maxFiles: 1000 }, { exportUrl: "https://x" }, 3]) {
+      await expect(Promise.resolve().then(() => call("set-jarod-settings", { localTraces: bad }))).rejects.toThrow(/localTraces/);
+    }
+    expect(app.agent.settings.get("localTraces")).toEqual(before);
   });
 
   it("disabledSkills (DS5, SPECS-P5-DISABLED-SKILLS) : écriture large bornée, triée, sans doublon", async () => {
@@ -331,5 +343,57 @@ describe("navigateur de l'agent : session persistante et oubli", () => {
     expect(forgotten).toBe(1);
     const none = await setupKernel(undefined, [true]);
     await expect(Promise.resolve().then(() => none.call("agent-browser-forget"))).rejects.toThrow(/indisponible/);
+  });
+});
+
+describe("règles depuis Réglages (2026-10-21) : le même service que `jarod permissions`", () => {
+  it("ajout : règle en tête, identifiant, « réglages » ; une autonomie sans borne est refusée ; durcir ne demande rien", async () => {
+    const { call, app, confirms } = await setupKernel(undefined, [true]);
+    await expect(Promise.resolve().then(() => call("permissions-apply", { op: "grant", input: { tool: "system_files", decision: "allow", autonomous: true } }))).rejects.toThrow(/sans aucune borne/);
+    await call("permissions-apply", { op: "grant", input: { tool: "run_shell", decision: "deny" } });
+    expect(confirms).toHaveLength(0);
+    const after = (await call("permissions-apply", { op: "grant", input: { tool: "system_files", decision: "allow", autonomous: true, target: "D:/demo/*", uses: 2, durationMs: 3_600_000 } })) as { permissionsRules: { id: string }[] };
+    expect(confirms).toHaveLength(1);
+    expect(confirms[0]!.detail).toMatch(/autoriser SANS accord « system_files » sur « D:\/demo\/\* »/);
+    const rules = app.agent.settings.get("permissionsRules");
+    expect(rules[0]).toMatchObject({ tool: "system_files", autonomous: true, uses: 2, by: "réglages" });
+    expect(rules[0]!.id).toMatch(/^p-[0-9a-f]{6}$/);
+    expect(after.permissionsRules).toHaveLength(2);
+  });
+
+  it("aperçu sans écriture ; modification en place, déplacement et révocation par identifiant", async () => {
+    const { call, app } = await setupKernel(undefined, [true, true, true]);
+    await call("permissions-apply", { op: "grant", input: { tool: "run_shell", decision: "deny" } });
+    await call("permissions-apply", { op: "grant", input: { tool: "media_fetch", decision: "allow", operation: "subtitles", position: "end" } });
+    const [deny, media] = app.agent.settings.get("permissionsRules");
+    const preview = (await call("permissions-plan", { op: "update", ref: media!.id, change: { uses: 3 } })) as { summary: string[]; weakenings: string[] };
+    expect(preview.summary[1]).toMatch(/3 utilisation/);
+    expect(app.agent.settings.get("permissionsRules")[1]).not.toHaveProperty("uses"); // un aperçu n'écrit rien
+    await call("permissions-apply", { op: "update", ref: media!.id, change: { uses: 3 } });
+    expect(app.agent.settings.get("permissionsRules")[1]).toMatchObject({ id: media!.id, uses: 3, by: "réglages" });
+    await call("permissions-apply", { op: "move", ref: media!.id, to: 1 });
+    expect(app.agent.settings.get("permissionsRules").map((r) => r.id)).toEqual([media!.id, deny!.id]);
+    await call("permissions-apply", { op: "revoke", ref: deny!.id });
+    expect(app.agent.settings.get("permissionsRules").map((r) => r.id)).toEqual([media!.id]);
+    await expect(Promise.resolve().then(() => call("permissions-apply", { op: "revoke", ref: "p-absent" }))).rejects.toThrow(/Aucune règle/);
+    await expect(Promise.resolve().then(() => call("permissions-apply", { op: "rien" }))).rejects.toThrow(/grant, update, move ou revoke/);
+  });
+
+  it("refusée à la boîte native : rien n'est écrit ; une utilisation consommée PENDANT la boîte n'est pas rendue", async () => {
+    let during: (() => void) | null = null;
+    const answers = [false, true];
+    const { call, app } = await setupKernel(undefined, [], {
+      confirm: async () => {
+        during?.();
+        return answers.shift() ?? true;
+      },
+    });
+    app.agent.settings.set("permissionsRules", [{ tool: "system_files", decision: "allow", autonomous: true, target: "D:/demo/*", uses: 3, id: "p-demo01" }, { tool: "run_shell", decision: "deny", id: "p-shell1" }]);
+    await expect(Promise.resolve().then(() => call("permissions-apply", { op: "revoke", ref: "p-shell1" }))).rejects.toThrow(/refusé par l'utilisateur/);
+    expect(app.agent.settings.get("permissionsRules")).toHaveLength(2);
+    // Le garde retire une utilisation pendant que la boîte est ouverte (l'agent travaille) : le compteur relu l'emporte.
+    during = () => app.permissions!.consume(app.agent.settings.get("permissionsRules")[0]!);
+    await call("permissions-apply", { op: "revoke", ref: "p-shell1" });
+    expect(app.agent.settings.get("permissionsRules")).toEqual([{ tool: "system_files", decision: "allow", autonomous: true, target: "D:/demo/*", uses: 2, id: "p-demo01" }]);
   });
 });

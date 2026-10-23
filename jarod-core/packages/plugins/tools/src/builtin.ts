@@ -4,12 +4,14 @@ import { existsSync, realpathSync } from "node:fs";
 import { mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { decodeConsoleOutput } from "./console-text.js";
+import { realOfNearestSync } from "./system/files.js";
 import { assertPublicUrl } from "./net-guard.js";
 import type { LlamaServerSupervisor } from "@jarod/plugin-llm";
 import type { MemoryService } from "@jarod/plugin-memory";
 import { ShellGuardService, type ShellLaunchPlan, type WriteScope } from "@jarod/plugin-permissions";
 import { VaultService } from "@jarod/plugin-rag";
 import type { MemoryType } from "@jarod/contracts";
+import { childEnv } from "@jarod/kernel/child-env";
 import { killTree, truncate, withTimeout } from "@jarod/kernel/util";
 import type { ToolContext, ToolDef } from "./registry.js";
 
@@ -87,6 +89,16 @@ export function resolveInWorkspace(ctx: ToolContext, p: unknown): string {
  * intermédiaire : c'est la forme que prend un confinement réel (le mécanisme est alors le premier
  * mot de la ligne, et il tient le processus).
  */
+/**
+ * La cible d'un outil de fichier, pour les règles par dossier : un chemin absolu est rendu RÉEL (jonctions et liens résolus, `..` retirés) —
+ * une autorisation sur un dossier ne s'étend pas à ce qu'une jonction placée dedans désigne. Un chemin relatif reste tel quel (il dépend du
+ * dossier de travail : une règle sur un chemin absolu ne le couvre pas).
+ */
+export function pathTarget(raw: unknown): string | undefined {
+  if (typeof raw !== "string" || !raw.trim()) return undefined;
+  return isAbsolute(raw) ? realOfNearestSync(raw) : raw;
+}
+
 export function runShell(
   command: string,
   cwd: string,
@@ -95,7 +107,8 @@ export function runShell(
   plan?: ShellLaunchPlan,
   extraEnv: Record<string, string> = {},
 ): Promise<{ code: number | null; output: string }> {
-  const env = Object.keys(extraEnv).length ? { ...process.env, ...extraEnv } : process.env;
+  // The user's environment minus Jarod's internal tokens and provider keys; secrets the agent is allowed to use arrive through `extraEnv`.
+  const env = childEnv("agent-shell", { explicit: extraEnv });
   return new Promise((done) => {
     // Its own process group on Unix, so the whole command can be killed at once.
     const child =
@@ -236,7 +249,7 @@ export function builtinTools(memory: MemoryService, localServer?: LlamaServerSup
     },
     {
       name: "read_file",
-      targetOf: (args) => (typeof args.path === "string" ? args.path : undefined),
+      targetOf: (args) => pathTarget(args.path),
 
       description:
         "Lit un fichier texte du dossier de travail. Pour un gros fichier, lis-le par morceaux avec offset (première ligne, à partir de 1) et limit (nombre de lignes).",
@@ -259,7 +272,7 @@ export function builtinTools(memory: MemoryService, localServer?: LlamaServerSup
     },
     {
       name: "write_file",
-      targetOf: (args) => (typeof args.path === "string" ? args.path : undefined),
+      targetOf: (args) => pathTarget(args.path),
       // Preuve : le fichier relu a exactement le contenu écrit.
       async verify(args, _out, ctx) {
         const file = resolveInWorkspace(ctx, args.path);
@@ -287,7 +300,7 @@ export function builtinTools(memory: MemoryService, localServer?: LlamaServerSup
     },
     {
       name: "edit_file",
-      targetOf: (args) => (typeof args.path === "string" ? args.path : undefined),
+      targetOf: (args) => pathTarget(args.path),
       // Preuve : le nouveau texte est présent et l'ancien a disparu (sauf s'il fait partie du nouveau).
       async verify(args, _out, ctx) {
         const file = resolveInWorkspace(ctx, args.path);
@@ -386,7 +399,8 @@ export function builtinTools(memory: MemoryService, localServer?: LlamaServerSup
           ctx.signal,
           seconds * 1000,
           planned,
-          secrets.env,
+          // Le marqueur du shell de l'agent : `jarod permissions` refuse d'écrire quand il le voit (l'agent ne s'accorde pas de droits).
+          { ...secrets.env, JAROD_AGENT_SHELL: "1" },
         );
         const note = planned.mode === "exec" ? `[${planned.detail}]\n` : "";
         // A command that prints its environment must not hand the value to the model.

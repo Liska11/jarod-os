@@ -58,6 +58,8 @@ const result = await build({
   legalComments: "none",
   logLevel: "warning",
   metafile: true,
+  // Les chemins du métafichier sont relatifs à ce dossier, quel que soit le dossier d'où le script est lancé.
+  absWorkingDir: root,
 });
 const size = statSync(join(out, "gateway.mjs")).size;
 
@@ -102,8 +104,27 @@ const nativeFiles = [];
   }
 })(join(out, "node_modules"));
 
+// 4. Les paquets npm compilés DANS gateway.mjs, lus dans le métafichier d'esbuild : Syft ne peut pas les voir dans un fichier groupé (G1, SBOM).
+const bundled = new Map();
+for (const input of Object.keys(result.metafile.inputs)) {
+  const p = slash(input);
+  const at = p.lastIndexOf("node_modules/");
+  if (at < 0) continue;
+  const rest = p.slice(at + "node_modules/".length).split("/");
+  const name = rest[0].startsWith("@") ? `${rest[0]}/${rest[1]}` : rest[0];
+  const dir = resolve(root, p.slice(0, at + "node_modules/".length) + name);
+  if (bundled.has(dir)) continue;
+  try {
+    const m = JSON.parse(readFileSync(join(dir, "package.json"), "utf8"));
+    bundled.set(dir, { name: m.name ?? name, version: m.version ?? "", ...(typeof m.license === "string" ? { license: m.license } : {}) });
+  } catch {
+    bundled.set(dir, { name, version: "" });
+  }
+}
+const packages = [...new Map([...bundled.values()].map((x) => [`${x.name}@${x.version}`, x])).values()].sort((a, b) => a.name.localeCompare(b.name));
+
 writeFileSync(
   join(out, "BUNDLE.json"),
-  JSON.stringify({ node: process.version, plugins: plugins.map((p) => p.name), gatewayBytes: size, native: nativeFiles.map((f) => f.slice(out.length + 1)), inputs: Object.keys(result.metafile.inputs).length }, null, 2),
+  JSON.stringify({ node: process.version, plugins: plugins.map((p) => p.name), gatewayBytes: size, native: nativeFiles.map((f) => f.slice(out.length + 1)), inputs: Object.keys(result.metafile.inputs).length, packages }, null, 2),
 );
 console.log(`gateway.mjs ${(size / 1048576).toFixed(1)} Mo, ${plugins.length} plugins, ${nativeFiles.length} module(s) natif(s) : ${nativeFiles.map((f) => f.slice(out.length + 1)).join(", ")}`);

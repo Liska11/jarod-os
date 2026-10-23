@@ -16,6 +16,9 @@ import { defaultDiagnosticsName, diagnosticsCommand } from "./diagnostics.js";
 import { headlessCommand } from "./headless.js";
 import { collectHealth, healthExitCode, renderHealth } from "./health.js";
 import { mcpCommand } from "./mcp-server.js";
+import { applyNetworkPolicyForEntry } from "@jarod/kernel/network";
+import { reservedReason } from "@jarod/plugin-permissions";
+import { confirmationCode, permissionsCommand } from "./permissions.js";
 import { overrideSettings } from "./settings-override.js";
 import { serve } from "./serve.js";
 import { upstreamWatch } from "./upstream-watch.js";
@@ -36,6 +39,7 @@ Usage :
   jarod memory                     Affiche la mémoire
   jarod memory add [type] <texte>  Ajoute un souvenir (fact, preference, context)
   jarod profiles                   Liste les profils
+  jarod permissions [list|explain|add|revoke|reset]   Autorisations de l'agent (jarod permissions help)
   jarod health [--json]            Diagnostic de l'installation (code 1 si dégradée)
   jarod diagnostics [--out F.zip]  Archive ZIP minimale à joindre à un rapport de bug
   jarod events [--stream S] [--type T] [--follow]   Journal d'événements
@@ -84,7 +88,7 @@ export interface Args {
 export function parseArgs(argv: string[]): Args {
   const flags: Record<string, string | boolean> = {};
   const positional: string[] = [];
-  const withValue = new Set(["session", "model", "profile", "limit", "out", "type", "after", "stream", "config", "since", "root", "max-details", "repo"]);
+  const withValue = new Set(["session", "model", "profile", "limit", "out", "type", "after", "stream", "config", "since", "root", "max-details", "repo", "cible", "operation", "duree", "utilisations", "note", "position"]);
   const aliases: Record<string, string> = { c: "continue", y: "yes", h: "help", v: "version" };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i]!;
@@ -348,6 +352,45 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
     case "profiles":
       console.log(`Profil actif : ${bold(profile)}`);
       break;
+    case "permissions": {
+      // Autonomie configurable (2026-10-21) : la liste unique `permissionsRules` du profil, lue et écrite ici ; le bureau la relit à chaque décision.
+      const { NEVER_ALWAYS_REASONS } = await import("@jarod/plugin-agent");
+      const rl = createInterface({ input: process.stdin, output: process.stdout });
+      try {
+        return await permissionsCommand(
+          args.positional,
+          args.flags,
+          {
+            read: () => [...core.settings.get("permissionsRules")],
+            write: (rules) => core.settings.set("permissionsRules", rules),
+          },
+          {
+            declared: (name) => Boolean(core.tools.get(name)),
+            facts: (name, operation, res) => {
+              const t = core.tools.get(name);
+              return {
+                exists: Boolean(t),
+                dangerous: Boolean(t?.dangerous),
+                restricted: reservedReason(res, operation, t?.restrictedOperations),
+                neverAlways: NEVER_ALWAYS_REASONS[name] ?? null,
+              };
+            },
+          },
+          {
+            out: (l) => console.log(l),
+            err: (l) => console.error(red(l)),
+            interactive: Boolean(process.stdin.isTTY && process.stdout.isTTY),
+            agentShell: Boolean(process.env.JAROD_AGENT_SHELL),
+            prompt: (q) => rl.question(q),
+            now: () => Date.now(),
+            code: confirmationCode,
+          },
+        );
+      } finally {
+        rl.close();
+        await core.dispose();
+      }
+    }
     case "events": {
       const list = core.events.list({
         limit: Number(args.flags.limit) || 50,
@@ -391,6 +434,9 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
 }
 
 if (!process.env.VITEST) {
+  // L'interrupteur Internet du shell (ou celui que nomme JAROD_NETWORK_POLICY), AVANT que `main` n'ouvre le cœur : `jarod serve`, `ask`, MCP et ACP
+  // tournent sans le shell et ne doivent pas ouvrir une seule connexion que la politique interdit.
+  applyNetworkPolicyForEntry(process.env);
   main().then(
     (code) => {
       if (code < 0) return;

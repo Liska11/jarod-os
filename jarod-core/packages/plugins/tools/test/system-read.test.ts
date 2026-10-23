@@ -294,16 +294,29 @@ describe.runIf(win)("sur cette machine (vrai PowerShell, Windows)", () => {
     expect(out.disks.length).toBeGreaterThan(0);
   }, 60_000);
 
-  it("system_processes top : des processus réels, dont le nôtre, en moins de 5 s", async () => {
-    const { out, ms } = await run("system_processes", { action: "top", sort: "memory", limit: 100 });
+  it("system_processes top : des processus réels, triés, avec des pourcentages de CPU bornés", async () => {
+    const { out } = await run("system_processes", { action: "top", sort: "memory", limit: 100 });
     expect(out.processes.length).toBeGreaterThan(5);
     expect(out.processes.every((p: { rss_bytes: number }, i: number, a: { rss_bytes: number }[]) => i === 0 || a[i - 1]!.rss_bytes >= p.rss_bytes)).toBe(true);
     const cpu = await run("system_processes", { action: "top", sort: "cpu", limit: 20 });
     expect(cpu.out.processes.length).toBeGreaterThan(0);
     expect(cpu.out.processes.every((p: { cpu_percent: number }) => p.cpu_percent >= 0 && p.cpu_percent <= 100)).toBe(true);
-    expect(ms).toBeLessThan(5000);
-    expect(cpu.ms).toBeLessThan(5000);
   }, 60_000);
+
+  // Mesure, pas fonction (2026-10-22) : sur une machine au repos, mesuré 1,1–1,3 s (mémoire) et 1,5–1,8 s (CPU, qui échantillonne) sur 8 passes ; le coût est
+  // le démarrage de PowerShell et la fenêtre d'échantillonnage. Plus de 5 s ne s'observe que machine chargée (suites lancées en parallèle) : la MÉDIANE de trois
+  // passes porte la borne, pour qu'un pic isolé ne fasse pas échouer la fonction et qu'une vraie lenteur durable, elle, la fasse échouer.
+  it("system_processes top : médiane de trois passes sous 5 s (mesure de latence)", async () => {
+    const median = (xs: number[]) => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)]!;
+    const memory: number[] = [];
+    const cpu: number[] = [];
+    for (let i = 0; i < 3; i++) {
+      memory.push((await run("system_processes", { action: "top", sort: "memory", limit: 100 })).ms);
+      cpu.push((await run("system_processes", { action: "top", sort: "cpu", limit: 20 })).ms);
+    }
+    expect(median(memory), `passes mémoire (ms) : ${memory.join(", ")}`).toBeLessThan(5000);
+    expect(median(cpu), `passes CPU (ms) : ${cpu.join(", ")}`).toBeLessThan(5000);
+  }, 90_000);
 
   it("system_processes find et port : retrouve notre propre processus puis un port ouvert par nous", async () => {
     const found = await run("system_processes", { action: "find", name: "node", limit: 100 });

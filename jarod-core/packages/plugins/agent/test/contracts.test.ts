@@ -57,6 +57,7 @@ describe("C7 appel d'outil gardé (provisoire) : ce que le code produit est conf
       description: "lit",
       parameters: { type: "object", properties: { path: { type: "string" } }, required: ["path"] },
       source: "builtin",
+      dangerous: false, // une lecture, déclarée telle : le registre ne devine jamais l'absence de risque
       audited: true,
       run: async () => "contenu",
     });
@@ -66,6 +67,7 @@ describe("C7 appel d'outil gardé (provisoire) : ce que le code produit est conf
       parameters: { type: "object", properties: { path: { type: "string" } }, required: ["path"] },
       source: "builtin",
       dangerous: true,
+      targetOf: (a: Record<string, unknown>) => String(a.path ?? ""),
       run: async () => "écrit",
     });
     core.tools.register({
@@ -125,9 +127,12 @@ describe("C7 appel d'outil gardé (provisoire) : ce que le code produit est conf
     for (const c of calls) expect(call(c), JSON.stringify(c)).toBe(true);
 
     const entry = validator("c7-tool-audit-entry");
-    expect(audit.length).toBeGreaterThanOrEqual(8);
+    // V-02 : CHAQUE appel laisse sa ligne, outil inconnu et arguments invalides compris.
+    expect(audit).toHaveLength(results.length);
     for (const e of audit) expect(entry(e), JSON.stringify(e)).toBe(true);
-    expect(new Set(audit.map((e) => e.decision))).toEqual(new Set(["accordé", "refusé", "automatique", "bloqué (mode Plan)", "refusé (règle)"]));
+    expect(new Set(audit.map((e) => e.decision))).toEqual(
+      new Set(["accordé", "refusé", "automatique", "bloqué (mode Plan)", "refusé (règle)", "refusé (invalide)"]),
+    );
   });
 
   it("n'écrit jamais d'argument long en entier ni de champ hors contrat", async () => {
@@ -136,6 +141,6 @@ describe("C7 appel d'outil gardé (provisoire) : ce que le code produit est conf
     const [e] = audit;
     expect(e).toBeDefined();
     expect(e!.args.length).toBeLessThanOrEqual(600);
-    expect(Object.keys(e!).sort()).toEqual(["args", "decision", "ok", "sessionId", "tool"]);
+    expect(Object.keys(e!).sort()).toEqual(["args", "callId", "decision", "durationMs", "ok", "proof", "sessionId", "target", "tier", "tool"]);
   });
 });

@@ -51,6 +51,9 @@ export const TOOLS: Readonly<Record<string, ToolClass>> = {
   capabilities: free("exécution", "sondes de diagnostic à arguments constants (--version, --help, -version, docker info), sans shell, délai de 8 s ; aucun argument venu du modèle, aucun fichier cible"),
   // File 4c (SPECS-P5-LSP.md) : diagnostics/navigation LSP. Le registre n'exige PAS d'accord
   // (dangerous absent) ; c'est LspManager qui en demande UN avant tout démarrage de serveur (G1).
+  // G16 : `ocr delegate preview|rule` — lit le dépôt git du dossier de travail ; ni modèle, ni réseau, ni écriture (profil redirigé).
+  permissions_explain: free("lecture", "lit les règles de permissions et la décision du garde pour un appel décrit ; n'écrit rien (seul un canal de l'utilisateur écrit les règles)"),
+  code_review_plan: free("exécution", "lance OpenCodeReview en mode délégation (aperçu, règles) : lecture du dépôt seulement, sans modèle ni réseau, profil d'OCR redirigé dans un dossier temporaire, aucune écriture dans le dépôt"),
   code_diagnostics: free("exécution", "démarrage d'un serveur de langage soumis à l'accord G1 de LspManager (porte ctx.approve) ; lecture seule une fois lancé"),
   code_navigate: free("exécution", "idem code_diagnostics : accord G1 avant démarrage du serveur, navigation en lecture"),
   compact: ask("persistant"),
@@ -108,10 +111,28 @@ export const TOOLS: Readonly<Record<string, ToolClass>> = {
   user_profile: free("persistant", "bloqué en mode Plan (PERSISTENT_TOOLS), absent des sous-agents ; USER.md relu et corrigeable"),
   vault_list: ro,
   web_fetch: ask("réseau"),
+  // Vague G (prompt plus3, 2026-10-20), outils du plugin integrations.
+  // G5 : télécharge métadonnées, sous-titres ou audio d'une URL choisie par le modèle → réseau, accord à chaque appel (INTERNET_TOOLS).
+  media_fetch: ask("réseau"),
+  // D1 raccordé (2026-10-21), Windows seulement : la liste lit les titres (auditée) ; le pilotage agit sur une fenêtre (accord, sauf règle autonome).
+  desktop_windows: free("lecture", "liste les fenêtres hors liste noire (gestionnaires de mots de passe, élévation, sécurité Windows) par le moteur FlaUI ; titres et processus seulement ; audité (`audited`)"),
+  desktop_control: ask("machine"),
+  // G15 (2026-10-21), Windows seulement, si Sandboxie-Plus est installé : un programme lancé dans le bac de Jarod (écritures dans le bac,
+  // réseau coupé par défaut), la liste de ce qu'il a écrit, le vidage du bac.
+  sandbox_run: ask("exécution"),
+  sandbox_changes: free("lecture", "liste les fichiers que les programmes du bac Sandboxie ont écrits (dossier du bac seulement) ; audité (`audited`)"),
+  sandbox_discard: ask("fichiers"),
+  // G10 (2026-10-21), Windows seulement, si smolvm est présent : la machine Linux de Jarod (téléchargement d'image ; commande, réseau coupé
+  // par défaut ; suppression de la machine).
+  linux_prepare: ask("réseau"),
+  linux_run: ask("exécution"),
+  linux_reset: ask("fichiers"),
   web_search: ro,
   write_file: ask("fichiers"),
   // 2026-10-11 : outils système Windows (packages/plugins/tools/src/system/). Les lectures sont `audited` (une ligne d'audit, sans accord).
   system_apps: ro,
+  // G13 : osqueryi, 10 requêtes PRÉDÉFINIES (aucun SQL du modèle), droits de l'utilisateur, sans base ni journal ; ligne d'audit à chaque appel.
+  system_diagnostics: free("exécution", "lance osqueryi en lecture seule : raccourci prédéfini, diagnostic paramétré (valeur validée) ou requête libre SELECT, opération RÉSERVÉE refusée sans règle de l'utilisateur (tables réseau curl refusées) ; droits de l'utilisateur, sans démon, sans base ni journal ; audité (`audited`)"),
   system_control: ask("machine"),
   system_disk_usage: ro,
   system_files: ask("fichiers"),
@@ -136,7 +157,7 @@ export const TOOLS: Readonly<Record<string, ToolClass>> = {
 };
 
 /** Les outils qui n'existent que sous Windows (`systemReadTools` & co. rendent une liste vide ailleurs) : attendus au registre seulement là. */
-export const WINDOWS_ONLY: ReadonlySet<string> = new Set(Object.keys(TOOLS).filter((n) => n.startsWith("system_")));
+export const WINDOWS_ONLY: ReadonlySet<string> = new Set(Object.keys(TOOLS).filter((n) => n.startsWith("system_") || n.startsWith("desktop_") || n.startsWith("sandbox_") || n.startsWith("linux_")));
 
 export interface CommandClass {
   effect: EffectClass | "interface";

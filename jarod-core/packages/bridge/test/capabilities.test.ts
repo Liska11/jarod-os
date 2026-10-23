@@ -23,7 +23,9 @@ describe("capabilities-list / capabilities-check", () => {
     expect(app.tools?.registry.get("capabilities")).toBeTruthy();
     const rows = (await call("capabilities-list")) as { id: string; state: string; provenance?: { repo: string } }[];
     const own = rows.filter((r) => !r.id.startsWith("tool."));
-    expect(own).toHaveLength(10);
+    // Vagues F (10) et G (17, prompt plus3), plus D1 (pilote de fenêtres, raccordé le 2026-10-21).
+    expect(own).toHaveLength(28);
+    expect(own.find((r) => r.id === "syft.sbom")?.provenance?.repo).toBe("anchore/syft");
     for (const r of rows) expect(STATES, r.id).toContain(r.state);
     expect(own.find((r) => r.id === "strix.app-security")?.provenance?.repo).toBe("usestrix/strix");
     expect(rows.some((r) => r.id === "tool.capabilities")).toBe(true);

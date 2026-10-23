@@ -32,6 +32,7 @@ import { rlmTools } from "./rlm.js";
 import { sessionStateTools } from "./session-state.js";
 import { sessionTools } from "./sessions-tools.js";
 import { registerSkillCommands } from "./skills-commands.js";
+import { permissionsExplainTool } from "./permissions-tool.js";
 
 export * from "./agent.js";
 export * from "./builtin-commands.js";
@@ -145,6 +146,11 @@ export function apply(ctx: Context, config: AgentConfig = {}): void {
       return run(args, tctx);
     };
   }
+  // Autonomie configurable (2026-10-21) : l'agent LIT ses permissions (jamais ne les écrit) pour expliquer un refus ou un accord demandé.
+  tools.register(permissionsExplainTool(tools, () => runtime.gate, () => {
+    ctx.permissions.refresh();
+    return ctx.permissions.guard.getRules();
+  }));
   // core.ts:553-566
   tools.register({
     name: "delegate_task",

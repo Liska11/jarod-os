@@ -13,10 +13,10 @@
  * - rien d'ici ne rend ni n'accepte de secret.
  * Les écrans (volet Agent…) lisent `get-jarod-settings` : une clé absente de la réponse n'est pas gérée par ce main.
  */
-import { type ConnectedBrowserSettings, connectedBrowserDomainProblem, DEFAULT_DOCKER, EcosystemFlags, ecosystemFlags, PermissionRule, type Settings, type ShellPolicy } from "@jarod/contracts";
+import { type ConnectedBrowserSettings, connectedBrowserDomainProblem, DEFAULT_DOCKER, EcosystemFlags, ecosystemFlags, type Settings, type ShellPolicy } from "@jarod/contracts";
 import { describeShellGuard } from "@jarod/plugin-agent";
 import { isLoopbackUrl } from "@jarod/plugin-llm";
-import { rulesWeakenings } from "@jarod/plugin-permissions";
+import { type GrantInput, normalizeRules, type Plan, planGrant, planMove, planRevoke, planUpdate, rebaseRules, type RuleChange, rulesWeakenings } from "@jarod/plugin-permissions";
 import { STT_DEFAULTS } from "@jarod/plugin-voice";
 import type { HandlerContext } from "./context.js";
 import { launchAtLoginRefusal, launchAtLoginView, type LoginItemsPort, setLaunchAtLogin } from "../tray-policy.js";
@@ -95,12 +95,6 @@ function record(key: string, v: unknown, known: readonly string[]): Record<strin
 }
 
 const MAX_FALLBACKS = 5;
-/** Plafond des règles de permissions de l'utilisateur : au-delà, c'est une liste qu'aucun écran ne peut montrer. */
-const MAX_PERMISSION_RULES = 200;
-/** Une autorisation temporaire dure au plus 30 jours : au-delà, c'est une règle permanente qui ne dit pas son nom. */
-const MAX_TEMPORARY_MS = 30 * 24 * 3_600_000;
-/** Un `tool` de règle : un nom d'outil, un segment de famille ou le joker `*`. Ni espace ni caractère de contrôle (AV2-008). */
-const ruleToolOk = (s: string): boolean => /^[A-Za-z0-9_./*-]+$/.test(s);
 
 /** Une adresse d'embeddings : http(s) sans identifiants ; elle est LOCALE (boucle locale) ou non — c'est là que partent les textes à indexer. */
 function embeddingsUrlOf(key: string, v: unknown): { url: string; local: boolean } {
@@ -362,29 +356,8 @@ const ENTRIES: Record<string, Entry> = {
   // ce qui AFFAIBLIT la politique en vigueur exige la confirmation native qui liste les changements, un par un.
   permissionsRules: {
     read: (s) => s.permissionsRules.map((r) => ({ ...r })),
-    write: (v) => {
-      if (!Array.isArray(v)) return bad("permissionsRules", "liste de règles attendue");
-      if (v.length > MAX_PERMISSION_RULES) return bad("permissionsRules", `au plus ${MAX_PERMISSION_RULES} règles`);
-      const seen = new Set<string>();
-      const rules = v.map((raw, i) => {
-        const o = record(`permissionsRules[${i}]`, raw, ["tool", "decision", "target", "expiresAt"]);
-        const parsed = PermissionRule.safeParse(o);
-        if (!parsed.success) return bad(`permissionsRules[${i}]`, parsed.error.issues[0]!.message);
-        const tool = parsed.data.tool.trim();
-        if (tool !== parsed.data.tool || tool.length > 64) bad(`permissionsRules[${i}].tool`, "nom d'outil borné à 64 caractères, sans espace autour");
-        if (!ruleToolOk(tool)) bad(`permissionsRules[${i}].tool`, "nom d'outil, segment de famille ou « * » (lettres, chiffres, . _ / -)");
-        // Cockpit, lot 2 : une cible (motif, `*` = toute suite) et une échéance (autorisation temporaire), optionnelles.
-        const target = parsed.data.target;
-        if (target !== undefined && (target !== target.trim() || /[\u0000-\u001f]/.test(target))) bad(`permissionsRules[${i}].target`, "cible sans espace autour ni caractère de contrôle");
-        const expiresAt = parsed.data.expiresAt;
-        if (expiresAt !== undefined && (expiresAt <= Date.now() || expiresAt > Date.now() + MAX_TEMPORARY_MS)) bad(`permissionsRules[${i}].expiresAt`, "échéance dans le futur, à 30 jours au plus");
-        const key = target === undefined ? tool : `${tool} sur ${target}`;
-        if (seen.has(key)) bad(`permissionsRules[${i}].tool`, `règle en double : ${key} (l'ordre compte, une règle n'apparaît qu'une fois)`);
-        seen.add(key);
-        return { tool, decision: parsed.data.decision, ...(target !== undefined ? { target } : {}), ...(expiresAt !== undefined ? { expiresAt } : {}) };
-      });
-      return { permissionsRules: rules };
-    },
+    // Autonomie configurable (2026-10-21) : la MÊME validation que la commande `jarod permissions` (plugin-permissions, `normalizeRules`).
+    write: (v) => ({ permissionsRules: normalizeRules(v, Date.now(), bad) }),
     confirm: (patch, current) => {
       const changes = rulesWeakenings(current.permissionsRules, patch.permissionsRules ?? current.permissionsRules);
       if (!changes.length) return null;
@@ -583,6 +556,19 @@ const ENTRIES: Record<string, Entry> = {
       };
     },
   },
+  // G2 — traces LOCALES (OpenTelemetry) : fichiers du profil, jamais exportés ; bornes de rétention et de rotation.
+  localTraces: {
+    read: (s) => ({ ...s.localTraces }),
+    write: (v, current) => {
+      const o = record("localTraces", v, ["enabled", "retentionDays", "maxFileBytes", "maxFiles"]);
+      const next = { ...current.localTraces };
+      if (o.enabled !== undefined) next.enabled = o.enabled === true ? true : o.enabled === false ? false : bad("localTraces.enabled", "booléen attendu");
+      if (o.retentionDays !== undefined) next.retentionDays = integer("localTraces.retentionDays", o.retentionDays, 1, 90);
+      if (o.maxFileBytes !== undefined) next.maxFileBytes = integer("localTraces.maxFileBytes", o.maxFileBytes, 64 * 1024, 50 * 1024 * 1024);
+      if (o.maxFiles !== undefined) next.maxFiles = integer("localTraces.maxFiles", o.maxFiles, 1, 200);
+      return { localTraces: next };
+    },
+  },
   // Android : SEUL le délai se règle ici ; le programme adb se choisit dans la boîte native (`android-set-adb`).
   android: {
     read: (s) => ({ timeoutMs: s.android.timeoutMs }),
@@ -739,6 +725,43 @@ function leavesMachine(def: { local?: boolean; baseUrl: string }): boolean {
   }
 }
 
+/** Ce que l'écran Réglages demande sur les règles de permissions : les mêmes opérations que la commande `jarod permissions`. */
+export type PermissionsAction =
+  | { op: "grant"; input: Omit<GrantInput, "by"> }
+  | { op: "update"; ref: string; change: Omit<RuleChange, "by"> }
+  | { op: "move"; ref: string; to: number }
+  | { op: "revoke"; ref: string };
+
+/** Le plan d'une action de l'écran (valide la forme ; les plans valident le fond, comme pour la commande). */
+export function planPermissionsAction(current: Settings["permissionsRules"], action: unknown, now: number): Plan {
+  if (!action || typeof action !== "object" || Array.isArray(action)) throw new Error("[oneai] action de permissions : objet attendu");
+  const a = action as Record<string, unknown>;
+  const ref = () => {
+    if (typeof a.ref !== "string" || !a.ref) throw new Error("[oneai] action de permissions : règle (ref) attendue");
+    return a.ref;
+  };
+  const object = (v: unknown, what: string) => {
+    if (!v || typeof v !== "object" || Array.isArray(v)) throw new Error(`[oneai] action de permissions : ${what} attendu`);
+    return v as Record<string, unknown>;
+  };
+  switch (a.op) {
+    case "grant": {
+      const input = object(a.input, "input");
+      if (typeof input.tool !== "string") throw new Error("[oneai] action de permissions : outil attendu");
+      return planGrant(current, { ...(input as unknown as GrantInput), by: "réglages" }, now);
+    }
+    case "update":
+      return planUpdate(current, ref(), { ...(object(a.change, "change") as RuleChange), by: "réglages" }, now);
+    case "move":
+      if (!Number.isInteger(a.to)) throw new Error("[oneai] action de permissions : position entière attendue");
+      return planMove(current, ref(), a.to as number, now);
+    case "revoke":
+      return planRevoke(current, ref(), now);
+    default:
+      throw new Error("[oneai] action de permissions : grant, update, move ou revoke");
+  }
+}
+
 export function createJarodSettingsHandlers(ctx: HandlerContext) {
   const settings = () => ctx.kernel().agent.settings;
   const env = (): Env => ({
@@ -791,6 +814,30 @@ export function createJarodSettingsHandlers(ctx: HandlerContext) {
         .agent.providers.list()
         .map((p) => ({ id: p.id, name: p.name, local: !leavesMachine(p), configured: p.configured, models: [...p.models] })),
     }),
+    /** Ce qu'une action sur les règles ferait, sans rien écrire : la règle, ce qu'elle remplace, ce qui s'ouvre. */
+    "permissions-plan": (action: unknown): { summary: string[]; weakenings: string[] } => {
+      const plan = planPermissionsAction(settings().getAll().permissionsRules, action, Date.now());
+      return { summary: plan.summary, weakenings: plan.weakenings };
+    },
+    /**
+     * Applique une action de l'écran : même plan que la commande ; ce qui affaiblit exige la confirmation NATIVE qui le liste ; la liste est
+     * relue juste avant d'écrire (une utilisation consommée pendant la confirmation n'est pas rendue). Rend l'état relu.
+     */
+    "permissions-apply": async (action: unknown): Promise<Record<string, unknown>> => {
+      const base = settings().getAll().permissionsRules;
+      const plan = planPermissionsAction(base, action, Date.now());
+      if (plan.weakenings.length) {
+        if (!ctx.shell.confirm) throw new Error("[oneai] permissions : confirmation native indisponible, refusé");
+        const ok = await ctx.shell.confirm(
+          "Affaiblir le garde de permissions ?",
+          `${plan.summary.join("\n")}\n\n${plan.weakenings.map((c) => `• ${c}`).join("\n")}\n\nL'agent pourra faire ce que ces règles lui interdisaient ou lui demandaient jusque-là. Interrupteur Internet, mode Plan, emplacements protégés et garde du shell restent actifs.`,
+          "Affaiblir les permissions",
+        );
+        if (!ok) throw new Error("[oneai] permissions : refusé par l'utilisateur");
+      }
+      settings().patch({ permissionsRules: normalizeRules(rebaseRules(base, settings().getAll().permissionsRules, plan.rules), Date.now(), bad) });
+      return snapshot();
+    },
     /** `patch` : { clé: valeur } ; rend l'état relu après écriture. */
     "set-jarod-settings": async (patch: unknown): Promise<Record<string, unknown>> => {
       if (!patch || typeof patch !== "object" || Array.isArray(patch)) throw new Error("[oneai] set-jarod-settings : objet { clé: valeur } attendu");

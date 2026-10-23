@@ -25,10 +25,10 @@ import { type Proof, type ToolContext, type ToolDef, type ToolRegistry, validate
 import type { TaskLedger } from "./tasks.js";
 import type { OutputStore } from "./outputs.js";
 import type { Attachment, Message, ToolCall } from "@jarod/contracts";
-import { redactText } from "@jarod/kernel/redact";
+import { auditArgs, redactCommandText } from "@jarod/kernel/redact";
 import { activePolicy, toolVerdict } from "@jarod/kernel/network";
 import { newId, truncate } from "@jarod/kernel/util";
-import type { ToolGate } from "@jarod/plugin-permissions";
+import { explainResolution, type Resolution, reservedReason, type ToolGate } from "@jarod/plugin-permissions";
 
 export type AgentEvent =
   | { type: "message"; sessionId: string; message: Message; streamId?: string }
@@ -149,6 +149,8 @@ export interface AgentDeps {
   gate?: ToolGate;
   /** SOUL.md du profil (plugin-persona). Q4 = A : non vide, il remplace le réglage `persona`. Jarod-cordis. */
   persona?: { read(): string };
+  /** G2 : traces locales (plugin-integrations les branche) ; absent = rien de mesuré. */
+  spans?: SpanSink;
 }
 
 const MAX_HISTORY_CHARS = 600_000;
@@ -371,7 +373,7 @@ export function transcript(
     else if (m.role === "assistant") {
       if (m.content) lines.push(`ASSISTANT : ${keep(m.content)}`);
       for (const c of m.toolCalls ?? [])
-        lines.push(`ASSISTANT → outil ${c.name} ${truncate(JSON.stringify(c.args), 500)}`);
+        lines.push(`ASSISTANT → outil ${c.name} ${auditArgs(c.args, 500)}`);
     } else lines.push(`RÉSULTAT ${m.toolName ?? ""}${m.isError ? " (erreur)" : ""} : ${keep(m.content)}`);
   }
   const text = lines.join("\n");
@@ -394,7 +396,8 @@ export function transcript(
 
 import { budgetRatio, budgetStopMessage, budgetWarnMessage, crossedWarning, limitsFor, usageOf } from "./budget.js";
 import { LoopGuardService } from "./loop-guards.js";
-import { NEVER_ALWAYS } from "./never-always.js";
+import { NEVER_ALWAYS, NEVER_ALWAYS_REASONS } from "./never-always.js";
+import { COCKPIT_PREROGATIVE } from "./prerogative.js";
 import type { SessionStateService } from "./session-state.js";
 import { SpillService } from "./spill.js";
 import { RAG_TOOLS, type ToolSearchService } from "@jarod/plugin-tools";
@@ -421,17 +424,24 @@ export class Agent {
     return candidat ?? { provider: s.activeProvider, model: s.activeModel };
   }
 
-  private async trace<T>(candidat: { provider: string; model: string }, run: () => Promise<T>): Promise<T> {
+  private async trace<T>(candidat: { provider: string; model: string }, run: () => Promise<T>, sessionId?: string): Promise<T> {
     const started = Date.now();
+    // G2 : l'appel au modèle, rattaché au tour en cours de la conversation quand il y en a un. Le fournisseur seulement, jamais le modèle ni le texte.
+    const span = this.d.spans?.start("llm.request", { "model.provider": candidat.provider }, sessionId ? this.turnSpans.get(sessionId) : undefined);
     try {
       const out = await run();
       this.d.routing.record(candidat, { ok: true, ms: Date.now() - started });
+      span?.end("ok");
       return out;
     } catch (error) {
       this.d.routing.record(candidat, { ok: false });
+      span?.end((error as Error)?.name === "AbortError" ? "cancelled" : "error");
       throw error;
     }
   }
+
+  /** G2 : la trace du tour en cours, par conversation (parente des appels au modèle et aux outils). */
+  private readonly turnSpans = new Map<string, SpanHandle>();
 
   constructor(private readonly d: AgentDeps) {}
 
@@ -490,7 +500,8 @@ export class Agent {
   }
 
   buildSystemPrompt(query: string, s: Settings = this.d.settings.getAll()): string {
-    const parts = [this.personaOf(s).trim()];
+    // La persona dit le ton ; la prérogative dit le but, et aucune persona ne la remplace.
+    const parts = [this.personaOf(s).trim(), COCKPIT_PREROGATIVE];
     const date = new Date().toLocaleDateString(s.language === "fr" ? "fr-FR" : "en-US", { dateStyle: "full" });
     parts.push(
       `## Contexte\n- Date : ${date}\n- Système : ${platform()} ${release()}\n- Dossier de travail : ${s.workspace ?? "aucun (les outils de fichiers et de shell sont indisponibles)"}`,
@@ -614,6 +625,9 @@ ${project.text}`);
     // par recevoir « tu tournes en rond », et deux conversations simultanées s'effaçaient mutuellement le
     // compteur. Le tour d'aujourd'hui ne doit rien savoir de celui d'hier (c'est ce que dit `reset()`).
     const loopGuard = new LoopGuardService();
+    const turnSpan = this.d.spans?.start("conversation.turn", { "session.id": sessionId });
+    if (turnSpan) this.turnSpans.set(sessionId, turnSpan);
+    let turnFailed = false;
 
     try {
       const chain = candidateChain(s, this.d.routing);
@@ -739,6 +753,7 @@ ${project.text}`);
                 },
               },
             ),
+            sessionId,
           );
         } catch (err) {
           if (signal.aborted) {
@@ -855,8 +870,13 @@ ${project.text}`);
       }
       if (finalText) plugins.afterResponse(finalText, sessionId);
     } catch (err) {
+      turnFailed = true;
       emit({ type: "error", sessionId, error: (err as Error).message });
     } finally {
+      if (turnSpan) {
+        turnSpan.end(signal.aborted ? "cancelled" : turnFailed ? "error" : "ok");
+        if (this.turnSpans.get(sessionId) === turnSpan) this.turnSpans.delete(sessionId);
+      }
       emit({ type: "done", sessionId });
     }
 
@@ -936,6 +956,8 @@ ${project.text}`);
       ...(this.d.gate ? { gate: this.d.gate } : {}),
       ...(this.d.tasks ? { tasks: this.d.tasks } : {}),
       ...(this.d.outputs ? { outputs: this.d.outputs } : {}),
+      ...(this.d.spans ? { spans: this.d.spans } : {}),
+      ...(this.turnSpans.has(sessionId) ? { parentSpan: this.turnSpans.get(sessionId)! } : {}),
     });
   }
 
@@ -1155,16 +1177,69 @@ ${project.text}`);
  * runs and coding runs both come through here — a second entry point that forgot the approval would
  * be the hole, so there is no second entry point.
  */
-/** One line of the audit log: an action that needed (or skipped) the user's say. */
+/**
+ * One line of the audit log. V-02 (2026-10-23) : CHAQUE appel qui atteint la porte unique en laisse une, lecture comprise — avant, seuls les
+ * outils sensibles, audités ou refusés étaient inscrits. `sans accord` = un outil ordinaire qui a tourné sans rien demander ; `annulé` = arrêté
+ * par l'utilisateur (tour ou tâche) ; `refusé (invalide)` = outil inconnu, désactivé, ou arguments hors schéma.
+ */
 export interface AuditEntry {
   sessionId: string;
   tool: string;
   /** The arguments, cut short: enough to know what was asked. */
   args: string;
-  decision: "accordé" | "refusé" | "automatique" | "bloqué (mode Plan)" | "refusé (règle)";
+  decision:
+    | "accordé"
+    | "refusé"
+    | "automatique"
+    | "bloqué (mode Plan)"
+    | "refusé (règle)"
+    | "autorisé (règle)"
+    | "sans accord"
+    | "annulé"
+    | "refusé (invalide)";
   /** Set once the tool ran: whether it succeeded. */
   ok?: boolean;
+  /** V-02 : l'identifiant de l'appel du modèle, celui que la conversation affiche, pour rattacher la ligne à son tour. */
+  callId?: string;
+  /** V-02 : le palier que l'outil déclare. Absent pour un outil inconnu. */
+  tier?: AuditTier;
+  /** V-02 : la cible que l'outil déclare (chemin, commande, adresse…), masquée comme les arguments et tronquée. */
+  target?: string;
+  /** V-02 : de l'arrivée de l'appel à la porte jusqu'à cette ligne, attente de l'accord comprise. */
+  durationMs?: number;
+  /** V-02 : le verdict de la vérification de l'effet, quand l'outil en a une (ou qu'il est sensible). */
+  proof?: Proof["status"];
 }
+
+/** `sensible` : outil `dangerous` ; `audité` : lecture sans accord qui doit laisser sa trace (`audited`) ; `ordinaire` : le reste. */
+export type AuditTier = "sensible" | "audité" | "ordinaire";
+
+const tierOf = (tool: Pick<ToolDef, "dangerous" | "audited">): AuditTier => (tool.dangerous ? "sensible" : tool.audited ? "audité" : "ordinaire");
+
+/**
+ * G2 — traces locales (OpenTelemetry, branché par plugin-integrations). L'agent ne dépend d'aucun paquet de télémétrie : il parle à cette
+ * interface minimale, et n'y met que des identifiants opaques, des noms d'outils, des fournisseurs et des statuts — jamais un argument,
+ * un prompt ni une réponse. Sans récepteur branché (ou réglage éteint), rien n'est mesuré.
+ */
+export type SpanStatus = "ok" | "error" | "denied" | "cancelled";
+export interface SpanHandle {
+  set(attributes: Record<string, string | number>): void;
+  end(status: SpanStatus): void;
+}
+export interface SpanSink {
+  start(name: string, attributes: Record<string, string | number>, parent?: SpanHandle): SpanHandle;
+}
+
+type GuardedExtra = {
+  vault?: VaultService;
+  audit?: (entry: AuditEntry) => void;
+  gate?: ToolGate;
+  tasks?: TaskLedger;
+  outputs?: OutputStore;
+  /** G2 : récepteur de traces et trace parente (le tour de conversation). */
+  spans?: SpanSink;
+  parentSpan?: SpanHandle;
+};
 
 export async function executeGuardedTool(
   tools: ToolRegistry,
@@ -1173,44 +1248,104 @@ export async function executeGuardedTool(
   signal: AbortSignal,
   hooks: { approve(sessionId: string, call: ToolCall, toolDescription: string): Promise<boolean> },
   s: Settings,
-  extra: { vault?: VaultService; audit?: (entry: AuditEntry) => void; gate?: ToolGate; tasks?: TaskLedger; outputs?: OutputStore } = {},
+  extra: GuardedExtra = {},
 ): Promise<{ content: string; isError: boolean }> {
+  // G2 : une trace par appel ; `mark` dit POURQUOI l'appel a échoué (refus, annulation), que le contenu rendu ne dit pas de façon fiable.
+  const span = extra.spans?.start("tool.call", { "session.id": sessionId, "tool.name": call.name }, extra.parentSpan);
+  const mark: { status: SpanStatus } = { status: "ok" };
+  try {
+    const out = await runGuardedTool(tools, sessionId, call, signal, hooks, s, extra, span, mark);
+    span?.end(out.isError ? (mark.status === "ok" ? "error" : mark.status) : "ok");
+    return out;
+  } catch (e) {
+    span?.end("error");
+    throw e;
+  }
+}
+
+async function runGuardedTool(
+  tools: ToolRegistry,
+  sessionId: string,
+  call: ToolCall,
+  signal: AbortSignal,
+  hooks: { approve(sessionId: string, call: ToolCall, toolDescription: string): Promise<boolean> },
+  s: Settings,
+  extra: GuardedExtra,
+  span: SpanHandle | undefined,
+  mark: { status: SpanStatus },
+): Promise<{ content: string; isError: boolean }> {
+  const child = (name: string) => (span ? extra.spans?.start(name, { "tool.name": call.name }, span) : undefined);
+  const started = Date.now();
   const tool = tools.get(call.name);
+  // Cockpit, lot 2 : la CIBLE de l'appel, pour les règles par cible. Un outil qui ne la dit pas, ou qui lève, donne une cible
+  // inconnue (null) : un deny ou ask ciblé s'applique alors tel quel (fail-closed). Déclarée ici pour que l'audit la porte dès qu'elle est connue.
+  let target: string | null = null;
+  // V-02 : chaque appel laisse une ligne — qui a demandé, quoi, sur quoi, qui a décidé, combien de temps, avec quelle preuve.
+  const audit = (decision: AuditEntry["decision"], ok?: boolean, proof?: Proof["status"]) =>
+    extra.audit?.({
+      sessionId,
+      tool: call.name,
+      // Masquer AVANT de tronquer : une coupe au milieu d'une clé en laisserait un morceau lisible (AV2-009).
+      args: auditArgs(call.args, 500),
+      decision,
+      ...(ok === undefined ? {} : { ok }),
+      ...(call.id ? { callId: call.id } : {}),
+      ...(tool ? { tier: tierOf(tool) } : {}),
+      ...(target !== null ? { target: truncate(redactCommandText(target), 200) } : {}),
+      durationMs: Date.now() - started,
+      ...(proof ? { proof } : {}),
+    });
   if (!tool || s.disabledTools.includes(call.name)) {
+    audit("refusé (invalide)");
     return { content: `Outil inconnu ou désactivé : ${call.name}`, isError: true };
   }
   // L'interrupteur Internet (fichier du shell, relu à chaque appel) : avant la politique de permissions et avant toute demande d'accord.
   const offline = toolVerdict(activePolicy(), call.name, tool.source);
   if (!offline.ok) {
-    extra.audit?.({ sessionId, tool: call.name, args: truncate(redactText(JSON.stringify(call.args ?? {})), 500), decision: "refusé (règle)" });
+    mark.status = "denied";
+    audit("refusé (règle)");
     return { content: offline.reason, isError: true };
   }
-  // Every action that changes something leaves a line: who asked, what, and who decided.
-  const audit = (decision: AuditEntry["decision"], ok?: boolean) =>
-    extra.audit?.({
-      sessionId,
-      tool: call.name,
-      // Masquer AVANT de tronquer : une coupe au milieu d'une clé en laisserait un morceau lisible (AV2-009).
-      args: truncate(redactText(JSON.stringify(call.args ?? {})), 500),
-      decision,
-      ...(ok === undefined ? {} : { ok }),
-    });
   if (s.agentMode === "plan" && (tool.dangerous || PERSISTENT_TOOLS.has(call.name))) {
+    mark.status = "denied";
     audit("bloqué (mode Plan)");
     return { content: "Mode Plan : cet outil est désactivé (lecture seule).", isError: true };
   }
-  // Cockpit, lot 2 : la CIBLE de l'appel, pour les règles par cible. Un outil qui ne la dit pas, ou qui lève, donne une cible
-  // inconnue (null) : un deny ou ask ciblé s'applique alors tel quel (fail-closed).
-  let target: string | null = null;
   try {
     const t = tool.targetOf?.(call.args ?? {});
     if (typeof t === "string" && t.trim()) target = t;
   } catch {
     target = null;
   }
+  // Autonomie configurable : toutes les cibles d'un lot (`targetsOf`) et l'opération (`operationOf`), pour les règles à périmètre. Même
+  // convention : un outil qui ne sait pas les dire, ou qui lève, donne « inconnu » (un allow à périmètre ne joue pas).
+  let targets: string[] | null = target !== null ? [target] : null;
+  if (tool.targetsOf) {
+    try {
+      const l = tool.targetsOf(call.args ?? {});
+      targets = Array.isArray(l) && l.length > 0 && l.every((x) => typeof x === "string" && x.trim() !== "") ? l : null;
+    } catch {
+      targets = null;
+    }
+    if (target === null && targets) target = targets.length === 1 ? targets[0]! : `${targets[0]} (+${targets.length - 1})`;
+  }
+  let operation: string | null = null;
+  try {
+    const o = tool.operationOf?.(call.args ?? {});
+    if (typeof o === "string" && o.trim()) operation = o;
+  } catch {
+    operation = null;
+  }
   // Jarod-cordis — garde unifié (PLAN §2 plugin-permissions) : `deny` bloque, `ask` exige l'accord
   // même pour un outil non sensible et même en approbation automatique ; défaut `deny` (fail-closed).
-  const verdict = extra.gate?.decide(call.name, target) ?? "deny";
+  const scope = { targets, operation, session: sessionId };
+  const res: Resolution = extra.gate?.resolve
+    ? extra.gate.resolve(call.name, scope)
+    : { decision: extra.gate?.decide(call.name, target) ?? "deny", autonomous: false, source: "défaut" };
+  const verdict = res.decision;
+  // Une opération que l'outil réserve à une permission EXPLICITE : sans règle de l'utilisateur qui la couvre (le joker « * » seul ne compte
+  // pas), refusée — la capacité existe, la permission manque, et le message le dit.
+  const facts = { exists: true, dangerous: Boolean(tool.dangerous), restricted: reservedReason(res, operation, tool.restrictedOperations), neverAlways: NEVER_ALWAYS_REASONS[call.name] ?? null };
   // Cockpit, lot 2 : une action à effet, une lecture auditée ou un appel soumis à accord devient une TÂCHE (étapes, preuve, annulation).
   const tasks = extra.tasks && (tool.dangerous || tool.audited || verdict === "ask") ? extra.tasks : undefined;
   const refusedTask = (summary: string, why: string) => {
@@ -1218,13 +1353,18 @@ export async function executeGuardedTool(
     const h = tasks.begin({ sessionId, tool: call.name, summary, ...(target !== null ? { target } : {}) });
     tasks.finish(h.id, "refused", { error: why });
   };
-  if (verdict === "deny") {
+  if (verdict === "deny" || facts.restricted) {
+    mark.status = "denied";
     audit("refusé (règle)");
     refusedTask(tool.description, "refusé par la politique de permissions");
-    return { content: `Refusé par la politique de permissions : ${call.name}`, isError: true };
+    const why = explainResolution(call.name, scope, res, facts);
+    return { content: `Refusé par la politique de permissions : ${call.name}. ${why.why}${why.howTo ? ` ${why.howTo}` : ""}`, isError: true };
   }
   const invalid = validateArgs(tool.parameters, call.args);
-  if (invalid) return { content: invalid, isError: true };
+  if (invalid) {
+    audit("refusé (invalide)");
+    return { content: invalid, isError: true };
+  }
   // Garde propre à l'outil, AVANT toute demande d'accord : ce que la politique interdit (un chemin protégé, un processus critique) n'est pas
   // soumis à l'utilisateur. Le texte rendu, s'il y en a un, remplace la description de l'outil dans la demande (« Arrêter chrome, pid 123 »).
   let approvalText = tool.description;
@@ -1233,6 +1373,7 @@ export async function executeGuardedTool(
       const note = await tool.precheck(call.args, { sessionId, workspace: s.workspace, signal });
       if (typeof note === "string" && note.trim()) approvalText = note;
     } catch (e) {
+      mark.status = "denied";
       audit("refusé (règle)");
       refusedTask(tool.description, (e as Error).message);
       return { content: `Refusé : ${(e as Error).message}`, isError: true };
@@ -1242,6 +1383,8 @@ export async function executeGuardedTool(
   // Le signal de la tâche suit celui du tour ET l'annulation de la tâche seule (écran Tâches).
   const runSignal = task?.signal ?? signal;
   const cancelled = () => {
+    mark.status = "cancelled";
+    audit("annulé");
     if (task) tasks!.finish(task.id, "cancelled");
     return { content: "Interrompu par l'utilisateur.", isError: true };
   };
@@ -1249,7 +1392,22 @@ export async function executeGuardedTool(
   // « Toujours autoriser » dispense l'accord de l'outil, jamais celui qu'impose une règle « demander » du garde, ni pour un outil de NEVER_ALWAYS (§ 23.2) : une entrée
   // déjà enregistrée pour lui est IGNORÉE (la demande est posée), non supprimée.
   const alwaysAllowed = (s.alwaysAllowTools ?? []).includes(call.name) && !NEVER_ALWAYS.has(call.name);
-  if ((tool.dangerous && !s.autoApproveTools && !alwaysAllowed) || verdict === "ask") {
+  if (res.autonomous) {
+    // Autonomie configurable : une règle de l'utilisateur (allow + autonomous) couvre CET appel — outil, cibles, opération, conversation,
+    // échéance, utilisations. L'accord n'est pas demandé ; tout le reste a joué (Internet, mode Plan, refus placés avant, garde de l'outil).
+    // Une utilisation est retirée AVANT l'exécution : deux appels simultanés ne passent pas sur la même dernière.
+    try {
+      extra.gate?.consume?.(res.rule!);
+    } catch {
+      // Un compteur qu'on ne peut pas décrémenter refuse : l'autonomie bornée en nombre ne doit pas devenir illimitée sur une erreur.
+      mark.status = "denied";
+      audit("refusé (règle)");
+      refusedTask(approvalText, "compteur d'utilisations illisible");
+      return { content: "Refusé : le compteur d'utilisations de la permission n'a pas pu être mis à jour.", isError: true };
+    }
+    if (task) tasks!.step(task.id, "accordée", `sans accord, par la règle ${res.rule?.id ?? `n° ${(res.index ?? 0) + 1}`}`, "running");
+    decision = "autorisé (règle)";
+  } else if ((tool.dangerous && !s.autoApproveTools && !alwaysAllowed) || verdict === "ask") {
     if (task) tasks!.step(task.id, "accord demandé", undefined, "awaiting-approval");
     // Un service d'approbation en erreur (rejet OU levée synchrone) REFUSE : l'outil ne tourne jamais sur une erreur (SPECS-P5-UI-PARITE.md § 13, FC4).
     let answer: Promise<boolean>;
@@ -1258,9 +1416,13 @@ export async function executeGuardedTool(
     } catch {
       answer = Promise.resolve(false);
     }
+    // G2 : l'ATTENTE de l'accord est mesurée à part de l'exécution.
+    const wait = child("tool.permission.wait");
     const ok = await awaitApproval(answer, runSignal);
+    wait?.end(runSignal.aborted ? "cancelled" : ok ? "ok" : "denied");
     if (runSignal.aborted) return cancelled();
     if (!ok) {
+      mark.status = "denied";
       audit("refusé");
       if (task) tasks!.finish(task.id, "refused", { error: "refusé par l'utilisateur" });
       return { content: "L'utilisateur a refusé cette action.", isError: true };
@@ -1270,6 +1432,18 @@ export async function executeGuardedTool(
   } else if (tool.dangerous || tool.audited) {
     // `audited` : une lecture sans accord (outils système) qui laisse tout de même sa ligne dans le journal.
     decision = "automatique";
+  }
+  // Une autorisation (sans autonomie) bornée en nombre : l'utilisation est retirée à l'exécution accordée, comme pour une règle autonome
+  // (retirée plus haut, avant l'accord qu'elle dispense). Même refus si le compteur ne peut pas être mis à jour.
+  if (!res.autonomous && res.source === "règle" && res.decision === "allow" && res.rule?.uses !== undefined) {
+    try {
+      extra.gate?.consume?.(res.rule);
+    } catch {
+      mark.status = "denied";
+      audit("refusé (règle)");
+      if (task) tasks!.finish(task.id, "refused", { error: "compteur d'utilisations illisible" });
+      return { content: "Refusé : le compteur d'utilisations de la permission n'a pas pu être mis à jour.", isError: true };
+    }
   }
   try {
     if (task) tasks!.step(task.id, "exécution", undefined, "running");
@@ -1283,7 +1457,15 @@ export async function executeGuardedTool(
       ...(s.shellGuard ? { shellGuard: s.shellGuard } : {}),
       ...(extra.vault ? { vault: extra.vault } : {}),
     };
-    const out = await tool.run(call.args, ctx);
+    const exec = child("tool.execute");
+    let out: string;
+    try {
+      out = await tool.run(call.args, ctx);
+    } catch (e) {
+      exec?.end(runSignal.aborted ? "cancelled" : "error");
+      throw e;
+    }
+    exec?.end(runSignal.aborted || (task && tasks!.get(task.id)?.status === "cancelled") ? "cancelled" : "ok");
     if (task && tasks!.get(task.id)?.status === "cancelled") return cancelled();
     // Cockpit, lot 2 : la preuve de l'effet, constatée APRÈS l'exécution. Un code de retour positif ne suffit pas.
     let proof: Proof | undefined;
@@ -1294,7 +1476,7 @@ export async function executeGuardedTool(
       proof = { status: "unverifiable", evidence: "aucune vérification prévue pour cet outil" };
     }
     const failed = proof?.status === "failed";
-    if (decision) audit(decision, !failed);
+    audit(decision ?? "sans accord", !failed, proof?.status);
     if (task) tasks!.finish(task.id, failed ? "failed" : "done", proof ? { proof } : {});
     const note = tool.verify && proof ? `\n\n[Vérification : ${PROOF_LABEL[proof.status]}] ${proof.evidence}` : "";
     // Cockpit, lot 3 : une sortie volumineuse reste hors du contexte (aperçu + référence), entière et cherchable ; la preuve reste visible.
@@ -1306,11 +1488,9 @@ export async function executeGuardedTool(
     }
     return { content: kept + note, isError: failed };
   } catch (e) {
-    if (decision) audit(decision, false);
-    if (task) {
-      if (tasks!.get(task.id)?.status === "cancelled") return cancelled();
-      tasks!.finish(task.id, "failed", { error: (e as Error).message });
-    }
+    if (task && tasks!.get(task.id)?.status === "cancelled") return cancelled();
+    audit(decision ?? "sans accord", false);
+    if (task) tasks!.finish(task.id, "failed", { error: (e as Error).message });
     return { content: `Erreur : ${(e as Error).message}`, isError: true };
   }
 }

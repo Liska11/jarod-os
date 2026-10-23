@@ -4,9 +4,12 @@
  * fichier modifié ou disparu depuis l'enregistrement se voit (`check`). Les fichiers sont confinés au dossier de travail de l'appel.
  */
 import { createHash, randomUUID } from "node:crypto";
-import { existsSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { execFile } from "node:child_process";
+import { existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { basename, dirname, extname, isAbsolute, join, relative, resolve } from "node:path";
 import type { Db } from "@jarod/plugin-storage";
+import { childEnv } from "@jarod/kernel/child-env";
 
 export type ArtifactKind = "diagram" | "video" | "analysis" | "report" | "image" | "file";
 export const ARTIFACT_KINDS: readonly ArtifactKind[] = ["diagram", "video", "analysis", "report", "image", "file"];
@@ -28,6 +31,7 @@ const MIME: Record<string, string> = {
   ".csv": "text/csv",
   ".pdf": "application/pdf",
   ".drawio": "application/xml",
+  ".reladraw": "text/plain",
   ".gzf": "application/octet-stream",
 };
 export const mimeOf = (path: string): string => MIME[extname(path).toLowerCase()] ?? "application/octet-stream";
@@ -181,8 +185,44 @@ export function extractSvg(html: string): string {
   throw new Error("Élément <svg> non fermé.");
 }
 
+/**
+ * G8 (lot C, 2026-10-21) — reladraw 0.16.0 (Apache-2.0, aucune dépendance ; engines/reladraw, `npm ci --ignore-scripts` sur
+ * engines.lock/node/reladraw, intégrité sha512 vérifiée) : un texte où l'on dit OÙ vont les éléments (« right of », « below »…), mis en
+ * page et rendu en SVG par le moteur. Le CLI : JAROD_RELADRAW, sinon JAROD_ENGINES_DIR\reladraw\node_modules\reladraw\dist\cli.js.
+ */
+export function reladrawCli(env: Record<string, string | undefined> = process.env): string | null {
+  const c = [env.JAROD_RELADRAW, env.JAROD_ENGINES_DIR && join(env.JAROD_ENGINES_DIR, "reladraw", "node_modules", "reladraw", "dist", "cli.js")].filter((x): x is string => Boolean(x));
+  return c.find((p) => existsSync(p)) ?? null;
+}
+
+/**
+ * Rend une source reladraw en SVG, dans un processus Node À PART sous le modèle de permissions : il ne lit que le moteur et la source, n'écrit
+ * que dans un dossier temporaire, ne lance aucun programme (mesuré : une écriture ailleurs est refusée). Délai de 30 s. L'erreur de reladraw
+ * (ligne et raison d'un défaut de syntaxe) est rendue telle quelle : le modèle peut corriger sa source.
+ */
+export async function renderReladraw(cli: string, src: string, signal?: AbortSignal): Promise<string> {
+  const engine = dirname(dirname(cli));
+  const work = mkdtempSync(join(tmpdir(), "jarod-reladraw-"));
+  const out = join(work, "out.svg");
+  try {
+    const args = ["--permission", `--allow-fs-read=${join(engine, "*")}`, `--allow-fs-read=${src}`, `--allow-fs-write=${join(work, "*")}`, cli, src, "-o", out];
+    const err = await new Promise<string | null>((done) =>
+      execFile(process.execPath, args, { windowsHide: true, timeout: 30_000, env: childEnv("engine"), ...(signal ? { signal } : {}) }, (e, _stdout, stderr) =>
+        done(e ? (String(stderr).trim() || (e as Error).message).slice(0, 2000) : null),
+      ),
+    );
+    if (err) throw new Error(`reladraw : ${err}`);
+    const svg = readFileSync(out, "utf8").trim();
+    if (!/^<svg[\s>]/.test(svg) || !/<\/svg>$/.test(svg)) throw new Error("reladraw n'a pas rendu un SVG complet.");
+    return `<?xml version="1.0" encoding="UTF-8"?>\n${svg}\n`;
+  } finally {
+    rmSync(work, { recursive: true, force: true });
+  }
+}
+
 /** Les outils de l'agent : enregistrer et lister des artefacts (lecture d'un fichier du dossier de travail), exporter un diagramme en SVG. */
-export function artifactTools(store: ArtifactStore) {
+export function artifactTools(store: ArtifactStore, deps: { reladraw?: () => string | null } = {}) {
+  const reladraw = deps.reladraw ?? (() => reladrawCli());
   return [
     {
       name: "artifact_register",
@@ -221,7 +261,7 @@ export function artifactTools(store: ArtifactStore) {
     {
       name: "diagram_export",
       description:
-        "Exporte en SVG un diagramme HTML (diagram-design) du dossier de travail : écrit <nom>.svg à côté (ou `out`), garde le .html comme source modifiable et enregistre l'export comme artefact. Le PNG n'est pas disponible.",
+        "Exporte en SVG un diagramme du dossier de travail : un .html (diagram-design, SVG écrit à la main) ou une source .reladraw (texte où l'on place les éléments les uns par rapport aux autres — `node a \"Texte\"`, `node b \"…\" right of a`, `edge a -> b \"légende\"` — mis en page par le moteur reladraw). Écrit <nom>.svg à côté (ou `out`), garde la source modifiable et enregistre l'export comme artefact. Une erreur de syntaxe reladraw est rendue avec sa ligne. Le PNG n'est pas disponible.",
       parameters: {
         type: "object",
         properties: { path: { type: "string" }, out: { type: "string" }, title: { type: "string" } },
@@ -230,12 +270,19 @@ export function artifactTools(store: ArtifactStore) {
       dangerous: true,
       source: "builtin" as const,
       targetOf: (args: Record<string, unknown>) => (typeof args.path === "string" ? args.path : undefined),
-      async run(args: Record<string, unknown>, ctx: { sessionId: string; workspace: string | null }) {
+      async run(args: Record<string, unknown>, ctx: { sessionId: string; workspace: string | null; signal?: AbortSignal }) {
         const src = inWorkspace(ctx.workspace, args.path);
-        if (!/\.html?$/i.test(src)) throw new Error("Le diagramme doit être un fichier .html.");
+        const isReladraw = /\.reladraw$/i.test(src);
+        if (!isReladraw && !/\.html?$/i.test(src)) throw new Error("Le diagramme doit être un fichier .html ou .reladraw.");
         const out = typeof args.out === "string" && args.out ? inWorkspace(ctx.workspace, args.out) : join(dirname(src), `${basename(src, extname(src))}.svg`);
         if (!/\.svg$/i.test(out)) throw new Error("La sortie doit être un fichier .svg.");
-        const svg = extractSvg(readFileSync(src, "utf8"));
+        let svg: string;
+        if (isReladraw) {
+          const cli = reladraw();
+          if (!cli) throw new Error("Moteur reladraw introuvable (JAROD_RELADRAW ou JAROD_ENGINES_DIR, voir engines.lock/README.md).");
+          if (!existsSync(src)) throw new Error(`${relative(ctx.workspace!, src)} n'existe pas.`);
+          svg = await renderReladraw(cli, src, ctx.signal);
+        } else svg = extractSvg(readFileSync(src, "utf8"));
         writeFileSync(out, svg, "utf8");
         const a = store.register({ sessionId: ctx.sessionId, kind: "diagram", title: String(args.title ?? basename(out)), path: out, sourcePath: src, origin: "diagram_export" });
         return JSON.stringify({ svg: relative(ctx.workspace!, out), bytes: a.bytes, artifact: a.id, source: relative(ctx.workspace!, src) });

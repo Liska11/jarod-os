@@ -33,6 +33,9 @@ export const JAROD_INVOKE_CHANNELS = [
   "set-jarod-settings",
   // Listes de choix pour ces écrans (fournisseurs et leurs modèles), sans clé ni secret.
   "get-jarod-options",
+  // Règles de permissions depuis Réglages : le MÊME service que `jarod permissions` (plan, affaiblissements confirmés, relecture avant écriture).
+  "permissions-plan",
+  "permissions-apply",
   // Terminal intégré (SPECS-P5-UI-PARITE.md §5) : le renderer ne choisit ni le programme ni le dossier.
   "terminal-open",
   "terminal-attach",
@@ -87,6 +90,7 @@ export const JAROD_INVOKE_CHANNELS = [
   "local-models-list",
   "local-models-load",
   "local-models-unload",
+  "local-models-adopt",
   "local-models-configure",
   // Hugging Face (SPECS-P5-MODELS.md § 3.10 (d)) : tout part du MAIN, sur un geste explicite de l'utilisateur ; jamais un chemin, une taille, une empreinte ni une URL venant du renderer.
   "hf-search",

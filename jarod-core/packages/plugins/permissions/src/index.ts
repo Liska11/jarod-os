@@ -13,9 +13,10 @@
  */
 import { type PermissionRule, PermissionsConfig } from "@jarod/contracts";
 import { type Context, Service } from "cordis";
-import { loadRulesFromStorage, PermissionGuard, type ToolGate, unifiedGate } from "./guard.js";
+import { type CallScope, loadRulesFromStorage, PermissionGuard, RULES_SETTINGS_KEY, type Resolution, resolveWith, type ToolGate } from "./guard.js";
 import type { SettingsService } from "@jarod/plugin-storage";
 
+export * from "./admin.js";
 export * from "./docker-sandbox.js";
 export * from "./guard.js";
 export * from "./shell-guard.js";
@@ -67,9 +68,37 @@ export class PermissionsService extends Service {
     if (this.settings) this.guard.setRules([...this.configRules, ...loadRulesFromStorage(this.settings)]);
   }
 
-  /** Le portail de l'agent pour un registre donné (`declared` = l'outil y est enregistré). */
+  /**
+   * Le portail de l'agent pour un registre donné (`declared` = l'outil y est enregistré). Chaque décision RELIT les règles : un changement
+   * écrit par un autre processus sur le même profil (la commande `jarod permissions`) vaut pour l'appel suivant, sans redémarrage.
+   */
   gate(declared: (toolName: string) => boolean): ToolGate {
-    return unifiedGate(this.guard, declared);
+    return {
+      decide: (name, target) => {
+        this.refresh();
+        return this.guard.match(name, target) ?? (declared(name) ? "allow" : "deny");
+      },
+      resolve: (name: string, call: CallScope): Resolution => {
+        this.refresh();
+        return resolveWith(this.guard, declared, name, call);
+      },
+      consume: (rule) => this.consume(rule),
+    };
+  }
+
+  /**
+   * Retire une utilisation à une règle bornée en nombre (`uses`), AVANT l'exécution qu'elle accorde : deux appels simultanés ne passent pas
+   * sur la même dernière utilisation. Seules les règles de l'utilisateur portent un compteur ; une règle introuvable (révoquée entre-temps) ne
+   * change rien. Ne fait que restreindre : aucune confirmation n'est nécessaire.
+   */
+  consume(rule: PermissionRule): void {
+    if (rule.uses === undefined || !this.settings) return;
+    const rules = [...loadRulesFromStorage(this.settings)];
+    const i = rules.findIndex((r) => (rule.id !== undefined ? r.id === rule.id : JSON.stringify(r) === JSON.stringify(rule)));
+    const r = rules[i];
+    if (!r || r.uses === undefined) return;
+    rules[i] = { ...r, uses: Math.max(0, r.uses - 1) };
+    this.settings.set(RULES_SETTINGS_KEY, rules as never);
   }
 
   onDispose(): void {

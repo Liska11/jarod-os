@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://jarod-os.invalid/contracts/v1/c7-tool-audit-entry.schema.json",
   "title": "Tool audit entry (the agent's AuditEntry)",
-  "description": "PROVISIONAL. The line `executeGuardedTool` hands to its audit sink. `decision` is a French, user-facing literal today and is expected to change when the journal is internationalised; `args` is masked (`redactText`) before it is cut. Closed field set: no token, no capability.",
+  "description": "PROVISIONAL. The line `executeGuardedTool` hands to its audit sink. Since V-02 (2026-10-23) EVERY call that reaches the gate leaves one, reads included. `decision` is a French, user-facing literal today and is expected to change when the journal is internationalised; `args` and `target` are masked (`redactValue` / `redactCommandText`) before they are cut. Closed field set: no token, no capability.",
   "type": "object",
   "required": [
     "sessionId",
@@ -30,11 +30,46 @@
         "refusé",
         "automatique",
         "bloqué (mode Plan)",
-        "refusé (règle)"
+        "refusé (règle)",
+        "autorisé (règle)",
+        "sans accord",
+        "annulé",
+        "refusé (invalide)"
       ]
     },
     "ok": {
       "type": "boolean"
+    },
+    "callId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "description": "The model's tool-call id, the one the conversation shows (`tool_id` on the wire)."
+    },
+    "tier": {
+      "enum": [
+        "sensible",
+        "audité",
+        "ordinaire"
+      ],
+      "description": "What the tool declares: `dangerous` → sensible, `audited` → audité, otherwise ordinaire. Absent for an unknown tool."
+    },
+    "target": {
+      "type": "string",
+      "maxLength": 260,
+      "description": "The tool's declared target (path, command, address…), masked then cut at 200 characters plus the marker."
+    },
+    "durationMs": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "From the call reaching the gate to this line, the wait for approval included."
+    },
+    "proof": {
+      "enum": [
+        "verified",
+        "failed",
+        "unverifiable"
+      ]
     }
   },
   "additionalProperties": false

@@ -1,0 +1,11 @@
+{
+  "sessionId": "s1",
+  "tool": "read_file",
+  "args": "{\"path\":\"notes.md\"}",
+  "decision": "sans accord",
+  "ok": true,
+  "callId": "call-1",
+  "tier": "ordinaire",
+  "target": "notes.md",
+  "durationMs": 4
+}

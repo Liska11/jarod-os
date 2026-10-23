@@ -3,6 +3,7 @@
 // la planification simule ce que les opérations précédentes d'un lot auront fait (un dossier créé par la première opération existe pour la
 // deuxième), au lieu de regarder seulement le disque tel qu'il est maintenant. Repris de `plan_operations` de Herald OS (MIT, licenses/HERALD-OS.md),
 // avec deux ajouts : la simulation, et le refus d'un chemin qui CONTIENT un emplacement protégé (déplacer le dossier personnel emporterait `.ssh`).
+import { realpathSync, statSync } from "node:fs";
 import { lstat, realpath } from "node:fs/promises";
 import { basename, dirname, isAbsolute, join, parse, relative, resolve, sep } from "node:path";
 import { expandHome, protectedRoot } from "./disk.js";
@@ -82,6 +83,44 @@ export async function realOfNearest(path: string): Promise<string> {
       cur = up;
     }
   }
+}
+
+/** `realOfNearest`, synchrone : pour `targetsOf`, que la porte appelle sans attendre. */
+export function realOfNearestSync(path: string): string {
+  const rest: string[] = [];
+  let cur = resolve(path);
+  for (;;) {
+    try {
+      return join(realpathSync.native(cur), ...rest.reverse());
+    } catch {
+      const up = dirname(cur);
+      if (up === cur) return resolve(path);
+      rest.push(basename(cur));
+      cur = up;
+    }
+  }
+}
+
+/**
+ * Autonomie configurable : TOUTES les cibles d'un appel de `system_files` (chaque source, chaque destination finale), en chemins RÉELS — une
+ * jonction placée dans un dossier autorisé ne fait pas sortir l'autorisation de ce dossier. Une destination qui est un dossier existant reçoit
+ * le nom de la source (comme le plan). Lève si les arguments sont mal formés (cibles inconnues : une autorisation par dossier ne joue pas).
+ */
+export function operationTargets(args: Record<string, unknown>, home: string): string[] {
+  const out: string[] = [];
+  for (const o of requestedOperations(args, home)) {
+    out.push(realOfNearestSync(o.path));
+    if (o.to !== undefined) {
+      let to = o.to;
+      try {
+        if (statSync(to).isDirectory()) to = join(to, basename(o.path));
+      } catch {
+        // destination absente : c'est le nouveau chemin complet
+      }
+      out.push(realOfNearestSync(to));
+    }
+  }
+  return out;
 }
 
 /** Pourquoi cet emplacement est hors limites, ou `null`. Vérifié par le nom puis par le chemin réel ; refuse aussi ce qui CONTIENT un emplacement protégé. */

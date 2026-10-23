@@ -11,7 +11,7 @@
     "order": 80
   },
   "scripts": {
-    "test": "vitest run",
+    "test": "vitest run --project unit && vitest run --project engines",
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {

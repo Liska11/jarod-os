@@ -21,6 +21,11 @@ import { applyNetworkPolicyFromEnv } from "@jarod/kernel/network";
 import { maintenanceRequested, runMaintenance } from "./maintenance.js";
 
 const env = process.env;
+// Le jeton de la passerelle est lu ICI puis retiré de l'environnement du processus : aucun enfant (le shell de l'agent, un serveur MCP, une
+// extension) ne l'hérite. Sinon une commande de l'agent pourrait ouvrir la passerelle et répondre elle-même à une demande d'accord
+// (`tool-approval-respond`) ou écrire des réglages : l'agent s'accorderait des droits.
+const gatewayToken = env.JAROD_GATEWAY_TOKEN;
+delete process.env.JAROD_GATEWAY_TOKEN;
 // Mode maintenance (sauvegarde externe) : une copie de base, puis sortie ; rien d'autre ne démarre.
 if (maintenanceRequested(process.argv)) process.exit(runMaintenance(process.argv));
 // L'interrupteur Internet du shell, AVANT que le cœur n'ouvre la moindre connexion (fournisseurs, passerelles, MCP).
@@ -86,7 +91,7 @@ const gateway = createGateway({
   ...(workspace ? { workspace } : {}),
   version: gatewayVersion,
   ...(voice ? { voice } : {}),
-  ...(env.JAROD_GATEWAY_TOKEN ? { token: env.JAROD_GATEWAY_TOKEN } : {}),
+  ...(gatewayToken ? { token: gatewayToken } : {}),
   ...(approvalTimeoutMs === undefined ? {} : { approvalTimeoutMs }),
   ...(shellTimeoutMs === undefined ? {} : { shellTimeoutMs }),
   log: (line) => console.error(`[passerelle] ${line}`),

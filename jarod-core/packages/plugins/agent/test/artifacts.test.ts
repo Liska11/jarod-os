@@ -1,6 +1,6 @@
 // Cockpit, lot 5 — scénario 6 de la mission : générer un diagramme ; la source et le rendu sont visibles dans les artefacts.
 // Vraie base (migration), vrai dossier de travail, export SVG réel, preuve de l'export.
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { ArtifactStore, artifactTools, extractSvg, inWorkspace } from "../src/artifacts.js";
@@ -54,6 +54,48 @@ describe("artefacts", () => {
     await register!.run({ path: "docs/archi.html", kind: "diagram", title: "encore" }, ctx);
     expect(store.list()).toHaveLength(2);
     expect(store.forget(all[0]!.id)).toBe(true);
+    await core.dispose();
+  });
+});
+
+// G8 (lot C) — reladraw RÉEL (engines/reladraw, 0.16.0) : une source .reladraw rendue en SVG par le moteur, sous le modèle de permissions de Node.
+const RELADRAW = join(__dirname, "../../../../../engines/reladraw/node_modules/reladraw/dist/cli.js");
+describe.skipIf(!existsSync(RELADRAW))("diagramme reladraw (moteur réel)", () => {
+  it("la source .reladraw est mise en page et exportée en SVG vérifié ; l'artefact garde la source", async () => {
+    const core = await makeCore();
+    const ws = tempDir();
+    writeFileSync(join(ws, "flux.reladraw"), 'node agent "Agent / Jarod"\nnode porte "Porte unique"  right of agent\nnode outils "Outils"  below porte\nedge agent -> porte "appel"\nedge porte -> outils "si permis"\n');
+    const store = new ArtifactStore(core.db);
+    const [, , exporter] = artifactTools(store, { reladraw: () => RELADRAW });
+    const ctx = { sessionId: "s", workspace: ws };
+    const out = await exporter!.run({ path: "flux.reladraw", title: "Flux" }, ctx);
+    expect(JSON.parse(out)).toMatchObject({ svg: "flux.svg", source: "flux.reladraw" });
+    expect((await exporter!.verify!({}, out, ctx)).status).toBe("verified");
+    const svg = readFileSync(join(ws, "flux.svg"), "utf8");
+    expect(svg).toMatch(/^<\?xml version="1\.0" encoding="UTF-8"\?>\n<svg xmlns="http:\/\/www\.w3\.org\/2000\/svg"/);
+    for (const t of ["Agent", "Porte unique", "Outils", "appel", "si permis"]) expect(svg).toContain(t);
+    expect(store.list()[0]).toMatchObject({ kind: "diagram", sourcePath: join(ws, "flux.reladraw"), origin: "diagram_export" });
+    await core.dispose();
+  }, 60_000);
+
+  it("une erreur de syntaxe est rendue avec la raison du moteur, et rien n'est écrit", async () => {
+    const core = await makeCore();
+    const ws = tempDir();
+    writeFileSync(join(ws, "faux.reladraw"), 'node a "A"\nedge a -> inconnu\n');
+    const [, , exporter] = artifactTools(new ArtifactStore(core.db), { reladraw: () => RELADRAW });
+    await expect(exporter!.run({ path: "faux.reladraw" }, { sessionId: "s", workspace: ws })).rejects.toThrow(/^reladraw : .*inconnu/s);
+    expect(existsSync(join(ws, "faux.svg"))).toBe(false);
+    await core.dispose();
+  }, 60_000);
+
+  it("sans moteur : refus clair ; une autre extension : refusée", async () => {
+    const core = await makeCore();
+    const ws = tempDir();
+    writeFileSync(join(ws, "a.reladraw"), 'node a "A"\n');
+    writeFileSync(join(ws, "a.txt"), "x");
+    const [, , exporter] = artifactTools(new ArtifactStore(core.db), { reladraw: () => null });
+    await expect(exporter!.run({ path: "a.reladraw" }, { sessionId: "s", workspace: ws })).rejects.toThrow(/Moteur reladraw introuvable/);
+    await expect(exporter!.run({ path: "a.txt" }, { sessionId: "s", workspace: ws })).rejects.toThrow(/\.html ou \.reladraw/);
     await core.dispose();
   });
 });

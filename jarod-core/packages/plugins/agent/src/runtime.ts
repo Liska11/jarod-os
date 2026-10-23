@@ -28,7 +28,7 @@ import type { SkillRegistry, SkillsHubService } from "@jarod/plugin-skills";
 import type { ToolRegistry, ToolSearchService } from "@jarod/plugin-tools";
 import type { PersonaService } from "@jarod/plugin-persona";
 import type { ImageDescriber } from "@jarod/plugin-vision";
-import { Agent, type AgentHooks, type AuditEntry, type PluginHost } from "./agent.js";
+import { Agent, type AgentHooks, type AuditEntry, type PluginHost, type SpanSink } from "./agent.js";
 import { type SessionUsage, usageOf } from "./budget.js";
 import { type CommandResult, CommandRegistry } from "./commands.js";
 import { executeGuardedCommand } from "./command-guard.js";
@@ -108,6 +108,8 @@ export class AgentRuntime {
   /** Remplacé par plugin-workflows (`attachPlugins`) ; l'agent le relit à chaque tour. */
   plugins: PluginHost;
   readonly gate: ToolGate | undefined;
+  /** G2 : traces locales, branchées par plugin-integrations (`attachSpans`) ; absent = rien de mesuré. */
+  spans: SpanSink | undefined;
   /** Cockpit, lot 2 : les actions passées par la porte unique (étapes, preuve, annulation) ; les finies vont au flux `tasks`. */
   readonly tasks: TaskLedger;
   /** Cockpit, lot 3 : sorties d'outils volumineuses, hors du contexte, cherchables (table `tool_outputs`). */
@@ -204,6 +206,14 @@ export class AgentRuntime {
   }
 
   /** Branche l'hôte des plugins (plugin-workflows) ; rend le retour à l'hôte précédent. */
+  /** G2 : branche le récepteur de traces locales ; rend le débranchement (un seul récepteur à la fois). */
+  attachSpans(sink: SpanSink): () => void {
+    this.spans = sink;
+    return () => {
+      if (this.spans === sink) this.spans = undefined;
+    };
+  }
+
   attachPlugins(host: PluginHost): () => void {
     const previous = this.plugins;
     this.plugins = host;
@@ -214,7 +224,7 @@ export class AgentRuntime {
 
   /** The most recent audit lines, newest first. (core.ts:310-316) */
   auditLog(limit = 50): (AuditEntry & { at: number })[] {
-    // Lu depuis la FIN du journal : les `limit` lignes les plus récentes (avant, les 10 000 premières, qui ne sont plus les dernières dès que le journal grossit).
+    // Lu depuis la FIN du journal : depuis que chaque lecture est inscrite (V-02), les 10 000 premières lignes ne sont plus les dernières.
     return this.events
       .list({ stream: "audit", limit, newest: true })
       .reverse()

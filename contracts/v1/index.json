@@ -186,7 +186,9 @@
         "jarod-core/packages/kernel/src/util.ts:42 (truncate)"
       ],
       "protectedBy": [
-        "jarod-core/packages/plugins/agent/test/permissions-gate.test.ts"
+        "jarod-core/packages/plugins/agent/test/permissions-gate.test.ts",
+        "jarod-core/packages/plugins/agent/test/contracts.test.ts",
+        "jarod-core/packages/plugins/agent/test/audit.test.ts"
       ]
     },
     {

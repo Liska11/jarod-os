@@ -1,0 +1,12 @@
+{
+  "sessionId": "s1",
+  "tool": "write_file",
+  "args": "{\"path\":\"a.md\"}",
+  "decision": "accordé",
+  "ok": true,
+  "callId": "call-2",
+  "tier": "sensible",
+  "target": "a.md",
+  "durationMs": 1830,
+  "proof": "verified"
+}

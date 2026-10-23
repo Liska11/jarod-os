@@ -45,7 +45,7 @@ export interface CapabilityRow {
   name: string;
   description: string;
   owner: string;
-  integration: "agent-tool" | "skill" | "detection-only" | "external-app";
+  integration: "agent-tool" | "skill" | "detection-only" | "external-app" | "dev-tool" | "infrastructure";
   state: "unknown" | "not-installed" | "installed-unconfigured" | "available" | "degraded" | "blocked-permission" | "error";
   detail: string;
   version?: string;

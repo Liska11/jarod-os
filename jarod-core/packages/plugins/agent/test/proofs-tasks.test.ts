@@ -51,7 +51,7 @@ describe("preuve d'exécution", () => {
   });
 
   it("une lecture simple ne crée pas de tâche", async () => {
-    const { call, tasks } = rig([{ name: "look" }]);
+    const { call, tasks } = rig([{ name: "look", dangerous: false }]);
     await call("look");
     expect(tasks.list()).toEqual([]);
   });

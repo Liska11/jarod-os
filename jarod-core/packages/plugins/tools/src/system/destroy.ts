@@ -10,7 +10,7 @@ import { homedir } from "node:os";
 import { dirname } from "node:path";
 import type { ToolDef } from "../registry.js";
 import { protectedRoots } from "./disk.js";
-import { forbiddenReason, type FileOp, planFiles, type Plan } from "./files.js";
+import { forbiddenReason, type FileOp, operationTargets, planFiles, type Plan } from "./files.js";
 import { parseListeners } from "./parse.js";
 import { prepared } from "./prepared.js";
 import { protectedReason, stopErrorMessage } from "./proc.js";
@@ -128,6 +128,8 @@ export function systemDestroyTools(deps: SystemDestroyDeps = {}): ToolDef[] {
       ...base,
       name: "system_files",
       dangerous: true,
+      // Autonomie configurable : chaque source et chaque destination ; une règle par dossier ne joue que si elle les couvre toutes.
+      targetsOf: (args) => operationTargets(args, home),
       description: "Organise des fichiers et dossiers sur cet ordinateur (un accord est demandé, une fois par lot). action=mkdir crée un dossier ; move déplace ou renomme (path → to) ; copy copie (path → to) ; trash met à la corbeille (jamais de suppression définitive) ; batch applique une liste d'opérations dans l'ordre en une seule confirmation. N'écrase jamais rien. Appeler system_files_plan d'abord pour montrer le plan. Les emplacements protégés (clés SSH, magasins d'identifiants, dossier Windows, Program Files) sont refusés, ainsi que tout dossier qui en contient un. Pour écrire le contenu d'un fichier, utiliser write_file.",
       parameters: FILES_PARAMETERS,
     },

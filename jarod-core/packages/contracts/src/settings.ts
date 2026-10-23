@@ -118,6 +118,17 @@ export interface LocalModelsConfig {
    * LM Studio choisit (souvent 4 096 ou 8 192, trop peu pour la liste d'outils de l'agent). Les préréglages llama.cpp ont la leur (`ctxSize`).
    */
   lmstudioContext?: Record<string, number>;
+  /**
+   * Décharger un modèle de discussion local inutilisé depuis ce nombre de minutes (0 ou absent : jamais). llama-server arrêté, ou modèle LM
+   * Studio déchargé — seulement un modèle que Jarod a chargé lui-même, jamais un modèle d'embeddings, jamais pendant une réponse (2026-10-21).
+   */
+  idleUnloadMinutes?: number;
+  /**
+   * Les instances LM Studio que Jarod a chargées lui-même (clé, identifiant d'instance, contexte, date). Relues au redémarrage pour la
+   * réconciliation : une instance retrouvée est de propriété INCERTAINE (rien ne prouve qu'elle n'a pas été rechargée entre-temps) et n'est
+   * jamais déchargée automatiquement ; une instance disparue est oubliée (2026-10-21).
+   */
+  lmstudioLoaded?: { key: string; instance: string; context: number | null; at: number }[];
 }
 
 // services/learning.ts:32-36
@@ -329,6 +340,14 @@ export interface McpServerConfig {
   headers?: Record<string, string>;
 }
 
+/** G2 — traces locales (OpenTelemetry) : fichiers JSONL dans `<profil>/traces/`, jamais exportées. */
+export interface LocalTracesSetting {
+  enabled: boolean;
+  retentionDays: number;
+  maxFileBytes: number;
+  maxFiles: number;
+}
+
 export interface ContextProxyConfig {
   enabled: boolean;
   /** `http://127.0.0.1:<port>` ou `http://localhost:<port>`. */
@@ -482,7 +501,21 @@ export interface Settings {
    * Relues à chaud par `plugin-permissions` (aucun redémarrage) ; tout affaiblissement passe par la
    * confirmation native de `set-jarod-settings`.
    */
-  permissionsRules: { tool: string; decision: "allow" | "ask" | "deny"; target?: string; expiresAt?: number }[];
+  permissionsRules: {
+    tool: string;
+    decision: "allow" | "ask" | "deny";
+    target?: string;
+    expiresAt?: number;
+    /** Autonomie configurable : voir `PermissionRule` (contracts/index.ts). */
+    autonomous?: true;
+    operation?: string;
+    session?: string;
+    uses?: number;
+    id?: string;
+    note?: string;
+    createdAt?: number;
+    by?: "réglages" | "commande";
+  }[];
   /**
    * Q19-4 — la confiance de l'UTILISATEUR envers les outils d'un plugin, seule source de « sans accord » : un outil de
    * plugin exige l'accord à chaque appel tant que l'utilisateur ne l'a pas classé ici (`/plugin trust`), et ce classement
@@ -503,6 +536,11 @@ export interface Settings {
    * une seule autorité compresse l'historique.
    */
   contextProxy: ContextProxyConfig;
+  /**
+   * G2 — traces LOCALES de l'agent (tour, appel au modèle, appel d'outil : attente, exécution, annulation), écrites en JSONL dans le
+   * profil. Éteint par défaut. Jamais d'export réseau ; identifiants opaques, noms d'outils, fournisseurs, durées et statuts seulement.
+   */
+  localTraces: LocalTracesSetting;
   /**
    * Fenêtre du modèle actif, en jetons (0 = inconnue). Elle sert à refuser AVANT l'envoi : au-delà,
    * les messages les plus anciens sont écartés et l'utilisateur est prévenu, au lieu de découvrir le
@@ -694,6 +732,7 @@ export const DEFAULT_SETTINGS: Settings = {
   autoTitle: true,
   compactThreshold: 240_000,
   contextProxy: { enabled: false, url: "http://127.0.0.1:8787", providers: [] },
+  localTraces: { enabled: false, retentionDays: 7, maxFileBytes: 5 * 1024 * 1024, maxFiles: 20 },
   // Inconnue par défaut : le noyau n'invente aucune fenêtre, il garde son plafond d'historique.
   contextWindow: 0,
   // Éteint par défaut : une installation qui ne dit rien n'est jamais arrêtée en cours de conversation.

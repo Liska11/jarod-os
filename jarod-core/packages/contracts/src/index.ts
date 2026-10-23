@@ -192,12 +192,26 @@ export interface EmbeddingsMetrics {
 /** Une règle du garde unifié (portage SANK-AI `agent-host.mjs:36-56`) : `tool` = nom, segment (`fs` → `fs_*`) ou `*`. */
 // Cockpit, lot 2 : `target` (motif de cible, `*` = toute suite, casse et séparateurs de chemin ignorés) et `expiresAt` (autorisation
 // temporaire, en ms depuis l'époque ; échue, la règle ne joue plus). Les deux sont optionnels : une règle sans eux se lit comme avant.
-export const PermissionRule = z.object({
-  tool: z.string().min(1),
-  decision: z.enum(["allow", "ask", "deny"]),
-  target: z.string().min(1).max(260).optional(),
-  expiresAt: z.number().int().positive().optional(),
-});
+// Autonomie configurable (2026-10-21) : `autonomous` (avec `allow` seulement) dispense de l'accord DANS le périmètre de la règle ; `operation`
+// (motif sur l'opération que l'outil déclare, `ToolDef.operationOf`), `session` (une conversation, une mission) et `uses` (appels restants)
+// bornent ce périmètre ; `id`, `note`, `createdAt` et `by` servent à lister, expliquer et révoquer. Tous optionnels : une règle sans eux se lit
+// comme avant, et un `allow` sans `autonomous` laisse l'accord des outils sensibles s'appliquer.
+export const PermissionRule = z
+  .object({
+    tool: z.string().min(1),
+    decision: z.enum(["allow", "ask", "deny"]),
+    target: z.string().min(1).max(260).optional(),
+    expiresAt: z.number().int().positive().optional(),
+    autonomous: z.literal(true).optional(),
+    operation: z.string().min(1).max(64).optional(),
+    session: z.string().min(1).max(128).optional(),
+    uses: z.number().int().min(0).max(100_000).optional(),
+    id: z.string().regex(/^[a-z0-9][a-z0-9-]{3,39}$/).optional(),
+    note: z.string().max(200).optional(),
+    createdAt: z.number().int().positive().optional(),
+    by: z.enum(["réglages", "commande"]).optional(),
+  })
+  .refine((r) => r.autonomous === undefined || r.decision === "allow", { message: "« autonomous » ne s'emploie qu'avec « allow »", path: ["autonomous"] });
 export type PermissionRule = z.infer<typeof PermissionRule>;
 export type PermissionDecision = PermissionRule["decision"];
 

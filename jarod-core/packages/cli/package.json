@@ -18,6 +18,7 @@
     "@jarod/plugin-agent": "workspace:*",
     "@jarod/plugin-gateways": "workspace:*",
     "@jarod/plugin-llm": "workspace:*",
+    "@jarod/plugin-permissions": "workspace:*",
     "@jarod/plugin-persona": "workspace:*",
     "@jarod/plugin-rag": "workspace:*",
     "@jarod/plugin-scheduler": "workspace:*",

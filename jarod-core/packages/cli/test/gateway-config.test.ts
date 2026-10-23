@@ -381,7 +381,8 @@ describe("devant le vrai noyau", { timeout: 60_000 }, () => {
   it.runIf(process.platform === "win32")("le groupe « system » regroupe les outils système et peut être coupé d'un coup", async () => {
     const { core, http } = await rig();
     const system = ((await http("GET", "/api/tools/toolsets")).body as any[]).find((t) => t.name === "system");
-    expect(system.tools.length).toBe(14);
+    // 14 outils système + `system_diagnostics` (osquery, vague G lot B) : coupé avec le groupe, comme les autres.
+    expect(system.tools.length).toBe(15);
     await http("PUT", "/api/tools/toolsets/system", { enabled: false });
     const offered = core.tools.specs(core.settings.get("disabledTools")).map((t: any) => t.name);
     expect(offered.some((n: string) => n.startsWith("system_"))).toBe(false);
