@@ -250,7 +250,14 @@ export interface FallbackEntry {
   model?: string
 }
 
+/** V-09 — les préréglages de profil d'accès (plugin-agent `access-profile.ts`), dans l'ordre de l'écran : du plus strict au plus permissif. */
+export type AccessProfile = 'ask' | 'approve' | 'full' | 'custom'
+
+export const ACCESS_PROFILES: readonly AccessProfile[] = ['ask', 'approve', 'full', 'custom']
+
 export interface JarodSettings {
+  /** Absent d'un moteur plus ancien que V-09 : l'écran le traite comme Personnalisé. */
+  accessProfile?: AccessProfile
   autoApproveTools: boolean
   alwaysAllowTools: string[]
   disabledSkills: string[]

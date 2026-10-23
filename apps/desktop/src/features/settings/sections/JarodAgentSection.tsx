@@ -1,4 +1,4 @@
-import { IconAdjustments, IconArrowDown, IconArrowUp, IconBrain, IconListCheck, IconShieldLock, IconTerminal2, IconTrash, IconWorld } from '@tabler/icons-react'
+import { IconAdjustments, IconArrowDown, IconArrowUp, IconBrain, IconHandStop, IconListCheck, IconShieldCheck, IconShieldLock, IconSettings, IconTerminal2, IconTrash, IconWorld, IconBolt } from '@tabler/icons-react'
 import { useState } from 'react'
 import { GlassButton, Pill } from '../../../components/ui/glass.tsx'
 import { jarod } from '../../../lib/jarod.ts'
@@ -6,6 +6,8 @@ import { notify } from '../../../store/notifications.ts'
 import { useBackendData } from '../../../lib/use-async.ts'
 import { ChipsEditor, ChoiceRow, NumberRow, reportEngineError, SwitchRow, useJarodSettings } from './jarod-controls.tsx'
 import {
+  ACCESS_PROFILES,
+  type AccessProfile,
   domainProblem,
   type FallbackEntry,
   intProblem,
@@ -20,7 +22,7 @@ import {
 } from './jarod-settings-model.ts'
 import { isUnsupported } from './providers-model.ts'
 import { PermissionRulesEditor } from './PermissionRulesEditor.tsx'
-import { InlineNote, SectionTitle, SettingsGroup, SettingsRow } from './shared.tsx'
+import { InlineNote, RadioCard, SectionTitle, SettingsBlock, SettingsGroup, SettingsRow } from './shared.tsx'
 import { t, useT } from '../../../lib/i18n.ts'
 
 /*
@@ -50,6 +52,7 @@ export function JarodAgentSection() {
       {!s && api.loading && <div className="px-1 text-[12px] text-fg-4">{t('settings.privacy.loading')}</div>}
       {s && (
         <>
+          <AccessProfileGroup s={s} api={api} />
           <BehaviourGroup s={s} api={api} />
           <PermissionsGroup s={s} api={api} />
           <ShellGuardGroup s={s} api={api} />
@@ -62,6 +65,39 @@ export function JarodAgentSection() {
 }
 
 type Props = { s: JarodSettings; api: ReturnType<typeof useJarodSettings> }
+
+const PROFILE_ICON: Record<AccessProfile, React.ReactNode> = { ask: <IconHandStop />, approve: <IconShieldCheck />, full: <IconBolt />, custom: <IconSettings /> }
+
+/**
+ * V-09 — le préréglage de profil d'accès, au-dessus des règles. Le moteur décide et demande la confirmation native pour tout ce qui donne plus
+ * de pouvoir (elle nomme les limites dures) ; l'écran ne fait que choisir.
+ */
+function AccessProfileGroup({ s, api }: Props) {
+  useT()
+  const { save, saving } = api
+  const current = s.accessProfile ?? 'custom'
+
+  return (
+    <SettingsBlock title={t('settings.agent.profile')} label={t('settings.agent.profile')} description={t('settings.agent.profile.limits')} keywords="access profile ask approve full custom hard limits autonomy permissions">
+      <div className="flex flex-col gap-2" data-testid="access-profiles">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          {ACCESS_PROFILES.map(id => (
+            <RadioCard
+              key={id}
+              icon={PROFILE_ICON[id]}
+              label={t(`settings.agent.profile.${id}`)}
+              description={t(`settings.agent.profile.${id}.hint`)}
+              selected={current === id}
+              disabled={saving}
+              onSelect={() => void save({ accessProfile: id })}
+            />
+          ))}
+        </div>
+        <div className="px-0.5 text-[11.5px] leading-snug text-fg-4">{t('settings.agent.profile.limits')}</div>
+      </div>
+    </SettingsBlock>
+  )
+}
 
 function BehaviourGroup({ s, api }: Props) {
   useT()
@@ -79,7 +115,15 @@ function BehaviourGroup({ s, api }: Props) {
         disabled={saving}
         onChange={value => void save({ agentMode: value })}
       />
-      <SwitchRow icon={<IconShieldLock />} label={t('settings.agent.auto')} description={t('settings.agent.auto.hint')} keywords="auto approve tools yolo ask permission" value={s.autoApproveTools} disabled={saving} onChange={value => void save({ autoApproveTools: value })} />
+      <SwitchRow
+        icon={<IconShieldLock />}
+        label={t('settings.agent.auto')}
+        description={(s.accessProfile ?? 'custom') === 'custom' ? t('settings.agent.auto.hint') : t('settings.agent.auto.profile')}
+        keywords="auto approve tools yolo ask permission"
+        value={s.autoApproveTools}
+        disabled={saving || (s.accessProfile ?? 'custom') !== 'custom'}
+        onChange={value => void save({ autoApproveTools: value })}
+      />
       <NumberRow icon={<IconListCheck />} label={t('settings.agent.steps')} description={t('settings.agent.steps.hint')} keywords="max agent steps iterations limit" value={s.maxAgentSteps} validate={text => intProblem(text, 1, 500)} disabled={saving} onSave={value => save({ maxAgentSteps: value })} />
       <NumberRow
         icon={<IconBrain />}
