@@ -1,3 +1,5 @@
+import dgram from "node:dgram";
+import dns from "node:dns";
 import { mkdtempSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import net from "node:net";
 import { tmpdir } from "node:os";
@@ -123,5 +125,77 @@ describe("garde des sockets", () => {
 
     const failure = await fetch("http://203.0.113.9/", { signal: AbortSignal.timeout(5000) }).catch((e: Error & { cause?: { code?: string } }) => e);
     expect((failure as Error & { cause?: { code?: string } }).cause?.code).toBe(OFFLINE_CODE);
+  });
+});
+
+// V-05 : le résolveur appelé directement et les envois UDP passaient (mesuré le 2026-10-23). Aucun essai ici ne sort de la machine : un
+// refus n'atteint pas le réseau, et ce qui est permis vise la boucle locale.
+describe("garde DNS et UDP (V-05)", () => {
+  afterEach(() => uninstallNetworkGuard());
+  const guardOff = () => installNetworkGuard((h) => decideHost(off, h) !== "blocked");
+  const code = (p: Promise<unknown>) => p.then(() => "résolu", (e: NodeJS.ErrnoException) => e.code);
+
+  it("Internet coupé : toute résolution directe d'un nom est refusée (rappel, promesse, Resolver, import nommé), la boucle locale passe", async () => {
+    guardOff();
+    const viaCallback = await new Promise<string | undefined>((res) => dns.lookup("example.com", (e) => res(e ? (e as NodeJS.ErrnoException).code : "résolu")));
+    expect(viaCallback).toBe(OFFLINE_CODE);
+    expect(await code(dns.promises.resolve4("example.com"))).toBe(OFFLINE_CODE);
+    expect(await code(dns.promises.resolveTxt("exfil.example.com"))).toBe(OFFLINE_CODE);
+    expect(await code(new dns.promises.Resolver().resolve4("example.com"))).toBe(OFFLINE_CODE);
+    const resolver = new dns.Resolver();
+    expect(await new Promise((res) => resolver.resolveTxt("exfil.example.com", (e) => res(e ? (e as NodeJS.ErrnoException).code : "résolu")))).toBe(OFFLINE_CODE);
+    const { lookup } = await import("node:dns");
+    expect(await new Promise((res) => lookup("example.com", (e) => res(e ? (e as NodeJS.ErrnoException).code : "résolu")))).toBe(OFFLINE_CODE);
+    expect(await code(dns.promises.lookup("localhost"))).toBe("résolu");
+  });
+
+  it("Internet coupé : un envoi UDP hors de la machine est refusé ; vers la boucle locale il arrive", async () => {
+    guardOff();
+    const out = dgram.createSocket("udp4");
+    try {
+      expect(await new Promise((res) => out.send(Buffer.from("x"), 53, "1.1.1.1", (e) => res(e ? (e as NodeJS.ErrnoException).code : "envoyé")))).toBe(OFFLINE_CODE);
+      // Sans rappel, le refus arrive par l'événement `error`, jamais en silence.
+      const viaEvent = new Promise((res) => out.once("error", (e) => res((e as NodeJS.ErrnoException).code)));
+      out.send("y", 53, "203.0.113.9");
+      expect(await viaEvent).toBe(OFFLINE_CODE);
+      const local = dgram.createSocket("udp4");
+      await new Promise<void>((r) => local.bind(0, "127.0.0.1", () => r()));
+      const got = new Promise((res) => local.once("message", (m) => res(String(m))));
+      out.send("bonjour", local.address().port, "127.0.0.1");
+      expect(await got).toBe("bonjour");
+      local.close();
+    } finally {
+      out.close();
+    }
+  });
+
+  it("un socket UDP connecté est jugé à chaque envoi : une bascule vers « coupé » l'arrête", async () => {
+    let policy: NetworkPolicy = { ...DEFAULT_POLICY, internet: true };
+    installNetworkGuard((h) => decideHost(policy, h) !== "blocked");
+    const s = dgram.createSocket("udp4");
+    try {
+      await new Promise<void>((r) => s.connect(9, "203.0.113.9", () => r()));
+      policy = { ...policy, internet: false };
+      expect(await new Promise((res) => s.send("z", (e) => res(e ? (e as NodeJS.ErrnoException).code : "envoyé")))).toBe(OFFLINE_CODE);
+    } finally {
+      s.close();
+    }
+  });
+
+  it("une connexion UDP vers un hôte refusé n'est pas établie", async () => {
+    guardOff();
+    const s = dgram.createSocket("udp4");
+    const err = new Promise((res) => s.once("error", (e) => res((e as NodeJS.ErrnoException).code)));
+    s.connect(53, "1.1.1.1");
+    expect(await err).toBe(OFFLINE_CODE);
+    s.close();
+  });
+
+  it("retirer la garde rend le résolveur et dgram d'origine", async () => {
+    const before = [dns.lookup, dns.promises.resolve4, dns.Resolver.prototype.resolve4, dgram.Socket.prototype.send, dgram.Socket.prototype.connect];
+    guardOff();
+    expect(dns.lookup).not.toBe(before[0]);
+    uninstallNetworkGuard();
+    expect([dns.lookup, dns.promises.resolve4, dns.Resolver.prototype.resolve4, dgram.Socket.prototype.send, dgram.Socket.prototype.connect]).toEqual(before);
   });
 });

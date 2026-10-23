@@ -1,10 +1,12 @@
+import dgram from 'node:dgram'
+import dns from 'node:dns'
 import fs from 'node:fs'
 import net from 'node:net'
 import os from 'node:os'
 import path from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { CAUTIOUS_POLICY, decideHost, DEFAULT_POLICY, isLoopback, type NetworkPolicy, OFFLINE_CODE, parsePolicy } from '../shared/network-policy.ts'
-import { connectTarget, cutDisallowed, installSocketGuard, uninstallSocketGuard } from './net-guard.ts'
+import { connectTarget, cutDisallowed, installSocketGuard, sendTarget, uninstallSocketGuard } from './net-guard.ts'
 import { DEAD_PROXY, NetworkPolicyService, type NetworkSessions, type ProxyChoice, proxyFor } from './network.ts'
 
 const off: NetworkPolicy = { ...DEFAULT_POLICY, internet: false }
@@ -169,7 +171,8 @@ describe('the socket guard', () => {
     })
 
     expect(error.code).toBe(OFFLINE_CODE)
-    expect(asked).toEqual(['127.0.0.1', '203.0.113.9'])
+    // Since V-05 the resolver asks too (Node looks the loopback address up before connecting): the same host, allowed twice.
+    expect(new Set(asked)).toEqual(new Set(['127.0.0.1', '203.0.113.9']))
   })
 
   it('stops Node fetch too', async () => {
@@ -205,3 +208,47 @@ describe('the socket guard', () => {
   })
 })
 
+
+// V-05: a direct resolver call and a UDP packet used to leave (measured on 2026-10-23). Nothing here leaves the machine: a refusal
+// never reaches the network, and what is allowed targets loopback.
+describe('the DNS and UDP guard (V-05)', () => {
+  afterEach(() => uninstallSocketGuard())
+
+  const codeOf = (p: Promise<unknown>) => p.then(() => 'resolved', (e: NodeJS.ErrnoException) => e.code)
+
+  it('with the Internet off, a direct name lookup is refused (callback, promise, Resolver); loopback resolves', async () => {
+    installSocketGuard(host => decideHost(off, host) !== 'blocked')
+    const viaCallback = await new Promise(resolve => dns.lookup('example.com', e => resolve(e ? (e as NodeJS.ErrnoException).code : 'resolved')))
+    expect(viaCallback).toBe(OFFLINE_CODE)
+    expect(await codeOf(dns.promises.resolveTxt('exfil.example.com'))).toBe(OFFLINE_CODE)
+    expect(await codeOf(new dns.promises.Resolver().resolve4('example.com'))).toBe(OFFLINE_CODE)
+    expect(await codeOf(dns.promises.lookup('localhost'))).toBe('resolved')
+  })
+
+  it('with the Internet off, a UDP packet off the machine is refused, by callback or by event; to loopback it arrives', async () => {
+    installSocketGuard(host => decideHost(off, host) !== 'blocked')
+    const out = dgram.createSocket('udp4')
+
+    try {
+      expect(await new Promise(resolve => out.send('x', 53, '1.1.1.1', e => resolve(e ? (e as NodeJS.ErrnoException).code : 'sent')))).toBe(OFFLINE_CODE)
+      const viaEvent = new Promise(resolve => out.once('error', e => resolve((e as NodeJS.ErrnoException).code)))
+      out.send('y', 53, '203.0.113.9')
+      expect(await viaEvent).toBe(OFFLINE_CODE)
+      const local = dgram.createSocket('udp4')
+      await new Promise<void>(resolve => local.bind(0, '127.0.0.1', () => resolve()))
+      const got = new Promise(resolve => local.once('message', m => resolve(String(m))))
+      out.send('hello', local.address().port, '127.0.0.1')
+      expect(await got).toBe('hello')
+      local.close()
+    } finally {
+      out.close()
+    }
+  })
+
+  it('finds the destination of every send form', () => {
+    expect(sendTarget(['m', 53, '1.1.1.1', () => {}], undefined)).toBe('1.1.1.1')
+    expect(sendTarget(['m', 0, 1, 53, 'example.com'], undefined)).toBe('example.com')
+    expect(sendTarget(['m', () => {}], '203.0.113.9')).toBe('203.0.113.9')
+    expect(sendTarget(['m', 53], undefined)).toBe('localhost')
+  })
+})

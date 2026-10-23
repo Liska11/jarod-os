@@ -15,6 +15,8 @@
  * il reste utilisable — sauf, pour un serveur MCP tiers, un jeton de contrôle INTERNE (une configuration ne peut pas le réintroduire). Ce module ne rend ni ne journalise jamais de valeur ; `scrubbedNames` ne rend que des NOMS.
  */
 
+import { activePolicy, type NetworkPolicy } from "./network.js";
+
 export type ChildKind =
   /** Serveur MCP tiers : seulement l'environnement « système » + ce que sa configuration nomme. */
   | "mcp"
@@ -92,6 +94,24 @@ export interface ChildEnvOptions {
   base?: NodeJS.ProcessEnv;
   /** Ajouté APRÈS le filtre : configuration explicite du serveur, secret autorisé injecté au point d'usage. Une valeur `undefined` est ignorée. */
   explicit?: Record<string, string | undefined>;
+  /** La politique réseau à appliquer à l'enfant (défaut : celle du processus, `activePolicy()`). */
+  policy?: NetworkPolicy;
+}
+
+/** Un proxy où rien n'écoute (le même que celui des sessions web du shell) : une requête qui l'emprunte échoue aussitôt. */
+export const DEAD_PROXY = "http://127.0.0.1:9";
+const PROXY_NAMES = ["HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "http_proxy", "https_proxy", "all_proxy"];
+
+/**
+ * V-05 : ce qu'un enfant reçoit quand Internet est coupé pour Jarod. Les programmes qui suivent les variables de proxy (curl, git, pip, npm,
+ * Python, Go, et Node avec `NODE_USE_ENV_PROXY`) passent par un proxy mort, sauf vers la boucle locale et les machines distantes autorisées.
+ * C'est une COUCHE, pas un isolement : un programme qui ignore ces variables ouvre encore ses connexions. L'isolement par le noyau est celui de
+ * `jarod-sandbox` (AppContainer sans capacité réseau, commandes confinées) ; un pare-feu par programme demanderait l'élévation.
+ */
+export function offlineProxyEnv(policy: NetworkPolicy): Record<string, string> {
+  if (policy.internet) return {};
+  const bypass = ["localhost", "127.0.0.1", "::1", ".localhost", ...(policy.remoteMachines ? policy.remoteHosts : [])].join(",");
+  return { ...Object.fromEntries(PROXY_NAMES.map((n) => [n, DEAD_PROXY])), NO_PROXY: bypass, no_proxy: bypass, NODE_USE_ENV_PROXY: "1" };
 }
 
 /**
@@ -114,6 +134,14 @@ export function childEnv(kind: ChildKind, options: ChildEnvOptions = {}): NodeJS
     // Un nom explicite remplace l'éventuel même nom d'une autre casse (Windows), jamais les deux.
     for (const existing of Object.keys(out)) if (existing.toUpperCase() === name.toUpperCase() && existing !== name) delete out[existing];
     out[name] = value;
+  }
+  // Internet coupé : la politique passe APRÈS la configuration (un serveur ne réintroduit pas son propre proxy pour sortir). Les noms de
+  // proxy de l'environnement sont remplacés, toutes casses confondues, par ceux de la politique.
+  const offline = offlineProxyEnv(options.policy ?? activePolicy());
+  if (Object.keys(offline).length) {
+    const names = new Set(Object.keys(offline).map((n) => n.toUpperCase()));
+    for (const existing of Object.keys(out)) if (names.has(existing.toUpperCase())) delete out[existing];
+    Object.assign(out, offline);
   }
   return out;
 }

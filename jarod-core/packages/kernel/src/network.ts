@@ -7,11 +7,17 @@
 //
 // Trois couches :
 //   1. `installNetworkGuard` : toute connexion TCP de ce processus (fetch/undici, http, https, tls, WebSocket) passe par
-//      `net.Socket.prototype.connect` ; une connexion refusée échoue avant le moindre octet, avec le code JAROD_OFFLINE.
+//      `net.Socket.prototype.connect` ; une connexion refusée échoue avant le moindre octet, avec le code JAROD_OFFLINE. Depuis V-05,
+//      le résolveur DNS appelé directement et les envois UDP (`dgram`) sont jugés par la même règle.
 //   2. `toolVerdict` : la porte des outils (`executeGuardedTool`) refuse ce qui sort par Internet, et ce qui lance un programme
 //      que Jarod ne peut pas couper du réseau (run_shell, serveurs MCP), sauf exception explicite « commandes locales ».
-//   3. Les enfants (`run_shell`, `ssh`…) ne sont PAS isolés du réseau par le noyau : c'est pourquoi la couche 2 les refuse.
+//   3. Les enfants (`run_shell`, `ssh`…) ne sont PAS isolés du réseau par ce processus : c'est pourquoi la couche 2 les refuse. Depuis V-05,
+//      Internet coupé, `childEnv` leur donne un proxy mort (couche pour les programmes qui suivent les variables de proxy) ; l'isolement
+//      par le noyau Windows est celui de `jarod-sandbox` (AppContainer sans capacité réseau) pour les commandes confinées.
+import dgram from "node:dgram";
+import dns from "node:dns";
 import { existsSync, readFileSync, statSync, unwatchFile, watchFile } from "node:fs";
+import { syncBuiltinESMExports } from "node:module";
 import net from "node:net";
 import { homedir } from "node:os";
 import { join } from "node:path";
@@ -150,6 +156,96 @@ export function installNetworkGuard(allowed: (host: string) => boolean): void {
     }
     return base.apply(this, args);
   } as typeof net.Socket.prototype.connect;
+  installDnsGuard(allowed);
+  installDgramGuard(allowed);
+}
+
+// ── DNS et UDP (V-05, 2026-10-23) ─────────────────────────────────────────────
+// Mesuré : `net.connect`/`fetch` vers un NOM ne résolvent rien quand la connexion est refusée (la garde passe avant la résolution). Mais
+// un appel DIRECT au résolveur (`dns.lookup`, `dns.resolve*`, `dns.promises`, `Resolver`) partait, et un paquet UDP (`dgram`) aussi : un
+// canal de sortie (tunnel DNS, n'importe quel service UDP). Les deux sont désormais jugés par la même règle que les connexions TCP.
+
+type AnyFn = (...args: unknown[]) => unknown;
+/** Les fonctions remplacées, pour les rendre (tests). */
+const patched: { target: Record<string, unknown>; key: string; fn: unknown }[] = [];
+
+function patch(target: object, key: string, make: (orig: AnyFn) => AnyFn): void {
+  const t = target as Record<string, unknown>;
+  const orig = t[key];
+  if (typeof orig !== "function") return;
+  patched.push({ target: t, key, fn: orig });
+  t[key] = make(orig as AnyFn);
+}
+
+/** Les fonctions du résolveur, à rappel et à promesse, dont le premier argument est le nom demandé. */
+const RESOLVE_FNS = ["lookup", "lookupService", "resolve", "resolve4", "resolve6", "resolveAny", "resolveCaa", "resolveCname", "resolveMx", "resolveNaptr", "resolveNs", "resolvePtr", "resolveSoa", "resolveSrv", "resolveTlsa", "resolveTxt", "reverse"];
+
+function installDnsGuard(allowed: (host: string) => boolean): void {
+  const refusal = (host: string) => Object.assign(new OfflineError(`la résolution de ${host}`), { hostname: host });
+  const withCallback = (orig: AnyFn) =>
+    function guarded(this: unknown, ...args: unknown[]) {
+      const host = typeof args[0] === "string" ? args[0] : "";
+      if (host && !allowed(host)) {
+        const cb = args.findLast((a) => typeof a === "function") as ((e: Error) => void) | undefined;
+        const err = refusal(host);
+        if (cb) process.nextTick(() => cb(err));
+        return undefined;
+      }
+      return orig.apply(this, args);
+    };
+  const withPromise = (orig: AnyFn) =>
+    function guarded(this: unknown, ...args: unknown[]) {
+      const host = typeof args[0] === "string" ? args[0] : "";
+      if (host && !allowed(host)) return Promise.reject(refusal(host));
+      return orig.apply(this, args);
+    };
+  for (const key of RESOLVE_FNS) {
+    patch(dns, key, withCallback);
+    patch(dns.Resolver.prototype, key, withCallback);
+    patch(dns.promises, key, withPromise);
+    patch(dns.promises.Resolver.prototype, key, withPromise);
+  }
+  // Les imports nommés (`import { lookup } from "node:dns"`) suivent les fonctions remplacées.
+  syncBuiltinESMExports();
+}
+
+/** Le destinataire d'un `send` : le dernier argument texte avant le rappel (port puis adresse), sinon celui du `connect`. */
+function sendTarget(args: unknown[], connected: string | undefined): string {
+  const values = typeof args.at(-1) === "function" ? args.slice(0, -1) : args;
+  const address = values.slice(1).findLast((a) => typeof a === "string");
+  return typeof address === "string" && address ? address : (connected ?? "localhost");
+}
+
+const udpPeers = new WeakMap<dgram.Socket, string>();
+
+function installDgramGuard(allowed: (host: string) => boolean): void {
+  const refuse = (socket: dgram.Socket, host: string, cb: unknown) => {
+    const err = new OfflineError(`l'envoi UDP vers ${host}`);
+    if (typeof cb === "function") process.nextTick(() => (cb as (e: Error) => void)(err));
+    else process.nextTick(() => socket.emit("error", err));
+  };
+  patch(dgram.Socket.prototype, "connect", (orig) =>
+    function guarded(this: dgram.Socket, ...args: unknown[]) {
+      const host = typeof args[1] === "string" && args[1] ? args[1] : "localhost";
+      if (!allowed(host)) {
+        refuse(this, host, undefined);
+        return undefined;
+      }
+      udpPeers.set(this, host);
+      return orig.apply(this, args);
+    },
+  );
+  patch(dgram.Socket.prototype, "send", (orig) =>
+    function guarded(this: dgram.Socket, ...args: unknown[]) {
+      // Jugé à CHAQUE envoi : une bascule vers « coupé » arrête aussi un socket déjà connecté.
+      const host = sendTarget(args, udpPeers.get(this));
+      if (!allowed(host)) {
+        refuse(this, host, args.at(-1));
+        return undefined;
+      }
+      return orig.apply(this, args);
+    },
+  );
 }
 
 /** Tests seulement. */
@@ -159,6 +255,8 @@ export function uninstallNetworkGuard(): void {
     original = null;
     open.clear();
   }
+  for (const { target, key, fn } of patched.splice(0).reverse()) target[key] = fn;
+  syncBuiltinESMExports();
   // Sinon la surveillance d'un fichier supprimé lit « absent » (prudent) et coupe les connexions du test suivant.
   for (const file of watched.splice(0)) unwatchFile(file);
 }

@@ -1,7 +1,8 @@
 // L'environnement des enfants (2026-10-22) : des FAUX secrets sentinelles (aucune vraie valeur) montrent ce qui descend, et dans quel enfant.
 import { spawnSync } from "node:child_process";
 import { describe, expect, it } from "vitest";
-import { childEnv, isInternalSecretName, isSecretShapedName, scrubbedNames } from "../src/child-env.js";
+import { childEnv, DEAD_PROXY, isInternalSecretName, isSecretShapedName, scrubbedNames } from "../src/child-env.js";
+import { DEFAULT_POLICY, type NetworkPolicy } from "../src/network.js";
 
 const S = (n: string) => `SENTINELLE-${n}-0000`;
 const base: NodeJS.ProcessEnv = {
@@ -113,5 +114,38 @@ describe("childEnv", () => {
     const env = childEnv("mcp", { base: { ...process.env, JAROD_GATEWAY_TOKEN: S("gateway"), API_TOKEN: S("ambiant") }, explicit: { TOKEN_AUTORISE: S("ok") } });
     const r = spawnSync(process.execPath, ["-e", "process.stdout.write([process.env.JAROD_GATEWAY_TOKEN,process.env.API_TOKEN,process.env.TOKEN_AUTORISE].map(String).join('|'))"], { env, encoding: "utf8" });
     expect(r.stdout).toBe(`undefined|undefined|${S("ok")}`);
+  });
+});
+
+// V-05 : Internet coupé, l'enfant reçoit un proxy mort (couche pour les programmes qui suivent les variables de proxy ; pas un isolement).
+describe("enfants et interrupteur Internet (V-05)", () => {
+  const offline: NetworkPolicy = { ...DEFAULT_POLICY, internet: false };
+
+  it("Internet coupé : proxy mort dans toutes les casses, boucle locale et machines distantes autorisées en exception, Node le suit", () => {
+    const env = childEnv("agent-shell", { base: { PATH: "x", https_proxy: "http://corp:3128", Http_Proxy: "http://corp:3128" }, policy: { ...offline, remoteMachines: true, remoteHosts: ["100.64.0.7"] } });
+    for (const n of ["HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "http_proxy", "https_proxy", "all_proxy"]) expect(env[n]).toBe(DEAD_PROXY);
+    expect(env.Http_Proxy).toBeUndefined();
+    expect(env.NO_PROXY).toBe("localhost,127.0.0.1,::1,.localhost,100.64.0.7");
+    expect(env.NODE_USE_ENV_PROXY).toBe("1");
+    expect(env.PATH).toBe("x");
+  });
+
+  it("une configuration ne réintroduit pas son propre proxy pour sortir ; Internet actif, rien n'est ajouté", () => {
+    expect(childEnv("mcp", { base: {}, explicit: { HTTPS_PROXY: "http://sortie:8080" }, policy: offline }).HTTPS_PROXY).toBe(DEAD_PROXY);
+    const on = childEnv("mcp", { base: { PATH: "x" }, explicit: { HTTPS_PROXY: "http://corp:3128" }, policy: DEFAULT_POLICY });
+    expect(on).toEqual({ PATH: "x", HTTPS_PROXY: "http://corp:3128" });
+    // Sans politique fournie et sans lecteur branché : celle du processus, Internet permis comme avant.
+    expect(childEnv("engine", { base: { PATH: "x" } })).toEqual({ PATH: "x" });
+  });
+
+  // `NODE_USE_ENV_PROXY` (fetch et http de Node suivent HTTP(S)_PROXY) : vérifié avec Node 24 ; une version plus ancienne l'ignore peut-être,
+  // c'est pourquoi l'essai n'y est pas présenté comme une preuve.
+  it.runIf(Number(process.versions.node.split(".")[0]) >= 24)("de bout en bout : un vrai enfant Node passe par le proxy mort et échoue AUSSITÔT (aucune adresse publique n'est jointe)", () => {
+    // TEST-NET-3 n'est jamais routé : sans proxy, l'essai attendrait son délai ; par le proxy mort, refus immédiat sur 127.0.0.1:9.
+    const js = "fetch('http://203.0.113.9/',{signal:AbortSignal.timeout(8000)}).then(()=>console.log('OK'),e=>console.log(String(e.cause?.code??e.name)))";
+    const started = Date.now();
+    const r = spawnSync(process.execPath, ["-e", js], { env: childEnv("engine", { policy: offline }), encoding: "utf8", timeout: 20_000 });
+    expect(r.stdout.trim()).toBe("ECONNREFUSED");
+    expect(Date.now() - started).toBeLessThan(6_000);
   });
 });
