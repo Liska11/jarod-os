@@ -7,7 +7,7 @@
 // arrêter exécutent les scripts d'un dépôt git (des commandes shell, des téléchargements de plusieurs Go) : `dangerous`, un accord à
 // chaque appel, dont la demande dit l'app et ce qui va se passer. Un lancement continue en arrière-plan dans le moteur ; l'outil rend
 // la main après `wait_seconds` et `pinokio_status` dit la suite.
-import { isAbsolute, resolve } from "node:path";
+import { posix, win32 } from "node:path";
 import type { ToolDef } from "../registry.js";
 import { askShell, type Packet, PinokioClient, type PinokioDeps, REGISTRY_URL, streamText, tail } from "./client.js";
 
@@ -77,6 +77,8 @@ function repoUri(args: Record<string, unknown>): string {
 export function pinokioTools(deps: PinokioToolDeps = {}): ToolDef[] {
   const client = new PinokioClient(deps);
   const platform = deps.platform ?? process.platform;
+  // Les chemins du moteur suivent SA plateforme (celle des dépendances), pas forcément celle du processus.
+  const { isAbsolute, resolve } = platform === "win32" ? win32 : posix;
   const env = deps.env ?? process.env;
   const show =
     deps.show ??

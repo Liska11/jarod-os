@@ -21,7 +21,8 @@ import { makeCore } from "./helpers.js";
  * proves a refusal connects nothing, and that an approved call runs exactly the command that was shown.
  */
 
-const KEY = "C:/Users/tester/.ssh/id_ed25519";
+// An ABSOLUTE path on the platform running the test ("C:/…" is not one on Linux).
+const KEY = process.platform === "win32" ? "C:/Users/tester/.ssh/id_ed25519" : "/home/tester/.ssh/id_ed25519";
 
 function reply(partial: Partial<SshProcessOutcome> = {}): SshProcessOutcome {
   return { stdout: "", stderr: "", exitCode: 0, timedOut: false, deathConfirmed: true, binaryMissing: false, spawnError: "", ...partial };

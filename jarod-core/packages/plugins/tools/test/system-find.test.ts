@@ -64,7 +64,8 @@ describe("prédicats purs", () => {
     expect(resolveWhen("yesterday", new Date(2027, 0, 1))).toEqual({ since: "2026-12-31", until: "2026-12-31" });
   });
 
-  it("dossiers par défaut : ceux de la personne qui existent (OneDrive en plus, sans doublon), sinon le dossier personnel", () => {
+  // Dossiers Windows (OneDrive, AppData) et casse ignorée : règles de Windows, seule plateforme de la famille system_* (tools.ts).
+  it.runIf(process.platform === "win32")("dossiers par défaut : ceux de la personne qui existent (OneDrive en plus, sans doublon), sinon le dossier personnel", () => {
     const exists = new Set(["C:\\u\\Documents", "C:\\u\\Downloads", "D:\\od\\Documents"]);
     const got = defaultRoots({ OneDrive: "D:\\od" }, "C:\\u", (p) => exists.has(p));
     expect(got).toEqual({ roots: ["C:\\u\\Documents", "C:\\u\\Downloads", "D:\\od\\Documents"], skipAppData: true });
@@ -123,7 +124,7 @@ describe("findFiles (vrai disque)", () => {
     expect((await findFiles(s({ until: yesterday }), { home, env: e, scope: home })).files).toHaveLength(0);
   });
 
-  it("emplacements protégés : ni parcourus ni cités, et un scope protégé est refusé AVANT toute lecture", async () => {
+  it.runIf(process.platform === "win32")("emplacements protégés : ni parcourus ni cités, et un scope protégé est refusé AVANT toute lecture", async () => {
     const home = temp();
     put(join(home, ".ssh", "id_secret.txt"));
     put(join(home, "AppData", "Roaming", "Microsoft", "Credentials", "id_cred.txt"));

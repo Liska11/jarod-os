@@ -62,7 +62,8 @@ function home() {
 }
 
 describe("arguments et chemins", () => {
-  it("opérations mal formées : messages nets, rien de silencieux", () => {
+  // Chemins « C:\… », casse ignorée, racines de disque : règles de Windows, seule plateforme de la famille system_* (tools.ts).
+  it.runIf(win)("opérations mal formées : messages nets, rien de silencieux", () => {
     const h = "C:\\Users\\moi";
     expect(() => requestedOperations({ action: "mkdir" }, h)).toThrow(/path est requis/);
     expect(() => requestedOperations({ action: "mkdir", path: "relatif" }, h)).toThrow(/non absolu/);
@@ -76,7 +77,7 @@ describe("arguments et chemins", () => {
     expect(requestedOperations({ action: "trash", paths: ["~/a", "C:\\b"] }, h).map((o) => o.path)).toEqual(["C:\\Users\\moi\\a", "C:\\b"]);
   });
 
-  it("isInside : le préfixe ne suffit pas, la casse est ignorée sous Windows", () => {
+  it.runIf(win)("isInside : le préfixe ne suffit pas, la casse est ignorée sous Windows", () => {
     expect(isInside("C:\\a\\b", "C:\\a\\b\\c", true)).toBe(true);
     expect(isInside("C:\\a\\b", "c:\\A\\B", true)).toBe(true);
     expect(isInside("C:\\a\\b", "C:\\a\\bc", true)).toBe(false);
@@ -84,7 +85,7 @@ describe("arguments et chemins", () => {
     expect(isInside("C:\\a", "D:\\a", true)).toBe(false);
   });
 
-  it("forbiddenReason : protégé, enfant d'un protégé, CONTENANT un protégé, racine de disque ; un nom voisin passe", async () => {
+  it.runIf(win)("forbiddenReason : protégé, enfant d'un protégé, CONTENANT un protégé, racine de disque ; un nom voisin passe", async () => {
     const { h, roots } = home();
     expect(await forbiddenReason(join(h, ".ssh"), roots)).toMatch(/emplacement protégé/);
     expect(await forbiddenReason(join(h, ".SSH", "nouveau", "x"), roots)).toMatch(/emplacement protégé/);

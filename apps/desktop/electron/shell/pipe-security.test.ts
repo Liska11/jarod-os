@@ -329,5 +329,6 @@ describe('named pipe security on this platform', () => {
     } finally {
       await new Promise<void>(resolve => server.close(() => resolve()))
     }
-  })
+    // Several real PowerShell round trips (identity, DACL set and read back): over 5 s on a busy CI runner.
+  }, 30_000)
 })

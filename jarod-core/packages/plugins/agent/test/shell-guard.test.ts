@@ -142,7 +142,8 @@ describe("garde du shell — confiné par le noyau, ou refusé, jamais promis", 
   });
 
   it("quand le mécanisme est là, la ligne de commande le porte vraiment", async () => {
-    const ws = tempDir();
+    // Chemin réel : sur la CI Windows, le dossier temporaire est un nom court (RUNNER~1) que --bind développe et que --chdir garde.
+    const ws = realpathSync.native(tempDir());
     const garde = new ShellGuardService({
       workspace: ws,
       policy: { writeScope: "workspace" },

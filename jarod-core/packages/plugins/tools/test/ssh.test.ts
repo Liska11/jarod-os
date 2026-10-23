@@ -23,7 +23,8 @@ import {
  * (`process.execPath`) pour prouver que le délai tue bien un processus.
  */
 
-const CLE = "C:/Utilisateurs/testeur/.ssh/id_ed25519";
+// Un chemin ABSOLU sur la plateforme qui exécute le test (« C:/… » ne l'est pas sous Linux).
+const CLE = process.platform === "win32" ? "C:/Utilisateurs/testeur/.ssh/id_ed25519" : "/home/testeur/.ssh/id_ed25519";
 const CIBLE: SshTarget = { host: "serveur.exemple", username: "ops", port: 2222, keyPath: CLE };
 
 /** Le premier élément, ou une erreur claire : « le transport n'a pas été appelé » n'est pas un succès. */

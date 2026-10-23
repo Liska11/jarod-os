@@ -23,7 +23,8 @@ import { makeCore } from "./helpers.js";
  * lecture de liste ou un retrait ne connecte rien — et qu'une connexion ne part que si on la demande.
  */
 
-const CLE = "C:/Utilisateurs/testeur/.ssh/id_ed25519";
+// Un chemin ABSOLU sur la plateforme qui exécute le test (« C:/… » ne l'est pas sous Linux).
+const CLE = process.platform === "win32" ? "C:/Utilisateurs/testeur/.ssh/id_ed25519" : "/home/testeur/.ssh/id_ed25519";
 
 const VALIDE: SshHostInput = {
   name: "Serveur de prod",

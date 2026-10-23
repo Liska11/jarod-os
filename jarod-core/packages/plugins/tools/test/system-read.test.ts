@@ -224,7 +224,8 @@ describe("system_disk_usage", () => {
     expect(JSON.parse(await t.run({ path: root, depth: 1, limit: 1 }, ctx)).entries).toEqual([{ path: join(root, "gros"), bytes: 8000 }]);
   });
 
-  it("refuse un chemin relatif, un chemin protégé (avant toute lecture) et ses variantes de casse", async () => {
+  // Variantes de casse et chemins « C:\… » : règles de Windows, seule plateforme de la famille system_* (tools.ts).
+  it.runIf(win)("refuse un chemin relatif, un chemin protégé (avant toute lecture) et ses variantes de casse", async () => {
     const home = temp();
     mkdirSync(join(home, ".ssh"));
     writeFileSync(join(home, ".ssh", "id_rsa"), "secret");

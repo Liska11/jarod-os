@@ -197,7 +197,8 @@ describe("system_open (PowerShell et lanceur simulés)", () => {
     expect(launched).toHaveLength(2);
   });
 
-  it("path : explorer pour l'application par défaut ; un programme ou un script, un chemin relatif, inexistant ou protégé sont refusés AVANT de lancer", async () => {
+  // Casse ignorée (« .SSH ») et chemins « C:\… » : règles de Windows, seule plateforme de la famille system_* (tools.ts).
+  it.runIf(win)("path : explorer pour l'application par défaut ; un programme ou un script, un chemin relatif, inexistant ou protégé sont refusés AVANT de lancer", async () => {
     const home = temp();
     mkdirSync(join(home, ".ssh"));
     writeFileSync(join(home, ".ssh", "id"), "x");
