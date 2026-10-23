@@ -2,8 +2,11 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    # The Windows port lives on its own branch until it merges: without it here, a push to it ran nothing (only a pull request did).
+    branches: [main, feature/windows-port]
   pull_request:
+  # A manual run on any branch or commit (Actions tab → CI → Run workflow).
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -49,6 +52,7 @@ jobs:
 
   kernel:
     name: Kernel (${{ matrix.os }})
+    timeout-minutes: 45
     # The core (`jarod-core`) is its own pnpm workspace: the shell's `npm ci` does not install it and
     # `npm test` at the root does not reach it, so none of its tests ran in CI. It needs pnpm, and its
     # package scripts are called by name from the root (`test:core`, `typecheck:core`).
@@ -71,7 +75,29 @@ jobs:
         run: pnpm install --frozen-lockfile
         working-directory: jarod-core
       - run: npm run typecheck:core
+      # One package at a time (test:core sets --workspace-concurrency=1): the engine suites drive a real browser and the desktop, which two
+      # suites must not share.
       - run: npm run test:core
+
+  mobile:
+    name: Mobile (Android shell, web layer)
+    # `mobile/` has its own manifest and lockfile (it is not an npm workspace of the root): nothing else installs it, so nothing else checked it.
+    # Types, unit tests and the web build only; the APK (Gradle, Android SDK) is a release step.
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - run: npm ci --ignore-scripts
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
 
   bridge:
     name: Bridge plugin (${{ matrix.os }})
