@@ -1,5 +1,5 @@
 import { useStore } from '@nanostores/react'
-import { IconBrain, IconPlus, IconSearchOff } from '@tabler/icons-react'
+import { IconBrain, IconHistory, IconPlus, IconSearchOff } from '@tabler/icons-react'
 import { useEffect, useMemo, useState } from 'react'
 import { Chips, EmptyGlass, GlassButton, PageHeader, SearchField } from '../../components/ui/glass.tsx'
 import { $env } from '../../store/backend.ts'
@@ -7,6 +7,7 @@ import { notify } from '../../store/notifications.ts'
 import { $sessions } from '../../store/sessions.ts'
 import { AddMemoryForm } from './AddMemoryForm.tsx'
 import { MemoryDetail } from './MemoryDetail.tsx'
+import { MemoryHistory } from './MemoryHistory.tsx'
 import { MemoryMenu } from './MemoryMenu.tsx'
 import { MemoryRow } from './MemoryRow.tsx'
 import { $memory, $memoryFocus, addEntry, countRelatedSessions, forgetEntry, loadMemory, type MemoryEntry, type MemoryFile, type MemoryKind, memoryPath, updateEntry } from './memory-store.ts'
@@ -38,6 +39,8 @@ export function MemoryPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [adding, setAdding] = useState(false)
   const [busy, setBusy] = useState(false)
+  // V-18: the history is kept by the Jarod core; a Hermes backend's plain files have none.
+  const [showHistory, setShowHistory] = useState(false)
 
   useEffect(() => {
     if (hermesHome) {
@@ -143,6 +146,7 @@ export function MemoryPage() {
   }
 
   const count = filtered.length
+  const keptByCore = Boolean(memory.files?.['MEMORY.md']?.remote)
 
   return (
     <div className="flex h-full flex-col page-enter">
@@ -152,6 +156,12 @@ export function MemoryPage() {
         subtitle={t('app.memory.tagline')}
         actions={
           <>
+            {keptByCore && (
+              <GlassButton variant={showHistory ? 'secondary' : 'ghost'} onClick={() => setShowHistory(open => !open)} aria-pressed={showHistory}>
+                <IconHistory />
+                {showHistory ? t('memoryPage.history.close') : t('memoryPage.history')}
+              </GlassButton>
+            )}
             <GlassButton variant="primary" onClick={() => setAdding(true)} disabled={!hermesHome || adding}>
               <IconPlus />
               {t('memoryPage.add')}
@@ -161,6 +171,12 @@ export function MemoryPage() {
         }
       />
 
+      {keptByCore && showHistory ? (
+        <div className="flex min-h-0 flex-1 flex-col px-6 pb-6">
+          <MemoryHistory onChanged={reload} />
+        </div>
+      ) : (
+      <>
       <div className="flex flex-col gap-3 px-6 pb-4">
         <SearchField value={query} onChange={setQuery} placeholder={t('memoryPage.search')} />
         <div className="flex items-center justify-between gap-3">
@@ -234,6 +250,8 @@ export function MemoryPage() {
           <MemoryDetail entry={selected} related={related} editable={editable} busy={busy} onSave={save} onForget={forget} onAdd={() => setAdding(true)} toolset={toolset} hasAny={memory.entries.length > 0} />
         )}
       </div>
+      </>
+      )}
     </div>
   )
 }
