@@ -3,6 +3,7 @@ import fs from 'node:fs/promises'
 import { writeFileAtomic } from '../atomic-write.ts'
 import path from 'node:path'
 import { type AuditEntry, type AuditJournals, IPC } from '../../shared/ipc.ts'
+import { DOWNLOAD_JOURNAL } from '../download-quarantine.ts'
 import { tailJournal } from '../journal-tail.ts'
 import { jarodOsDataDir } from '../paths.ts'
 
@@ -58,6 +59,10 @@ export function registerBridgeIpc(): void {
   ipcMain.handle(IPC.auditJournalsRead, (_event, limit: unknown): AuditJournals => {
     const n = typeof limit === 'number' && Number.isInteger(limit) && limit > 0 ? Math.min(limit, 500) : 500
 
-    return { bridge: tailJournal(auditFile(), n), control: tailJournal(path.join(jarodOsDataDir(), 'control-audit.jsonl'), n) }
+    return {
+      bridge: tailJournal(auditFile(), n),
+      control: tailJournal(path.join(jarodOsDataDir(), 'control-audit.jsonl'), n),
+      downloads: tailJournal(path.join(jarodOsDataDir(), DOWNLOAD_JOURNAL), n)
+    }
   })
 }

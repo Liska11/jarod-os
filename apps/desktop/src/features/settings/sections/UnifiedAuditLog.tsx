@@ -10,22 +10,26 @@ import { AUDIT_SOURCES, type AuditOutcome, type AuditSource, filterAudit, type U
 const LIMIT = 500
 
 /**
- * V-03 — lit les quatre journaux (le noyau pour l'agent et `jarod mcp`, le shell pour le pont et le contrôle) et les fusionne. Un backend sans le
+ * V-03 — lit les cinq journaux (le noyau pour l'agent et `jarod mcp`, le shell pour le pont, le contrôle et les téléchargements) et les fusionne. Un backend sans le
  * canal `audit-recent` (Hermes) ne retire que sa part : les journaux du shell restent lisibles, et la vue le dit.
  */
 async function loadUnifiedAudit(): Promise<UnifiedAudit & { coreMissing: boolean }> {
   const [core, shell] = await Promise.allSettled([jarod<{ agent: Record<string, unknown>[]; mcpServer: string[] }>('audit-recent', LIMIT), window.jarodOS.audit.journals(LIMIT)])
   const fromCore = core.status === 'fulfilled' && core.value && Array.isArray(core.value.agent) ? core.value : { agent: [], mcpServer: [] }
-  const fromShell = shell.status === 'fulfilled' ? shell.value : { bridge: [], control: [] }
+  const fromShell = shell.status === 'fulfilled' ? shell.value : { bridge: [], control: [], downloads: [] }
 
-  return { ...unifyAudit({ agent: fromCore.agent, mcpServer: fromCore.mcpServer ?? [], bridge: fromShell.bridge, control: fromShell.control }, LIMIT), coreMissing: core.status === 'rejected' }
+  return {
+    ...unifyAudit({ agent: fromCore.agent, mcpServer: fromCore.mcpServer ?? [], bridge: fromShell.bridge, control: fromShell.control, downloads: fromShell.downloads ?? [] }, LIMIT),
+    coreMissing: core.status === 'rejected'
+  }
 }
 
 const SOURCE_LABEL: Record<AuditSource, MessageKey> = {
   agent: 'settings.audit.source.agent',
   bridge: 'settings.audit.source.bridge',
   control: 'settings.audit.source.control',
-  'mcp-server': 'settings.audit.source.mcpServer'
+  'mcp-server': 'settings.audit.source.mcpServer',
+  download: 'settings.audit.source.download'
 }
 
 const OUTCOME_TONE: Record<AuditOutcome, PillTone> = { ok: 'muted', decided: 'info', refused: 'warn', failed: 'danger' }

@@ -9,7 +9,8 @@ import { type Launched, launchShell } from './launch'
  *  - agent      : a real turn whose `list_dir` call the core journals (SQLite, `audit` stream) ;
  *  - bridge     : `audit.jsonl` lines written where the Python bridge writes them (the bridge itself is not run here) ;
  *  - control    : a `control-audit.jsonl` line, same file as the shell's control channel and the Rust host ;
- *  - mcp-server : a `mcp-server.log` line in the core's data root, where `jarod mcp` writes it.
+ *  - mcp-server : a `mcp-server.log` line in the core's data root, where `jarod mcp` writes it ;
+ *  - download   : a `download-quarantine.jsonl` decision, where the shell's download quarantine writes it (V-07).
  * The seeded lines use the formats the writers' own tests pin (c3 fixtures, `mcp-server.test.ts`). Réglages › Confidentialité › « Voir le journal »
  * must show all four, newest first, and its filters must narrow them. Run `npm run bundle:core && npm run build` first; labels from src/locales/fr.ts.
  */
@@ -87,7 +88,7 @@ test.beforeAll(async () => {
   await composer.press('Enter')
   await expect(page.getByText('fini v03').first()).toBeVisible({ timeout: 60_000 })
 
-  // The three file journals, in their writers' formats, a few seconds in the future so they sort above the agent's line.
+  // The four file journals, in their writers' formats, a few seconds in the future so they sort above the agent's line.
   const soon = (s: number) => new Date(Date.now() + s * 1000).toISOString()
   const shellData = path.join(shell.root, 'hermes', 'jarod-os')
 
@@ -96,6 +97,9 @@ test.beforeAll(async () => {
   ])
   append(path.join(shellData, 'control-audit.jsonl'), [{ at: soon(3), client: 'backend', cmd: 'system', command: 'kill', tier: 'destructive', allowed: false, reason: 'approval refused', code: 'approval-refused', requestId: REQUEST, surface: 'backend' }])
   append(path.join(shell.root, 'data', 'profile', 'mcp-server.log'), [`${soon(4)} memory_search args=12o résultat=345o ok`])
+  append(path.join(shellData, 'download-quarantine.jsonl'), [
+    { at: soon(5), site: 'browser', host: 'files.example', name: 'notes.txt', outcome: 'admitted', sha256: 'cd'.repeat(32), size: 20, scanner: 'defender', verdict: 'clean' }
+  ])
 })
 
 test.afterAll(async () => {
@@ -110,7 +114,7 @@ test('the core serves its part: the agent line and the mcp-server.log line', asy
   expect(part.mcpServer.some(l => l.includes('memory_search'))).toBe(true)
 })
 
-test('Réglages › Confidentialité shows the four journals in one list, newest first, and its filters narrow it', async () => {
+test('Réglages › Confidentialité shows the five journals in one list, newest first, and its filters narrow it', async () => {
   await page.getByRole('button', { name: 'Réglages' }).first().click()
   await page.getByRole('button', { name: 'Confidentialité', exact: true }).first().click()
   await page.getByRole('button', { name: 'Voir le journal', exact: true }).click()
@@ -122,7 +126,8 @@ test('Réglages › Confidentialité shows the four journals in one list, newest
   // Newest first: the three seeded lines (2 s, 3 s, 4 s ahead) above the agent's.
   const order = await rows.evaluateAll(els => els.map(el => el.getAttribute('data-source')))
 
-  expect(order.slice(0, 4)).toEqual(['mcp-server', 'control', 'bridge', 'agent'])
+  expect(order.slice(0, 5)).toEqual(['download', 'mcp-server', 'control', 'bridge', 'agent'])
+  await expect(page.locator('[data-testid="unified-audit-line"][data-source="download"]')).toContainText('defender : clean')
   // The bridge line and the control line of the same attempt carry the same request id.
   await expect(page.locator('[data-testid="unified-audit-line"][data-source="bridge"]')).toContainText(REQUEST)
   await expect(page.locator('[data-testid="unified-audit-line"][data-source="control"]')).toContainText(REQUEST)
@@ -139,6 +144,8 @@ test('Réglages › Confidentialité shows the four journals in one list, newest
   // A source unticked disappears; the text filter searches tools, details and ids.
   await page.getByRole('button', { name: 'Clients MCP', exact: true }).click()
   await expect(page.locator('[data-testid="unified-audit-line"][data-source="mcp-server"]')).toHaveCount(0)
+  await page.locator('button[aria-pressed]', { hasText: 'Téléchargements' }).click()
+  await expect(page.locator('[data-testid="unified-audit-line"][data-source="download"]')).toHaveCount(0)
   await page.getByLabel('Filtrer par outil, détail ou identifiant…').fill(REQUEST)
   await expect(rows).toHaveCount(2)
 })

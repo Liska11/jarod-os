@@ -6,7 +6,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 import { IPC, type WebOpenOptions, type WebViewBounds, type WebViewEvent } from '../../shared/ipc.ts'
 import { isViewable } from '../../shared/viewer.ts'
 import { chromeUserAgent, isSiteId, PASSKEY_GUARD, type SiteDef, SITES, siteMayOpen, sitePartition } from '../../shared/web-sites.ts'
-import { defenderScan, quarantineDownload } from '../download-quarantine.ts'
+import { DOWNLOAD_JOURNAL, defenderScan, downloadJournalSink, quarantineDownload } from '../download-quarantine.ts'
 import { log } from '../log.ts'
 import { downloadsDir, jarodOsDataDir } from '../paths.ts'
 import { isLoopbackOrigin } from '../pinokio/guard.ts'
@@ -234,13 +234,7 @@ function prepareSitePartition(site: SiteDef, parent: BrowserWindow | null): void
             new Notification({ title, body, silent: true }).show()
           }
         },
-        journal: entry => {
-          try {
-            fs.appendFileSync(path.join(jarodOsDataDir(), 'download-quarantine.jsonl'), `${JSON.stringify(entry)}\n`)
-          } catch {
-            // Un journal qui échoue ne retient pas la décision : elle est déjà prise et notifiée.
-          }
-        },
+        journal: entry => downloadJournalSink(path.join(jarodOsDataDir(), DOWNLOAD_JOURNAL))(entry),
         log: line => log('web', line)
       })
     })

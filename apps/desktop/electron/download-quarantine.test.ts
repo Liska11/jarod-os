@@ -2,7 +2,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
-import { defenderBinary, defenderScan, type DownloadDecision, type DownloadItemLike, freePath, quarantineDownload, safeDownloadName, type ScanVerdict } from './download-quarantine.ts'
+import { defenderBinary, defenderScan, type DownloadDecision, type DownloadItemLike, downloadJournalSink, freePath, quarantineDownload, safeDownloadName, type ScanVerdict } from './download-quarantine.ts'
 
 const made: string[] = []
 const dir = () => {
@@ -190,6 +190,21 @@ describe('V-07 — téléchargements des applications web du shell', () => {
     expect(safeDownloadName('note|v2<final>.txt')).toBe('note_v2_final_.txt')
     expect(safeDownloadName('..')).toBe('telechargement')
     expect(safeDownloadName('')).toBe('telechargement')
+  })
+
+  it('le journal des décisions est borné : au-delà de la limite il devient « .1 », une seule génération plus ancienne', () => {
+    const file = path.join(dir(), 'download-quarantine.jsonl')
+    const sink = downloadJournalSink(file, 200)
+    const entry = (name: string): DownloadDecision => ({ at: '2026-10-23T10:00:00.000Z', site: 'browser', host: 'h', name, outcome: 'admitted' })
+
+    for (let i = 0; i < 6; i++) {
+      sink(entry(`fichier-${i}.txt`))
+    }
+
+    expect(fs.existsSync(`${file}.1`)).toBe(true)
+    expect(fs.statSync(file).size).toBeLessThan(400)
+    const all = [...fs.readFileSync(`${file}.1`, 'utf8').trim().split('\n'), ...fs.readFileSync(file, 'utf8').trim().split('\n')]
+    expect(JSON.parse(all.at(-1)!).name).toBe('fichier-5.txt')
   })
 
   it('sans Defender : « indisponible », jamais « propre »', async () => {

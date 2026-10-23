@@ -102,3 +102,14 @@ test('the EICAR test file is refused and never reaches Downloads; the staging fo
   expect(fs.existsSync(path.join(downloads(), 'eicar.txt'))).toBe(false)
   expect(fs.readdirSync(path.join(shell.root, 'hermes', 'jarod-os', 'quarantine', 'downloads'))).toEqual([])
 })
+
+test('both real decisions show in Réglages › Confidentialité, under the Downloads source', async () => {
+  await page.getByRole('button', { name: 'Réglages' }).first().click()
+  await page.getByRole('button', { name: 'Confidentialité', exact: true }).first().click()
+  await page.getByRole('button', { name: 'Voir le journal', exact: true }).click()
+
+  const row = (tool: string) => page.locator(`[data-testid="unified-audit-line"][data-source="download"][data-tool="${tool}"]`)
+
+  await expect(row('notes.txt')).toHaveAttribute('data-outcome', 'ok', { timeout: 30_000 })
+  await expect(row('eicar.txt')).toHaveAttribute('data-outcome', 'refused')
+})

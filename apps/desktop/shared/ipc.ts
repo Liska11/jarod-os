@@ -659,10 +659,14 @@ export interface AuditEntry {
   args?: Record<string, unknown>
 }
 
-/** V-03 : les dernières lignes BRUTES des journaux du shell — `audit.jsonl` (pont système) et `control-audit.jsonl` (contrôle, shell et hôte Rust). */
+/**
+ * V-03 : les dernières lignes BRUTES des journaux du shell — `audit.jsonl` (pont système), `control-audit.jsonl` (contrôle, shell et hôte Rust)
+ * et `download-quarantine.jsonl` (téléchargements des applications web, V-07).
+ */
 export interface AuditJournals {
   bridge: string[]
   control: string[]
+  downloads: string[]
 }
 
 export interface WindowState {

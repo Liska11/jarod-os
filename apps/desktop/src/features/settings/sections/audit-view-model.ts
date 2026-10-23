@@ -4,16 +4,17 @@
  *  - `agent`      : le journal du noyau (SQLite, flux `audit`, contrat c7) — chaque appel d'outil de l'agent passé par la porte unique ;
  *  - `bridge`     : `audit.jsonl` du pont système Python (contrat c3-bridge) — chaque action système demandée par l'agent ;
  *  - `control`    : `control-audit.jsonl` (contrat c3-control), écrit par le canal de contrôle du shell ET par l'hôte Rust — chaque tentative ;
- *  - `mcp-server` : `mcp-server.log` de `jarod mcp` — chaque appel d'un client MCP externe (noms d'outils et tailles, jamais de contenu).
+ *  - `mcp-server` : `mcp-server.log` de `jarod mcp` — chaque appel d'un client MCP externe (noms d'outils et tailles, jamais de contenu) ;
+ *  - `download`   : `download-quarantine.jsonl` du shell (V-07) — chaque téléchargement d'une application web : admis, refusé ou interrompu.
  * Les valeurs sont déjà masquées à l'écriture par chaque écrivain ; rien ici ne les démasque. Une ligne illisible est comptée, pas inventée.
  * Les lignes du pont et du contrôle d'une même tentative portent le même `requestId` : la vue le montre pour les rapprocher.
  */
 
 import { decisionKind, isRefusal } from '../../hermes/audit-timeline.ts'
 
-export type AuditSource = 'agent' | 'bridge' | 'control' | 'mcp-server'
+export type AuditSource = 'agent' | 'bridge' | 'control' | 'mcp-server' | 'download'
 
-export const AUDIT_SOURCES: readonly AuditSource[] = ['agent', 'bridge', 'control', 'mcp-server']
+export const AUDIT_SOURCES: readonly AuditSource[] = ['agent', 'bridge', 'control', 'mcp-server', 'download']
 
 /** Ce que la ligne dit de l'issue : exécuté, refusé (par la personne, une règle ou le contrôle), échoué, ou décision seule (pas encore d'issue). */
 export type AuditOutcome = 'ok' | 'refused' | 'failed' | 'decided'
@@ -43,6 +44,8 @@ export interface AuditSourcesRaw {
   mcpServer: readonly string[]
   bridge: readonly string[]
   control: readonly string[]
+  /** Absent pour un shell plus ancien que V-07. */
+  downloads?: readonly string[]
 }
 
 export interface UnifiedAudit {
@@ -158,6 +161,32 @@ function fromMcpServer(line: string): UnifiedAuditLine | null {
   }
 }
 
+/** Une décision de `download-quarantine.jsonl` (electron/download-quarantine.ts, `DownloadDecision`). */
+function fromDownload(raw: Record<string, unknown>): UnifiedAuditLine | null {
+  const at = iso(raw.at)
+  const name = str(raw.name)
+  const outcome = str(raw.outcome)
+
+  if (at === null || !name || !['admitted', 'refused', 'cancelled'].includes(outcome)) {
+    return null
+  }
+
+  const sha = str(raw.sha256)
+  const scanned = str(raw.scanner) ? `${str(raw.scanner)} : ${str(raw.verdict) || '?'}` : ''
+
+  return {
+    at,
+    source: 'download',
+    tool: name,
+    // Admis = arrivé chez la personne ; refusé = supprimé ; interrompu = rien n'est arrivé, sans menace en cause.
+    outcome: outcome === 'admitted' ? 'ok' : outcome === 'refused' ? 'refused' : 'failed',
+    decision: outcome,
+    tier: null,
+    detail: [str(raw.site), str(raw.host), str(raw.reason) || scanned].filter(Boolean).join(' — '),
+    ...(sha ? { requestId: sha.slice(0, 12) } : {})
+  }
+}
+
 function parseJsonLine(line: string): Record<string, unknown> | null {
   try {
     const value: unknown = JSON.parse(line)
@@ -170,7 +199,7 @@ function parseJsonLine(line: string): Record<string, unknown> | null {
 
 /** Les quatre journaux en une liste, la plus récente d'abord, bornée à `limit` lignes. */
 export function unifyAudit(raw: AuditSourcesRaw, limit = 500): UnifiedAudit {
-  const unreadable: Record<AuditSource, number> = { agent: 0, bridge: 0, control: 0, 'mcp-server': 0 }
+  const unreadable: Record<AuditSource, number> = { agent: 0, bridge: 0, control: 0, 'mcp-server': 0, download: 0 }
   const lines: UnifiedAuditLine[] = []
   const keep = (source: AuditSource, line: UnifiedAuditLine | null) => (line ? lines.push(line) : unreadable[source]++)
 
@@ -190,6 +219,11 @@ export function unifyAudit(raw: AuditSourcesRaw, limit = 500): UnifiedAudit {
 
   for (const text of raw.mcpServer.filter(l => l.trim())) {
     keep('mcp-server', fromMcpServer(text))
+  }
+
+  for (const text of (raw.downloads ?? []).filter(l => l.trim())) {
+    const parsed = parseJsonLine(text)
+    keep('download', parsed ? fromDownload(parsed) : null)
   }
 
   // Tri stable : à la même milliseconde, l'ordre d'écriture de chaque source est conservé.

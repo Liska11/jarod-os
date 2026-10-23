@@ -13,7 +13,10 @@ import path from 'node:path'
  * Un fichier non analysé n'arrive jamais : sans Defender, les téléchargements sont refusés, et la notification le dit.
  */
 
-export type ScanVerdict = { verdict: 'clean' | 'infected' | 'unavailable'; scanner: string; detail?: string }
+/** Le nom du journal des décisions, sous les données du shell (écrit par web.ts, relu par la vue unique des journaux). */
+export const DOWNLOAD_JOURNAL = 'download-quarantine.jsonl'
+
+export type ScanVerdict ={ verdict: 'clean' | 'infected' | 'unavailable'; scanner: string; detail?: string }
 
 /** Ce que le module lit d'un `DownloadItem` d'Electron. */
 export interface DownloadItemLike {
@@ -181,6 +184,28 @@ export function quarantineDownload(item: DownloadItemLike, site: string, deps: D
         })
     })
   })
+}
+
+/**
+ * Le journal des décisions (`download-quarantine.jsonl`), borné comme celui du contrôle : au-delà de `limit` il devient `<nom>.1` (une génération
+ * plus ancienne), que la vue unique des journaux relit aussi. Un journal qui échoue est un trou dans la trace, jamais une raison de changer la
+ * décision : elle est déjà prise et notifiée.
+ */
+export function downloadJournalSink(file: string, limit = 4 * 1024 * 1024): (entry: DownloadDecision) => void {
+  return entry => {
+    try {
+      fs.mkdirSync(path.dirname(file), { recursive: true })
+
+      if (fs.existsSync(file) && fs.statSync(file).size >= limit) {
+        fs.rmSync(`${file}.1`, { force: true })
+        fs.renameSync(file, `${file}.1`)
+      }
+
+      fs.appendFileSync(file, `${JSON.stringify(entry)}\n`)
+    } catch {
+      // Voir plus haut : la décision ne dépend pas du journal.
+    }
+  }
 }
 
 /** `MpCmdRun.exe`, le même analyseur que la quarantaine du noyau ; null s'il n'est pas là. */

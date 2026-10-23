@@ -27,7 +27,7 @@ describe('V-03 — une vue pour les quatre journaux', () => {
 
     const view = unifyAudit({ agent, bridge, control, mcpServer })
 
-    expect(view.unreadable).toEqual({ agent: 0, bridge: 0, control: 0, 'mcp-server': 0 })
+    expect(view.unreadable).toEqual({ agent: 0, bridge: 0, control: 0, 'mcp-server': 0, download: 0 })
     expect(view.lines).toHaveLength(agent.length + bridge.length + control.length + mcpServer.length)
     expect(new Set(view.lines.map(l => l.source))).toEqual(new Set(['agent', 'bridge', 'control', 'mcp-server']))
   })
@@ -92,7 +92,33 @@ describe('V-03 — une vue pour les quatre journaux', () => {
     })
 
     expect(view.lines).toEqual([])
-    expect(view.unreadable).toEqual({ agent: 1, bridge: 2, control: 1, 'mcp-server': 1 })
+    expect(view.unreadable).toEqual({ agent: 1, bridge: 2, control: 1, 'mcp-server': 1, download: 0 })
+  })
+
+  it('cinquième source (V-07) : chaque téléchargement d’une application web — admis, refusé, interrompu — avec son empreinte courte', () => {
+    const line = (outcome: string, extra: Record<string, unknown> = {}) =>
+      JSON.stringify({ at: '2026-10-23T10:00:00.000Z', site: 'browser', host: 'files.example', name: `${outcome}.pdf`, outcome, sha256: 'ab'.repeat(32), ...extra })
+    const view = unifyAudit({
+      ...empty,
+      downloads: [
+        line('admitted', { scanner: 'defender', verdict: 'clean' }),
+        line('refused', { scanner: 'defender', verdict: 'infected', reason: 'menace détectée par defender' }),
+        line('cancelled', { sha256: undefined, reason: 'interrupted' }),
+        '{"at":"2026-10-23T10:00:00Z","name":"x","outcome":"inconnu"}'
+      ]
+    })
+
+    expect(view.lines.map(l => [l.tool, l.source, l.outcome])).toEqual([
+      ['admitted.pdf', 'download', 'ok'],
+      ['refused.pdf', 'download', 'refused'],
+      ['cancelled.pdf', 'download', 'failed']
+    ])
+    expect(view.lines[0]).toMatchObject({ detail: 'browser — files.example — defender : clean', requestId: 'abababababab' })
+    expect(view.lines[1]!.detail).toContain('menace détectée par defender')
+    expect(view.lines[2]!.requestId).toBeUndefined()
+    expect(view.unreadable.download).toBe(1)
+    // Un shell plus ancien que V-07 n'envoie pas cette source : rien ne casse.
+    expect(unifyAudit({ ...empty }).lines).toEqual([])
   })
 
   it('filtre par source, par issue et par texte (outil, détail, identifiants)', () => {
