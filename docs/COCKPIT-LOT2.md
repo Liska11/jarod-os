@@ -44,6 +44,8 @@ Ce que chaque outil vérifie :
 | `edit_file` | Le nouveau texte est présent et l'ancien a disparu. |
 | `system_open` (application) | L'application paraît parmi les applications ouvertes (plusieurs relectures). Une adresse, un fichier ou un volet donne `unverifiable`, et la raison est dite. |
 | `system_quit_app` | Le processus a disparu. Encore ouverte après une fermeture polie : `unverifiable`, car elle peut demander d'enregistrer. Encore ouverte après un arrêt forcé : `failed`. |
+| `run_shell` (V-10) | Le code de sortie **rendu par le système** (0 = constaté ; non nul, délai dépassé ou interruption = échec) et ce que la commande a changé dans le dossier de travail (instantané borné avant/après : créés, modifiés, supprimés ; « non mesuré » au-delà de 20 000 fichiers ou 1,5 s ; `node_modules`, `.git` ignorés). |
+| `http_request`, `web_fetch` (V-10) | La réponse **réellement reçue** : statut, hôte qui a répondu (redirection dite), taille, type. 2xx = constaté ; 4xx/5xx = échec ; redirection non suivie (requête avec secret) = impossible, avec sa destination. |
 | Autres outils à effet | Pas de vérification prévue. La tâche le dit (« aucune vérification prévue pour cet outil ») ; le résultat de l'outil n'est pas modifié. |
 
 ## Tâches
@@ -71,6 +73,6 @@ Ce que chaque outil vérifie :
 
 ## Limites
 
-- Les preuves couvrent les fichiers, le lancement et la fermeture d'applications. Le shell, le réseau et les autres outils système n'ont pas encore de vérification propre : la tâche le dit.
+- Les preuves couvrent les fichiers, le lancement et la fermeture d'applications, et depuis V-10 (2026-10-23) le shell et le réseau. Les constats viennent de ce que l'outil a observé (code du système, réponse reçue), jamais du texte de sortie : une commande qui imprime « code de sortie : 0 » ne fabrique pas de preuve. Les autres outils système n'ont pas de vérification propre : la tâche le dit.
 - Les motifs de cible portent sur la chaîne que l'outil déclare. Un même fichier écrit sous deux formes (relative ou absolue) n'est pas normalisé, et un motif doit couvrir les deux formes si besoin.
 - L'écran Tâches liste les 50 dernières tâches. Il n'y a pas encore de filtre par conversation.
