@@ -146,6 +146,8 @@ describe.skipIf(!BIN)('the real jarod-control-shadow, live', () => {
     // The counter on disk: the last counts, the reason it stopped, and per command what went through.
     expect(written).toMatchObject({ compared: expected, diverged: 0, known: 2, running: false, stopReason: 'stopped' })
     expect(written.byCommand['panel:plugin']).toMatchObject({ known: 1, diverged: 0 })
+    // The tiers this door decided for `plugin` (list, add…, remove): what its requests were worth.
+    expect(Object.keys(written.byCommand['panel:plugin'].tiers)).toEqual(expect.arrayContaining(['read', 'mutate', 'destructive']))
     expect(written.byCommand['backend:ui-list'].compared).toBeGreaterThan(0)
     expect(Object.values(written.byCommand as Record<string, { compared: number }>).reduce((sum, row) => sum + row.compared, 0)).toBe(expected)
     expect(JSON.stringify(written)).not.toContain(TOKENS.cli)

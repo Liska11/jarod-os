@@ -102,7 +102,7 @@ export interface ShadowStats {
   known: number
   dropped: number
   /** The same counts per `surface:cmd` (cmd trimmed, empty as `-`): which requests a session really sent through the door. */
-  byCommand: Record<string, { compared: number; diverged: number; known: number }>
+  byCommand: Record<string, { compared: number; diverged: number; known: number; tiers: Partial<Record<ControlTier | 'none', number>> }>
 }
 
 export interface ControlShadowOptions {
@@ -320,8 +320,12 @@ export class ControlShadow {
     // A cmd is whatever a caller sent: past MAX_COMMAND_KEYS distinct ones the rest share one row, so the counts stay bounded.
     const named = `${pending.surface}:${pending.cmd.trim() || '-'}`
     const key = Object.hasOwn(this.byCommand, named) || Object.keys(this.byCommand).length < MAX_COMMAND_KEYS ? named : `${pending.surface}:(other)`
-    this.byCommand[key] ??= { compared: 0, diverged: 0, known: 0 }
+    this.byCommand[key] ??= { compared: 0, diverged: 0, known: 0, tiers: {} }
     const row = this.byCommand[key]
+    // The tier this door decided: what a session's requests were worth (read, act, mutate, destructive).
+    const tier = pending.ts.tier ?? 'none'
+
+    row.tiers[tier] = (row.tiers[tier] ?? 0) + 1
 
     this.counts.compared++
     row.compared++
