@@ -119,6 +119,18 @@ try {
   child.stdin.end()
   child.kill()
   await new Promise(r => setTimeout(r, 1500))
+  // Hermes détache sa passerelle (`gateway run --idle-exit`) : elle survit au serveur ACP (constaté encore en vie 5 min après). On
+  // n'arrête que CELLE de ce dossier jetable — son fichier d'état nomme le dossier — jamais la passerelle de la vraie installation.
+  try {
+    const state = JSON.parse(fs.readFileSync(path.join(home, 'gateway_state.json'), 'utf8'))
+    if (state.kind === 'hermes-gateway' && path.resolve(state.hermes_home) === path.resolve(home) && Number.isInteger(state.pid)) {
+      process.kill(state.pid)
+      console.log(`(passerelle du dossier jetable arrêtée : pid ${state.pid})`)
+      await new Promise(r => setTimeout(r, 1500))
+    }
+  } catch {
+    // Pas de passerelle lancée, ou déjà partie.
+  }
   llm.close()
   try {
     fs.rmSync(home, { recursive: true, force: true })
