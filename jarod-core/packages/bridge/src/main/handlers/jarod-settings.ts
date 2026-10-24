@@ -627,6 +627,40 @@ const ENTRIES: Record<string, Entry> = {
         : null,
   },
   // ── Modèles ────────────────────────────────────────────────────────────────────────────────────────────
+  // V-19 : un modèle par capacité (vision, code, long contexte), chacun facultatif ; `null` retire la route.
+  capabilityRouting: {
+    read: (s) => ({ ...s.capabilityRouting }),
+    write: (v, current, env) => {
+      const o = record("capabilityRouting", v, ["vision", "code", "longContext"]);
+      const next = { ...current.capabilityRouting };
+      for (const cap of ["vision", "code", "longContext"] as const) {
+        if (o[cap] === undefined) continue;
+        if (o[cap] === null) {
+          delete next[cap];
+          continue;
+        }
+        const r = record(`capabilityRouting.${cap}`, o[cap], ["provider", "model"]);
+        const provider = text(`capabilityRouting.${cap}.provider`, r.provider, 80, false);
+        env.provider(provider); // lève : fournisseur inconnu
+        next[cap] = { provider, model: text(`capabilityRouting.${cap}.model`, r.model, 200, false) };
+      }
+      return { capabilityRouting: next };
+    },
+    // Une route envoie certains tours à un autre fournisseur : s'il sort de la machine et n'était pas déjà nommé (actif, replis, autre
+    // route), confirmation native qui le NOMME — même règle que les replis.
+    confirm: (patch, current, env) => {
+      const known = new Set([current.activeProvider, ...current.fallbacks.map((f) => f.provider), ...Object.values(current.capabilityRouting).map((r) => r!.provider)]);
+      const added = [...new Set(Object.values(patch.capabilityRouting ?? {}).map((r) => r!.provider))].filter((p) => !known.has(p) && env.provider(p).leavesMachine);
+      if (!added.length) return null;
+      return {
+        message: `Envoyer certains tours à ${added.map((p) => env.provider(p).name).join(", ")} ?`,
+        detail:
+          "Quand un tour demande cette capacité (une image, du code, un long historique), Jarod enverra la conversation EN COURS — messages, résultats d'outils et contenus lus — à ce fournisseur, hors de cette machine. " +
+          "Une conversation dont vous avez épinglé le modèle n'est jamais re-routée. Retirez la route à tout moment dans Réglages › Modèles.",
+        action: "Autoriser la route",
+      };
+    },
+  },
   fallbacks: {
     read: (s) => s.fallbacks.map((f) => ({ provider: f.provider, ...(f.model ? { model: f.model } : {}) })),
     write: (v, current, env) => {
