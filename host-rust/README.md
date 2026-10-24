@@ -102,6 +102,30 @@ Found by writing the second implementation from the contracts. See also `contrac
 11. **A token-shaped but well-formed `requestId`** is echoed to the caller who sent it, in both hosts (the caller
     already has it); the journal never holds it, because the redacted form is not a well-formed id and is dropped.
 
+## In shadow of the shell (V-22, 2026-10-24): `jarod-control-shadow`
+
+The first step of moving the door, and only that: **the Rust adjudicator decides beside the TypeScript one, it never rules.** Off
+unless `JAROD_HOST_CONTROL=1`; the rollback is the flag.
+
+- `src/bin/jarod-control-shadow.rs` (any platform: the adjudication is pure): `[--contracts DIR]` (else `JAROD_OS_CONTRACTS_DIR`). On
+  stdin, a first line with two tokens minted for it, then one line per request (`surface`, `request`, the catalogue's tier for its
+  command id, whether the catalogue is loaded); on stdout `{"ready":true}`, then one `adjudicate` decision per line. Missing contracts or
+  bad tokens: exit 2 before `ready`. `tests/shadow.rs` (2 tests) drives the real process.
+- The shell (`apps/desktop/electron/shell/control-shadow.ts`, wired in `main.ts`) adds an observer to both doors (`ControlSecurity`
+  `addObserver`: told each decision after it is made, cannot change it, ignored if it throws). Each request goes to the shadow with only
+  `cmd`, `command`, `args` and the shadow token of the client the door recognised: **the live tokens never leave the shell**, so
+  authentication is compared by its outcome, not re-checked. Any differing field (`allowed`, `client`, `code`, `tier`, `reason`) goes to
+  `<config>/control-shadow.jsonl`, redacted by the door. Difference 2 above, when this side's argument check refuses the request too, is
+  counted as known and not written. A missing binary or one that stops only turns the shadow off, with a line in the log.
+- Proof: `control-shadow.test.ts` runs every kind of request in the C2 matrix through both real doors and the real binary, with the
+  catalogue loaded and not yet loaded: 0 divergences, 2 known (difference 2), over more than 300 requests across the two doors. A wrongly allowed
+  request is caught and written down. `e2e/control-shadow.spec.ts`: in the running app the shadow starts and stays up with the flag,
+  nothing starts without it.
+
+Not done: the binary is not packaged; no count of what the shadow compared in a real session is surfaced (only divergences are written);
+the in-process door (`submitLocal`) is not adjudicated by `adjudicateOnly`, so it is not shadowed; the Rust host does not serve the door
+(that is the next step, after a real session with no divergence).
+
 ## Storage (phase 2.1, 2.2): `crates/host-storage`
 
 The NVMe volume is a **controlled zone, not a safe one**. C: holds Windows and the minimal host; D: is the
