@@ -62,12 +62,12 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 240,
-            "pattern": "^[A-Za-z0-9._-]+(/[A-Za-z0-9._-]+)*$",
+            "pattern": "^[A-Za-z0-9._@-]+(/[A-Za-z0-9._@-]+)*$",
             "not": {
               "type": "string",
               "pattern": "(^|/)\\.\\.?(/|$)"
             },
-            "description": "Relative, forward slashes, plain names only: no `..`, no drive, no stream, no space."
+            "description": "Relative, forward slashes, plain names only: no `..`, no drive, no stream, no space. `@` is allowed (npm scoped packages, `node_modules/@scope/name`, in the packaged app); the entry stays without it."
           },
           "sha256": {
             "type": "string",
