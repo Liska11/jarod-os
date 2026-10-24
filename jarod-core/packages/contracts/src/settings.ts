@@ -474,6 +474,12 @@ export interface Settings {
    * les données ailleurs, donc rien ne bascule vers un endroit que l'utilisateur n'a pas nommé.
    */
   fallbacks: { provider: string; model?: string }[];
+  /**
+   * V-19 — un modèle par capacité, chacun facultatif : vision (une image jointe que le modèle actif ne voit pas), code (un message qui
+   * porte du code), long contexte (un historique au-delà de 80 % de la fenêtre du modèle actif). Le modèle de la route passe en tête du
+   * tour, les replis restent derrière. Vide par défaut ; une conversation au modèle épinglé n'est jamais re-routée.
+   */
+  capabilityRouting: { vision?: { provider: string; model: string }; code?: { provider: string; model: string }; longContext?: { provider: string; model: string } };
   providerOverrides: Record<string, ProviderOverride>;
   persona: string;
   thinking: boolean;
@@ -722,6 +728,7 @@ export const DEFAULT_SETTINGS: Settings = {
   activeProvider: "anthropic",
   activeModel: "claude-opus-5",
   fallbacks: [],
+  capabilityRouting: {},
   providerOverrides: {},
   persona: DEFAULT_PERSONA,
   thinking: true,

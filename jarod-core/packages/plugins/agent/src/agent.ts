@@ -6,6 +6,8 @@ import type { ProviderRouter } from "@jarod/plugin-llm";
 import { type ChatTurn, failoverKind, type ProviderClient, type ToolSpec } from "@jarod/contracts";
 import type { AttachmentService } from "@jarod/plugin-rag";
 import type { MemoryService } from "@jarod/plugin-memory";
+import { supportsVision } from "@jarod/plugin-vision";
+import { CAPABILITY_LABEL, chooseCapability, withRoute } from "./capability-routing.js";
 /**
  * Port structurel de `PluginHost` (services/plugins.ts:236,251) : seules les deux coutures lues ici.
  * plugin-workflows (U2) le fournit, plugins isolés par processus : `beforeSend` peut donc être
@@ -633,7 +635,25 @@ ${project.text}`);
     let turnFailed = false;
 
     try {
-      const chain = candidateChain(s, this.d.routing);
+      // V-19 : ce que CE tour demande (une image que le modèle actif ne voit pas, un long historique, du code) choisit la route
+      // déclarée pour cette capacité ; elle passe en tête, les replis restent derrière. Modèle épinglé : jamais re-routé.
+      const declaredChain = candidateChain(s, this.d.routing);
+      const routed = chooseCapability(
+        {
+          text: query,
+          hasImage: attachments.some((a) => a.mime.startsWith("image/")),
+          activeSeesImages: supportsVision(s.activeProvider, s.activeModel),
+          historyTokens: Math.ceil((system.length + messages.list(sessionId).reduce((n, m) => n + m.content.length, 0)) / CHARS_PER_TOKEN),
+          activeWindow: contextWindowFor(s, s.activeProvider, s.activeModel),
+        },
+        s.capabilityRouting,
+        this.d.sessions.get(sessionId)?.context?.modelPinned === true,
+      );
+      const chain = routed ? withRoute(declaredChain, routed.route) : declaredChain;
+      if (routed) {
+        emit({ type: "status", sessionId, status: `Modèle pour ${CAPABILITY_LABEL[routed.capability]} : ${routed.route.provider} · ${routed.route.model} (${routed.reason}).` });
+        turnSpan?.set({ "jarod.capability": routed.capability });
+      }
       const plan = new FailoverPlan(
         chain.length ? chain : [{ provider: s.activeProvider, model: s.activeModel }],
         (p) => providers.keyOrder(p),
