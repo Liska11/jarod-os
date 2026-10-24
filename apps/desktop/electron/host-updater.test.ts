@@ -25,10 +25,13 @@ describe('the flag and the binary', () => {
   })
 
   it('takes JAROD_UPDATER_BIN when it names a file, never PATH behind its back; else PATH', () => {
-    const exists = (file: string) => file === 'C:\\tools\\jarod-updater.exe' || file === path.join('D:\\bin', process.platform === 'win32' ? 'jarod-updater.exe' : 'jarod-updater')
-    expect(findBinary({ JAROD_UPDATER_BIN: 'C:\\tools\\jarod-updater.exe', PATH: 'D:\\bin' }, exists)).toBe('C:\\tools\\jarod-updater.exe')
-    expect(findBinary({ JAROD_UPDATER_BIN: 'C:\\absent.exe', PATH: 'D:\\bin' }, exists)).toBeNull()
-    expect(findBinary({ PATH: ['C:\\nothing', 'D:\\bin'].join(path.delimiter) }, exists)).toBe(path.join('D:\\bin', process.platform === 'win32' ? 'jarod-updater.exe' : 'jarod-updater'))
+    // Folders without a drive letter: on Linux and macOS ':' is PATH's separator.
+    const named = path.join('tools', 'jarod-updater.exe')
+    const onPath = path.join('bin', process.platform === 'win32' ? 'jarod-updater.exe' : 'jarod-updater')
+    const exists = (file: string) => file === named || file === onPath
+    expect(findBinary({ JAROD_UPDATER_BIN: named, PATH: 'bin' }, exists)).toBe(named)
+    expect(findBinary({ JAROD_UPDATER_BIN: path.join('absent.exe'), PATH: 'bin' }, exists)).toBeNull()
+    expect(findBinary({ PATH: ['nothing', 'bin'].join(path.delimiter) }, exists)).toBe(onPath)
     expect(findBinary({ PATH: '' }, exists)).toBeNull()
   })
 
