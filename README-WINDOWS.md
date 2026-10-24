@@ -114,6 +114,22 @@ This builds the app and runs electron-builder for x64. In `apps\desktop\release`
 | `JarodOS-<version>-win-x64.appx` | The same app as a Windows app package (the format MSIX packages use; electron-builder calls the target `appx`). **Unsigned.** |
 | `win-unpacked\` | The unpacked app, runnable as is: `win-unpacked\Jarod-OS.exe`. |
 
+What the package carries in `resources`: the Jarod core (`jarod-core`), the bridge plugin, Pinokio's engine (`pinokiod`), restic, and in
+`updater` the Rust binaries (`jarod-updater.exe`, `jarod-launcher.exe`, `jarod-control-shadow.exe`, built in release by
+`scripts\bundle-updater.mjs`, which needs `cargo`) with the contracts (`contracts\v1`). The Rust binaries do nothing unless their flag is
+on: `JAROD_HOST_UPDATER=1` for the A/B update, `JAROD_HOST_CONTROL=1` for the control shadow. The shortcuts start `Jarod-OS.exe`
+itself, not `jarod-launcher.exe`: the launcher only starts a version installed by the A/B updater, and a fresh install has none.
+
+To check an installer for real (it installs for this user into a throwaway folder, starts the installed app on a throwaway profile,
+waits for the core, checks that A/B stays off, quits, uninstalls, and checks that no process, shortcut, uninstall entry or temporary
+folder is left):
+
+```powershell
+$env:JAROD_INSTALLER_BENCH = '1'; npx playwright test e2e/installer.spec.ts
+```
+
+It runs in `apps\desktop`, and does nothing if a Jarod-OS install or desktop shortcut is already there.
+
 Things to know:
 
 - **Both packages are unsigned.** Windows SmartScreen warns about the installer ("More info", then
@@ -174,6 +190,11 @@ What is different from macOS and Jarod-OS Linux, honestly:
   stores, the Windows folders, Program Files and ProgramData, Hermes's `.env` and `auth.json`, and
   never opens a program or script with its default action (that would run it). Deleting goes to the
   Recycle Bin after the usual approval card.
+- **Updating Jarod-OS itself.** Install a newer installer over the old one. The A/B update with rollback (`JAROD_HOST_UPDATER=1`) is
+  experimental and off by default; nothing is downloaded, and a bundle must be signed with Jarod's key. See
+  [docs/UPDATES.md](docs/UPDATES.md).
+- **Uninstalling** (Settings > Apps) removes the program, its shortcuts and its entry. It keeps your data
+  (`%LOCALAPPDATA%\Jarod-OS`, `%APPDATA%\Jarod-OS`, `Documents\Jarod-OS`); delete those by hand to start over.
 - **Alpha.** Expect rough edges; [WINDOWS-PORT-NOTES.md](WINDOWS-PORT-NOTES.md) lists what was assumed,
   what was verified and what was not.
 

@@ -115,7 +115,9 @@ for the run, so the debug binaries. Passed 5/5 on 2026-10-24: 1.0.0 installed wi
 launcher, the real app confirmed its trial in 16 s, and killing it afterwards did not roll back; a 1.0.2 that crashes on start went back to
 1.0.1 and was blocked; the launcher then started 1.0.1 not on trial. No process and no folder left behind.
 
-Still not done: the installer's shortcut still starts `Jarod-OS.exe`, not the launcher (the launcher is shipped, not used); the release
+Decided (2026-10-24): the installer's shortcut starts `Jarod-OS.exe`, not the launcher. The launcher only starts a slot installed in its
+root; a fresh install has none (exit 3), and A/B is off by default. It moves to the launcher when A/B is on by default and the installer
+seeds the first slot. Still not done: the release
 binaries have not run a full cycle (that needs a bundle signed with the real key); a download channel; signing bundles in CI; CI running
 `cargo test` (the shell's end-to-end tests skip when no binary was built); the trial confirmation is not locked across processes, and a
 second start while the app runs counts as one more trial start.

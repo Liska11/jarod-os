@@ -102,6 +102,6 @@ jour A/B)" block: the running version, the fallback, the blocked versions; "Inst
 signed with Jarod's key, verified before the question); during a trial, "Cette version fonctionne" or "Revenir à la précédente". The Windows
 package ships the binary, the `jarod-launcher` launcher and the contracts in `resources/updater`. Started by the launcher, the app
 confirms its own trial as soon as its kernel is ready, and a version that crashes during its trial is rolled back and blocked (checked on
-the packaged app, `scripts/probes/ab-update-probe.mjs`). Not yet: the installer's shortcut does not go through the launcher, and nothing
-is downloaded. Details: `host-rust/docs/updater.md`. Tests:
+the packaged app, `scripts/probes/ab-update-probe.mjs`). The installer's shortcut starts `Jarod-OS.exe`, not the launcher, on purpose:
+on a fresh install the launcher has no slot to start, and A/B is off by default (DECISIONS, 2026-10-24). Not yet: nothing is downloaded. Details: `host-rust/docs/updater.md`. Tests:
 `electron/host-updater.test.ts` and `e2e/host-updater.spec.ts` drive the real binary (skipped when it was not built).
