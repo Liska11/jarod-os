@@ -21,12 +21,13 @@
     "bundle:core": "node scripts/bundle-core.mjs",
     "bundle:pinokio": "node scripts/bundle-pinokio.mjs",
     "bundle:restic": "node scripts/bundle-restic.mjs",
+    "bundle:updater": "node scripts/bundle-updater.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.electron.json --noEmit",
     "test": "vitest run",
     "test:e2e": "playwright test",
     "dist:mac": "npm run bundle:core && npm run build && electron-builder --mac --arm64 -c.npmRebuild=false --publish never",
     "dist:linux": "npm run bundle:core && npm run build && electron-builder --linux --publish never",
-    "dist:win": "npm run bundle:core && npm run bundle:pinokio && npm run bundle:restic && npm run build && electron-builder --win --x64 -c.npmRebuild=false --publish never",
+    "dist:win": "npm run bundle:core && npm run bundle:pinokio && npm run bundle:restic && npm run bundle:updater && npm run build && electron-builder --win --x64 -c.npmRebuild=false --publish never",
     "i18n:report": "node scripts/i18n-report.mjs"
   },
   "dependencies": {
@@ -238,6 +239,10 @@
         {
           "from": "../../engines/restic/bundle",
           "to": "restic"
+        },
+        {
+          "from": "../../host-rust/target/updater-bundle",
+          "to": "updater"
         }
       ]
     },
