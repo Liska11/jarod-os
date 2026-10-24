@@ -145,13 +145,27 @@ export function describeSpec(spec: ScheduleSpec): string {
   return `chaque ${spec.days ? spec.days.map((d) => names[d]).join(", ") : "jour"} à ${spec.time}`;
 }
 
-export type ScheduleRunner = (schedule: Schedule) => Promise<{ sessionId: string; ok: boolean; summary: string }>;
+/**
+ * V-17 : `beat` est le signe de vie de l'exécution (l'agent l'appelle à chaque événement de son tour). Tant qu'il bat, le bail est
+ * repoussé et la borne d'inactivité aussi ; un exécutant qui ne l'appelle jamais garde l'ancienne borne (durée depuis le départ).
+ */
+export type ScheduleRunner = (schedule: Schedule, beat?: () => void) => Promise<{ sessionId: string; ok: boolean; summary: string }>;
+
+/** V-17 : la raison écrite par `JobsService.recover` sur une exécution trouvée en vol au démarrage. */
+export const INTERRUPTED = "interrompu par un arrêt";
+/** V-17 : une exécution interrompue depuis plus longtemps n'est pas reprise (le monde a changé depuis). */
+export const RESUME_WITHIN_MS = 24 * 3_600_000;
+/** V-17 : ce que lit l'agent en tête d'une reprise : refaire sans vérifier pourrait doubler un effet déjà produit. */
+export const RESUME_NOTE =
+  "[Reprise après un arrêt de Jarod : le tour précédent de cette tâche a été interrompu en cours de route. Vérifie d'abord ce qui a déjà été fait, ne refais pas ce qui est fait, puis termine.]";
 
 /** Runs prompts on a schedule while the app is open (missed runs fire once at startup). */
 export class Scheduler extends Emitter<{ changed: Schedule[] }> {
   private timer: NodeJS.Timeout | null = null;
   /** Les horaires servis en ce moment, avec l'instant du départ (voir `purgeStalledRunning`). */
   private running = new Map<string, number>();
+  /** V-17 : plafond absolu d'une exécution, même vivante (défaut : 4 heures). */
+  maxRunMs = 4 * 3_600_000;
 
   constructor(
     private readonly db: Db,
@@ -286,20 +300,40 @@ export class Scheduler extends Emitter<{ changed: Schedule[] }> {
    * (même patron que `WebhookRunner.withTimeout`), donc il ne réécrit plus `session_id` ni `last_status`
    * par-dessus un tir repris entre-temps.
    */
-  private async withExecutionBound<T>(promise: Promise<T>, id: string): Promise<T> {
+  private async withExecutionBound<T>(run: (beat: () => void) => Promise<T>, id: string, claimedId?: string): Promise<T> {
     const ms = this.stalledAfterMs;
-    promise.catch(() => {});
     let timer: ReturnType<typeof setTimeout> | undefined;
+    let ceiling: ReturnType<typeof setTimeout> | undefined;
+    let fail!: (e: Error) => void;
+    const bound = new Promise<never>((_, reject) => {
+      fail = reject;
+    });
+    // V-17 : la borne compte depuis le DERNIER signe de vie (au départ, depuis le départ) ; le plafond absolu reste.
+    const arm = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => fail(new Error(`délai dépassé (${Math.round(ms / 1000)} s sans signe de vie) — ${id}`)), ms);
+      timer.unref?.();
+    };
+    let renewedAt = 0;
+    const beat = () => {
+      arm();
+      const t = Date.now();
+      // Le bail en base est repoussé au plus toutes les 30 s (ou au tiers du délai) : un signe de vie par jeton n'écrit pas à chaque fois.
+      if (claimedId && t - renewedAt >= Math.min(30_000, ms / 3)) {
+        renewedAt = t;
+        this.jobs?.renew(claimedId);
+      }
+    };
+    arm();
+    ceiling = setTimeout(() => fail(new Error(`durée maximale atteinte (${Math.round(this.maxRunMs / 1000)} s) — ${id}`)), this.maxRunMs);
+    ceiling.unref?.();
+    const promise = run(beat);
+    promise.catch(() => {});
     try {
-      return await Promise.race([
-        promise,
-        new Promise<never>((_, reject) => {
-          timer = setTimeout(() => reject(new Error(`délai dépassé (${Math.round(ms / 1000)} s) — ${id}`)), ms);
-          timer.unref?.();
-        }),
-      ]);
+      return await Promise.race([promise, bound]);
     } finally {
       if (timer) clearTimeout(timer);
+      if (ceiling) clearTimeout(ceiling);
     }
   }
 
@@ -342,13 +376,45 @@ export class Scheduler extends Emitter<{ changed: Schedule[] }> {
       s.enabled && next !== null ? 1 : 0,
       id,
     );
+    await this.execute(s, at, claimed);
+  }
+
+  /**
+   * V-17 — reprend, au démarrage, les tirs planifiés qu'un arrêt a interrompus (remis en attente par `JobsService.recover`) : une
+   * seule fois, dans la même conversation, consigne précédée de `RESUME_NOTE`. Le prochain tir de l'horaire n'est pas touché. Un
+   * horaire retiré ou désactivé entre-temps : la reprise est close en échec, avec la raison. Rend le nombre de reprises lancées.
+   */
+  resumeInterrupted(at = now()): number {
+    if (!this.jobs) return 0;
+    let resumed = 0;
+    for (const job of this.jobs.list("pending")) {
+      if (job.kind !== "schedule" || job.lastError !== INTERRUPTED) continue;
+      const scheduleId = (job.payload as { scheduleId?: unknown })?.scheduleId;
+      const s = typeof scheduleId === "string" ? this.get(scheduleId) : undefined;
+      if (!s?.enabled) {
+        this.jobs.abandon(job.id, "reprise abandonnée : horaire retiré ou désactivé");
+        continue;
+      }
+      if (this.running.has(s.id)) continue;
+      const claimed = this.jobs.claim(job.id);
+      if (!claimed) continue;
+      this.running.set(s.id, at);
+      resumed++;
+      void this.execute({ ...s, prompt: `${RESUME_NOTE}\n\n${s.prompt}` }, at, claimed);
+    }
+    return resumed;
+  }
+
+  /** Un tir : l'exécutant borné, puis son issue écrite (horaire et file), sauf si un tir plus récent a pris la place. */
+  private async execute(s: Schedule, at: number, claimed: { id: string } | null | undefined): Promise<void> {
+    const id = s.id;
     let status: string;
     let mine = true;
     try {
       // R3.5 — l'exécution est BORNÉE par le même délai que celui de la file : un runner qui ne rend
       // jamais la main ne garde plus la place jusqu'au tick suivant, et son retour tardif ne réécrit
-      // plus rien (voir `withExecutionBound`).
-      const r = await this.withExecutionBound(this.runner(s), id);
+      // plus rien (voir `withExecutionBound`). V-17 : depuis le dernier signe de vie.
+      const r = await this.withExecutionBound((beat) => this.runner(s, beat), id, claimed?.id);
       // Le perdant de la course peut se régler APRÈS la borne : sa place a été reprise, donc ce n'est
       // plus la sienne, et il n'écrit pas par-dessus le tir qui a repris l'horaire.
       if (this.running.get(id) === at) this.db.run("UPDATE schedules SET session_id = ? WHERE id = ?", r.sessionId, id);

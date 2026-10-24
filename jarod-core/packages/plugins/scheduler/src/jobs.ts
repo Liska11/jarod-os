@@ -18,6 +18,8 @@ export interface Job {
   result: string | null;
   /** L'instant de la PRISE (`claim`), tant que l'exécution est `running` (sinon null). */
   startedAt: number | null;
+  /** V-17 : l'échéance du bail d'une exécution en cours (repoussée par `renew`) ; null hors exécution ou ligne plus ancienne. */
+  leaseUntil: number | null;
   createdAt: number;
   updatedAt: number;
 }
@@ -35,6 +37,7 @@ interface Row {
   last_error: string | null;
   result: string | null;
   started_at: number | null;
+  lease_until: number | null;
   created_at: number;
   updated_at: number;
 }
@@ -152,8 +155,9 @@ export class JobsService {
    */
   requalifyStalled(at = this.at(), stalledAfterMs = this.stalledAfterMs): number {
     const cutoff = at - stalledAfterMs;
+    // V-17 : le bail fait foi quand il existe (une exécution qui donne signe de vie le repousse) ; sinon, la durée depuis la prise.
     const stalled = this.d.db
-      .all<Row>("SELECT * FROM jobs WHERE status = 'running' AND COALESCE(started_at, updated_at) < ?", cutoff)
+      .all<Row>("SELECT * FROM jobs WHERE status = 'running' AND (CASE WHEN lease_until IS NOT NULL THEN lease_until < ? ELSE COALESCE(started_at, updated_at) < ? END)", at, cutoff)
       .map(toJob);
     for (const job of stalled) {
       const error = `exécution bloquée (aucun résultat depuis ${Math.round(stalledAfterMs / 1000)} s)`;
@@ -183,18 +187,32 @@ export class JobsService {
    * Prend une exécution. La condition de statut est dans le `WHERE` : une seconde prise sur la même
    * ligne ne peut pas réussir, et on le vérifie en relisant plutôt qu'en le supposant.
    */
-  claim(id: string, at = this.at()): Job | null {
+  claim(id: string, at = this.at(), leaseMs = this.stalledAfterMs): Job | null {
     const before = this.get(id);
     if (before?.status !== "pending") return null;
     this.d.db.run(
-      "UPDATE jobs SET status = 'running', attempts = attempts + 1, started_at = ?, updated_at = ? WHERE id = ? AND status = 'pending'",
+      "UPDATE jobs SET status = 'running', attempts = attempts + 1, started_at = ?, lease_until = ?, updated_at = ? WHERE id = ? AND status = 'pending'",
       at,
+      at + leaseMs,
       at,
       id,
     );
     const after = this.get(id);
     if (after?.status !== "running" || after.attempts !== before.attempts + 1) return null;
     return after;
+  }
+
+  /**
+   * V-17 : repousse le bail d'une exécution EN COURS (signe de vie). Rend false si elle ne l'est plus (déclarée bloquée entre-temps,
+   * terminée) : le travail qui continue n'est alors plus le sien.
+   */
+  renew(id: string, at = this.at(), leaseMs = this.stalledAfterMs): boolean {
+    return this.d.db.run("UPDATE jobs SET lease_until = ?, updated_at = ? WHERE id = ? AND status = 'running'", at + leaseMs, at, id).changes > 0;
+  }
+
+  /** V-17 : clôt une exécution en échec, avec la raison, sans nouvelle tentative (une reprise devenue sans objet). */
+  abandon(id: string, reason: string, at = this.at()): void {
+    this.d.db.run("UPDATE jobs SET status = 'failed', last_error = ?, started_at = NULL, updated_at = ? WHERE id = ?", reason, at, id);
   }
 
   complete(id: string, result?: string, at = this.at()): void {
@@ -313,6 +331,7 @@ function toJob(row: Row): Job {
     lastError: row.last_error,
     result: row.result,
     startedAt: row.started_at,
+    leaseUntil: row.lease_until ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };

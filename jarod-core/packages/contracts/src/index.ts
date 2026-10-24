@@ -258,7 +258,8 @@ export type JarodConfig = z.input<typeof JarodConfig>;
  * écouteur qui rend un résultat exécute le tir ; `schedule:fired` est une notification.
  */
 export interface KernelEvents {
-  "schedule/run"(schedule: ScheduleDto): Promise<ScheduleRunResult | undefined> | ScheduleRunResult | undefined;
+  /** V-17 : `beat` = signe de vie de l'exécution, à appeler pendant le travail (le planificateur repousse alors son bail). */
+  "schedule/run"(schedule: ScheduleDto, beat?: () => void): Promise<ScheduleRunResult | undefined> | ScheduleRunResult | undefined;
   "schedule:fired"(schedule: ScheduleDto, result: ScheduleRunResult): void;
   /** Une passerelle change d'état (`core.emit("gateway", st)`, `core.ts:1004-1017`…). */
   "gateway:status"(status: GatewayStatus): void;

@@ -610,6 +610,12 @@ export const MIGRATIONS: string[] = [
     DELETE FROM memory_history WHERE seq <= new.seq - 2000;
   END;
   `,
+  /**
+   * V-17 : le BAIL d'une exécution en cours. Une exécution prise reçoit une échéance que chaque signe de vie repousse ; c'est elle,
+   * et non plus la durée depuis la prise, qui dit qu'une exécution est bloquée. Une tâche longue qui travaille n'est donc plus coupée
+   * au bout de 15 minutes. Additive ; rejouable (`columnAlreadyAdded`).
+   */
+  `ALTER TABLE jobs ADD COLUMN lease_until INTEGER;`,
 ];
 
 const SQLITE_HEADER = "SQLite format 3\u0000";

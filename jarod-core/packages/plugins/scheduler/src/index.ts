@@ -9,7 +9,7 @@ import { type KernelEvents, type ScheduleRunResult, SchedulerConfig } from "@jar
 import type {} from "@jarod/plugin-storage";
 import type { Context } from "cordis";
 import { JobsService } from "./jobs.js";
-import { type Schedule, Scheduler } from "./scheduler.js";
+import { RESUME_WITHIN_MS, type Schedule, Scheduler } from "./scheduler.js";
 import { WebhookService, normalizeHookPort } from "./webhooks.js";
 
 export * from "./cron.js";
@@ -45,8 +45,8 @@ export function apply(ctx: Context, input: SchedulerConfig): void {
   const config = SchedulerConfig.parse(input ?? {});
   const db = ctx.storage.db;
   const jobs = new JobsService({ db });
-  const runner = async (s: Schedule): Promise<ScheduleRunResult> => {
-    const r = ((await ctx.serial("schedule/run", s)) as ScheduleRunResult | undefined) ?? {
+  const runner = async (s: Schedule, beat?: () => void): Promise<ScheduleRunResult> => {
+    const r = ((await ctx.serial("schedule/run", s, beat)) as ScheduleRunResult | undefined) ?? {
       sessionId: "",
       ok: false,
       summary: "aucun exécutant branché sur schedule/run",
@@ -86,11 +86,16 @@ export function apply(ctx: Context, input: SchedulerConfig): void {
   ctx.provide("webhooks", webhooks);
 
   ctx.effect(() => {
-    // Ce qu'un processus précédent a laissé en vol : un déclencheur repart, un tir planifié est
-    // clos (l'horaire a son propre prochain tour) — `core.ts:670-671`.
-    jobs.recover(undefined, (job) => job.kind === "webhook");
+    // Ce qu'un processus précédent a laissé en vol : un déclencheur repart ; V-17 : un tir planifié interrompu depuis moins de
+    // 24 h repart aussi, UNE fois (sous son plafond de tentatives), dans sa conversation et prévenu ; plus ancien, il est clos (l'horaire
+    // a son propre prochain tour) — `core.ts:670-671`.
+    const at = Date.now();
+    jobs.recover(at, (job) => job.kind === "webhook" || (job.kind === "schedule" && job.attempts < job.maxAttempts && at - (job.startedAt ?? job.updatedAt) < RESUME_WITHIN_MS));
     jobs.prune();
-    if (config.autoStart) scheduler.start(config.tickMs);
+    if (config.autoStart) {
+      scheduler.start(config.tickMs);
+      scheduler.resumeInterrupted(at);
+    }
 
     // Démarrage du serveur de déclencheurs : seulement si le réglage est activé ET la gate passée.
     const webhookEnabled = settings.get("webhooks")?.enabled ?? false;
