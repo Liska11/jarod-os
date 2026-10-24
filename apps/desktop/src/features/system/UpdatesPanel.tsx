@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { GlassButton, Pill, type PillTone } from '../../components/ui/glass.tsx'
 import { Spinner } from '../../components/ui/primitives.tsx'
 import { dateLocale, type MessageKey, t, useT } from '../../lib/i18n.ts'
+import { HostUpdaterSection } from './HostUpdaterSection.tsx'
 
 type State = Awaited<ReturnType<typeof window.jarodOS.updates.state>>
 type Category = 'windows' | 'drivers' | 'software'
@@ -89,6 +90,7 @@ export function UpdatesPanel() {
       {state.offline && <p className="text-[12px] text-warn">{t('updates.offline')}</p>}
       {!state.windows && <p className="text-[12px] text-fg-3">{t('updates.windowsOnly')}</p>}
       {(busy || state.running) && <p className="text-[12px] text-fg-3">{t('updates.slow')}</p>}
+      <HostUpdaterSection />
 
       {plan && (
         <div role="alertdialog" aria-label={t('updates.confirm.title')} className="flex flex-col gap-2 rounded-lg border border-warn p-3 text-[12px]">

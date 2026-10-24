@@ -1102,6 +1102,11 @@ export const IPC = {
   updatesPrepareUpgrade: 'jarod-os:updates:prepare-upgrade',
   updatesUpgrade: 'jarod-os:updates:upgrade',
   updatesProgress: 'jarod-os:updates:progress',
+  // V-21: the A/B updater of the Rust host, behind JAROD_HOST_UPDATER (electron/ipc/host-updater.ts).
+  hostUpdaterState: 'jarod-os:host-updater:state',
+  hostUpdaterInstall: 'jarod-os:host-updater:install',
+  hostUpdaterConfirm: 'jarod-os:host-updater:confirm',
+  hostUpdaterRollback: 'jarod-os:host-updater:rollback',
   // External backups (electron/external-backup.ts, electron/ipc/external-backup.ts).
   externalBackupState: 'jarod-os:external-backup:state',
   externalBackupEstimate: 'jarod-os:external-backup:estimate',

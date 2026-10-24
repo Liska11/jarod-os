@@ -456,6 +456,14 @@ const api = {
     upgrade: (token: string): Promise<import('../electron/ipc/updates-check.ts').UpgradeReply> => ipcRenderer.invoke(IPC.updatesUpgrade, token),
     onProgress: (listener: (progress: import('../electron/winget-install.ts').WingetProgress) => void): Unsubscribe => subscribe(IPC.updatesProgress, listener)
   },
+  /** V-21: Jarod-OS's own A/B update (off unless JAROD_HOST_UPDATER=1). */
+  hostUpdater: {
+    state: (): Promise<import('../electron/ipc/host-updater.ts').HostUpdaterView> => ipcRenderer.invoke(IPC.hostUpdaterState),
+    /** Picks a signed bundle's folder, verifies it, asks natively, installs it in the other slot as a trial. */
+    install: (): Promise<import('../electron/ipc/host-updater.ts').HostUpdaterAction> => ipcRenderer.invoke(IPC.hostUpdaterInstall),
+    confirm: (): Promise<import('../electron/ipc/host-updater.ts').HostUpdaterAction> => ipcRenderer.invoke(IPC.hostUpdaterConfirm),
+    rollback: (): Promise<import('../electron/ipc/host-updater.ts').HostUpdaterAction> => ipcRenderer.invoke(IPC.hostUpdaterRollback)
+  },
   network: {
     /** Jarod's Internet policy (the switch in the top bar). */
     get: (): Promise<NetworkPolicy> => ipcRenderer.invoke(IPC.networkGet),
