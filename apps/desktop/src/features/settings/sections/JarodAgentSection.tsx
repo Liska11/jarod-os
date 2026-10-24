@@ -9,6 +9,8 @@ import {
   ACCESS_PROFILES,
   type AccessProfile,
   domainProblem,
+  CAPABILITIES,
+  type Capability,
   type FallbackEntry,
   intProblem,
   type JarodOptions,
@@ -23,7 +25,7 @@ import {
 import { isUnsupported } from './providers-model.ts'
 import { PermissionRulesEditor } from './PermissionRulesEditor.tsx'
 import { InlineNote, RadioCard, SectionTitle, SettingsBlock, SettingsGroup, SettingsRow } from './shared.tsx'
-import { t, useT } from '../../../lib/i18n.ts'
+import { type MessageKey, t, useT } from '../../../lib/i18n.ts'
 
 /*
  * Agent & security: how the Jarod agent behaves and what it may do. Every control binds to the engine's `get/set-jarod-settings`:
@@ -268,6 +270,72 @@ function ConnectedBrowserGroup({ s, api }: Props) {
   )
 }
 
+/** V-19: one row per capability — a provider (configured ones only) and a model; saving or removing writes `capabilityRouting`. */
+function CapabilityRows({ s, api, providers }: Props & { providers: JarodOptions['providers'] }) {
+  useT()
+
+  return (
+    <SettingsRow
+      icon={<IconBrain />}
+      label={t('settings.agent.capability')}
+      description={t('settings.agent.capability.hint')}
+      keywords="capability routing vision code long context model per task"
+      below={
+        <div className="flex flex-col gap-2.5">
+          {CAPABILITIES.map(cap => (
+            <CapabilityRow key={cap} cap={cap} s={s} api={api} providers={providers} />
+          ))}
+        </div>
+      }
+    />
+  )
+}
+
+function CapabilityRow({ cap, s, api, providers }: Props & { cap: Capability; providers: JarodOptions['providers'] }) {
+  useT()
+  const current = s.capabilityRouting?.[cap]
+  const [provider, setProvider] = useState(current?.provider ?? '')
+  const [model, setModel] = useState(current?.model ?? '')
+  const usable = providers.filter(p => p.configured || p.id === current?.provider)
+  const models = providers.find(p => p.id === provider)?.models ?? []
+  const input = 'glass-input h-8 min-w-0 rounded-lg px-2 text-[12.5px] text-fg outline-none'
+  const dirty = provider !== (current?.provider ?? '') || model !== (current?.model ?? '')
+
+  return (
+    <div className="flex flex-col gap-1" data-testid={`capability-${cap}`} data-route={current ? `${current.provider}:${current.model}` : ''}>
+      <div className="text-[12px] text-fg-2">
+        {t(`settings.agent.capability.${cap}` as MessageKey)} <span className="text-fg-4">· {t(`settings.agent.capability.${cap}.hint` as MessageKey)}</span>
+      </div>
+      <div className="flex items-center gap-2">
+        <select value={provider} onChange={event => (setProvider(event.target.value), setModel(''))} aria-label={t(`settings.agent.capability.${cap}` as MessageKey)} style={{ colorScheme: 'dark' }} className={`${input} flex-1`}>
+          <option value="">{t('settings.agent.capability.none')}</option>
+          {usable.map(p => (
+            <option key={p.id} value={p.id}>
+              {p.name}
+              {p.local ? t('settings.agent.onThisPc') : ''}
+            </option>
+          ))}
+        </select>
+        <input value={model} onChange={event => setModel(event.target.value)} disabled={!provider} list={`capability-models-${cap}`} placeholder={t('settings.agent.capability.model')} aria-label={`${t(`settings.agent.capability.${cap}` as MessageKey)} · ${t('settings.agent.capability.model')}`} spellCheck={false} className={`${input} flex-1 font-mono`} />
+        <datalist id={`capability-models-${cap}`}>
+          {models.map(m => (
+            <option key={m} value={m} />
+          ))}
+        </datalist>
+        {provider ? (
+          <GlassButton size="sm" variant="secondary" disabled={api.saving || !model.trim() || !dirty} onClick={() => void api.save({ capabilityRouting: { [cap]: { provider, model: model.trim() } } }, t('settings.agent.capability.saved'))}>
+            {t('settings.devices.save')}
+          </GlassButton>
+        ) : (
+          <GlassButton size="sm" variant="ghost" disabled={api.saving || !current} onClick={() => void api.save({ capabilityRouting: { [cap]: null } }, t('settings.agent.capability.removed'))}>
+            {t('settings.devices.ssh.remove')}
+          </GlassButton>
+        )}
+      </div>
+    </div>
+  )
+}
+
 function ModelsGroup({ s, api }: Props) {
   useT()
   const { save, saving } = api
@@ -326,6 +394,7 @@ function ModelsGroup({ s, api }: Props) {
           </div>
         }
       />
+      <CapabilityRows s={s} api={api} providers={providers} />
       <SwitchRow icon={<IconBrain />} label={t('settings.agent.anthropic')} description={t('settings.agent.anthropic.hint')} keywords="anthropic claude fallback retry" value={s.anthropicFallbacks} disabled={saving} onChange={value => void save({ anthropicFallbacks: value })} />
       <ChoiceRow
         icon={<IconBrain />}

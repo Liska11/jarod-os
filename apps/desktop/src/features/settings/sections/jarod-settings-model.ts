@@ -245,6 +245,13 @@ export interface ConnectedBrowserSettings {
   denyDomains: string[]
 }
 
+/** V-19 — un modèle par capacité ; chacune facultative. */
+export type Capability = 'vision' | 'code' | 'longContext'
+
+export const CAPABILITIES: readonly Capability[] = ['vision', 'code', 'longContext']
+
+export type CapabilityRoutes = Partial<Record<Capability, { provider: string; model: string }>>
+
 export interface FallbackEntry {
   provider: string
   model?: string
@@ -283,6 +290,8 @@ export interface JarodSettings {
   android: { timeoutMs: number }
   apiServer: { port: number; host: '127.0.0.1' | '0.0.0.0' }
   fallbacks: FallbackEntry[]
+  /** Absent d'un moteur plus ancien que V-19. */
+  capabilityRouting?: CapabilityRoutes
   imageDescription: { mode: 'auto' | 'always' | 'off'; provider: string; model: string }
   learning: { enabled: boolean; reviewEvery: number }
   voice: { sttProvider: string; sttModel: string; ttsVoice: string; ttsRate: number }
