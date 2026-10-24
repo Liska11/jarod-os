@@ -22,8 +22,11 @@ export interface HostUpdaterView {
 
 export type HostUpdaterAction = { ok: true; view: HostUpdaterView; message?: string } | { ok: false; error: string; view: HostUpdaterView }
 
-/** The contracts the binary checks the manifest against: JAROD_OS_CONTRACTS_DIR, else a packaged copy, else the repository's (development). */
-function contractsDir(): string | null {
+/**
+ * The contracts the Rust binaries check against (the manifest here, the C2 matrix for the control shadow): JAROD_OS_CONTRACTS_DIR, else a
+ * packaged copy, else the repository's (development).
+ */
+export function contractsDir(): string | null {
   if (process.env.JAROD_OS_CONTRACTS_DIR) return process.env.JAROD_OS_CONTRACTS_DIR
   const shipped = shippedDir()
   const candidates = [...(shipped ? [path.join(shipped, 'contracts', 'v1')] : []), path.resolve(app.getAppPath(), '..', '..', 'contracts', 'v1')]

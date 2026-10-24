@@ -47,7 +47,7 @@ import { cutDisallowed, installSocketGuard } from './net-guard.ts'
 import { electronNetworkSessions, registerNetworkIpc } from './ipc/network.ts'
 import { ExternalBackupService } from './ipc/external-backup.ts'
 import { registerRemoteMachinesIpc } from './ipc/remote-machines.ts'
-import { confirmTrialWhenReady, registerHostUpdaterIpc } from './ipc/host-updater.ts'
+import { confirmTrialWhenReady, contractsDir, registerHostUpdaterIpc } from './ipc/host-updater.ts'
 import { registerUpdatesCheckIpc } from './ipc/updates-check.ts'
 import { MEDIA_SCHEME_PRIVILEGES, registerMediaIpc } from './ipc/media.ts'
 import { registerNativeAppsIpc } from './ipc/native-apps.ts'
@@ -72,6 +72,7 @@ import { NotificationDaemon } from './shell/notification-daemon.ts'
 import { maximizeAction } from './window-controls.ts'
 import { handleUiRequest, OsCommandBridge, OsControlServer } from './shell/os-control.ts'
 import { asControlTier, ControlSecurity, controlAuditSink, controlEndpoint, controlTokens, type ControlAuditEntry } from './shell/control-authz.ts'
+import { attachControlShadow } from './shell/control-shadow.ts'
 import { hostCatalogueEntries, hostCatalogueTiers } from './shell/host-actions.ts'
 import { HostControlGate, type ApprovalProvider, type CatalogueEntry } from './shell/host-control.ts'
 import { PanelShell } from './shell/panels.ts'
@@ -382,6 +383,9 @@ for (const security of [panelSecurity, backendSecurity]) {
 for (const gate of [panelGate, backendGate]) {
   gate.setCatalogue(hostEntries)
 }
+
+// V-22: the Rust adjudicator in shadow of both doors, only with JAROD_HOST_CONTROL=1; they keep deciding alone.
+attachControlShadow({ env: process.env, configDir: shellConfigDir(), contracts: contractsDir(), doors: [panelSecurity, backendSecurity], log: message => log('control', message) })
 // A plugin's OS commands go through the same gate, and so into the same journal (R2.2). Set here
 // because the gate is built after the plugin host; until it is set, plugin commands are refused.
 plugins.setControl(backendGate)

@@ -625,6 +625,7 @@ export function adjudicate(request: ControlRequestShape, context: ControlContext
 export class ControlSecurity {
   private context: ControlContext
   private readonly secretSources: Array<() => readonly ControlSecret[]> = []
+  private readonly observers: Array<(request: ControlRequestShape, decision: ControlDecision) => void> = []
 
   constructor(
     context: ControlContext,
@@ -681,9 +682,32 @@ export class ControlSecurity {
     this.record({ client: 'unauthenticated', cmd: '', allowed: false, code: 'invalid', reason })
   }
 
+  /**
+   * Something that is told each decision after it is made (V-22: the Rust adjudicator in shadow). It cannot change the decision,
+   * and an observer that throws is ignored: the door decides alone.
+   */
+  addObserver(observer: (request: ControlRequestShape, decision: ControlDecision) => void): void {
+    this.observers.push(observer)
+  }
+
+  /** `text` with every live value this door holds replaced, as the journal writes it. */
+  redact(text: string): string {
+    return redactSecrets(text, this.activeSecrets())
+  }
+
   /** Decide without writing anything: the pipeline records once, with the outcome it reached. */
   adjudicateOnly(request: ControlRequestShape): ControlDecision {
-    return adjudicate(request, this.context)
+    const decision = adjudicate(request, this.context)
+
+    for (const observer of this.observers) {
+      try {
+        observer(request, decision)
+      } catch {
+        // An observer never stands between a request and its decision.
+      }
+    }
+
+    return decision
   }
 
   /** One line in the journal. `code` and `approval` are the pipeline's, not the adjudicator's. */
