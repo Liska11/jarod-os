@@ -122,9 +122,18 @@ unless `JAROD_HOST_CONTROL=1`; the rollback is the flag.
   request is caught and written down. `e2e/control-shadow.spec.ts`: in the running app the shadow starts and stays up with the flag,
   nothing starts without it.
 
-Not done: the binary is not packaged; no count of what the shadow compared in a real session is surfaced (only divergences are written);
-the in-process door (`submitLocal`) is not adjudicated by `adjudicateOnly`, so it is not shadowed; the Rust host does not serve the door
-(that is the next step, after a real session with no divergence).
+- Counter: `<config>/control-shadow-stats.json` (compared, diverged, known, dropped, the same per `surface:cmd`, at most 200 distinct
+  rows, keys redacted), written at start, at most once a second while requests come, and when the shadow stops (`stopReason`, `app quit`
+  when the app quits; the log line repeats the totals).
+- **Validated on a real session** (2026-10-24, `e2e/control-shadow-session.spec.ts`): the built app with its real bundled core, throwaway
+  profile, flag on; the test sends nothing to the door itself. First-run screens, core ready, capability registry read then re-checked 5
+  times (what Réglages › Capacités does), the page opened, the app quit. 7 requests compared (`backend:ui-list` 6, `backend:state` 1),
+  0 diverged, 0 known, 0 dropped, stopped on `app quit`; the same on three runs. Scope of that proof: the traffic a session sends without a
+  model, i.e. the core's own requests on the backend door (read tier). On Windows the panel door is not open (Linux panels only), and the
+  `ui`/`run` requests an agent's tools send need a model and were not part of it.
+
+Not done: the binary is not packaged; agent turns (`ui`/`run`, act and mutate tiers) not yet seen through the shadow in a real session;
+the in-process door (`submitLocal`) is not adjudicated by `adjudicateOnly`, so it is not shadowed; the Rust host does not serve the door.
 
 ## Storage (phase 2.1, 2.2): `crates/host-storage`
 
