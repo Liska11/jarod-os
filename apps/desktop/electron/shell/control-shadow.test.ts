@@ -31,13 +31,16 @@ describe('the flag, the binary and what the shadow is told', () => {
     expect(flagOn({ JAROD_HOST_CONTROL: '1' })).toBe(true)
   })
 
-  it('takes JAROD_CONTROL_SHADOW_BIN when it names a file, never PATH behind its back; else PATH', () => {
+  it('takes JAROD_CONTROL_SHADOW_BIN when it names a file, never another behind its back; else the shipped copy; else PATH', () => {
+    const name = process.platform === 'win32' ? 'jarod-control-shadow.exe' : 'jarod-control-shadow'
     const named = path.join('tools', 'shadow.exe')
-    const onPath = path.join('bin', process.platform === 'win32' ? 'jarod-control-shadow.exe' : 'jarod-control-shadow')
-    const exists = (file: string) => file === named || file === onPath
-    expect(findShadowBinary({ JAROD_CONTROL_SHADOW_BIN: named, PATH: 'bin' }, exists)).toBe(named)
-    expect(findShadowBinary({ JAROD_CONTROL_SHADOW_BIN: 'absent.exe', PATH: 'bin' }, exists)).toBeNull()
-    expect(findShadowBinary({ PATH: ['nothing', 'bin'].join(path.delimiter) }, exists)).toBe(onPath)
+    const onPath = path.join('bin', name)
+    const shipped = path.join('resources', 'updater')
+    const exists = (file: string) => file === named || file === onPath || file === path.join(shipped, name)
+    expect(findShadowBinary({ JAROD_CONTROL_SHADOW_BIN: named, PATH: 'bin' }, exists, shipped)).toBe(named)
+    expect(findShadowBinary({ JAROD_CONTROL_SHADOW_BIN: 'absent.exe', PATH: 'bin' }, exists, shipped)).toBeNull()
+    expect(findShadowBinary({ PATH: 'bin' }, exists, shipped)).toBe(path.join(shipped, name))
+    expect(findShadowBinary({ PATH: ['nothing', 'bin'].join(path.delimiter) }, exists, null)).toBe(onPath)
   })
 
   it('never hands over a live token: the shadow token of the client this door recognised, and only cmd, command and args', () => {

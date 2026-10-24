@@ -5,7 +5,8 @@
 This is the first piece of the privileged host: the **control boundary** of Jarod-OS, ported from the
 TypeScript shell (`apps/desktop/electron/shell`) and held to the frozen contracts in
 [`contracts/v1`](../contracts/README.md). It is a spike. It changes no existing execution path: nothing
-in the app, the kernel or the bridge calls it, and it is not packaged.
+in the app, the kernel or the bridge calls it to decide. Since the consolidation (2026-10-24) its shadow binary ships in the Windows
+package (`resources/updater/jarod-control-shadow.exe`) and runs only with `JAROD_HOST_CONTROL=1`, as a shadow.
 
 ## What is in it
 
@@ -140,7 +141,9 @@ unless `JAROD_HOST_CONTROL=1`; the rollback is the flag.
   (`ui` 6: read 1, act 2, mutate 2, destructive 1; `ui-list` 1; `ui-state` 1), 0 diverged, 0 known, 0 dropped, both approvals asked; the
   same on two runs. On Windows no real sender of the typed `run`/`list`/`state` exists (only the Linux CLI): the agent's spelling is `ui`.
 
-Not done: the binary is not packaged; the agent's decisions were scripted (a real model would choose other commands, through the same
+Packaged since 2026-10-24: `scripts/bundle-updater.mjs` builds `jarod-control-shadow` in release next to the updater, the shell finds
+it in `resources/updater` (after `JAROD_CONTROL_SHADOW_BIN`, before PATH), and the real-session bench passed with that release copy (8
+compared, 0 diverged). Not done: the agent's decisions were scripted (a real model would choose other commands, through the same
 door); the in-process door (`submitLocal`) is not adjudicated by `adjudicateOnly`, so it is not shadowed; the Rust host does not serve
 the door.
 

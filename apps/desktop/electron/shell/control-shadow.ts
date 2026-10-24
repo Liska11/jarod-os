@@ -3,6 +3,7 @@ import { randomBytes } from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
 import { createInterface } from 'node:readline'
+import { shippedDir } from '../host-updater.ts'
 import { type ControlClient, type ControlDecision, type ControlRequestShape, type ControlSurface, type ControlTier, commandIdOf, shellArgumentProblem } from './control-authz.ts'
 
 /*
@@ -30,11 +31,12 @@ export function flagOn(env: NodeJS.ProcessEnv): boolean {
   return env[FLAG] === '1'
 }
 
-/** JAROD_CONTROL_SHADOW_BIN when it names a file, else the first on PATH; null when none. Not packaged yet. */
-export function findShadowBinary(env: NodeJS.ProcessEnv, exists: (file: string) => boolean = fs.existsSync): string | null {
+/** JAROD_CONTROL_SHADOW_BIN when it names a file, else the copy the Windows package ships in `resources/updater`, else the first on PATH. */
+export function findShadowBinary(env: NodeJS.ProcessEnv, exists: (file: string) => boolean = fs.existsSync, shipped: string | null = shippedDir()): string | null {
   const named = env[BIN_ENV]
 
   if (named) return exists(named) ? named : null
+  if (shipped && exists(path.join(shipped, BINARY))) return path.join(shipped, BINARY)
 
   for (const dir of (env.PATH ?? env.Path ?? '').split(path.delimiter)) {
     if (dir && exists(path.join(dir, BINARY))) return path.join(dir, BINARY)
@@ -142,7 +144,7 @@ export function attachControlShadow(options: {
   const binary = findShadowBinary(options.env)
 
   if (!binary || !options.contracts) {
-    options.log(`[control-shadow] ${FLAG}=1 but ${binary ? 'no contracts/v1' : `no ${BINARY} (${BIN_ENV} or PATH)`}: shadow off`)
+    options.log(`[control-shadow] ${FLAG}=1 but ${binary ? 'no contracts/v1' : `no ${BINARY} (${BIN_ENV}, resources/updater or PATH)`}: shadow off`)
     return null
   }
 
