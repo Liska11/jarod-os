@@ -51,7 +51,7 @@ reported as `NoFallback`. While a trial is open no other update can be staged.
 (`host-storage`, tier 5) so that the last working version is never removed even if the updater's root lives in
 the updates zone.
 
-## What is tested (21 tests)
+## What is tested (21 tests, plus 5 on the binary below)
 
 Real directories, real hashes, real signatures: an unsigned, wrongly signed, edited-after-signing or
 garbage-signed bundle installs nothing and touches nothing; a changed, longer, missing, extra or
@@ -73,3 +73,21 @@ signature); the launcher process that reads `state.json`, runs the entry of the 
 (a Windows binary can only be replaced while it is not running, so the host needs a small stable launcher);
 producing and signing bundles in CI; delta updates; an update of the updater's own trust keys (rotation is
 supported by trusting several keys, distributing a new one is a signed update like any other).
+
+## The binary and the shell (V-21, 2026-10-24)
+
+`src/bin/jarod-updater.rs`: `status`, `verify`, `install` (stage then activate), `boot`, `confirm`, `rollback --reason`; one JSON line each,
+exit 0 done, 1 refused (`{"ok":false,"error":KIND,"detail":...}`), 2 bad command line. The trusted key is `linux/image/cosign.pub`,
+compiled in. A **debug** build also accepts `--test-key FILE` (a public key made for one test); a release build refuses it as an unknown
+option (checked: `{"error":"usage","detail":"unknown option --test-key"}`). The contracts come from `--contracts` or
+`JAROD_OS_CONTRACTS_DIR`. `tests/cli.rs` (5 tests) runs the real process: first install without trial, trial confirmed, rollback that
+blocks the version, a foreign signature, an edited file, a downgrade, the committed key alone refusing a test-signed bundle, usage errors.
+
+The shell calls it from Système › Mises à jour **only when `JAROD_HOST_UPDATER=1`** (`apps/desktop/electron/host-updater.ts`,
+`electron/ipc/host-updater.ts`, `src/features/system/HostUpdaterSection.tsx`); the binary is found through `JAROD_UPDATER_BIN` or PATH;
+the slots live in `<config>/host-updater`. Install: the person picks a folder, the bundle is verified, a native question names the
+version, then `install`. A trial is closed by the person ("Cette version fonctionne" / "Revenir à la précédente", the latter confirmed
+natively). Flag off: every channel answers `enabled: false` and nothing runs.
+
+Still not done: the launcher (nothing restarts into the new slot), packaging the binary and the contracts, a download channel, signing
+bundles in CI, CI running `cargo test` (the shell's end-to-end tests skip when no binary was built).

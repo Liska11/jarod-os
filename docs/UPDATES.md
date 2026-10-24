@@ -94,3 +94,11 @@ Nothing was installed.
   - progress;
   - the catalogue entry, and the journal lines through the gate.
 - `e2e/updates-upgrade.spec.ts`: the whole flow in the app with a scripted winget (`JAROD_WINGET_MOCK`, honoured only when `JAROD_OS_ISOLATED=1`). It covers the confirmation, progress, the result, the arguments received, the journal line, and the disabled button and refusal offline.
+
+## Jarod-OS itself, A/B (V-21, experimental, off by default)
+
+With `JAROD_HOST_UPDATER=1` and the `jarod-updater` binary (`JAROD_UPDATER_BIN` or PATH), Système › Mises à jour shows a "Jarod-OS (mise à
+jour A/B)" block: the running version, the fallback, the blocked versions; "Installer une mise à jour signée…" (a folder holding a bundle
+signed with Jarod's key, verified before the question); during a trial, "Cette version fonctionne" or "Revenir à la précédente". It only
+prepares and switches slots: no launcher restarts into them yet, and nothing is downloaded. Details: `host-rust/docs/updater.md`. Tests:
+`electron/host-updater.test.ts` and `e2e/host-updater.spec.ts` drive the real binary (skipped when it was not built).
