@@ -264,7 +264,7 @@ export function apply(ctx: Context, config: AgentConfig = {}): void {
   }
 
   // Les tâches planifiées passent par l'agent (core.ts:516, `runSchedule`).
-  ctx.on("schedule/run", (s) => runtime.runSchedule(s));
+  ctx.on("schedule/run", (s, beat) => runtime.runSchedule(s, beat));
   ctx.provide("agent", runtime);
   ctx.effect(() => () => runtime.stopAll(), "agent:turns");
 

@@ -271,7 +271,7 @@ export class AgentRuntime {
   }
 
   // core.ts:1464-1486
-  async runSchedule(sch: Schedule): Promise<{ sessionId: string; ok: boolean; summary: string }> {
+  async runSchedule(sch: Schedule, beat?: () => void): Promise<{ sessionId: string; ok: boolean; summary: string }> {
     const sessionId =
       sch.sessionId && this.sessions.get(sch.sessionId)
         ? sch.sessionId
@@ -284,7 +284,8 @@ export class AgentRuntime {
     if (sch.mode) this.updateSessionContext(sessionId, { agentMode: sch.mode });
     let r: { text: string; error?: string };
     try {
-      r = await this.runAndWait(sessionId, sch.prompt, this.backgroundHooks);
+      // V-17 : chaque événement du tour (texte, outil, statut) est un signe de vie pour le planificateur.
+      r = await this.runAndWait(sessionId, sch.prompt, beat ? { ...this.backgroundHooks, emit: () => beat() } : this.backgroundHooks);
     } finally {
       if (sch.mode) this.updateSessionContext(sessionId, { agentMode: previousMode });
     }
