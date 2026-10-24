@@ -132,8 +132,17 @@ unless `JAROD_HOST_CONTROL=1`; the rollback is the flag.
   model, i.e. the core's own requests on the backend door (read tier). On Windows the panel door is not open (Linux panels only), and the
   `ui`/`run` requests an agent's tools send need a model and were not part of it.
 
-Not done: the binary is not packaged; agent turns (`ui`/`run`, act and mutate tiers) not yet seen through the shadow in a real session;
-the in-process door (`submitLocal`) is not adjudicated by `adjudicateOnly`, so it is not shadowed; the Rust host does not serve the door.
+- **Validated on agent traffic** (2026-10-24, `e2e/control-shadow-agent.spec.ts`): real agent turns with a scripted model (a fake
+  OpenAI server on 127.0.0.1; the agent loop, tools, bridge, door and native approval are real), flag on, throwaway profiles. Native core,
+  built app: `pinokio_open` → `ui pinokio.show` (act). Hermes, **packaged** app (only it installs the bridge into Hermes): `os_ui` list,
+  state, then `ui` page.open (read), automation.run (act), automation.pause (mutate, approved: the approval round then the capability
+  spend, two requests), automation.delete (destructive, denied), each on an automation that does not exist. 8 agent requests compared
+  (`ui` 6: read 1, act 2, mutate 2, destructive 1; `ui-list` 1; `ui-state` 1), 0 diverged, 0 known, 0 dropped, both approvals asked; the
+  same on two runs. On Windows no real sender of the typed `run`/`list`/`state` exists (only the Linux CLI): the agent's spelling is `ui`.
+
+Not done: the binary is not packaged; the agent's decisions were scripted (a real model would choose other commands, through the same
+door); the in-process door (`submitLocal`) is not adjudicated by `adjudicateOnly`, so it is not shadowed; the Rust host does not serve
+the door.
 
 ## Storage (phase 2.1, 2.2): `crates/host-storage`
 
