@@ -99,6 +99,9 @@ Nothing was installed.
 
 With `JAROD_HOST_UPDATER=1` and the `jarod-updater` binary (`JAROD_UPDATER_BIN` or PATH), Système › Mises à jour shows a "Jarod-OS (mise à
 jour A/B)" block: the running version, the fallback, the blocked versions; "Installer une mise à jour signée…" (a folder holding a bundle
-signed with Jarod's key, verified before the question); during a trial, "Cette version fonctionne" or "Revenir à la précédente". It only
-prepares and switches slots: no launcher restarts into them yet, and nothing is downloaded. Details: `host-rust/docs/updater.md`. Tests:
+signed with Jarod's key, verified before the question); during a trial, "Cette version fonctionne" or "Revenir à la précédente". The Windows
+package ships the binary, the `jarod-launcher` launcher and the contracts in `resources/updater`. Started by the launcher, the app
+confirms its own trial as soon as its kernel is ready, and a version that crashes during its trial is rolled back and blocked (checked on
+the packaged app, `scripts/probes/ab-update-probe.mjs`). Not yet: the installer's shortcut does not go through the launcher, and nothing
+is downloaded. Details: `host-rust/docs/updater.md`. Tests:
 `electron/host-updater.test.ts` and `e2e/host-updater.spec.ts` drive the real binary (skipped when it was not built).

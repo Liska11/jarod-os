@@ -89,5 +89,33 @@ the slots live in `<config>/host-updater`. Install: the person picks a folder, t
 version, then `install`. A trial is closed by the person ("Cette version fonctionne" / "Revenir à la précédente", the latter confirmed
 natively). Flag off: every channel answers `enabled: false` and nothing runs.
 
-Still not done: the launcher (nothing restarts into the new slot), packaging the binary and the contracts, a download channel, signing
-bundles in CI, CI running `cargo test` (the shell's end-to-end tests skip when no binary was built).
+## The launcher, the package, a real A/B run (V-21 consolidation, 2026-10-24)
+
+`src/bin/jarod-launcher.rs` (windows subsystem in release): `[--root DIR] [--contracts DIR] [--test-key FILE (debug)] [-- app args]`.
+Root by default `%LOCALAPPDATA%\Jarod-OS\updates`, contracts by default `contracts/v1` next to the launcher. It calls `begin_boot`, runs
+the entry of the chosen slot with `JAROD_HOST_UPDATER=1`, `JAROD_UPDATER_ROOT`, `JAROD_UPDATER_BIN` (the sibling `jarod-updater.exe`),
+`JAROD_UPDATER_SLOT`, `JAROD_UPDATER_VERSION`, `JAROD_OS_CONTRACTS_DIR`, and `JAROD_UPDATER_TRIAL=1` during a trial. A trial that exits
+non-zero is reported as a failure only if that slot is still pending (so an app that confirmed itself then crashed is kept). Exit 3
+nothing can start, 4 the program could not be spawned, else the app's code; every step goes to `launcher.log` in the root.
+`tests/launcher.rs` (Windows, 5 tests, a copy of `cmd.exe` as the app): nothing installed; a crash in trial rolls back and blocks the
+version; a trial that confirmed itself is kept even if it then exits 5; a crash loop gives up after 3 starts; an edited slot does not run.
+
+The app confirms its own trial: launched on trial, it calls `jarod-updater confirm` the first time its kernel reaches `ready`
+(`confirmTrialWhenReady`, `electron/ipc/host-updater.ts`). It uses the same root as the launcher (`updaterRoot`: `JAROD_UPDATER_ROOT`,
+else local app data on Windows, else `<config>/host-updater`, always the latter in an isolated profile) and finds the binary through
+`JAROD_UPDATER_BIN`, then the copy shipped in `resources/updater`, then PATH.
+
+Package: `npm run dist:win` runs `scripts/bundle-updater.mjs` (`cargo build --release --locked`, stops the packaging without cargo), which
+puts `jarod-updater.exe`, `jarod-launcher.exe` and `contracts/v1` in `resources/updater`. `scripts/make-update-bundle.mjs` turns a built
+app folder into a bundle (manifest checked against c10 before writing); without `--key` it prints the `cosign sign-blob` command instead of
+signing: signing with Jarod's key is a human or CI step.
+
+Real run: `node scripts/probes/ab-update-probe.mjs` on the packaged `win-unpacked` (10 061 files, 500 MB), isolated profile, a key made
+for the run, so the debug binaries. Passed 5/5 on 2026-10-24: 1.0.0 installed without trial; 1.0.1 installed on trial; started by the
+launcher, the real app confirmed its trial in 16 s, and killing it afterwards did not roll back; a 1.0.2 that crashes on start went back to
+1.0.1 and was blocked; the launcher then started 1.0.1 not on trial. No process and no folder left behind.
+
+Still not done: the installer's shortcut still starts `Jarod-OS.exe`, not the launcher (the launcher is shipped, not used); the release
+binaries have not run a full cycle (that needs a bundle signed with the real key); a download channel; signing bundles in CI; CI running
+`cargo test` (the shell's end-to-end tests skip when no binary was built); the trial confirmation is not locked across processes, and a
+second start while the app runs counts as one more trial start.
