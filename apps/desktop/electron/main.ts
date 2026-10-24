@@ -385,7 +385,7 @@ for (const gate of [panelGate, backendGate]) {
 }
 
 // V-22: the Rust adjudicator in shadow of both doors, only with JAROD_HOST_CONTROL=1; they keep deciding alone.
-attachControlShadow({ env: process.env, configDir: shellConfigDir(), contracts: contractsDir(), doors: [panelSecurity, backendSecurity], log: message => log('control', message) })
+const controlShadow = attachControlShadow({ env: process.env, configDir: shellConfigDir(), contracts: contractsDir(), doors: [panelSecurity, backendSecurity], log: message => log('control', message) })
 // A plugin's OS commands go through the same gate, and so into the same journal (R2.2). Set here
 // because the gate is built after the plugin host; until it is set, plugin commands are refused.
 plugins.setControl(backendGate)
@@ -1006,6 +1006,8 @@ app.on('before-quit', event => {
   emojiPanel?.stop()
   control?.stop()
   osControl?.stop()
+  // After the doors: its last counts are written with the reason it stopped.
+  controlShadow?.stop('app quit')
   wallpaper?.stop()
   notifications?.stop()
   panels?.stop()

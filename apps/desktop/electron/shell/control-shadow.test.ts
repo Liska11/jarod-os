@@ -133,15 +133,34 @@ describe.skipIf(!BIN)('the real jarod-control-shadow, live', () => {
     if (fs.existsSync(file)) divergences.push(...fs.readFileSync(file, 'utf8').trim().split('\n').map(line => JSON.parse(line)))
     const stats = shadow.stats
     shadow.stop()
-    return { stats, expected, divergences, file }
+    const written = JSON.parse(fs.readFileSync(path.join(configDir, 'control-shadow-stats.json'), 'utf8'))
+    return { stats, expected, divergences, file, written }
   }
 
   it('the matrix, live: every request on both doors gets the same decision from Rust as from TypeScript (catalogue loaded)', async () => {
-    const { stats, expected, divergences } = await run(true)
+    const { stats, expected, divergences, written } = await run(true)
     expect(divergences).toEqual([])
     // `branding` and `plugin` with an unknown action, from the CLI on the panel: README difference 2, same end.
     expect(stats).toMatchObject({ compared: expected, diverged: 0, known: 2, dropped: 0 })
     expect(expected).toBeGreaterThan(300)
+    // The counter on disk: the last counts, the reason it stopped, and per command what went through.
+    expect(written).toMatchObject({ compared: expected, diverged: 0, known: 2, running: false, stopReason: 'stopped' })
+    expect(written.byCommand['panel:plugin']).toMatchObject({ known: 1, diverged: 0 })
+    expect(written.byCommand['backend:ui-list'].compared).toBeGreaterThan(0)
+    expect(Object.values(written.byCommand as Record<string, { compared: number }>).reduce((sum, row) => sum + row.compared, 0)).toBe(expected)
+    expect(JSON.stringify(written)).not.toContain(TOKENS.cli)
+  })
+
+  it('the counts per command stay bounded whatever a caller sends as cmd', async () => {
+    const shadow = new ControlShadow({ binary: BIN as string, contracts: CONTRACTS, onDivergence: () => undefined })
+    shadow.start()
+    for (let i = 0; i < 260; i++) shadow.observe('panel', { cmd: `junk-${i}` }, { allowed: false, client: null, code: 'unauthenticated', reason: 'invalid control token' }, { tierOf: () => undefined, catalogueReady: true })
+    for (let i = 0; i < 200 && shadow.stats.compared < 260; i++) await new Promise(resolve => setTimeout(resolve, 25))
+    const { compared, diverged, byCommand } = shadow.stats
+    shadow.stop()
+    expect({ compared, diverged }).toEqual({ compared: 260, diverged: 0 })
+    expect(Object.keys(byCommand).length).toBe(201)
+    expect(byCommand['panel:(other)'].compared).toBe(60)
   })
 
   it('the same before the catalogue is loaded (an empty catalogue is not evidence)', async () => {

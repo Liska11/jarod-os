@@ -22,6 +22,9 @@ export const BIN_ENV = 'JAROD_CONTROL_SHADOW_BIN'
 const BINARY = process.platform === 'win32' ? 'jarod-control-shadow.exe' : 'jarod-control-shadow'
 /** Requests awaiting the shadow's answer; past this the oldest are dropped and counted, never waited for. */
 const MAX_PENDING = 1000
+const MAX_COMMAND_KEYS = 200
+/** How often, at most, the counts are written to disk while requests keep coming. */
+const STATS_EVERY_MS = 1000
 
 export function flagOn(env: NodeJS.ProcessEnv): boolean {
   return env[FLAG] === '1'
@@ -98,6 +101,8 @@ export interface ShadowStats {
   /** Differences the README lists, with the same end for the request (`knownDifference`). */
   known: number
   dropped: number
+  /** The same counts per `surface:cmd` (cmd trimmed, empty as `-`): which requests a session really sent through the door. */
+  byCommand: Record<string, { compared: number; diverged: number; known: number }>
 }
 
 export interface ControlShadowOptions {
@@ -107,6 +112,8 @@ export interface ControlShadowOptions {
   onDivergence: (entry: ShadowDivergence) => void
   /** Why the shadow stopped, once. */
   onStop?: (reason: string) => void
+  /** After each comparison (the counts changed). */
+  onCompared?: () => void
 }
 
 /** The doors a shadow watches: each tells it what it decided, with its catalogue, and redacts what it writes. */
@@ -120,7 +127,8 @@ export interface ShadowedDoor {
 
 /**
  * With the flag on, a binary and the contracts: one shadow for these doors, its divergences appended to `<configDir>/control-shadow.jsonl`
- * (cmd, command and reasons redacted by the door that decided). Returns null, and runs nothing, otherwise.
+ * (cmd, command and reasons redacted by the door that decided) and its counts kept in `<configDir>/control-shadow-stats.json` (at start,
+ * at most once a second while requests come, and when it stops). Returns null, and runs nothing, otherwise.
  */
 export function attachControlShadow(options: {
   env: NodeJS.ProcessEnv
@@ -157,15 +165,49 @@ export function attachControlShadow(options: {
         options.log(`[control-shadow] cannot write ${file}: ${(error as Error).message}`)
       }
     },
-    onStop: reason => options.log(`[control-shadow] off: ${reason}`),
+    onStop: reason => {
+      stopReason = reason
+      writeStats()
+      options.log(`[control-shadow] off: ${reason} (${summary()})`)
+    },
+    onCompared: () => {
+      statsTimer ??= setTimeout(writeStats, STATS_EVERY_MS)
+      statsTimer.unref?.()
+    },
   })
+  const statsFile = path.join(options.configDir, 'control-shadow-stats.json')
+  const startedAt = new Date().toISOString()
+  let statsTimer: ReturnType<typeof setTimeout> | undefined
+  let stopReason: string | null = null
+  const summary = () => {
+    const { compared, diverged, known, dropped } = shadow.stats
+    return `compared ${compared}, diverged ${diverged}, known ${known}, dropped ${dropped}`
+  }
+  // What a session really sent through the shadow, rewritten whole (temp file, then rename) so a reader never sees half of it.
+  const writeStats = () => {
+    if (statsTimer) clearTimeout(statsTimer)
+    statsTimer = undefined
+    const stats = shadow.stats
+    const redact = (text: string) => options.doors[0]?.redact(text) ?? '[redacted]'
+    const byCommand = Object.fromEntries(Object.entries(stats.byCommand).map(([key, row]) => [redact(key), row]))
+    const body = { ...stats, byCommand, startedAt, updatedAt: new Date().toISOString(), stopReason }
+
+    try {
+      fs.mkdirSync(options.configDir, { recursive: true })
+      fs.writeFileSync(`${statsFile}.tmp`, `${JSON.stringify(body, null, 1)}\n`)
+      fs.renameSync(`${statsFile}.tmp`, statsFile)
+    } catch (error) {
+      options.log(`[control-shadow] cannot write ${statsFile}: ${(error as Error).message}`)
+    }
+  }
 
   for (const door of options.doors) {
     door.addObserver((request, decision) => shadow.observe(door.surface, request, decision, { tierOf: id => door.tierOf(id), catalogueReady: door.catalogueReady }))
   }
 
   shadow.start()
-  options.log(`[control-shadow] on: ${binary}, divergences -> ${file}`)
+  writeStats()
+  options.log(`[control-shadow] on: ${binary}, divergences -> ${file}, counts -> ${statsFile}`)
 
   return shadow
 }
@@ -186,6 +228,7 @@ export class ControlShadow {
   private next = 1
   private stopped = false
   private readonly counts = { compared: 0, diverged: 0, known: 0, dropped: 0 }
+  private readonly byCommand: ShadowStats['byCommand'] = {}
 
   constructor(private readonly options: ControlShadowOptions) {}
 
@@ -242,7 +285,7 @@ export class ControlShadow {
   }
 
   get stats(): ShadowStats {
-    return { running: Boolean(this.child) && !this.stopped, ...this.counts }
+    return { running: Boolean(this.child) && !this.stopped, ...this.counts, byCommand: structuredClone(this.byCommand) }
   }
 
   stop(reason = 'stopped'): void {
@@ -270,19 +313,28 @@ export class ControlShadow {
     if (!pending) return
 
     this.pending.delete(reply.id)
-    this.counts.compared++
 
     const rust = reply.decision ?? { error: reply.error ?? 'no decision' }
     const fields = reply.decision ? diffDecisions(pending.ts, reply.decision) : ['error']
+    const outcome = fields.length === 0 ? 'same' : reply.decision && knownDifference(pending.shown, pending.ts, reply.decision) ? 'known' : 'diverged'
+    // A cmd is whatever a caller sent: past MAX_COMMAND_KEYS distinct ones the rest share one row, so the counts stay bounded.
+    const named = `${pending.surface}:${pending.cmd.trim() || '-'}`
+    const key = Object.hasOwn(this.byCommand, named) || Object.keys(this.byCommand).length < MAX_COMMAND_KEYS ? named : `${pending.surface}:(other)`
+    this.byCommand[key] ??= { compared: 0, diverged: 0, known: 0 }
+    const row = this.byCommand[key]
 
-    if (fields.length === 0) return
+    this.counts.compared++
+    row.compared++
 
-    if (reply.decision && knownDifference(pending.shown, pending.ts, reply.decision)) {
+    if (outcome === 'known') {
       this.counts.known++
-      return
+      row.known++
+    } else if (outcome === 'diverged') {
+      this.counts.diverged++
+      row.diverged++
+      this.options.onDivergence({ at: new Date().toISOString(), surface: pending.surface, cmd: pending.cmd, command: pending.command, fields, ts: pending.ts, rust })
     }
 
-    this.counts.diverged++
-    this.options.onDivergence({ at: new Date().toISOString(), surface: pending.surface, cmd: pending.cmd, command: pending.command, fields, ts: pending.ts, rust })
+    this.options.onCompared?.()
   }
 }
