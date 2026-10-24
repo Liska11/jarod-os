@@ -2,7 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { app, BrowserWindow, dialog, ipcMain } from 'electron'
 import { IPC } from '../../shared/ipc.ts'
-import { findBinary, flagOn, runUpdater, TEST_KEY_ENV, type UpdaterReply, type UpdaterState } from '../host-updater.ts'
+import { findBinary, flagOn, onTrial, runUpdater, shippedDir, TEST_KEY_ENV, type UpdaterReply, type UpdaterState, updaterRoot } from '../host-updater.ts'
 import { log } from '../log.ts'
 
 /*
@@ -25,15 +25,37 @@ export type HostUpdaterAction = { ok: true; view: HostUpdaterView; message?: str
 /** The contracts the binary checks the manifest against: JAROD_OS_CONTRACTS_DIR, else a packaged copy, else the repository's (development). */
 function contractsDir(): string | null {
   if (process.env.JAROD_OS_CONTRACTS_DIR) return process.env.JAROD_OS_CONTRACTS_DIR
-  const candidates = [path.join(process.resourcesPath ?? '', 'contracts', 'v1'), path.resolve(app.getAppPath(), '..', '..', 'contracts', 'v1')]
+  const shipped = shippedDir()
+  const candidates = [...(shipped ? [path.join(shipped, 'contracts', 'v1')] : []), path.resolve(app.getAppPath(), '..', '..', 'contracts', 'v1')]
 
   return candidates.find(dir => fs.existsSync(path.join(dir, 'index.json'))) ?? null
 }
 
 const describe = (reply: Extract<UpdaterReply, { ok: false }>): string => `${reply.error} : ${reply.detail}`
 
+/**
+ * The health check of a trial: started by `jarod-launcher` with JAROD_UPDATER_TRIAL=1, this copy confirms itself the first time its core
+ * reaches `ready`. Until then the launcher and the updater treat it as unproven: an exit with an error rolls it back, and so do a missed
+ * deadline or too many starts.
+ */
+export function confirmTrialWhenReady(configDir: string, backend: { onState: (listener: (state: { phase: string }) => void) => unknown }): void {
+  if (!onTrial(process.env)) return
+  let done = false
+
+  backend.onState(state => {
+    if (done || state.phase !== 'ready') return
+    done = true
+    const binary = findBinary(process.env)
+    if (!binary) return log('host-updater', 'trial: jarod-updater not found, cannot confirm')
+
+    void runUpdater(binary, 'confirm', { root: updaterRoot(process.env, configDir), contracts: contractsDir() }).then(reply =>
+      log('host-updater', reply.ok ? `trial confirmed healthy (${process.env.JAROD_UPDATER_VERSION ?? '?'})` : `trial confirm refused: ${reply.error}: ${reply.detail}`)
+    )
+  })
+}
+
 export function registerHostUpdaterIpc(configDir: string): void {
-  const root = path.join(configDir, 'host-updater')
+  const root = updaterRoot(process.env, configDir)
   let busy = false
 
   const options = () => ({ root, contracts: contractsDir(), testKey: app.isPackaged ? null : (process.env[TEST_KEY_ENV] ?? null) })

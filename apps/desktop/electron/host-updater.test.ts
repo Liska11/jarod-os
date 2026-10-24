@@ -3,7 +3,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { afterAll, describe, expect, it } from 'vitest'
-import { findBinary, flagOn, readReply, runUpdater, updaterArgs } from './host-updater.ts'
+import { findBinary, flagOn, onTrial, readReply, runUpdater, updaterArgs, updaterRoot } from './host-updater.ts'
 
 // V-21 — the shell's side of the A/B updater. The pure parts always run; the end-to-end part drives the real `jarod-updater` (a debug
 // build: `cargo build -p host-updater` in host-rust, or JAROD_UPDATER_BIN) with a bundle signed in memory, and is skipped when no binary
@@ -33,6 +33,27 @@ describe('the flag and the binary', () => {
     expect(findBinary({ JAROD_UPDATER_BIN: path.join('absent.exe'), PATH: 'bin' }, exists)).toBeNull()
     expect(findBinary({ PATH: ['nothing', 'bin'].join(path.delimiter) }, exists)).toBe(onPath)
     expect(findBinary({ PATH: '' }, exists)).toBeNull()
+  })
+
+  it('finds the copy shipped in the app before PATH, never before JAROD_UPDATER_BIN', () => {
+    const shipped = path.join('resources', 'updater')
+    const inApp = path.join(shipped, process.platform === 'win32' ? 'jarod-updater.exe' : 'jarod-updater')
+    const exists = (file: string) => file === inApp || file === path.join('bin', process.platform === 'win32' ? 'jarod-updater.exe' : 'jarod-updater')
+    expect(findBinary({ PATH: 'bin' }, exists, shipped)).toBe(inApp)
+    expect(findBinary({ PATH: 'bin', JAROD_UPDATER_BIN: path.join('absent.exe') }, exists, shipped)).toBeNull()
+  })
+
+  it('uses the root the launcher names, else local data on Windows, else the config folder (and always it in a test profile)', () => {
+    expect(updaterRoot({ JAROD_UPDATER_ROOT: 'X', LOCALAPPDATA: 'L' }, 'C', 'win32')).toBe('X')
+    expect(updaterRoot({ LOCALAPPDATA: 'L' }, 'C', 'win32')).toBe(path.win32.join('L', 'Jarod-OS', 'updates'))
+    expect(updaterRoot({ LOCALAPPDATA: 'L', JAROD_OS_ISOLATED: '1' }, 'C', 'win32')).toBe(path.join('C', 'host-updater'))
+    expect(updaterRoot({}, 'C', 'linux')).toBe(path.join('C', 'host-updater'))
+  })
+
+  it('is on trial only when the launcher said so, with the flag and a root', () => {
+    expect(onTrial({ JAROD_HOST_UPDATER: '1', JAROD_UPDATER_TRIAL: '1', JAROD_UPDATER_ROOT: 'R' })).toBe(true)
+    expect(onTrial({ JAROD_UPDATER_TRIAL: '1', JAROD_UPDATER_ROOT: 'R' })).toBe(false)
+    expect(onTrial({ JAROD_HOST_UPDATER: '1', JAROD_UPDATER_TRIAL: '1' })).toBe(false)
   })
 
   it('builds an argument array, never a shell line', () => {

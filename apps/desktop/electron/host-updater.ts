@@ -36,15 +36,40 @@ export type UpdaterReply =
   | { ok: true; state?: UpdaterState; version?: string; entry?: string; files?: number; installed?: { slot: string; version: string }; restored?: string; trial?: boolean }
   | { ok: false; error: string; detail: string }
 
+/** `resources/updater` of a packaged app: jarod-updater.exe, jarod-launcher.exe and contracts/v1 (scripts/bundle-updater.mjs). */
+export function shippedDir(): string | null {
+  const resources = (process as { resourcesPath?: string }).resourcesPath
+
+  return resources ? path.join(resources, 'updater') : null
+}
+
 export function flagOn(env: NodeJS.ProcessEnv): boolean {
   return env[FLAG] === '1'
 }
 
-/** JAROD_UPDATER_BIN when it names a file, else the first `jarod-updater` on PATH; null when there is none. */
-export function findBinary(env: NodeJS.ProcessEnv, exists: (file: string) => boolean = fs.existsSync): string | null {
+/**
+ * The updater's root: the one `jarod-launcher` names when it started this copy; else the launcher's own default on Windows,
+ * %LOCALAPPDATA%\Jarod-OS\updates (two copies of the app: local data, never roamed); `<config>/host-updater` in an isolated profile
+ * (tests) and elsewhere.
+ */
+export function updaterRoot(env: NodeJS.ProcessEnv, configDir: string, platform: NodeJS.Platform = process.platform): string {
+  if (env.JAROD_UPDATER_ROOT) return env.JAROD_UPDATER_ROOT
+  if (platform === 'win32' && env.LOCALAPPDATA && env.JAROD_OS_ISOLATED !== '1') return path.win32.join(env.LOCALAPPDATA, 'Jarod-OS', 'updates')
+
+  return path.join(configDir, 'host-updater')
+}
+
+/** Started by `jarod-launcher` as a version on trial: this copy must confirm its own health, once, when its core is ready. */
+export function onTrial(env: NodeJS.ProcessEnv): boolean {
+  return flagOn(env) && env.JAROD_UPDATER_TRIAL === '1' && Boolean(env.JAROD_UPDATER_ROOT)
+}
+
+/** JAROD_UPDATER_BIN when it names a file, else the copy shipped in the app (`resources/updater`), else the first on PATH; null when none. */
+export function findBinary(env: NodeJS.ProcessEnv, exists: (file: string) => boolean = fs.existsSync, shipped: string | null = shippedDir()): string | null {
   const named = env[BIN_ENV]
 
   if (named) return exists(named) ? named : null
+  if (shipped && exists(path.join(shipped, BINARY))) return path.join(shipped, BINARY)
 
   for (const dir of (env.PATH ?? env.Path ?? '').split(path.delimiter)) {
     if (!dir) continue
