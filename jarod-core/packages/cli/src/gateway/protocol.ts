@@ -58,6 +58,11 @@ export class TurnTranslator {
     this.aborted = true;
   }
 
+  /** Comment le tour s'est terminé : interrompu ou en erreur, la file de messages ne repart pas toute seule. */
+  get outcome(): { aborted: boolean; error?: string } {
+    return { aborted: this.aborted, ...(this.errorText ? { error: this.errorText } : {}) };
+  }
+
   handle(e: AgentEvent): void {
     switch (e.type) {
       case "stream-start":

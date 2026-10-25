@@ -49,6 +49,12 @@ export interface AgentHooks {
   emit(event: AgentEvent): void;
   /** Asks the user to approve a side-effecting tool call. */
   approve(sessionId: string, call: ToolCall, toolDescription: string): Promise<boolean>;
+  /**
+   * Pilotage en cours de tour : des messages de l'utilisateur reçus pendant que le tour tourne. La boucle les lit entre deux
+   * étapes (jamais au milieu d'un appel au modèle ou d'un outil) et les ajoute à la conversation comme messages utilisateur ;
+   * le modèle les voit à l'étape suivante. Absent = pas de pilotage (tâches planifiées, bots, sous-agents).
+   */
+  steering?: { peek(): boolean; take(): string[] };
 }
 
 /**
@@ -705,6 +711,11 @@ ${project.text}`);
       let truncationWarned = false;
       for (let step = 0; step < s.maxAgentSteps; step++) {
         if (signal.aborted) break;
+        // Pilotage : ce que l'utilisateur a écrit pendant l'étape précédente entre dans la conversation avant le prochain appel.
+        for (const note of hooks.steering?.take() ?? []) {
+          const steered = messages.add(sessionId, { role: "user", content: note });
+          emit({ type: "message", sessionId, message: steered });
+        }
         {
           const b = budget();
           if (b.ratio !== null && b.ratio >= 1) {
@@ -850,7 +861,11 @@ ${project.text}`);
           }
         }
 
-        if (result.toolCalls.length === 0) break;
+        if (result.toolCalls.length === 0) {
+          // Une consigne arrivée pendant la dernière réponse n'est pas perdue : le tour continue pour y répondre.
+          if (hooks.steering?.peek() && step < s.maxAgentSteps - 1) continue;
+          break;
+        }
 
         for (const call of result.toolCalls) {
           // Every tool call must get a result, even when stopped, or the next request is invalid.

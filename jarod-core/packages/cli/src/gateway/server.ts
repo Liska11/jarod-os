@@ -24,6 +24,7 @@ import { analytics, parseDays, periodStart, type UsageRow, USAGE_SQL } from "./u
 import { checkTexts, MEMORY_FILE_NAMES, type MemoryFileName, type MemoryServiceLike, memoryFiles, type ProfileLike, writeMemoryFile } from "./memory.js";
 import { cronJobs, memoryStatus, type SchedulerLike } from "./rest.js";
 import { parseScheduleText, ScheduleTextError } from "./schedule-text.js";
+import { PromptQueue, PromptQueueError } from "./prompt-queue.js";
 import { acceptUpgrade, type WsConnection, wsProtocolToken, wsSelectedProtocol } from "./ws.js";
 
 /** Ce que la passerelle demande au noyau : le strict nécessaire, pour qu'un faux noyau suffise aux tests. */
@@ -256,6 +257,109 @@ export function createGateway(opts: GatewayOptions): Gateway {
     }
   };
 
+  const queue = new PromptQueue();
+  const queueFrame = (conn: Conn, id: string): void => {
+    if (!conn.ws.closed) send(conn, eventFrame("queue.update", id, { session_id: id, items: queue.list(id) }));
+  };
+  /** Une erreur de la file (message vide, file pleine) est un refus net, pas une panne du serveur. */
+  const queueOp = <T>(op: () => T): T => {
+    try {
+      return op();
+    } catch (e) {
+      if (e instanceof PromptQueueError) throw new RpcError(RPC.params, e.message);
+      throw e;
+    }
+  };
+
+  /** Ce que `prompt.submit` et `prompt.queue` vérifient avant de lancer quoi que ce soit : la conversation, le texte, le modèle. */
+  const submitParams = (p: Record<string, unknown>): { id: string; text: string } => {
+    const id = str(p.session_id);
+    if (!core.sessions.get(id)) throw new RpcError(RPC.params, `unknown session ${id}`);
+    const text = promptText(p.text).trim();
+    if (!text) throw new RpcError(RPC.params, "empty prompt");
+    // Un profil vierge n'a pas choisi de modèle : partir sur le défaut du noyau (Anthropic, sans clé) ne donnerait qu'une erreur de clé incompréhensible.
+    // Une conversation qui porte son propre modèle, ou une commande `/`, passe.
+    const own = core.sessions.get(id)?.context;
+    if (!modelChosen(core.settings) && !(own?.provider && own?.model) && !text.startsWith("/")) {
+      throw new RpcError(-32000, NO_MODEL_CHOSEN);
+    }
+    return { id, text };
+  };
+
+  /** Démarre un tour sur une conversation libre ; lève si un tour y court déjà. */
+  const startTurn = (id: string, text: string, conn: Conn): void => {
+    // Avant de toucher à `turns` : un refus ne doit pas effacer le tour qui court (il ne pourrait plus être interrompu).
+    if (turns.has(id)) throw new RpcError(-32000, "a turn is already running in this session");
+    const translator = new TurnTranslator(
+      id,
+      (frame) => {
+        if (!conn.ws.closed) send(conn, frame);
+      },
+      () => usageFor(id),
+    );
+    let lastTitle = core.sessions.get(id)?.title ?? "";
+    // Le noyau pose le titre provisoire (le début du message) au PREMIER message du tour, avant tout `session-updated`, puis le remplace par un titre
+    // généré après `done` : on regarde donc à chacun de ces trois événements, sinon l'interface garde « Nouvelle conversation ».
+    const hooks: AgentHooks = {
+      emit: (e) => {
+        translator.handle(e);
+        if (e.type === "message" || e.type === "session-updated" || e.type === "done") {
+          const title = core.sessions.get(id)?.title ?? "";
+          if (title && title !== lastTitle) {
+            lastTitle = title;
+            if (!conn.ws.closed) send(conn, eventFrame("session.title", id, { session_id: id, title }));
+          }
+        }
+        if (e.type === "done") {
+          turns.delete(id);
+          for (const [type, n] of translator.ignored) ignored.set(type, (ignored.get(type) ?? 0) + n);
+          afterTurn(id, translator, conn);
+        }
+      },
+      approve: (sessionId, call, description) => approveWith(conn, sessionId, call, description),
+      steering: queue.steering(id),
+    };
+    turns.set(id, translator);
+    const started = core.start(id, text, hooks);
+    if (started.kind !== "started") {
+      turns.delete(id);
+      throw new RpcError(-32000, "a turn is already running in this session");
+    }
+  };
+
+  /**
+   * Fin d'un tour : les consignes que l'agent n'a pas eu le temps de lire passent en tête de la file. La file repart toute seule, sauf si le tour a
+   * été interrompu ou a échoué : l'utilisateur a dit stop (ou quelque chose ne va pas), il décide de la suite (`prompt.queue.resume`).
+   */
+  const afterTurn = (id: string, translator: TurnTranslator, conn: Conn): void => {
+    queue.demoteSteering(id);
+    if (!queue.list(id).length) return;
+    const { aborted, error } = translator.outcome;
+    if (aborted || error || conn.ws.closed) {
+      queueFrame(conn, id);
+      return;
+    }
+    // Après la fin de la chaîne d'événements du tour : le noyau a fini de le clore avant qu'on en démarre un autre.
+    queueMicrotask(() => drainQueue(id, conn));
+  };
+
+  /** Envoie le prochain message de la file, s'il y en a un et que la conversation est libre. */
+  const drainQueue = (id: string, conn: Conn): void => {
+    if (turns.has(id) || conn.ws.closed || !core.sessions.get(id)) return;
+    const next = queue.next(id);
+    if (!next) return;
+    try {
+      startTurn(id, next.text, conn);
+    } catch (e) {
+      queue.pushFront(id, next); // un départ raté ne perd pas le message
+      log(`file de messages : départ impossible (${e instanceof Error ? e.message : String(e)})`);
+      queueFrame(conn, id);
+      return;
+    }
+    send(conn, eventFrame("prompt.started", id, { session_id: id, id: next.id, text: next.text, from_queue: true }));
+    queueFrame(conn, id);
+  };
+
   type Method = (params: Record<string, unknown>, conn: Conn) => unknown | Promise<unknown>;
   const methods: Record<string, Method> = {
     "gateway.ping": () => ({}),
@@ -326,6 +430,7 @@ export function createGateway(opts: GatewayOptions): Gateway {
     "session.delete": (p) => {
       const id = str(p.session_id);
       if (!core.sessions.get(id)) throw new RpcError(RPC.params, `unknown session ${id}`);
+      queue.forget(id);
       core.stop(id);
       core.sessions.delete(id);
       return { deleted: id };
@@ -341,52 +446,53 @@ export function createGateway(opts: GatewayOptions): Gateway {
     },
 
     "prompt.submit": (p, conn) => {
+      const { id, text } = submitParams(p);
+      startTurn(id, text, conn);
+      return { status: "streaming" };
+    },
+
+    // Écrire pendant qu'un tour tourne : le message part tout seul quand le tour se termine. Sans tour en cours, c'est un envoi ordinaire.
+    "prompt.queue": (p, conn) => {
+      const { id, text } = submitParams(p);
+      if (!turns.has(id)) {
+        startTurn(id, text, conn);
+        return { status: "streaming" };
+      }
+      const item = queueOp(() => queue.add(id, text));
+      queueFrame(conn, id);
+      return { status: "queued", id: item.id, position: queue.list(id).length };
+    },
+
+    // Piloter le tour en cours : le message entre dans la conversation à la prochaine étape de l'agent, sans l'interrompre.
+    "prompt.steer": (p) => {
       const id = str(p.session_id);
       if (!core.sessions.get(id)) throw new RpcError(RPC.params, `unknown session ${id}`);
-      const text = promptText(p.text).trim();
-      if (!text) throw new RpcError(RPC.params, "empty prompt");
-      // Un profil vierge n'a pas choisi de modèle : partir sur le défaut du noyau (Anthropic, sans clé) ne donnerait qu'une erreur de clé incompréhensible.
-      // Une conversation qui porte son propre modèle, ou une commande `/`, passe.
-      const own = core.sessions.get(id)?.context;
-      if (!modelChosen(core.settings) && !(own?.provider && own?.model) && !text.startsWith("/")) {
-        throw new RpcError(-32000, NO_MODEL_CHOSEN);
-      }
-      // Avant de toucher à `turns` : un refus ne doit pas effacer le tour qui court (il ne pourrait plus être interrompu).
-      if (turns.has(id)) throw new RpcError(-32000, "a turn is already running in this session");
-      const translator = new TurnTranslator(
-        id,
-        (frame) => {
-          if (!conn.ws.closed) send(conn, frame);
-        },
-        () => usageFor(id),
-      );
-      let lastTitle = core.sessions.get(id)?.title ?? "";
-      // Le noyau pose le titre provisoire (le début du message) au PREMIER message du tour, avant tout `session-updated`, puis le remplace par un titre
-      // généré après `done` : on regarde donc à chacun de ces trois événements, sinon l'interface garde « Nouvelle conversation ».
-      const hooks: AgentHooks = {
-        emit: (e) => {
-          translator.handle(e);
-          if (e.type === "message" || e.type === "session-updated" || e.type === "done") {
-            const title = core.sessions.get(id)?.title ?? "";
-            if (title && title !== lastTitle) {
-              lastTitle = title;
-              if (!conn.ws.closed) send(conn, eventFrame("session.title", id, { session_id: id, title }));
-            }
-          }
-          if (e.type === "done") {
-            turns.delete(id);
-            for (const [type, n] of translator.ignored) ignored.set(type, (ignored.get(type) ?? 0) + n);
-          }
-        },
-        approve: (sessionId, call, description) => approveWith(conn, sessionId, call, description),
-      };
-      turns.set(id, translator);
-      const started = core.start(id, text, hooks);
-      if (started.kind !== "started") {
-        turns.delete(id);
-        throw new RpcError(-32000, "a turn is already running in this session");
-      }
-      return { status: "streaming" };
+      if (!turns.has(id)) throw new RpcError(-32000, "no turn is running in this session");
+      return { status: "steering", pending: queueOp(() => queue.steer(id, promptText(p.text))) };
+    },
+
+    "prompt.queue.list": (p) => ({ items: queue.list(str(p.session_id)) }),
+
+    "prompt.queue.remove": (p, conn) => {
+      const id = str(p.session_id);
+      const removed = queue.remove(id, str(p.id));
+      queueFrame(conn, id);
+      return { removed };
+    },
+
+    "prompt.queue.clear": (p, conn) => {
+      const id = str(p.session_id);
+      const cleared = queue.clear(id);
+      queueFrame(conn, id);
+      return { cleared };
+    },
+
+    // Après un tour interrompu ou en erreur, la file attend : cette méthode la relance.
+    "prompt.queue.resume": (p, conn) => {
+      const id = str(p.session_id);
+      if (!core.sessions.get(id)) throw new RpcError(RPC.params, `unknown session ${id}`);
+      if (!turns.has(id)) drainQueue(id, conn);
+      return { status: turns.has(id) ? "streaming" : "empty", items: queue.list(id) };
     },
 
     // Les commandes `/` de Jarod comme complétions ; sans registre (faux noyau), un catalogue vide.
