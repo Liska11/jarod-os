@@ -1,8 +1,9 @@
 import type { GatewayEvent, SessionCreateResult, SessionResumeResult } from '@jarod-os/client'
 import { atom, computed, map } from 'nanostores'
 import { appendSystem, appendUser, type ChatState, emptyChat, fromTranscript, reduceChatEvent } from '../lib/chat-model.ts'
+import { appendSteer, parseQueueItems, type QueuedItem, sendModeFor } from '../lib/prompt-queue.ts'
 import { $env, $prefs } from './backend.ts'
-import { gatewayRequest, onAnyGatewayEvent } from './gateway.ts'
+import { gatewayCall, gatewayRequest, onAnyGatewayEvent } from './gateway.ts'
 import { notify } from './notifications.ts'
 import { refreshSessions, rememberRuntimeId } from './sessions.ts'
 
@@ -14,6 +15,9 @@ export const LISTED_SESSION_SOURCES: ReadonlySet<string> = new Set([SESSION_SOUR
 export const $chats = map<Record<string, ChatState>>({})
 export const $activeChatId = atom<string | null>(null)
 export const $activeChat = computed([$chats, $activeChatId], (chats, id) => (id ? (chats[id] ?? null) : null))
+
+/** Messages written while the agent was working, per runtime session id: they leave one by one as each turn ends. */
+export const $queues = map<Record<string, QueuedItem[]>>({})
 
 const CHAT_EVENTS = new Set<GatewayEvent['type']>([
   'message.start',
@@ -52,6 +56,25 @@ function adopt(result: SessionCreateResult | SessionResumeResult, fallbackStored
 export function bindChatEvents(): () => void {
   return onAnyGatewayEvent(event => {
     const sid = event.session_id
+    const type = event.type as string
+    const payload = (event as { payload?: unknown }).payload as { items?: unknown; text?: unknown } | undefined
+
+    // The gateway's own notifications (not part of the Hermes contract): the queue changed, or a queued message just started its turn.
+    if (sid && type === 'queue.update') {
+      $queues.setKey(sid, parseQueueItems(payload?.items))
+
+      return
+    }
+
+    if (sid && type === 'prompt.started') {
+      const started = $chats.get()[sid]
+
+      if (started && typeof payload?.text === 'string') {
+        $chats.setKey(sid, appendUser(started, payload.text))
+      }
+
+      return
+    }
 
     if (!sid || !CHAT_EVENTS.has(event.type)) {
       return
@@ -86,6 +109,7 @@ export async function createChat(options: { cwd?: string; title?: string } = {})
   $chats.setKey(state.sessionId, state)
   $activeChatId.set(state.sessionId)
   void refreshSessions()
+  void refreshQueue(state.sessionId)
 
   return state
 }
@@ -103,6 +127,7 @@ export async function openStoredSession(storedId: string): Promise<ChatState> {
   const state = adopt(result, storedId)
   $chats.setKey(state.sessionId, state)
   $activeChatId.set(state.sessionId)
+  void refreshQueue(state.sessionId)
 
   return state
 }
@@ -158,6 +183,128 @@ export async function sendPrompt(text: string, options: SendPromptOptions = {}):
   }
 
   return sid
+}
+
+const errorText = (error: unknown): string => (error instanceof Error ? error.message : String(error))
+
+function showError(sid: string, error: unknown): void {
+  const current = $chats.get()[sid]
+
+  if (current) {
+    $chats.setKey(sid, appendSystem(current, errorText(error), 'error'))
+  }
+}
+
+/**
+ * Write while the agent works: the message waits in the queue and leaves when the turn ends. With the agent idle it is an ordinary send
+ * (the gateway starts the turn at once and says so).
+ */
+export async function queuePrompt(text: string, sessionId?: string): Promise<void> {
+  const trimmed = text.trim()
+  const sid = sessionId ?? $activeChatId.get()
+  const chat = sid ? $chats.get()[sid] : null
+
+  if (!trimmed || !sid || !chat || sendModeFor(chat) === 'send') {
+    await sendPrompt(trimmed, sid ? { sessionId: sid } : {})
+
+    return
+  }
+
+  try {
+    const result = await gatewayCall<{ status: string }>('prompt.queue', { session_id: sid, text: trimmed })
+
+    // The turn ended between the click and the call: the gateway started the message instead of queueing it.
+    if (result.status === 'streaming') {
+      const current = $chats.get()[sid]
+
+      if (current) {
+        $chats.setKey(sid, appendUser(current, trimmed))
+      }
+    }
+  } catch (error) {
+    showError(sid, error)
+  }
+}
+
+/** Steer the turn in progress: the agent reads the note before its next step, without being interrupted. */
+export async function steerPrompt(text: string, sessionId?: string): Promise<void> {
+  const trimmed = text.trim()
+  const sid = sessionId ?? $activeChatId.get()
+  const chat = sid ? $chats.get()[sid] : null
+
+  if (!trimmed || !sid || !chat) {
+    return
+  }
+
+  try {
+    await gatewayCall('prompt.steer', { session_id: sid, text: trimmed })
+    const current = $chats.get()[sid]
+
+    if (current) {
+      $chats.setKey(sid, appendSteer(current, trimmed))
+    }
+  } catch (error) {
+    // The turn finished before the note could be read: it is then simply the next message.
+    if (errorText(error).includes('no turn is running')) {
+      await sendPrompt(trimmed, { sessionId: sid })
+
+      return
+    }
+
+    showError(sid, error)
+  }
+}
+
+export async function refreshQueue(sessionId?: string): Promise<void> {
+  const sid = sessionId ?? $activeChatId.get()
+
+  if (!sid) {
+    return
+  }
+
+  try {
+    const result = await gatewayCall<{ items?: unknown }>('prompt.queue.list', { session_id: sid })
+    $queues.setKey(sid, parseQueueItems(result.items))
+  } catch {
+    // An engine without the queue (another backend) simply has none.
+  }
+}
+
+export async function removeQueued(id: string, sessionId?: string): Promise<void> {
+  const sid = sessionId ?? $activeChatId.get()
+
+  if (sid) {
+    await gatewayCall('prompt.queue.remove', { session_id: sid, id }).catch(error => showError(sid, error))
+  }
+}
+
+export async function clearQueue(sessionId?: string): Promise<void> {
+  const sid = sessionId ?? $activeChatId.get()
+
+  if (sid) {
+    await gatewayCall('prompt.queue.clear', { session_id: sid }).catch(error => showError(sid, error))
+  }
+}
+
+/** After a stopped or failed turn the queue waits; this sends its next message. */
+export async function resumeQueue(sessionId?: string): Promise<void> {
+  const sid = sessionId ?? $activeChatId.get()
+
+  if (!sid) {
+    return
+  }
+
+  try {
+    const result = await gatewayCall<{ status: string }>('prompt.queue.resume', { session_id: sid })
+    const chat = $chats.get()[sid]
+
+    // The started message's own bubble comes with the gateway's `prompt.started`; here the turn is just marked as running.
+    if (result.status === 'streaming' && chat && !chat.streaming) {
+      $chats.setKey(sid, { ...chat, streaming: true })
+    }
+  } catch (error) {
+    showError(sid, error)
+  }
 }
 
 export async function runSlash(command: string, sessionId?: string): Promise<void> {
@@ -243,6 +390,7 @@ export function forgetChat(sessionId: string): void {
   const next = { ...$chats.get() }
   delete next[sessionId]
   $chats.set(next)
+  $queues.setKey(sessionId, [])
 
   if ($activeChatId.get() === sessionId) {
     $activeChatId.set(null)
@@ -251,5 +399,6 @@ export function forgetChat(sessionId: string): void {
 
 export function resetChats(): void {
   $chats.set({})
+  $queues.set({})
   $activeChatId.set(null)
 }

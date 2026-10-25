@@ -4,7 +4,7 @@ import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import { HermesAvatar } from '../../components/app-icon.tsx'
 import { cn } from '../../lib/cn.ts'
 import type { AssistantMessage, ChatMessage, ChatState, SystemMessage, ToolMessage, UserMessage } from '../../lib/chat-model.ts'
-import { interruptChat, runSlash, sendPrompt } from '../../store/chat.ts'
+import { interruptChat, queuePrompt, runSlash, sendPrompt, steerPrompt } from '../../store/chat.ts'
 import type { Artifact } from '../../store/missions.ts'
 import { $activeSpace } from '../../store/spaces.ts'
 import { Markdown } from '../chat/Markdown.tsx'
@@ -14,6 +14,7 @@ import { linesForTurn, toolIdsOf } from './audit-timeline.ts'
 import { AuditTimeline, useAuditLines } from './AuditTimeline.tsx'
 import { ComposerBar, ModelPicker } from './ComposerBar.tsx'
 import { HermesComposer } from './HermesComposer.tsx'
+import { QueueStrip } from './QueueStrip.tsx'
 import { SuggestionChips } from './SuggestionChips.tsx'
 import { ToolSummaryRow } from './ToolSummaryRow.tsx'
 import { type MessageKey, t, useT } from '../../lib/i18n.ts'
@@ -75,8 +76,9 @@ function blocksOf(items: ChatMessage[]): Block[] {
 export function Conversation({ chat, online }: { chat: ChatState | null; online: boolean }) {
   const { assistant } = useT()
   const space = useStore($activeSpace)
+  // While the agent works a message is queued (it leaves when the turn ends); otherwise it is sent at once.
   const submit = async (text: string): Promise<void> => {
-    await (text.startsWith('/') ? runSlash(text) : sendPrompt(text))
+    await (text.startsWith('/') ? runSlash(text) : chat?.streaming ? queuePrompt(text) : sendPrompt(text))
   }
 
   return (
@@ -93,7 +95,8 @@ export function Conversation({ chat, online }: { chat: ChatState | null; online:
       {chat ? <Transcript chat={chat} online={online} /> : <Hero online={online} />}
 
       <div className="shrink-0 px-4 pb-4 pt-2">
-        <HermesComposer autoFocus disabled={!online} streaming={chat?.streaming} placeholder={online ? t('chat.ask') : t('chat.connecting')} onSubmit={submit} onInterrupt={() => void interruptChat()} />
+        <QueueStrip />
+        <HermesComposer autoFocus disabled={!online} streaming={chat?.streaming} placeholder={online ? t('chat.ask') : t('chat.connecting')} onSubmit={submit} onSteer={text => steerPrompt(text)} onInterrupt={() => void interruptChat()} />
         <ComposerBar chat={chat} online={online} />
       </div>
     </div>
