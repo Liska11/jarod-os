@@ -168,23 +168,27 @@ export async function listWorktrees(repoInput: string): Promise<WorktreeInfo[]> 
  * Forme canonique d'un chemin : liens et noms courts Windows (`RUNNER~1`) résolus. `git worktree list` rend la forme longue alors qu'un appelant peut
  * donner la forme courte ; sans cette résolution, un worktree légitime serait refusé. `null` si le chemin n'existe pas.
  */
-const canonical = (p: string): string | null => {
+export const canonicalPath = (p: string): string | null => {
   try {
-    return realpathSync.native(resolve(p)).replace(/[\/]+$/, "");
+    return realpathSync.native(resolve(p)).replace(/[\\/]+$/, "");
   } catch {
     return null;
   }
 };
 
 const samePath = (a: string, b: string): boolean => {
-  const [x, y] = [canonical(a), canonical(b)];
+  const [x, y] = [canonicalPath(a), canonicalPath(b)];
   if (x === null || y === null) return false;
   return process.platform === "win32" ? x.toLowerCase() === y.toLowerCase() : x === y;
 };
 
-/** Le worktree de `repo` qui est à `path`, ou une erreur : un chemin venu de l'extérieur n'est jamais utilisé tel quel. */
+/**
+ * Le worktree de `repo` qui est à `path`, ou une erreur : un chemin venu de l'extérieur n'est jamais utilisé tel quel. Le `path` rendu est la forme
+ * CANONIQUE validée : c'est elle qu'il faut afficher, utiliser comme dossier de travail et comme clé de toute comparaison (occupation par un agent).
+ */
 export async function requireWorktree(repo: string, path: string): Promise<WorktreeInfo> {
   const found = (await listWorktrees(repo)).find((w) => samePath(w.path, path));
-  if (!found) throw new WorkspaceError(`ce dossier n'est pas un worktree de ${repo} : ${path}`);
-  return found;
+  const real = found ? canonicalPath(found.path) : null;
+  if (!found || real === null) throw new WorkspaceError(`ce dossier n'est pas un worktree de ${repo} : ${path}`);
+  return { ...found, path: real };
 }

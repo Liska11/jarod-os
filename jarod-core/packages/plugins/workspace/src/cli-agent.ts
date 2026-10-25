@@ -7,7 +7,7 @@ import { spawn } from "node:child_process";
 import { isAbsolute, resolve as resolvePath } from "node:path";
 import { childEnv } from "@jarod/kernel/child-env";
 import { killTree, shellCommand } from "./exec.js";
-import { WorkspaceError } from "./git.js";
+import { WorkspaceError, canonicalPath } from "./git.js";
 
 export const HARNESSES = ["claude", "codex"] as const;
 export type Harness = (typeof HARNESSES)[number];
@@ -113,7 +113,11 @@ export function readAgentLine(harness: Harness, line: string, into: Reading): vo
 
 /** Les dossiers où un agent travaille en ce moment : deux agents qui écrivent dans le même worktree se marcheraient dessus. */
 const RUNNING = new Set<string>();
-const dirKey = (cwd: string): string => (process.platform === "win32" ? resolvePath(cwd).toLowerCase() : resolvePath(cwd));
+/** Clé d'occupation : le chemin canonique (liens et noms courts Windows résolus), pour que deux écritures du même dossier soient le même agent. */
+const dirKey = (cwd: string): string => {
+  const real = canonicalPath(cwd) ?? resolvePath(cwd);
+  return process.platform === "win32" ? real.toLowerCase() : real;
+};
 
 /** Vrai si un agent lancé par ce processus travaille déjà dans ce dossier. */
 export function agentBusy(cwd: string): boolean {

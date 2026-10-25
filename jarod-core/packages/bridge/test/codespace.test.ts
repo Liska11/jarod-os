@@ -3,10 +3,11 @@
  * doublures : ce qui est testé, c'est ce que le handler exige d'elles avant d'agir.
  */
 import { execFileSync } from "node:child_process";
-import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { realpathSync } from "node:fs";
+import { mkdtemp, readFile, rm, stat, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { git, runCliAgent } from "@jarod/plugin-workspace";
+import { agentBusy, git, runCliAgent } from "@jarod/plugin-workspace";
 import { afterEach, describe, expect, it } from "vitest";
 import type { FileGate } from "../src/main/file-gate.js";
 import { createCodespaceHandlers, PROMPT_PREVIEW_CHARS } from "../src/main/handlers/codespace.js";
@@ -180,8 +181,8 @@ describe("confirmation du lancement d'un agent", () => {
 
     expect(await h["codespace-run-agent"](repo, task.path, "claude", "corrige le bug de connexion", "opus-5")).toBeNull();
 
-    // git écrit les chemins avec des « / », même sous Windows.
-    expect(details[0]!.replaceAll("\\", "/")).toContain(task.path.replaceAll("\\", "/"));
+    // La boîte montre la forme CANONIQUE du worktree (noms courts et liens résolus), celle qui sera réellement le dossier de travail.
+    expect(details[0]!.replaceAll("\\", "/")).toContain(realpathSync.native(task.path).replaceAll("\\", "/"));
     expect(details[0]).toContain("Modèle : opus-5");
     expect(details[0]).toContain("Tâche envoyée (27 caractères) :\ncorrige le bug de connexion");
     expect(details[0]).not.toContain("tronquée");
@@ -227,6 +228,54 @@ describe("confirmation du lancement d'un agent", () => {
     } finally {
       controller.abort();
       await running;
+    }
+  });
+
+  it("un agent enregistré via la forme longue bloque une seconde tentative via un alias (nom court 8.3 ou lien), avant tout lancement", async () => {
+    const repo = await makeRepo();
+    const task = (await setup().h["codespace-create-worktree"](repo, "feature/alias-occupe"))!;
+    const long = realpathSync.native(task.path);
+    const dir = await mkdtemp(join(tmpdir(), "jarod-hang-"));
+    roots.push(dir);
+    const script = join(dir, "hang.mjs");
+    await writeFile(script, "setTimeout(() => {}, 60000);");
+    const aliases: string[] = [];
+    const link = join(dir, "alias");
+    await symlink(long, link, "junction");
+    aliases.push(link);
+    if (process.platform === "win32") {
+      // Forme courte (RUNNER~1 sur les runners) ; absente si la génération des noms 8.3 est désactivée ou si le chemin n'en a pas.
+      const short = execFileSync("powershell", ["-NoProfile", "-Command", "(New-Object -ComObject Scripting.FileSystemObject).GetFolder($env:WS_PATH).ShortPath"], { encoding: "utf8", env: { ...process.env, WS_PATH: long } }).trim();
+      if (short.toLowerCase() !== long.toLowerCase()) aliases.push(short);
+    }
+    const controller = new AbortController();
+    // Exécutable factice (node + script qui attend) : rien dépend de la présence de `claude`, et la seconde tentative ne doit jamais atteindre le lancement.
+    const running = runCliAgent({ harness: "claude", cwd: long, prompt: "long", signal: controller.signal }, { command: process.execPath, args: [script] });
+    try {
+      for (const alias of aliases) {
+        const { h, asked } = setup();
+        await expect(h["codespace-run-agent"](repo, alias, "claude", "autre tâche")).rejects.toThrow(/travaille déjà/);
+        expect(asked).toEqual([]);
+      }
+      expect(agentBusy(task.path)).toBe(true);
+    } finally {
+      controller.abort();
+      await running;
+    }
+
+    // Sens inverse (celui du runner Windows) : l'agent est enregistré via l'alias, la tentative arrive par la forme longue.
+    for (const alias of aliases) {
+      const reverse = new AbortController();
+      const started = runCliAgent({ harness: "claude", cwd: alias, prompt: "long", signal: reverse.signal }, { command: process.execPath, args: [script] });
+      try {
+        const { h, asked } = setup();
+        await expect(h["codespace-run-agent"](repo, long, "claude", "autre tâche")).rejects.toThrow(/travaille déjà/);
+        expect(asked).toEqual([]);
+        expect(agentBusy(long)).toBe(true);
+      } finally {
+        reverse.abort();
+        await started;
+      }
     }
   });
 });
