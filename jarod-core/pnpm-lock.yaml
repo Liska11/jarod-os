@@ -231,6 +231,9 @@ importers:
       '@jarod/plugin-workflows':
         specifier: workspace:*
         version: link:../plugins/workflows
+      '@jarod/plugin-workspace':
+        specifier: workspace:*
+        version: link:../plugins/workspace
 
   packages/cli:
     dependencies:
@@ -784,6 +787,22 @@ importers:
       '@jarod/plugin-scheduler':
         specifier: workspace:*
         version: link:../scheduler
+
+  packages/plugins/workspace:
+    dependencies:
+      '@jarod/kernel':
+        specifier: workspace:*
+        version: link:../../kernel
+      '@jarod/plugin-tools':
+        specifier: workspace:*
+        version: link:../tools
+      cordis:
+        specifier: 4.0.0-rc.10
+        version: 4.0.0-rc.10
+    devDependencies:
+      '@jarod/plugin-storage':
+        specifier: workspace:*
+        version: link:../storage
 
   tests:
     dependencies:
