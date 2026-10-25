@@ -4,6 +4,7 @@
  */
 import { execFile } from "node:child_process";
 import { childEnv } from "@jarod/kernel/child-env";
+import { realpathSync } from "node:fs";
 import { mkdir, stat } from "node:fs/promises";
 import { basename, dirname, isAbsolute, join, resolve } from "node:path";
 
@@ -163,9 +164,22 @@ export async function listWorktrees(repoInput: string): Promise<WorktreeInfo[]> 
   return parseWorktreeList(await git(repo, ["worktree", "list", "--porcelain"]));
 }
 
+/**
+ * Forme canonique d'un chemin : liens et noms courts Windows (`RUNNER~1`) résolus. `git worktree list` rend la forme longue alors qu'un appelant peut
+ * donner la forme courte ; sans cette résolution, un worktree légitime serait refusé. `null` si le chemin n'existe pas.
+ */
+const canonical = (p: string): string | null => {
+  try {
+    return realpathSync.native(resolve(p)).replace(/[\/]+$/, "");
+  } catch {
+    return null;
+  }
+};
+
 const samePath = (a: string, b: string): boolean => {
-  const norm = (p: string) => resolve(p).replace(/[\/]+$/, "");
-  return process.platform === "win32" ? norm(a).toLowerCase() === norm(b).toLowerCase() : norm(a) === norm(b);
+  const [x, y] = [canonical(a), canonical(b)];
+  if (x === null || y === null) return false;
+  return process.platform === "win32" ? x.toLowerCase() === y.toLowerCase() : x === y;
 };
 
 /** Le worktree de `repo` qui est à `path`, ou une erreur : un chemin venu de l'extérieur n'est jamais utilisé tel quel. */

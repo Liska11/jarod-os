@@ -2,9 +2,9 @@
  * Worktrees par tâche sur de vrais dépôts git temporaires : création, diff, merge, refus et conflit.
  */
 import { execFileSync } from "node:child_process";
-import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, stat, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { checkBranchName, createTaskWorktree, git, mergeTaskBranch, taskDiff, worktreePathFor } from "../src/git.js";
 
@@ -153,6 +153,25 @@ describe("liste des worktrees", () => {
     expect(all[1]).toMatchObject({ main: false, branch: "feature/liste" });
     await expect(requireWorktree(repo, task.path)).resolves.toMatchObject({ branch: "feature/liste" });
     await expect(requireWorktree(repo, join(repo, ".."))).rejects.toThrow(/n'est pas un worktree/);
+  });
+
+  it("accepte un worktree donné par un alias (lien, ou nom court Windows 8.3) et refuse un dossier existant mais non listé", async () => {
+    const { requireWorktree } = await import("../src/git.js");
+    const repo = await makeRepo();
+    const task = await createTaskWorktree(repo, "feature/alias");
+    const link = join(dirname(repo), "alias-vers-worktree");
+    await symlink(task.path, link, "junction");
+    await expect(requireWorktree(repo, link)).resolves.toMatchObject({ branch: "feature/alias" });
+    await expect(requireWorktree(repo, join(task.path, "..", basename(task.path)))).resolves.toMatchObject({ branch: "feature/alias" });
+    if (process.platform === "win32") {
+      // Forme courte : `RUNNER~1` sur les runners, un alias équivalent ailleurs (absent si la génération des noms 8.3 est désactivée).
+      const short = execFileSync("powershell", ["-NoProfile", "-Command", "(New-Object -ComObject Scripting.FileSystemObject).GetFolder($env:WS_PATH).ShortPath"], { encoding: "utf8", env: { ...process.env, WS_PATH: task.path } }).trim();
+      if (short.toLowerCase() !== task.path.toLowerCase()) await expect(requireWorktree(repo, short)).resolves.toMatchObject({ branch: "feature/alias" });
+    }
+    const intrus = join(dirname(repo), "intrus");
+    await mkdir(intrus);
+    await expect(requireWorktree(repo, intrus)).rejects.toThrow(/n'est pas un worktree/);
+    await expect(requireWorktree(repo, join(dirname(repo), "inexistant"))).rejects.toThrow(/n'est pas un worktree/);
   });
 });
 
