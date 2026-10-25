@@ -13,7 +13,6 @@ const HAS = hasFirefoxTest(ROOT) && existsSync(join(ROOT, "jarod-core", "sidecar
 if (!HAS) console.warn("[moteurs] Firefox de test absent : essais de l'extension ignorés (voir engines.lock/README.md, engines/firefox-test)");
 const POLICY: BrowserPolicy = { allowDomains: ["localhost"] };
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
-const CLICK = `Services.wm.getMostRecentWindow("navigator:browser").document.getElementById("jarod-reader_jarod_os-BAP").click(); return 1`;
 
 describe.skipIf(!HAS)("E2 / Firefox — extension réelle, Firefox de test, onglets leurres", () => {
   let site: TestSite;
@@ -42,7 +41,7 @@ describe.skipIf(!HAS)("E2 / Firefox — extension réelle, Firefox de test, ongl
   async function gesture(handle: string, ms = 6000): Promise<boolean> {
     const n = selects();
     await ff.select(handle);
-    await ff.chrome(CLICK);
+    await ff.clickAction();
     const end = Date.now() + ms;
     while (selects() === n && Date.now() < end) await wait(50);
     await wait(80);
@@ -268,7 +267,7 @@ describe.skipIf(!HAS)("E2 / Firefox — extension réelle, Firefox de test, ongl
     expect(JSON.parse(alive)).toEqual({ ext: true, windows: true });
     const n = selects();
     await ff.select(tabs["cible"]!);
-    await ff.chrome(CLICK);
+    await ff.clickAction();
     await wait(1500);
     expect(selects()).toBe(n);
     await ff.select(tabs["leurre-permis"]!);

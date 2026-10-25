@@ -8,7 +8,6 @@ import { FirefoxTest, hasFirefoxTest } from "./firefox_driver.js";
 import { ROOT } from "./helpers.js";
 
 const HAS = hasFirefoxTest(ROOT) && existsSync(join(ROOT, "jarod-core", "sidecars", "firefox-reader", "manifest.json"));
-const CLICK = `Services.wm.getMostRecentWindow("navigator:browser").document.getElementById("jarod-reader_jarod_os-BAP").click(); return 1`;
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 describe.skipIf(!HAS)("essai guidé — vraie extension, Firefox de test, page neutre", () => {
@@ -34,7 +33,7 @@ describe.skipIf(!HAS)("essai guidé — vraie extension, Firefox de test, page n
     await ff.pageAsync(`const done = arguments[arguments.length - 1]; browser.storage.local.set({ pairing: { port: ${port}, key: "${key}" } }).then(() => done("ok"))`);
     const target = await ff.newTab(pageUrl);
     await ff.select(target);
-    await ff.chrome(CLICK);
+    await ff.clickAction();
 
     const res = await done;
 

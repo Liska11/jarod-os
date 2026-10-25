@@ -111,6 +111,20 @@ export class FirefoxTest {
     }
   }
 
+  /**
+   * Le geste sur le bouton de l'extension. Firefox 153 ne crée ce bouton dans l'interface qu'à l'OUVERTURE du panneau des extensions : tant qu'on ne l'a pas
+   * ouvert, `getElementById` rend null. On l'ouvre donc une fois, on attend que le bouton existe, puis on clique.
+   */
+  async clickAction(buttonId = "jarod-reader_jarod_os-BAP"): Promise<void> {
+    const button = `Services.wm.getMostRecentWindow("navigator:browser").document.getElementById(${JSON.stringify(buttonId)})`;
+    const present = async () => (await this.chrome<boolean>(`return !!${button}`)) === true;
+    if (!(await present())) {
+      await this.chrome(`Services.wm.getMostRecentWindow("navigator:browser").gUnifiedExtensions.togglePanel(); return 1`);
+      for (let i = 0; i < 50 && !(await present()); i++) await new Promise((r) => setTimeout(r, 100));
+    }
+    await this.chrome(`${button}.click(); return 1`);
+  }
+
   async quit(): Promise<void> {
     try {
       await this.cmd("DELETE", "");
