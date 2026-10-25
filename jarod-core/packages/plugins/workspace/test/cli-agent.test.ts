@@ -93,3 +93,52 @@ describe("runCliAgent", () => {
     await expect(runCliAgent({ harness: "claude", cwd, prompt: "   " }, fake("claude-ok"))).rejects.toThrow(/prompt vide/);
   });
 });
+
+describe("environnement de l'agent", () => {
+  it("l'agent ne reçoit ni jeton de contrôle interne ni clé de fournisseur de Jarod, mais garde son PATH", async () => {
+    const names = ["JAROD_GATEWAY_TOKEN", "JAROD_OS_CONTROL_TOKEN", "ANTHROPIC_API_KEY"];
+    const saved = names.map((n) => process.env[n]);
+    for (const n of names) process.env[n] = "valeur-secrete";
+    try {
+      const result = await runCliAgent({ harness: "claude", cwd, prompt: "x" }, fake("env"));
+      expect(JSON.parse(result.text)).toEqual({ gatewayToken: false, controlToken: false, providerKey: false, path: true });
+    } finally {
+      names.forEach((n, i) => (saved[i] === undefined ? delete process.env[n] : (process.env[n] = saved[i])));
+    }
+  });
+});
+
+describe("un seul agent par dossier", () => {
+  it("refuse un second agent dans le même dossier tant que le premier travaille, sans gêner un autre dossier", async () => {
+    const { mkdtemp, rm } = await import("node:fs/promises");
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+    const { agentBusy } = await import("../src/cli-agent.js");
+    const dir = await mkdtemp(join(tmpdir(), "jarod-busy-a-"));
+    const other = await mkdtemp(join(tmpdir(), "jarod-busy-b-"));
+    const controller = new AbortController();
+    try {
+      const first = runCliAgent({ harness: "claude", cwd: dir, prompt: "x", signal: controller.signal }, fake("hang"));
+      expect(agentBusy(dir)).toBe(true);
+      expect(agentBusy(other)).toBe(false);
+
+      await expect(runCliAgent({ harness: "claude", cwd: dir, prompt: "y" }, fake("claude-ok"))).rejects.toThrow(/travaille déjà/);
+      expect((await runCliAgent({ harness: "claude", cwd: other, prompt: "z" }, fake("claude-ok"))).ok).toBe(true);
+
+      controller.abort();
+      await first;
+      expect(agentBusy(dir)).toBe(false);
+      expect((await runCliAgent({ harness: "claude", cwd: dir, prompt: "encore" }, fake("claude-ok"))).ok).toBe(true);
+    } finally {
+      controller.abort();
+      await Promise.all([dir, other].map((d) => rm(d, { recursive: true, force: true })));
+    }
+  });
+
+  it("libère le dossier même si le lancement échoue", async () => {
+    const { agentBusy } = await import("../src/cli-agent.js");
+    const missing = { command: "jarod-agent-introuvable-xyz", args: [] };
+    await runCliAgent({ harness: "claude", cwd, prompt: "x" }, missing);
+    expect(agentBusy(cwd)).toBe(false);
+  });
+});

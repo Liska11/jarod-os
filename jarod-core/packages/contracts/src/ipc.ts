@@ -22,6 +22,15 @@ export const JAROD_INVOKE_CHANNELS = [
   "voice-capture-status",
   "get-default-workspace",
   "set-default-workspace",
+  // Espace de code (page « Workspace ») : worktrees par tâche, diff, merge, agents de code externes (Claude Code, Codex CLI), vue GitHub.
+  "codespace-agents",
+  "codespace-worktrees",
+  "codespace-create-worktree",
+  "codespace-diff",
+  "codespace-merge",
+  "codespace-run-agent",
+  "codespace-github-list",
+  "codespace-github-pr",
   // Accord des outils (SPECS-P5-UI-PARITE.md §1) : réponse à une demande poussée, relecture des demandes en attente.
   "tool-approval-respond",
   "tool-approval-pending",

@@ -22,7 +22,8 @@
     "@jarod/plugin-storage": "workspace:*",
     "@jarod/plugin-updates": "workspace:*",
     "@jarod/plugin-voice": "workspace:*",
-    "@jarod/plugin-workflows": "workspace:*"
+    "@jarod/plugin-workflows": "workspace:*",
+    "@jarod/plugin-workspace": "workspace:*"
   },
   "exports": {
     ".": "./src/index.ts"

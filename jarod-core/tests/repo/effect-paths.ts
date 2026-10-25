@@ -127,6 +127,19 @@ export const TOOLS: Readonly<Record<string, ToolClass>> = {
   linux_prepare: ask("réseau"),
   linux_run: ask("exécution"),
   linux_reset: ask("fichiers"),
+  // 2026-10-24 : espace de code (plugin-workspace, toutes plateformes) : un worktree git par tâche, des agents de code externes (Claude Code, Codex CLI)
+  // dans ces worktrees, GitHub par `gh`, déploiements, simulateurs. Tout ce qui écrit ou sort de la machine exige l'accord ; les lectures n'écrivent rien.
+  worktree_create: ask("fichiers"),
+  worktree_diff: ro,
+  worktree_merge: ask("fichiers"),
+  cli_agent_run: ask("exécution"),
+  team_run: ask("exécution"),
+  github_list: ro,
+  github_pr_view: ro,
+  github_pr_create: ask("réseau"),
+  deploy_run: ask("réseau"),
+  simulator_list: free("exécution", "liste les appareils par `xcrun simctl list` et `adb devices` : arguments constants, sans shell, aucune écriture ; `adb devices` peut démarrer son démon local"),
+  simulator_screenshot: ask("fichiers"),
   web_search: ro,
   write_file: ask("fichiers"),
   // 2026-10-11 : outils système Windows (packages/plugins/tools/src/system/). Les lectures sont `audited` (une ligne d'audit, sans accord).

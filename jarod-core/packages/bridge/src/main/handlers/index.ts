@@ -38,6 +38,7 @@ import { createSessionHandlers } from "./sessions.js";
 import { createSkillsHandlers } from "./skills.js";
 import { createToolsHandlers } from "./tools.js";
 import { createCapabilityHandlers } from "./capabilities.js";
+import { createCodespaceHandlers } from "./codespace.js";
 import { createTaskHandlers } from "./tasks.js";
 import { createAuditHandlers } from "./audit.js";
 import { createContextHandlers } from "./context-view.js";
@@ -90,6 +91,7 @@ export function createHandlers(ctx: HandlerContext): Record<string, OneaiHandler
     ...createMcpHandlers(ctx),
     ...createVoiceHandlers(ctx),
     ...createWorkspaceHandlers(ctx, gate),
+    ...createCodespaceHandlers(ctx, gate),
     ...createUpdateHandlers(ctx),
     ...createJarodSettingsHandlers(ctx),
     ...createPluginHandlers(ctx),

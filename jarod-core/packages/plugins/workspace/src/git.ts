@@ -3,8 +3,9 @@
  * dans la branche courante du dépôt principal. Aucun shell : chaque commande git est lancée avec ses arguments tels quels.
  */
 import { execFile } from "node:child_process";
+import { childEnv } from "@jarod/kernel/child-env";
 import { mkdir, stat } from "node:fs/promises";
-import { basename, dirname, isAbsolute, join } from "node:path";
+import { basename, dirname, isAbsolute, join, resolve } from "node:path";
 
 const GIT_TIMEOUT_MS = 60_000;
 const GIT_MAX_BUFFER = 16 * 1024 * 1024;
@@ -13,9 +14,17 @@ export const DIFF_MAX_CHARS = 120_000;
 
 export class WorkspaceError extends Error {}
 
+/**
+ * Le dépôt est celui d'un tiers, pas forcément sûr : `core.fsmonitor` fait lancer une commande de SA configuration à un simple `git status`, on
+ * le coupe donc pour chaque appel. L'environnement de l'enfant est celui d'un moteur (`childEnv`) : ni jeton de contrôle interne ni clé de fournisseur
+ * de Jarod, et un identifiant demandé en interactif échoue au lieu d'attendre.
+ */
+const GIT_SAFE_CONFIG = ["-c", "core.fsmonitor=false"];
+
 export function git(cwd: string, args: string[]): Promise<string> {
   return new Promise((resolve, reject) => {
-    execFile("git", args, { cwd, windowsHide: true, timeout: GIT_TIMEOUT_MS, maxBuffer: GIT_MAX_BUFFER }, (error, stdout, stderr) => {
+    const env = childEnv("engine", { explicit: { GIT_TERMINAL_PROMPT: "0" } });
+    execFile("git", [...GIT_SAFE_CONFIG, ...args], { cwd, env, windowsHide: true, timeout: GIT_TIMEOUT_MS, maxBuffer: GIT_MAX_BUFFER }, (error, stdout, stderr) => {
       if (error) reject(new WorkspaceError(`git ${args[0]} : ${(stderr || error.message).trim()}`));
       else resolve(stdout);
     });
@@ -88,7 +97,7 @@ export async function taskDiff(worktreeInput: string): Promise<TaskDiff> {
     // Renommage ou copie : le chemin d'origine suit comme entrée séparée, qu'on saute.
     if (status.includes("R") || status.includes("C")) i++;
   }
-  const full = await git(worktree, ["diff", "HEAD", "--no-color", "--no-ext-diff"]).catch(() => "");
+  const full = await git(worktree, ["diff", "HEAD", "--no-color", "--no-ext-diff", "--no-textconv"]).catch(() => "");
   const truncated = full.length > DIFF_MAX_CHARS;
   return { files, patch: truncated ? full.slice(0, DIFF_MAX_CHARS) : full, truncated };
 }
@@ -120,4 +129,48 @@ export async function mergeTaskBranch(repoInput: string, branchInput: string): P
     throw new WorkspaceError(`conflit au merge de ${branch} dans ${into} : merge annulé. ${(error as Error).message}`);
   }
   return { into, head: (await git(repo, ["rev-parse", "HEAD"])).trim() };
+}
+
+export interface WorktreeInfo {
+  path: string;
+  /** Branche extraite, ou `null` pour un HEAD détaché. */
+  branch: string | null;
+  head: string;
+  /** Le premier worktree que git liste est le dépôt principal. */
+  main: boolean;
+}
+
+/** Sortie de `git worktree list --porcelain` : des blocs séparés par une ligne vide (`worktree`, `HEAD`, `branch` ou `detached`). */
+export function parseWorktreeList(output: string): WorktreeInfo[] {
+  const list: WorktreeInfo[] = [];
+  for (const block of output.split(/\r?\n\r?\n/)) {
+    const lines = block.split(/\r?\n/).filter(Boolean);
+    const path = lines.find((l) => l.startsWith("worktree "))?.slice("worktree ".length);
+    if (!path) continue;
+    const branchRef = lines.find((l) => l.startsWith("branch "))?.slice("branch ".length);
+    list.push({
+      path,
+      branch: branchRef ? branchRef.replace(/^refs\/heads\//, "") : null,
+      head: lines.find((l) => l.startsWith("HEAD "))?.slice("HEAD ".length) ?? "",
+      main: list.length === 0,
+    });
+  }
+  return list;
+}
+
+export async function listWorktrees(repoInput: string): Promise<WorktreeInfo[]> {
+  const repo = await requireRepo(repoInput);
+  return parseWorktreeList(await git(repo, ["worktree", "list", "--porcelain"]));
+}
+
+const samePath = (a: string, b: string): boolean => {
+  const norm = (p: string) => resolve(p).replace(/[\/]+$/, "");
+  return process.platform === "win32" ? norm(a).toLowerCase() === norm(b).toLowerCase() : norm(a) === norm(b);
+};
+
+/** Le worktree de `repo` qui est à `path`, ou une erreur : un chemin venu de l'extérieur n'est jamais utilisé tel quel. */
+export async function requireWorktree(repo: string, path: string): Promise<WorktreeInfo> {
+  const found = (await listWorktrees(repo)).find((w) => samePath(w.path, path));
+  if (!found) throw new WorkspaceError(`ce dossier n'est pas un worktree de ${repo} : ${path}`);
+  return found;
 }

@@ -24,3 +24,17 @@ process.stdin.on("end", () => {
     setTimeout(() => {}, 60_000);
   }
 });
+
+// Mode « env » : dit ce que l'agent a reçu comme environnement (présence seulement, jamais les valeurs).
+if (process.argv[2] === "env") {
+  process.stdin.resume();
+  process.stdin.on("end", () => {
+    const seen = {
+      gatewayToken: process.env.JAROD_GATEWAY_TOKEN !== undefined,
+      controlToken: process.env.JAROD_OS_CONTROL_TOKEN !== undefined,
+      providerKey: process.env.ANTHROPIC_API_KEY !== undefined,
+      path: (process.env.PATH ?? process.env.Path ?? "") !== "",
+    };
+    process.stdout.write(`${JSON.stringify({ type: "result", is_error: false, result: JSON.stringify(seen) })}\n`);
+  });
+}

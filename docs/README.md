@@ -6,6 +6,7 @@
 | [../apps/desktop/README.md](../apps/desktop/README.md) | Where the shell's code lives and its npm scripts |
 | [../apps/desktop/DESIGN.md](../apps/desktop/DESIGN.md) | Conventions for pages: layout model, visual tokens, stores, the Electron bridge |
 | [SYSTEM-BRIDGE.md](SYSTEM-BRIDGE.md) | The tools Hermes uses on your machine, their permission tiers and audit log |
+| [WORKSPACE.md](WORKSPACE.md) | Code tasks in their own worktrees, Claude Code and Codex as agents, and the chat's message queue and steering |
 | [VOICE.md](VOICE.md) | Voice: the two engines, wake word, push-to-talk, barge-in, settings |
 | [LINUX.md](LINUX.md) | Jarod-OS as a whole Linux desktop (Fedora, niri), in a VM on your Mac |
 | [DECISIONS.md](DECISIONS.md) | Architecture decision records: why things are the way they are |

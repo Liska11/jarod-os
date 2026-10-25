@@ -14,6 +14,7 @@ const PAGE_VIEW: Record<PageId, ComponentType> = {
   files: lazy(() => import('../features/files/FilesPage.tsx').then(m => ({ default: m.FilesPage }))),
   automations: lazy(() => import('../features/automations/AutomationsPage.tsx').then(m => ({ default: m.AutomationsPage }))),
   kanban: lazy(() => import('../features/kanban/KanbanPage.tsx').then(m => ({ default: m.KanbanPage }))),
+  workspace: lazy(() => import('../features/workspace/WorkspacePage.tsx').then(m => ({ default: m.WorkspacePage }))),
   connections: lazy(() => import('../features/connections/ConnectionsPage.tsx').then(m => ({ default: m.ConnectionsPage }))),
   settings: lazy(() => import('../features/settings/SettingsPage.tsx').then(m => ({ default: m.SettingsPage })))
 }
@@ -26,6 +27,7 @@ const PAGE_LABEL: Record<PageId, string> = {
   files: 'Files',
   automations: 'Automations',
   kanban: 'Kanban',
+  workspace: 'Workspace',
   connections: 'Connections',
   settings: 'Settings'
 }

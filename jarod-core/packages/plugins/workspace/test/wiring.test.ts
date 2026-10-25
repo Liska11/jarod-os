@@ -8,7 +8,9 @@ import { afterEach, describe, expect, it } from "vitest";
 
 afterEach(cleanup);
 
-const TOOLS = ["worktree_create", "worktree_diff", "worktree_merge", "cli_agent_run"];
+const TOOLS = ["worktree_create", "worktree_diff", "worktree_merge", "cli_agent_run", "team_run", "github_list", "github_pr_view", "github_pr_create", "deploy_run", "simulator_list", "simulator_screenshot"];
+const DANGEROUS = ["worktree_create", "worktree_merge", "cli_agent_run", "team_run", "github_pr_create", "deploy_run", "simulator_screenshot"];
+const READ_ONLY = TOOLS.filter((t) => !DANGEROUS.includes(t));
 
 describe("plugin-workspace dans le noyau", () => {
   it("enregistre ses outils dans le registre d'outils", async () => {
@@ -16,8 +18,8 @@ describe("plugin-workspace dans le noyau", () => {
       tools: { registry: { get(name: string): { dangerous?: boolean } | undefined } };
     };
     for (const name of TOOLS) expect(app.tools.registry.get(name), name).toBeDefined();
-    expect(app.tools.registry.get("worktree_diff")?.dangerous).toBeFalsy();
-    for (const name of ["worktree_create", "worktree_merge", "cli_agent_run"]) {
+    for (const name of READ_ONLY) expect(app.tools.registry.get(name)?.dangerous, name).toBe(false);
+    for (const name of DANGEROUS) {
       expect(app.tools.registry.get(name)?.dangerous, name).toBe(true);
     }
   });

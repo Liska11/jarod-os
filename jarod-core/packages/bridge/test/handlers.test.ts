@@ -1273,7 +1273,8 @@ describe("W8 handlers : carte et garde", () => {
     // + 1 canal de la timeline par tour (2026-10-23, V-08 : audit-turn-changes, lecture seule).
     // + 2 canaux de la liste blanche MCP (2026-10-23, V-14 : mcp-server-tools, set-mcp-server-tools).
     // + 3 canaux de l'historique de la mémoire (2026-10-24, V-18 : memory-history, memory-restore, memory-history-purge).
-    expect(keys).toHaveLength(299);
+    // + 8 canaux de l'espace de code (2026-10-24, page Workspace : codespace-agents, -worktrees, -create-worktree, -diff, -merge, -run-agent, -github-list, -github-pr).
+    expect(keys).toHaveLength(307);
     const hermes = keys.filter((k) => (HERMES_INVOKE_CHANNELS as readonly string[]).includes(k));
     expect(hermes).toHaveLength(207);
     expect(keys.filter((k) => !hermes.includes(k)).sort()).toEqual([...JAROD_INVOKE_CHANNELS].filter((k) => !k.startsWith("terminal-")).sort());

@@ -2,7 +2,7 @@
  * Worktrees par tâche sur de vrais dépôts git temporaires : création, diff, merge, refus et conflit.
  */
 import { execFileSync } from "node:child_process";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -115,5 +115,64 @@ describe("merge de la branche d'une tâche", () => {
     await expect(mergeTaskBranch(repo, "feature/c")).rejects.toThrow(/conflit/);
     expect((await git(repo, ["status", "--porcelain"])).trim()).toBe("");
     expect(await readFile(join(repo, "app.txt"), "utf8")).toBe("côté principal\n");
+  });
+});
+
+describe("liste des worktrees", () => {
+  it("lit la sortie porcelain de git : le principal d'abord, branche ou HEAD détaché", async () => {
+    const parsed = (await import("../src/git.js")).parseWorktreeList(
+      [
+        "worktree C:/work/app",
+        "HEAD aaa111",
+        "branch refs/heads/main",
+        "",
+        "worktree C:/work/app-worktrees/feature__x",
+        "HEAD bbb222",
+        "branch refs/heads/feature/x",
+        "",
+        "worktree C:/work/app-worktrees/detache",
+        "HEAD ccc333",
+        "detached",
+        "",
+      ].join("\n"),
+    );
+    expect(parsed).toEqual([
+      { path: "C:/work/app", branch: "main", head: "aaa111", main: true },
+      { path: "C:/work/app-worktrees/feature__x", branch: "feature/x", head: "bbb222", main: false },
+      { path: "C:/work/app-worktrees/detache", branch: null, head: "ccc333", main: false },
+    ]);
+  });
+
+  it("voit le worktree créé, et refuse un dossier qui n'en est pas un", async () => {
+    const { listWorktrees, requireWorktree } = await import("../src/git.js");
+    const repo = await makeRepo();
+    const task = await createTaskWorktree(repo, "feature/liste");
+    const all = await listWorktrees(repo);
+    expect(all).toHaveLength(2);
+    expect(all[0]).toMatchObject({ main: true, branch: "main" });
+    expect(all[1]).toMatchObject({ main: false, branch: "feature/liste" });
+    await expect(requireWorktree(repo, task.path)).resolves.toMatchObject({ branch: "feature/liste" });
+    await expect(requireWorktree(repo, join(repo, ".."))).rejects.toThrow(/n'est pas un worktree/);
+  });
+});
+
+describe("dépôt d'un tiers", () => {
+  it("n'exécute pas la commande core.fsmonitor de la configuration du dépôt", async () => {
+    const repo = await makeRepo();
+    const marker = join(repo, "..", "fsmonitor-ran.txt");
+    const script = join(repo, "..", "fsmonitor.mjs");
+    await writeFile(script, `import { writeFileSync } from "node:fs"; writeFileSync(${JSON.stringify(marker)}, "x"); process.stdout.write("\\0");`);
+    const hook = `"${process.execPath.replaceAll("\\", "/")}" "${script.replaceAll("\\", "/")}"`;
+    await git(repo, ["config", "core.fsmonitor", hook]);
+
+    // Contrôle : sans la protection, un simple `git status` lance bien la commande — sinon ce test ne prouverait rien.
+    execFileSync("git", ["status"], { cwd: repo, stdio: "ignore" });
+    const control = await stat(marker).then(() => true, () => false);
+    expect(control, "le contrôle doit déclencher la commande").toBe(true);
+    await rm(marker);
+
+    await taskDiff(repo);
+    await git(repo, ["status"]);
+    expect(await stat(marker).then(() => true, () => false)).toBe(false);
   });
 });

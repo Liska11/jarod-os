@@ -4,7 +4,9 @@
  * interprété par un shell. Les seuls arguments variables (le modèle) sont validés avant.
  */
 import { spawn } from "node:child_process";
-import { isAbsolute } from "node:path";
+import { isAbsolute, resolve as resolvePath } from "node:path";
+import { childEnv } from "@jarod/kernel/child-env";
+import { killTree, shellCommand } from "./exec.js";
 import { WorkspaceError } from "./git.js";
 
 export const HARNESSES = ["claude", "codex"] as const;
@@ -109,32 +111,41 @@ export function readAgentLine(harness: Harness, line: string, into: Reading): vo
   else readCodexLine(event as Record<string, unknown>, into);
 }
 
-/** Lance l'agent dans `cwd`, lui donne le prompt, et attend sa fin (ou le délai, ou l'annulation). */
+/** Les dossiers où un agent travaille en ce moment : deux agents qui écrivent dans le même worktree se marcheraient dessus. */
+const RUNNING = new Set<string>();
+const dirKey = (cwd: string): string => (process.platform === "win32" ? resolvePath(cwd).toLowerCase() : resolvePath(cwd));
+
+/** Vrai si un agent lancé par ce processus travaille déjà dans ce dossier. */
+export function agentBusy(cwd: string): boolean {
+  return RUNNING.has(dirKey(cwd));
+}
+
+/** Lance l'agent dans `cwd`, lui donne le prompt, et attend sa fin (ou le délai, ou l'annulation). Un seul agent à la fois par dossier. */
 export async function runCliAgent(options: CliAgentOptions, launch: Launch = launchFor(options.harness, options.model)): Promise<CliAgentResult> {
   if (!isAbsolute(options.cwd)) throw new WorkspaceError("le dossier de travail doit être absolu");
   if (!options.prompt.trim()) throw new WorkspaceError("prompt vide");
+  const key = dirKey(options.cwd);
+  if (RUNNING.has(key)) throw new WorkspaceError(`un agent travaille déjà dans ${options.cwd} : attendez qu'il ait fini`);
+  RUNNING.add(key);
 
-  return new Promise((resolve) => {
+  return new Promise<CliAgentResult>((resolve) => {
     const reading: Reading = { texts: [] };
     let stderr = "";
     let buffer = "";
     let timedOut = false;
-    const child = spawn(launch.command, launch.args, {
+    const useShell = process.platform === "win32";
+    const child = spawn(shellCommand(launch.command, useShell), launch.args, {
       cwd: options.cwd,
+      // Comme tout moteur lancé par Jarod : pas de jeton de contrôle interne ni de clé de fournisseur de Jarod (l'agent se connecte avec son
+      // propre compte) ; Internet coupé pour Jarod, il reçoit un proxy mort.
+      env: childEnv("engine"),
       windowsHide: true,
       // Sous Windows, les CLI npm sont des `.cmd` : il faut le shell pour les trouver. Les arguments sont fixes ou validés,
       // et le prompt passe par l'entrée standard : rien d'utilisateur n'est interprété.
-      shell: process.platform === "win32",
+      shell: useShell,
       stdio: ["pipe", "pipe", "pipe"],
     });
-    // Sous Windows le shell lance l'agent en enfant : il faut tuer tout l'arbre, sinon le flux ne se ferme jamais.
-    const kill = () => {
-      if (process.platform === "win32" && child.pid !== undefined) {
-        spawn("taskkill", ["/pid", String(child.pid), "/T", "/F"], { windowsHide: true, stdio: "ignore" }).on("error", () => child.kill());
-      } else {
-        child.kill();
-      }
-    };
+    const kill = () => killTree(child);
     const timer = setTimeout(() => {
       timedOut = true;
       kill();
@@ -179,5 +190,5 @@ export async function runCliAgent(options: CliAgentOptions, launch: Launch = lau
 
     child.stdin.on("error", () => undefined); // l'agent peut fermer son entrée avant nous : l'erreur de sortie suffit
     child.stdin.end(options.prompt);
-  });
+  }).finally(() => RUNNING.delete(key));
 }
