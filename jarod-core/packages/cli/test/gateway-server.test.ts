@@ -582,3 +582,159 @@ describe("premier message sans modèle choisi", () => {
     c.close();
   });
 });
+
+
+// ---------------------------------------------------------------------------
+// Registre de confiance : cycle de vie des plugins et mode test (RPC de la Phase 1)
+// ---------------------------------------------------------------------------
+function fakePlugins() {
+  const records = [
+    { manifest: { name: "des", version: "1.0.0", permissions: [] as string[] }, status: "enabled", trust: "local", trustKey: "local-1", trustRevoked: false },
+  ];
+  const calls: string[] = [];
+  const find = (name: string) => records.find((r) => r.manifest.name === name);
+  const platform = {
+    list: () => records,
+    install: async () => {
+      calls.push("install");
+      return { ok: true };
+    },
+    uninstall: (name: string) => {
+      calls.push("uninstall");
+      const i = records.findIndex((r) => r.manifest.name === name);
+      if (i >= 0) records.splice(i, 1);
+      return { name, version: "1.0.0" };
+    },
+    enable: async (name: string) => {
+      calls.push("enable");
+      const r = find(name);
+      if (r) r.status = "enabled";
+    },
+    disable: async (name: string) => {
+      calls.push("disable");
+      const r = find(name);
+      if (r) r.status = "disabled";
+    },
+  };
+  const host = {
+    list: () => [
+      { id: "des", name: "des", version: "1.0.0", state: "active", tools: ["des_roll"], routes: [], pages: [], commands: [], permissions: [], digest: "abc" },
+    ],
+    testPlugin: async (id: string) => ({
+      id,
+      health: "ok",
+      exposed: false as const,
+      permissions: ["tools"],
+      network: "denied (mode test)",
+      dataDir: "tmp",
+      registrations: [{ kind: "tool", name: "probe" }],
+      error: null,
+      durationMs: 12,
+    }),
+    governance: {
+      withPermissionGrant: async (name: string, run: () => Promise<unknown>) => {
+        calls.push("grant:" + name);
+        return await run();
+      },
+    },
+  };
+  const app = {
+    get: (name: string) => (name === "plugins" ? platform : name === "pluginHost" ? host : undefined),
+  };
+  return { app, platform, host, calls, records };
+}
+
+/** Répond « once » à chaque carte d'accord reçue, jusqu'à l'arrêt. */
+function autoApprove(c: Client): () => void {
+  const timer = setInterval(() => {
+    const r = c.requests.find((x) => x.method === "approval");
+    if (!r) return;
+    c.requests.splice(c.requests.indexOf(r), 1);
+    c.reply(r.id, { choice: "once" });
+  }, 5);
+  return () => clearInterval(timer);
+}
+
+describe("registre de confiance : cycle de vie et mode test", () => {
+  it("liste les plugins de la plateforme avec leur niveau et l'état réel de l'hôte", async () => {
+    const f = fakeCore(async (id, _t, hooks) => hooks.emit({ type: "done", sessionId: id }));
+    const plugins = fakePlugins();
+    const { gw, port } = await start({ ...f.core, app: plugins.app });
+    const c = await connect(gw, port);
+    const listed = await c.call("trust.installed", {});
+    expect(listed.result.plugins).toHaveLength(1);
+    expect(listed.result.plugins[0]).toMatchObject({ name: "des", trust: "local", trustKey: "local-1", trustRevoked: false, state: "active" });
+    expect(listed.result.plugins[0].tools).toEqual(["des_roll"]);
+    const host = await c.call("plugins.host", {});
+    expect(host.result.plugins[0]).toMatchObject({ id: "des", state: "active" });
+    c.close();
+  });
+
+  it("désactive puis réactive, et refuse ce qui n'a pas lieu d'être", async () => {
+    const f = fakeCore(async (id, _t, hooks) => hooks.emit({ type: "done", sessionId: id }));
+    const plugins = fakePlugins();
+    const { gw, port } = await start({ ...f.core, app: plugins.app });
+    const c = await connect(gw, port);
+    const stop = autoApprove(c);
+    try {
+      expect((await c.call("trust.disable", { name: "des" })).result).toMatchObject({ ok: true, status: "disabled" });
+      expect((await c.call("trust.disable", { name: "des" })).error?.message).toMatch(/déjà désactivé/);
+      expect((await c.call("trust.enable", { name: "des" })).result).toMatchObject({ ok: true, status: "enabled" });
+      expect((await c.call("trust.enable", { name: "des" })).error?.message).toMatch(/déjà actif/);
+      expect((await c.call("trust.disable", { name: "inconnu" })).error?.message).toMatch(/inconnu/);
+      expect((await c.call("trust.uninstall", { name: "des" })).result).toMatchObject({ ok: true, name: "des" });
+      expect(plugins.calls).toEqual(["disable", "enable", "uninstall"]);
+    } finally {
+      stop();
+      c.close();
+    }
+  });
+
+  it("installe avec l'accord de permissions du canal RPC (aucune promotion durable)", async () => {
+    const f = fakeCore(async (id, _t, hooks) => hooks.emit({ type: "done", sessionId: id }));
+    const plugins = fakePlugins();
+    const { gw, port } = await start({ ...f.core, app: plugins.app });
+    const c = await connect(gw, port);
+    const stop = autoApprove(c);
+    try {
+      const manifest = { name: "fx", version: "1.0.0", trust: "community", permissions: ["tools"] };
+      const r = await c.call("trust.install", { manifest });
+      expect(r.result).toMatchObject({ ok: true, revoked: false });
+      expect(plugins.calls).toEqual(["grant:fx", "install"]);
+    } finally {
+      stop();
+      c.close();
+    }
+  });
+
+  it("mode test : répond par un rapport, aucun outil exposé", async () => {
+    const f = fakeCore(async (id, _t, hooks) => hooks.emit({ type: "done", sessionId: id }));
+    const plugins = fakePlugins();
+    const { gw, port } = await start({ ...f.core, app: plugins.app });
+    const c = await connect(gw, port);
+    const stop = autoApprove(c);
+    try {
+      const r = await c.call("trust.test", { name: "des" });
+      expect(r.result.ok).toBe(true);
+      expect(r.result.report).toMatchObject({ id: "des", health: "ok", exposed: false, network: "denied (mode test)" });
+      expect(r.result.report.registrations).toEqual([{ kind: "tool", name: "probe" }]);
+    } finally {
+      stop();
+      c.close();
+    }
+  });
+
+  it("sans plateforme chargée, les méthodes refusent explicitement", async () => {
+    const f = fakeCore(async (id, _t, hooks) => hooks.emit({ type: "done", sessionId: id }));
+    const { gw, port } = await start(f.core);
+    const c = await connect(gw, port);
+    const stop = autoApprove(c);
+    try {
+      expect((await c.call("trust.installed", {})).result.plugins).toEqual([]);
+      expect((await c.call("trust.disable", { name: "des" })).error?.message).toMatch(/plateforme|inconnu/);
+    } finally {
+      stop();
+      c.close();
+    }
+  });
+});

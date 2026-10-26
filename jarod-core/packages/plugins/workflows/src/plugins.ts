@@ -12,6 +12,7 @@
 // toujours null (un objet vivant ne traverse pas la frontière d'un processus).
 import { fork } from "node:child_process";
 import { createHash } from "node:crypto";
+import { tmpdir } from "node:os";
 import { existsSync } from "node:fs";
 import { cp, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
@@ -91,6 +92,27 @@ export interface PluginApi {
    * plugin et l'application ne lui fait pas confiance pour autre chose que du contenu.
    */
   registerPage(def: { id: string; title: string; description?: string; render: () => string | Promise<string> }): void;
+}
+
+/** Rapport du mode TEST : ce qui a été observé, sans qu'aucune contribution ne soit retenue. */
+export interface PluginTestReport {
+  id: string;
+  name: string;
+  version: string;
+  mode: "test";
+  at: string;
+  health: "ok" | "error";
+  /** Toujours faux : le mode test n'expose rien à l'agent. */
+  exposed: false;
+  permissions: PluginPermission[];
+  network: string;
+  dataDir: string;
+  registrations: unknown[];
+  hooks: unknown;
+  error: string | null;
+  pid: number | null;
+  node: string | null;
+  durationMs: number;
 }
 
 export interface PluginPage {
@@ -626,6 +648,91 @@ export class PluginHost {
   dataDirOf(id: string): string | null {
     const loaded = this.loaded.get(id);
     return loaded ? join(loaded.root, "data") : null;
+  }
+
+  /**
+   * Mode TEST (ADR-029) : lance le plugin une fois, isolé, pour OBSERVER — sans exposer quoi que ce soit.
+   * Réseau refusé même s'il est déclaré, écriture limitée à un dossier temporaire, aucune contribution
+   * retenue : ses outils, commandes, routes et pages n'existent pas pour l'agent. Le rapport (santé,
+   * permissions demandées, contributions déclarées, réseau, dossier) est rendu à la personne ;
+   * l'activation réelle reste une décision distincte (installer puis activer).
+   */
+  async testPlugin(id: string): Promise<PluginTestReport> {
+    const root = this.rootOf(id);
+    const manifestPath = join(root, "plugin.json");
+    if (!existsSync(manifestPath)) throw new Error(`plugin introuvable : ${id}`);
+    const manifest = validateManifest(JSON.parse(await readFile(manifestPath, "utf8")));
+    if (manifest.id !== id) throw new Error(`plugin.json déclare « ${manifest.id} » alors que le dossier est « ${id} »`);
+    const declared: PluginPermission[] = [...(manifest.permissions ?? [])];
+    const perms = declared.filter((perm) => perm !== "network");
+    const tmpData = join(tmpdir(), `jarod-plugin-test-${id}-${Date.now().toString(36)}`);
+    await mkdir(tmpData, { recursive: true });
+    const report: PluginTestReport = {
+      id,
+      name: manifest.name,
+      version: manifest.version,
+      mode: "test",
+      at: new Date().toISOString(),
+      health: "error",
+      exposed: false,
+      permissions: declared,
+      network: "denied",
+      dataDir: tmpData,
+      registrations: [],
+      hooks: null,
+      error: null,
+      pid: null,
+      node: null,
+      durationMs: 0,
+    };
+    const started = Date.now();
+    const proc = this.spawnIsolate(this.runner, permissionArgs(this.runner, root, tmpData, perms), {
+      env: isolateEnv(),
+      serviceName: `Jarod plugin test ${id}`,
+    });
+    const info: PluginInfo = {
+      ...manifest,
+      enabled: false,
+      state: "disabled",
+      tools: [],
+      routes: [],
+      pages: [],
+      commands: [],
+      permissions: declared,
+      pid: proc.pid ?? null,
+      digest: await digestOf(root),
+      trusted: [],
+    };
+    const loaded = this.entry(info, root);
+    loaded.proc = proc;
+    proc.onMessage((m) => this.onMessage(loaded, m));
+    proc.onExit(() => undefined);
+    try {
+      const ready = await this.waitFor(loaded, (m) => m.t === "ready", "le démarrage (test)");
+      report.pid = typeof ready.pid === "number" ? ready.pid : null;
+      report.node = typeof ready.node === "string" ? ready.node : null;
+      if (ready.permission !== true) throw new Error("le processus de test ne tourne pas sous le modèle de permissions de Node : refusé");
+      proc.postMessage({ t: "activate", id, root, mainPath: resolve(root, manifest.main), dataDir: tmpData, permissions: perms, test: true });
+      const done = await this.waitFor(loaded, (m) => m.t === "activated" || m.t === "activate-failed", "activate() (test)");
+      if (done.t === "activate-failed") throw new Error(String(done.error));
+      report.health = "ok";
+      report.registrations = Array.isArray(done.registrations) ? done.registrations : [];
+      report.hooks = done.hooks ?? null;
+      report.network = typeof done.network === "string" ? done.network : "denied";
+    } catch (e) {
+      report.error = e instanceof Error ? e.message : String(e);
+    } finally {
+      try {
+        proc.postMessage({ t: "deactivate" });
+      } catch {
+        // le processus peut déjà être mort
+      }
+      await new Promise((r) => setTimeout(r, 120));
+      await this.stop(loaded).catch(() => undefined);
+      await rm(tmpData, { recursive: true, force: true }).catch(() => undefined);
+      report.durationMs = Date.now() - started;
+    }
+    return report;
   }
 
   private entry(info: PluginInfo, root: string): Loaded {

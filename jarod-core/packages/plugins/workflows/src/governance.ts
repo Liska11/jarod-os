@@ -73,6 +73,21 @@ export class PluginGovernance {
   /** L'approbation en cours : la seule demande de permissions que le canal d'accord accorde. */
   private pending: string | null = null;
 
+  /**
+   * L'accord vient d'un AUTRE canal que ce plugin (RPC `trust.install`) : la plateforme demande les
+   * permissions au même approbateur ; on répond oui pour cette installation-là, puis on rend l'état.
+   * Aucune permission n'est accordée durablement : `pending` est remis à sa valeur précédente.
+   */
+  async withPermissionGrant<T>(name: string, run: () => Promise<T>): Promise<T> {
+    const previous = this.pending;
+    this.pending = name;
+    try {
+      return await run();
+    } finally {
+      this.pending = previous;
+    }
+  }
+
   constructor(
     private readonly host: PluginHost,
     private readonly platform: PlatformPort,

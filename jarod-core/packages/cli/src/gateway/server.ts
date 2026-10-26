@@ -368,6 +368,61 @@ export function createGateway(opts: GatewayOptions): Gateway {
     process.env.HERMES_HOME ? join(process.env.HERMES_HOME, "jarod-os", "publisher-keys.json") : join(tmpdir(), "jarod-os", "publisher-keys.json");
   /** Une lecture fraîche à chaque décision : une clé ajoutée après le démarrage compte tout de suite. */
   const trustService = () => createTrustService(trustFile());
+  /**
+   * Les services du noyau vivent dans la portée Cordis (`ctx.provide`), pas dans la portée RPC :
+   * on les lit par `core.app` (le contexte), comme le fait déjà `main.ts` pour la voix et les outils.
+   * Aucun service : la méthode refuse explicitement au lieu de faire semblant.
+   */
+  type AppLookup = { get?: (name: string) => unknown };
+  const service = <T>(name: string): T | undefined => {
+    const app = core.app as AppLookup | undefined;
+    return app?.get?.(name) as T | undefined;
+  };
+  interface PlatformRecordLike {
+    manifest: { name: string; version: string; permissions?: readonly string[] };
+    status: string;
+    trust?: string | null;
+    trustKey?: string | null;
+    trustRevoked?: boolean;
+  }
+  interface PlatformLike {
+    list(): PlatformRecordLike[];
+    install(manifest: unknown, payload?: Buffer): Promise<unknown>;
+    uninstall(name: string): { name: string; version: string };
+    enable(name: string): Promise<void>;
+    disable(name: string, cascade?: boolean): Promise<void>;
+  }
+  interface HostInfoLike {
+    id: string;
+    name: string;
+    version: string;
+    state: string;
+    tools: string[];
+    routes: string[];
+    pages: string[];
+    commands: string[];
+    permissions: readonly string[];
+    error?: string;
+    digest: string;
+  }
+  interface HostReportLike {
+    id: string;
+    health: string;
+    exposed: false;
+    permissions: readonly string[];
+    network: string;
+    dataDir: string;
+    registrations: unknown[];
+    error: string | null;
+    durationMs: number;
+  }
+  interface HostLike {
+    list(): HostInfoLike[];
+    testPlugin(id: string): Promise<HostReportLike>;
+    governance: { withPermissionGrant<T>(name: string, run: () => Promise<T>): Promise<T> } | null;
+  }
+  const platformService = (): PlatformLike | undefined => service<PlatformLike>("plugins");
+  const pluginHost = (): HostLike | undefined => service<HostLike>("pluginHost");
 
   type Method = (params: Record<string, unknown>, conn: Conn) => unknown | Promise<unknown>;
   const methods: Record<string, Method> = {
@@ -533,6 +588,114 @@ export function createGateway(opts: GatewayOptions): Gateway {
       saveStore(service.file(), store);
       return { ok: true, ...r };
     },
+    "trust.install": async (p, conn) => {
+      const manifest = p.manifest as { name?: string; version?: string; trust?: string; permissions?: string[] } | undefined;
+      const name = str(manifest?.name);
+      const perms = Array.isArray(manifest?.permissions) ? manifest.permissions : [];
+      const ok = await approveWith(conn, str(p.session_id), { name: "trust.install", args: { plugin: name, trust: manifest?.trust, permissions: perms } }, `Installer le plugin « ${name} » (niveau ${str(manifest?.trust)} ; ${perms.length ? `permissions : ${perms.join(", ")}` : "aucune permission déclarée"})`);
+      if (!ok) throw new RpcError(RPC.params, "approbation refusée");
+      const platform = platformService();
+      if (!platform) throw new RpcError(RPC.params, "la plateforme de plugins n'est pas chargée (portée Cordis absente)");
+      const payload = typeof p.payload_b64 === "string" && p.payload_b64 ? Buffer.from(p.payload_b64, "base64") : undefined;
+      const run = () => platform.install(manifest, payload);
+      const governance = pluginHost()?.governance ?? null;
+      // L'approbation RPC EST l'accord de permissions : on le dit à l'approbateur de la plateforme
+      // pour cette installation seulement (sinon elle refuserait des permissions déjà accordées).
+      await (governance ? governance.withPermissionGrant(name, run) : run());
+      const decision = trustService().check(manifest ?? {});
+      return { ok: true, trust: decision.level ?? null, keyId: (manifest as { signature?: { keyId?: string } })?.signature?.keyId ?? null, revoked: /révoquée/.test(String(decision.reason ?? "")) };
+    },
+    "trust.installed": () => {
+      const host = pluginHost();
+      return {
+        plugins: (platformService()?.list() ?? []).map((r) => {
+          const h = host?.list().find((x) => x.id === r.manifest.name);
+          return {
+            name: r.manifest.name,
+            version: r.manifest.version,
+            status: r.status,
+            trust: r.trust ?? null,
+            trustKey: r.trustKey ?? null,
+            trustRevoked: r.trustRevoked ?? false,
+            state: h?.state ?? null,
+            tools: h?.tools ?? [],
+          };
+        }),
+      };
+    },
+    "trust.uninstall": async (p, conn) => {
+      const name = str(p.name);
+      const ok = await approveWith(conn, str(p.session_id), { name: "trust.uninstall", args: { plugin: name } }, `Désinstaller le plugin « ${name} »`);
+      if (!ok) throw new RpcError(RPC.params, "approbation refusée");
+      const platform = platformService();
+      if (!platform) throw new RpcError(RPC.params, "la plateforme de plugins n'est pas chargée");
+      try {
+        const r = platform.uninstall(name);
+        return { ok: true, ...r };
+      } catch (e) {
+        throw new RpcError(RPC.params, e instanceof Error ? e.message : String(e));
+      }
+    },
+    "trust.disable": async (p, conn) => {
+      const name = str(p.name);
+      const ok = await approveWith(conn, str(p.session_id), { name: "trust.disable", args: { plugin: name } }, `Désactiver le plugin « ${name} »`);
+      if (!ok) throw new RpcError(RPC.params, "approbation refusée");
+      const platform = platformService();
+      if (!platform) throw new RpcError(RPC.params, "la plateforme de plugins n'est pas chargée");
+      const before = platform.list().find((r) => r.manifest.name === name);
+      if (!before) throw new RpcError(RPC.params, `plugin inconnu : ${name}`);
+      if (before.status !== "enabled") throw new RpcError(RPC.params, `${name} est déjà désactivé (statut ${before.status})`);
+      try {
+        await platform.disable(name, false);
+      } catch (e) {
+        throw new RpcError(RPC.params, e instanceof Error ? e.message : String(e));
+      }
+      const after = platform.list().find((r) => r.manifest.name === name);
+      if (!after || after.status === "enabled") throw new RpcError(RPC.params, `${name} : la désactivation n'a pas changé le statut`);
+      return { ok: true, name, status: after.status };
+    },
+    "trust.enable": async (p, conn) => {
+      const name = str(p.name);
+      const ok = await approveWith(conn, str(p.session_id), { name: "trust.enable", args: { plugin: name } }, `Activer le plugin « ${name} »`);
+      if (!ok) throw new RpcError(RPC.params, "approbation refusée");
+      const platform = platformService();
+      if (!platform) throw new RpcError(RPC.params, "la plateforme de plugins n'est pas chargée");
+      const before = platform.list().find((r) => r.manifest.name === name);
+      if (!before) throw new RpcError(RPC.params, `plugin inconnu : ${name}`);
+      if (before.status === "enabled") throw new RpcError(RPC.params, `${name} est déjà actif`);
+      try {
+        await platform.enable(name);
+      } catch (e) {
+        throw new RpcError(RPC.params, e instanceof Error ? e.message : String(e));
+      }
+      const after = platform.list().find((r) => r.manifest.name === name);
+      if (!after || after.status !== "enabled") throw new RpcError(RPC.params, `${name} : l'activation a rendu le statut ${after?.status ?? "inconnu"}`);
+      return { ok: true, name, status: after.status };
+    },
+    "trust.test": async (p, conn) => {
+      const name = str(p.name);
+      const ok = await approveWith(conn, str(p.session_id), { name: "trust.test", args: { plugin: name } }, `Tester le plugin « ${name} » en mode isolé : aucun outil exposé, réseau coupé, écriture limitée à un dossier temporaire`);
+      if (!ok) throw new RpcError(RPC.params, "approbation refusée");
+      const host = pluginHost();
+      if (!host) throw new RpcError(RPC.params, "l'hôte de plugins n'est pas chargé");
+      const report = await host.testPlugin(name);
+      return { ok: report.health === "ok", report };
+    },
+    "plugins.host": () => ({
+      plugins: (pluginHost()?.list() ?? []).map((p) => ({
+        id: p.id,
+        name: p.name,
+        version: p.version,
+        state: p.state,
+        tools: p.tools,
+        routes: p.routes,
+        pages: p.pages,
+        commands: p.commands,
+        permissions: p.permissions,
+        error: p.error ?? null,
+        digest: p.digest,
+      })),
+    }),
 
     "commands.catalog": () => (core.commands ? commandCatalog(core.commands) : { pairs: [], sub: {}, canon: {}, commands: {}, categories: [], skills: {}, skill_count: 0 }),
 

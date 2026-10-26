@@ -60,7 +60,10 @@ const need = (p) => {
 
 async function activate(m) {
   permissions = new Set(m.permissions);
-  if (!permissions.has("network")) denyNetwork();
+  // Mode TEST (ADR-029) : le reseau est refuse MEME si le plugin le declare, et l'hote ne retient
+  // aucune contribution. Le plugin s'execute pour de vrai, sous le modele de permissions de Node.
+  const test = m.test === true;
+  if (test || !permissions.has("network")) denyNetwork();
   const { createRequire } = require("node:module");
   const { join } = require("node:path");
   const req = createRequire(join(m.root, "plugin.json"));
@@ -113,7 +116,12 @@ async function activate(m) {
     },
   };
   await mod.activate(api);
-  return { registrations, hooks: { beforeSend: before.length > 0, afterResponse: after.length > 0 } };
+  return {
+    registrations,
+    hooks: { beforeSend: before.length > 0, afterResponse: after.length > 0 },
+    test,
+    network: test ? "denied (mode test)" : permissions.has("network") ? "declare" : "denied",
+  };
 }
 
 async function call(m) {
