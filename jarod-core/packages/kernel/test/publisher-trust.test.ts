@@ -100,7 +100,7 @@ describe("registre", () => {
     addKey(store, { keyId: "k2", publicPem: PEM, level: "official" });
     saveStore(file, store);
     const back = loadStore(file);
-    expect(back.keys.k2.level).toBe("official");
+    expect(back.keys.k2!.level).toBe("official");
     expect(JSON.parse(readFileSync(file, "utf8")).keys.k2.keyId).toBe("k2");
   });
 });
@@ -121,7 +121,7 @@ describe("service adossé au fichier", () => {
     const file = tempFile();
     const service = createTrustService(file, PEM);
     const store = loadStore(file);
-    expect(store.keys["local-1"].level).toBe("local");
+    expect(store.keys["local-1"]!.level).toBe("local");
     expect(service.status({ name: "p", trust: "local", signature: { keyId: "local-1" } })).toMatchObject({ level: "local", revoked: false, ok: true });
     rotateKey(store, "local-1", { newKeyId: "local-2", publicPem: PEM });
     saveStore(file, store);

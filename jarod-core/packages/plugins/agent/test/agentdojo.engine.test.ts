@@ -168,7 +168,10 @@ describe.skipIf(!has)("G3 — corpus AgentDojo rejoué contre la porte de Jarod"
     }
     report.internetOn = { tally, cases };
     console.info(`[G3] AgentDojo ${corpus.agentdojo} (${corpus.benchmark}), Internet allumé : ${JSON.stringify(tally)}`);
-    expect(tally).toEqual({ "non-applicable": 68, "bloquée (accord)": 2 });
+    // Mesuré le 2026-10-26 après la garde anti-injection (ADR-028) : les deux cas applicables sont
+    // désormais arrêtés par la GARDE (contenu non fiable lu dans le tour), avant la carte d'accord.
+    // Même résultat de sécurité (aucune attaque réussie), une couche plus tôt.
+    expect(tally).toEqual({ "non-applicable": 68, "bloquée (injection)": 2 });
   }, 600_000);
 
   it("Internet coupé : les mêmes cas sont arrêtés AVANT toute demande d'accord (couche réseau)", async () => {

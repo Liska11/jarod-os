@@ -29,6 +29,7 @@ import type { OutputStore } from "./outputs.js";
 import type { Attachment, Message, ToolCall } from "@jarod/contracts";
 import { auditArgs, redactCommandText } from "@jarod/kernel/redact";
 import { detect as detectInjection, type InjectionCategory } from "@jarod/kernel/injection";
+import { actionVerdict, type GuardMode, guardMode, outputVerdict, type Taint, taintOf } from "@jarod/kernel/injection-guard";
 import { activePolicy, toolVerdict } from "@jarod/kernel/network";
 import { newId, truncate } from "@jarod/kernel/util";
 import { explainResolution, type Resolution, reservedReason, type ToolGate } from "@jarod/plugin-permissions";
@@ -608,6 +609,9 @@ ${project.text}`);
     hooks: AgentHooks,
     attachments: Attachment[] = [],
   ): Promise<void> {
+    // Un nouveau tour repart sans teinture : le contenu lu au tour précédent est désormais connu de la
+    // personne, qui décide. Seule l'attaque « lire puis agir » DANS LE MÊME tour reste bloquée.
+    clearInjectionTaint(sessionId);
     const { messages, providers, plugins } = this.d;
     const emit = hooks.emit;
     let finalText = "";
@@ -1234,7 +1238,8 @@ export interface AuditEntry {
     | "autorisé (règle)"
     | "sans accord"
     | "annulé"
-    | "refusé (invalide)";
+    | "refusé (invalide)"
+    | "refusé (injection)";
   /** Set once the tool ran: whether it succeeded. */
   ok?: boolean;
   /** V-02 : l'identifiant de l'appel du modèle, celui que la conversation affiche, pour rattacher la ligne à son tour. */
@@ -1265,6 +1270,33 @@ const ASSISTANT_NAMES = ["Jarod", "Jarod-OS"] as const;
 const INJECTION_SCAN_CHARS = 200_000;
 
 /** V-04, mode observation : les catégories d'injection d'une sortie d'outil, ou rien. Un détecteur qui lève ne casse jamais l'appel. */
+/**
+ * Garde anti-injection (ADR-028) : la teinture est PAR CONVERSATION et PAR TOUR. Un contenu non
+ * fiable instructionnel lu dans le tour teinte les actions bloquantes du même tour ; le tour suivant
+ * repart propre (la personne a vu le contenu et décide). TTL de sécurité : 30 minutes.
+ */
+const injectionTaints = new Map<string, Taint>();
+const INJECTION_TAINT_TTL_MS = 30 * 60_000;
+
+function noteInjectionTaint(sessionId: string, taint: Taint | null): void {
+  if (sessionId && taint?.motif.length) injectionTaints.set(sessionId, taint);
+}
+function injectionTaintOf(sessionId: string): Taint | null {
+  const taint = injectionTaints.get(sessionId);
+  if (!taint) return null;
+  if (Date.now() - taint.at > INJECTION_TAINT_TTL_MS) {
+    injectionTaints.delete(sessionId);
+    return null;
+  }
+  return taint;
+}
+/** Efface la teinture : appelé au début de chaque tour. */
+export function clearInjectionTaint(sessionId: string): void {
+  injectionTaints.delete(sessionId);
+}
+function injectionMode(): GuardMode {
+  return guardMode();
+}
 function injectionIn(out: string): InjectionCategory[] | undefined {
   try {
     const found = detectInjection(out.length > INJECTION_SCAN_CHARS ? out.slice(0, INJECTION_SCAN_CHARS) : out, { assistantNames: ASSISTANT_NAMES });
@@ -1344,6 +1376,8 @@ async function runGuardedTool(
   // inconnue (null) : un deny ou ask ciblé s'applique alors tel quel (fail-closed). Déclarée ici pour que l'audit la porte dès qu'elle est connue.
   let target: string | null = null;
   // V-02 : chaque appel laisse une ligne — qui a demandé, quoi, sur quoi, qui a décidé, combien de temps, avec quelle preuve.
+  // Palier effectif de l'appel : il commande l'audit ET la garde anti-injection.
+  const callTier = tool ? tierOf(tool) : undefined;
   const audit = (decision: AuditEntry["decision"], ok?: boolean, proof?: Proof["status"], injection?: InjectionCategory[], evidence?: string) =>
     extra.audit?.({
       sessionId,
@@ -1353,7 +1387,7 @@ async function runGuardedTool(
       decision,
       ...(ok === undefined ? {} : { ok }),
       ...(call.id ? { callId: call.id } : {}),
-      ...(tool ? { tier: tierOf(tool) } : {}),
+      ...(tool && callTier ? { tier: callTier } : {}),
       ...(target !== null ? { target: truncate(redactCommandText(target), 200) } : {}),
       durationMs: Date.now() - started,
       ...(proof ? { proof } : {}),
@@ -1431,6 +1465,19 @@ async function runGuardedTool(
   if (invalid) {
     audit("refusé (invalide)");
     return { content: invalid, isError: true };
+  }
+  // Garde anti-injection, AVANT toute exécution et avant la carte d'accord : un contenu non fiable
+  // qui a tenté de piloter l'agent, ou des arguments qui portent une instruction détournée, arrêtent
+  // l'action. Les paliers read/act ne sont jamais bloqués (actionVerdict le décide).
+  const injectionVerdict =
+    injectionMode() === "enforce"
+      ? actionVerdict({ tier: callTier ?? "read", tool: call.name, args: call.args, taint: injectionTaintOf(sessionId), assistantNames: ASSISTANT_NAMES })
+      : null;
+  if (injectionVerdict?.block) {
+    mark.status = "denied";
+    audit("refusé (injection)", undefined, undefined, injectionVerdict.motif, "motif : " + injectionVerdict.motif.join(", ") + " — " + injectionVerdict.reason);
+    refusedTask(tool.description, "refusé par la garde anti-injection : " + injectionVerdict.reason);
+    return { content: "Refusé : " + injectionVerdict.reason + ". Aucune action n'a été exécutée (garde anti-injection).", isError: true };
   }
   // Garde propre à l'outil, AVANT toute demande d'accord : ce que la politique interdit (un chemin protégé, un processus critique) n'est pas
   // soumis à l'utilisateur. Le texte rendu, s'il y en a un, remplace la description de l'outil dans la demande (« Arrêter chrome, pid 123 »).
@@ -1545,16 +1592,25 @@ async function runGuardedTool(
       proof = { status: "unverifiable", evidence: "aucune vérification prévue pour cet outil" };
     }
     const failed = proof?.status === "failed";
-    // V-04 : la sortie est examinée (observation seulement : elle passe inchangée au modèle) ; les catégories vont dans la ligne d'audit.
-    audit(decision ?? "sans accord", !failed, proof?.status, injectionIn(out), tool.verify ? proof?.evidence : undefined);
+    // Garde anti-injection sur la SORTIE : teinture du tour quand le contenu lu porte une instruction ;
+    // sortie retenue pour un palier bloquant ; marqueur seul pour read/act (jamais de blocage).
+    const injected = injectionMode() === "enforce" ? outputVerdict({ tier: callTier ?? "read", tool: call.name, text: out, assistantNames: ASSISTANT_NAMES }) : null;
+    let shown = out;
+    if (injected) {
+      if (injected.taint) noteInjectionTaint(sessionId, injected.taint);
+      if (injected.block) shown = "[sortie de « " + call.name + " » retenue : motifs " + injected.motif.join(", ") + " — contenu non fiable dans une action " + (callTier ?? "read") + "]";
+      else if (injected.marker) shown = injected.marker + out;
+    }
+    const injectionCategories = injected ? (injected.categories.length ? injected.categories : undefined) : injectionIn(out);
+    audit(decision ?? "sans accord", !failed, proof?.status, injectionCategories, tool.verify ? proof?.evidence : undefined);
     if (task) tasks!.finish(task.id, failed ? "failed" : "done", proof ? { proof } : {});
     const note = tool.verify && proof ? `\n\n[Vérification : ${PROOF_LABEL[proof.status]}] ${proof.evidence}` : "";
     // Cockpit, lot 3 : une sortie volumineuse reste hors du contexte (aperçu + référence), entière et cherchable ; la preuve reste visible.
     let kept: string;
     try {
-      kept = extra.outputs ? extra.outputs.keep(sessionId, call.name, out).content : truncate(out, 50_000);
+      kept = extra.outputs ? extra.outputs.keep(sessionId, call.name, shown).content : truncate(shown, 50_000);
     } catch {
-      kept = truncate(out, 50_000);
+      kept = truncate(shown, 50_000);
     }
     return { content: kept + note, isError: failed };
   } catch (e) {

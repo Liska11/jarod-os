@@ -25,6 +25,8 @@ export interface Finding {
   category: InjectionCategory;
   /** Position du premier caractère, jamais l'extrait. */
   at: number;
+  /** Poids du signal (1 faible, 2 fort) : une politique décide sur ce poids, l'affichage l'ignore. */
+  weight?: number;
 }
 
 export interface DetectOptions {
@@ -147,5 +149,5 @@ export function detect(text: string, opts: DetectOptions = {}): Finding[] {
   for (const f of found) if ((best.get(f.category)?.weight ?? 0) < f.weight) best.set(f.category, f);
   const score = [...best.values()].reduce((s, f) => s + f.weight, 0);
   if (score < DETECTION_THRESHOLD) return [];
-  return [...best.values()].sort((a, b) => a.at - b.at).map(({ category, at }) => ({ category, at }));
+  return [...best.values()].sort((a, b) => a.at - b.at).map(({ category, at, weight }) => ({ category, at, weight }));
 }

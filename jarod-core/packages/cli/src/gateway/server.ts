@@ -6,6 +6,7 @@
 import { redactKeyedText, redactText } from "@jarod/kernel/redact";
 import { sameSecret } from "@jarod/kernel/secret";
 import { addKey, createTrustService, loadStore, rotateKey, saveStore } from "@jarod/kernel/publisher-trust";
+import { actionVerdict, evaluate, guardMode, outputVerdict, taintOf } from "@jarod/kernel/injection-guard";
 import { randomBytes } from "node:crypto";
 import { statSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -587,6 +588,25 @@ export function createGateway(opts: GatewayOptions): Gateway {
       const r = rotateKey(store, str(p.keyId), { newKeyId: str(p.newKeyId), publicPem: str(p.publicPem), label: str(p.label) });
       saveStore(service.file(), store);
       return { ok: true, ...r };
+    },
+    // Garde anti-injection : décision PURE, sans effet de bord, pour vérifier le mode et la politique
+    // réellement chargés par la passerelle (aucun outil lancé, aucune action).
+    "injection.check": (p) => {
+      const text = str(p.text);
+      const tier = str(p.tier) || "mutate";
+      const tool = str(p.tool) || "write_file";
+      const source = str(p.source) || "read_file";
+      const ev = evaluate(text);
+      const taint = taintOf(text, source);
+      const asked = p.taint === undefined ? taint : p.taint ? { motif: [str(p.taint)] as never, tool: source, at: Date.now() } : null;
+      return {
+        mode: guardMode(),
+        categories: ev.categories,
+        critical: ev.critical,
+        taint,
+        action: actionVerdict({ tier, tool, args: p.args && typeof p.args === "object" ? p.args : { content: text }, taint: asked }),
+        output: outputVerdict({ tier, tool, text }),
+      };
     },
     "trust.install": async (p, conn) => {
       const manifest = p.manifest as { name?: string; version?: string; trust?: string; permissions?: string[] } | undefined;
