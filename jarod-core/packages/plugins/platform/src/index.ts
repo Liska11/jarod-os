@@ -16,6 +16,7 @@ import type { Context } from "cordis";
 import { type KeyDb, type LocalKeys, localKeys } from "./local-key.js";
 import type { PluginManifest } from "./manifest.js";
 import { type PlatformDeps, PluginPlatform } from "./platform.js";
+import { createTrustService } from "@jarod/kernel/publisher-trust";
 
 export * from "./graph.js";
 export * from "./local-key.js";
@@ -59,5 +60,11 @@ export function apply(ctx: Context, config: Partial<PlatformDeps> = {}): void {
   const storage = ctx.get("storage") as unknown as { dataDir?: string; db?: KeyDb } | undefined;
   const local = storage?.db ? localKeys(storage.db) : null;
   const stateFile = storage?.dataDir ? join(storage.dataDir, "plugin-platform.json") : join(tmpdir(), "jarod-plugins", "state.json");
-  ctx.provide("plugins", new PlatformService({ stateFile, ...config, trusted: { ...(config.trusted ?? {}), ...(local?.publicKeys ?? {}) }, host }, local));
+  // Le registre de confiance vit avec l'état Jarod-OS (même fichier que la reconstruction D:) : une clé
+  // ajoutée après le démarrage est relue à chaque vérification (pems() frais).
+  const trustFile = process.env.HERMES_HOME
+    ? join(process.env.HERMES_HOME, "jarod-os", "publisher-keys.json")
+    : join(storage?.dataDir ?? tmpdir(), "publisher-keys.json");
+  const trust = createTrustService(trustFile, local?.publicKeys?.["local-1"] ?? null);
+  ctx.provide("plugins", new PlatformService({ stateFile, ...config, trust, trusted: { ...(config.trusted ?? {}), ...(local?.publicKeys ?? {}), ...trust.pems() }, host }, local));
 }

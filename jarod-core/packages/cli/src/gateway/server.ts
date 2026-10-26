@@ -5,8 +5,11 @@
 // Ce qui n'est pas servi est le résultat de l'essai : `unhandled()` le liste, il alimente le plan de portage.
 import { redactKeyedText, redactText } from "@jarod/kernel/redact";
 import { sameSecret } from "@jarod/kernel/secret";
+import { addKey, createTrustService, loadStore, rotateKey, saveStore } from "@jarod/kernel/publisher-trust";
 import { randomBytes } from "node:crypto";
 import { statSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
 import type { Message, Session, SessionContext } from "@jarod/contracts";
@@ -360,6 +363,12 @@ export function createGateway(opts: GatewayOptions): Gateway {
     queueFrame(conn, id);
   };
 
+  /** Fichier du registre : le même que la reconstruction D:, pour garder les clés déjà enregistrées. */
+  const trustFile = (): string =>
+    process.env.HERMES_HOME ? join(process.env.HERMES_HOME, "jarod-os", "publisher-keys.json") : join(tmpdir(), "jarod-os", "publisher-keys.json");
+  /** Une lecture fraîche à chaque décision : une clé ajoutée après le démarrage compte tout de suite. */
+  const trustService = () => createTrustService(trustFile());
+
   type Method = (params: Record<string, unknown>, conn: Conn) => unknown | Promise<unknown>;
   const methods: Record<string, Method> = {
     "gateway.ping": () => ({}),
@@ -496,6 +505,35 @@ export function createGateway(opts: GatewayOptions): Gateway {
     },
 
     // Les commandes `/` de Jarod comme complétions ; sans registre (faux noyau), un catalogue vide.
+    // ------------------------------------------------------------------
+    // Registre de confiance des éditeurs (matrice official/verified/community/local).
+    // Porté depuis la reconstruction : mêmes règles, même fichier que l'installation existante
+    // (HERMES_HOME/jarod-os/publisher-keys.json) pour ne pas perdre les clés déjà enregistrées.
+    // ------------------------------------------------------------------
+    "trust.list": () => {
+      const store = loadStore(trustFile());
+      return { keys: Object.values(store.keys), revoked: store.revoked };
+    },
+    "trust.check": (p) => trustService().check((p.manifest ?? {}) as { name?: string; signature?: { keyId?: string }; trust?: unknown }),
+    "trust.add": async (p, conn) => {
+      const ok = await approveWith(conn, str(p.session_id), { name: "trust.add", args: { keyId: p.keyId, level: p.level } }, `Ajouter la clé éditeur ${str(p.keyId)} au niveau ${str(p.level)}`);
+      if (!ok) throw new RpcError(RPC.params, "approbation refusée");
+      const service = trustService();
+      const store = loadStore(service.file());
+      const key = addKey(store, { keyId: str(p.keyId), publicPem: str(p.publicPem), level: str(p.level) as never, label: str(p.label) });
+      saveStore(service.file(), store);
+      return { ok: true, keyId: key.keyId, level: key.level };
+    },
+    "trust.rotate": async (p, conn) => {
+      const ok = await approveWith(conn, str(p.session_id), { name: "trust.rotate", args: { keyId: p.keyId, newKeyId: p.newKeyId } }, `Rotation de la clé ${str(p.keyId)} vers ${str(p.newKeyId)}`);
+      if (!ok) throw new RpcError(RPC.params, "approbation refusée");
+      const service = trustService();
+      const store = loadStore(service.file());
+      const r = rotateKey(store, str(p.keyId), { newKeyId: str(p.newKeyId), publicPem: str(p.publicPem), label: str(p.label) });
+      saveStore(service.file(), store);
+      return { ok: true, ...r };
+    },
+
     "commands.catalog": () => (core.commands ? commandCatalog(core.commands) : { pairs: [], sub: {}, canon: {}, commands: {}, categories: [], skills: {}, skill_count: 0 }),
 
     // Réglages (section « Hermes & agents »). Une clé que la passerelle ne porte pas est une erreur nette, consignée par le serveur.

@@ -14,7 +14,8 @@
     "./child-env": "./src/child-env.ts",
     "./injection": "./src/injection.ts",
     "./legacy-env": "./src/legacy-env.ts",
-    "./legacy-env-adopt": "./src/legacy-env-adopt.ts"
+    "./legacy-env-adopt": "./src/legacy-env-adopt.ts",
+    "./publisher-trust": "./src/publisher-trust.ts"
   },
   "scripts": {
     "test": "vitest run",

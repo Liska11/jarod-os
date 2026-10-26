@@ -19,6 +19,7 @@ import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "
 import { dirname } from "node:path";
 import { activationOrder, dependents, GraphError, satisfies } from "./graph.js";
 import { type Permission, type PluginManifest, type Quotas, type TrustedKeys, verifyManifest } from "./manifest.js";
+import type { TrustService } from "@jarod/kernel/publisher-trust";
 
 export class PlatformError extends Error {}
 
@@ -30,6 +31,13 @@ export interface PluginRecord {
   previous?: PluginManifest;
   failures: number;
   reason?: string;
+}
+
+/** L'état d'un plugin, plus le niveau de confiance de la clé qui l'a signé (affiché par l'interface). */
+export interface PluginRecordView extends PluginRecord {
+  trust: string | null;
+  trustKey: string | null;
+  trustRevoked: boolean;
 }
 
 /** Ce que le gestionnaire demande à l'hôte : charger, décharger, et dire si le plugin se porte bien. */
@@ -58,6 +66,8 @@ export interface PlatformDeps {
   maxFailures?: number;
   /** Plafonds de la zone, sommes des quotas des plugins installés. Absent : pas de plafond sur cette ressource. */
   budgets?: Partial<Quotas>;
+  /** Matrice de confiance des éditeurs. Absent : seules les clés de `trusted` comptent (comportement d'origine). */
+  trust?: TrustService | null;
 }
 
 const sha256 = (b: Buffer): string => createHash("sha256").update(b).digest("hex");
@@ -99,15 +109,20 @@ export class PluginPlatform {
   /** Vrai si ce manifeste porte une signature valide d'une clé de confiance (sans rien installer). */
   verifies(manifest: PluginManifest): boolean {
     try {
-      verifyManifest(manifest, this.d.trusted);
+      this.verify(manifest);
       return true;
     } catch {
       return false;
     }
   }
 
-  list(): PluginRecord[] {
-    return [...this.records.values()].sort((a, b) => a.manifest.name.localeCompare(b.manifest.name));
+  list(): PluginRecordView[] {
+    return [...this.records.values()]
+      .sort((a, b) => a.manifest.name.localeCompare(b.manifest.name))
+      .map((r) => {
+        const st = this.d.trust?.status(r.manifest);
+        return { ...r, trust: st?.level ?? null, trustKey: st?.keyId ?? null, trustRevoked: st?.revoked ?? false };
+      });
   }
 
   get(name: string): PluginRecord {
@@ -122,6 +137,16 @@ export class PluginPlatform {
 
   private withStatus(...statuses: PluginStatus[]): string[] {
     return [...this.records].filter(([, r]) => statuses.includes(r.status)).map(([n]) => n);
+  }
+
+  /** Désinstallation : refusée si le plugin est actif (désactivation explicite d'abord). */
+  uninstall(name: string): { name: string; version: string } {
+    const r = this.get(name);
+    if (r.status === "enabled") throw new PlatformError(`${name} est actif : le désactiver avant de le supprimer`);
+    this.records.delete(name);
+    this.persist();
+    this.emit(name, "uninstall", { version: r.manifest.version });
+    return { name, version: r.manifest.version };
   }
 
   /** Un plugin n'a que les permissions qu'il a déclarées, et seulement tant qu'il est actif. */
@@ -149,7 +174,11 @@ export class PluginPlatform {
   }
 
   private verify(manifest: PluginManifest, payload?: Buffer): void {
-    verifyManifest(manifest, this.d.trusted);
+    // La matrice de confiance décide d'abord (clé inconnue, niveau insuffisant, clé révoquée) ;
+    // une clé inconnue acceptée en community porte un avertissement et ne vérifie pas la signature.
+    const t = this.d.trust?.check(manifest);
+    if (t && !t.ok) throw new PlatformError(`${manifest.name} : ${t.reason ?? "refusé par la matrice de confiance"}`);
+    if (!t?.warning) verifyManifest(manifest, { ...this.d.trusted, ...(this.d.trust?.pems() ?? {}) });
     if (payload && sha256(payload) !== manifest.payloadSha256) {
       throw new PlatformError(`${manifest.name} : le contenu ne correspond pas à l'empreinte signée`);
     }
