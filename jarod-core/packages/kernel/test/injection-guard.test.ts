@@ -14,13 +14,13 @@ describe("mesure du corpus", () => {
     expect(r.benign).toBe(20);
     expect(r.malicious).toBe(8);
     expect(r.falsePositiveRate).toBe(0);
-    expect(r.blockRate).toBeGreaterThanOrEqual(0.85);
+    expect(r.blockRate).toBe(1);
     expect(r.mode).toBe("enforce");
     expect(guardMode()).toBe("enforce");
     // Le détecteur brut signale un contenu légitime (balise <important> citée) : il marque, il ne bloque pas.
     expect(r.rawFalsePositiveRate).toBeGreaterThan(0);
-    // Un piège échappe au détecteur (préfixe SYSTEM: seul, poids 1 sous le seuil) : dit, pas masqué.
-    expect(r.missed).toContain("fake-authority");
+    // Depuis la règle étroite (autorité usurpée + ordre d'action), plus aucun piège n'échappe à la garde.
+    expect(r.missed).toEqual([]);
   });
 
   it("aucun contenu légitime ne teinte ni ne bloque une action", () => {

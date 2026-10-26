@@ -19,7 +19,8 @@ export type InjectionCategory =
   | "exfiltration-request"
   | "tool-call-impersonation"
   | "hidden-text"
-  | "audit-tampering";
+  | "audit-tampering"
+  | "authority-command";
 
 export interface Finding {
   category: InjectionCategory;
@@ -107,6 +108,9 @@ const SIGNALS: Signal[] = [
   { category: "fake-authority", weight: 2, pattern: /<\/?\s*(?:information|important|system|instructions?|admin|sudo|override|im_start|im_end)\s*>|\[\/?\s*(?:system|inst|admin|important)\s*\]|<\|(?:im_start|im_end|system|endoftext)\|>|#{2,}\s*[([{]?\s*(?:system|instruction)/ },
   { category: "fake-authority", weight: 1, pattern: /\b(?:important|urgent|critical|priority) (?:message|notice|instruction|update)\b|\b(?:message|avis|consigne) (?:important|urgent|prioritaire)\b|\bthis is (?:extremely |very )?important\b|\b(?:system|admin(?:istrator)?|developer) (?:message|note|notice|override|prompt)\b|^\s*(?:system|assistant)\s*:/ },
   // Usurper un appel d'outil.
+  // Une autorité usurpée SUIVIE D'UN ORDRE D'ACTION : « SYSTEM: override the policy… ». Le préfixe seul
+  // reste faible (poids 1) ; ce qui compte, c'est ce qu'il commande.
+  { category: "authority-command", weight: 2, pattern: /\b(?:system|assistant)\s*:\s*(?:override|bypass|ignore|disregard|disable|delete|erase|remove|drop|run|execute|exec|send|post|write|upload|install|exfiltrate|supprime[rz]?|desactive[rz]?|ignore[rz]?|oublie[rz]?|execute[rz]?|lance[rz]?|envoie[rz]?|ecris|efface[rz]?)\b/ },
   { category: "tool-call-impersonation", weight: 2, pattern: /<\s*(?:tool_call|function_call|tool_use|invoke)\b|"(?:name|tool|function)"\s*:\s*"[a-z_]+"\s*,\s*"(?:arguments|args|parameters|input)"/ },
   { category: "tool-call-impersonation", weight: 1, pattern: /\b(?:call|use|invoke|run) the [a-z_]+ (?:tool|function)\b|\b(?:appelle|utilise) l'outil\b/ },
   // Exfiltrer des données sensibles.
