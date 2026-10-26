@@ -47,7 +47,7 @@ l'installeur ici (`npm run dist:win`). Ce document suit ce portage.
 | 7 | Garde anti-injection en blocage (politique, teinture par tour, corpus, mode mesuré) + RPC `injection.check` | `kernel/src/injection-guard.ts` + `plugins/agent` | **fait** |
 | 8 | Moteur de capacités (radar, quarantaine, intégration réversible) + RPC `capability.*` | `kernel/src/capability-engine.ts` + `server.ts` | **fait** |
 | 9 | Gestionnaire de dépendances d'exécution + RPC `deps.*` | `kernel/src/runtime-deps.ts` + `server.ts` | **fait** |
-| 10 | Page « Capacités & Évolution » (badges de confiance, registre, dépendances, mises à jour) + entrée de navigation | `apps/desktop/src/renderer` | à faire |
+| 10 | Page « Capacités & Évolution » (badges, registre, dépendances, mises à jour) + entrée de navigation | `apps/desktop/src/features/capabilities` + `shell/apps.ts`, `MainWindow.tsx`, `components/app-icon.tsx` | **fait** |
 | 11 | Installeur : `npm run dist:win`, vérifier le bundle produit (24 plugins), installer sur place | `apps/desktop` | à faire |
 
 `BUNDLE.json` : le script de bundle écrit déjà `node: process.version` et `gatewayBytes` **mesuré** (vérifié le 26/10 : v26.12.1, 9 029 571 octets, 24 plugins). Le fichier installé aujourd'hui est périmé parce qu'il vient de la copie statique de `D:\Jarod-OS\repo` ; le build final depuis ce dépôt le rendra exact, sans retouche à la main.
@@ -66,7 +66,7 @@ l'installeur ici (`npm run dist:win`). Ce document suit ce portage.
 `pnpm` du PATH est cassé sur cette machine (shim vers `S:\.pnpm-store` absent) : utiliser les
 binaires locaux `node_modules\.bin\*` ou `npm exec`.
 
-## État au 2026-10-26 23:47
+## État au 2026-10-27 00:0x
 
 - Étapes 1 à 7 faites et prouvées. `tsc --noEmit` **vert** sur kernel, platform, cli, workflows, agent.
 - Tests : kernel **88**, platform **21**, workflows **39**, cli **502** (501 + 1 attendu en échec), agent **470** (469 + 1 ignoré).
@@ -79,6 +79,13 @@ binaires locaux `node_modules\.bin\*` ou `npm exec`.
   `pnpm` du PATH étant cassé). `tsc` vert ; kernel **102** tests (dont 14 nouveaux), cli **502**.
 - Reste les étapes 10 et 11 : page « Capacités & Évolution » dans `apps/desktop`, puis `dist:win` et installation.
   **Aucun build ni installation n'a été lancé.**
+- Étape 10 faite : page `CapabilitiesPage.tsx` (4 sections), enregistrée dans `PageId`/`AppIconId`/`PAGES`/route lazy,
+  test DOM `capabilities-page.test.tsx` (jsdom + testing-library, gateway en doublure) — 4 cas verts. `tsc` du
+  renderer vert ; suite renderer **194 fichiers, 1561 passés, 3 ignorés, 0 échec**.
+- Piège n°4 corrigé : catégorie `authority-command` (autorité usurpée + verbe d'action), **8/8 bloqués, 0 faux
+  positif** sur les 20 contenus légitimes. Le préfixe seul reste faible.
+- `pnpm-lock.yaml` : toujours remis à HEAD après chaque série de tests (copies dans `backups/pnpm-lock.apres-*.yaml`).
+- Reste l'étape 11 (`dist:win`, vérification des 24 plugins, installation) : voir les prérequis dans le message.
 
 Sauvegarde : un bundle git de **toutes les refs** du dépôt S: (16 branches, 45 refs, stash et têtes de worktrees
 comprises) est vérifié dans `D:\Jarod-OS\backups\jarod-os-S-toutes-branches-2026-10-26.bundle`.
