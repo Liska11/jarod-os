@@ -13,6 +13,7 @@ import {
   type PowerState,
   shortAddress
 } from '../lib/diagnostics.ts'
+import { describeLocalNet, type LocalNetState, loadRefused, noteAnswer, saveExplained } from '../lib/localnet.ts'
 import { system, wake } from '../lib/native.ts'
 import type { PairedPc } from '../lib/pairing-store.ts'
 import type { Link } from '../App.tsx'
@@ -38,6 +39,9 @@ export function DiagnosticView({ pc, channel, link, mode, onBack }: Props) {
   const [watching, setWatching] = useState<boolean | null>(null)
   const [power, setPower] = useState<PowerState | null>(null)
   const [opened, setOpened] = useState('')
+  const [localNet, setLocalNet] = useState<LocalNetState>('unneeded')
+  const [refused, setRefused] = useState(loadRefused)
+  const net = describeLocalNet(localNet, refused)
 
   const measure = useCallback(async () => {
     if (!channel) return setLatency(null)
@@ -57,6 +61,10 @@ export function DiagnosticView({ pc, channel, link, mode, onBack }: Props) {
       .power()
       .then(setPower)
       .catch(() => setPower(null))
+    void system
+      .localNetwork()
+      .then(r => setLocalNet(r.state))
+      .catch(() => {})
   }, [])
 
   useEffect(() => {
@@ -94,6 +102,37 @@ export function DiagnosticView({ pc, channel, link, mode, onBack }: Props) {
             const won = channel?.base === u
             return <ListItem key={u} icon={won ? 'check' : 'wifi'} title={shortAddress(u)} hint={isTailnetHost(host) ? 'Tailscale' : 'Réseau local'} end={won ? <span className="pill ok">Retenue</span> : undefined} />
           })}
+        </Group>
+
+        <Group title="Réseau local (Android 16)" note="Sans cette autorisation, Android 16 peut couper la connexion directe par le Wi-Fi. Tailscale n’en dépend pas.">
+          <div className="check">
+            <div className="check-head">
+              <span className={`dot ${net.tone === 'ok' ? 'ok' : net.tone === 'warn' ? 'warn' : ''}`} aria-hidden="true" />
+              <b>{net.title}</b>
+              <span className={`pill ${net.tone === 'ok' ? 'ok' : net.tone === 'warn' ? 'warn' : ''}`}>{localNet === 'granted' ? 'Autorisé' : localNet === 'unneeded' ? 'Sans objet' : net.tone === 'warn' ? 'Refusé' : 'À donner'}</span>
+            </div>
+            <p>{net.text}</p>
+            {net.actions.includes('ask') && (
+              <Button
+                tone="tonal"
+                feel="tap"
+                onClick={async () => {
+                  saveExplained()
+                  const { state } = await system.requestLocalNetwork().catch(() => ({ state: localNet }))
+                  noteAnswer(state)
+                  setRefused(loadRefused())
+                  setLocalNet(state)
+                }}
+              >
+                {refused ? 'Réessayer' : 'Autoriser'}
+              </Button>
+            )}
+            {net.actions.includes('settings') && (
+              <Button tone="text" icon="settings" feel="tap" onClick={() => void system.openSettings({ target: 'app' })}>
+                Ouvrir les réglages de l’appli
+              </Button>
+            )}
+          </div>
         </Group>
 
         <Group title="Veille appli fermée" note="La veille est un service qui interroge le PC, par le Wi-Fi ou Tailscale. Elle ne reçoit jamais le contenu.">

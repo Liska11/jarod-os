@@ -811,3 +811,25 @@
     transform: scaleY(1.8);
   }
 }
+
+/* ---------- Local network explanation ---------- */
+.explain {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+.explain p {
+  margin: 0;
+}
+.explain ul {
+  margin: 0;
+  padding-left: 1.2em;
+  color: var(--c-on-surface-variant);
+  font: var(--t-body-sm);
+}
+.explain li {
+  margin: 4px 0;
+}
+.explain .empty-mark {
+  align-self: flex-start;
+}

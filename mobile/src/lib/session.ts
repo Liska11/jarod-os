@@ -1,9 +1,10 @@
 import { b64uDecode, type CryptoKeyPair, exportKeyPair, generateKeyPair, importKeyPair } from '@jarod-protocol'
+import { refreshAddresses } from './addresses.ts'
 import { type ChannelOptions, type JarodChannel, openChannel } from './channel.ts'
 import { isNative, vault, wake } from './native.ts'
 import { anyOn, loadPrefs, type NotifyPrefs, savePrefs, saveSeen } from './news.ts'
 import type { PairingLink } from './pairing-link.ts'
-import { addressOrder, forgetPc, type PairedPc, savePc } from './pairing-store.ts'
+import { addressOrder, forgetPc, loadPc, type PairedPc, savePc } from './pairing-store.ts'
 
 type Handlers = Pick<ChannelOptions, 'onEvent' | 'onClose'>
 
@@ -50,9 +51,26 @@ export async function unlock(pc: PairedPc): Promise<CryptoKeyPair> {
   return importKeyPair(plaintext)
 }
 
+/**
+ * The PC sent its current addresses (inside the encrypted channel, after a connection): they replace
+ * the remembered list if they pass the same rules as the QR code. Returns the PC as it is now, the same
+ * object when nothing changed. The closed-app watch is told too, so it dials the new addresses.
+ */
+export function learnAddresses(data: Record<string, unknown>): PairedPc | null {
+  const known = loadPc()
+  if (!known) return null
+  const next = refreshAddresses(known, data.urls)
+  if (next === known) return known
+  savePc(next)
+  if (next.watch) void wake.setUrls({ urls: addressOrder(next) }).catch(() => {})
+  return next
+}
+
 export async function connect(pc: PairedPc, keys: CryptoKeyPair, handlers: Handlers): Promise<JarodChannel> {
   const channel = await openChannel({ urls: devUrls(addressOrder(pc)), hostKey: b64uDecode(pc.hostKey), keys, ...handlers })
-  if (channel.base && channel.base !== pc.lastUrl) savePc({ ...pc, lastUrl: channel.base })
+  // From what is stored now, not from `pc`: the PC's list of addresses may already have arrived and replaced it.
+  const stored = loadPc() ?? pc
+  if (channel.base && channel.base !== stored.lastUrl) savePc({ ...stored, lastUrl: channel.base })
   return channel
 }
 

@@ -223,7 +223,9 @@ public class WakeService extends Service {
                     JSONObject o = new JSONObject(body);
                     long seq = o.optLong("seq", since);
                     if (o.optBoolean("news", false) && !appVisible) news(p, Math.max(1, o.optInt("count", 1)));
-                    p.edit().putLong("seq", seq).putString("urls", first(base, urls)).apply();
+                    // The address that answered goes first, in the list as it is now: the page may have
+                    // replaced it while this long poll was waiting (the PC's addresses changed).
+                    p.edit().putLong("seq", seq).putString("urls", promote(base, p.getString("urls", ""))).apply();
                     reached = true;
                     failures = 0;
                     break;
@@ -240,7 +242,15 @@ public class WakeService extends Service {
         stopSelf();
     }
 
-    private static String first(String base, String[] urls) {
+    /**
+     * `current` (comma separated) with `base` moved to the front. Unchanged when `base` is no longer in
+     * it: an address the PC no longer lists must not come back through here.
+     */
+    static String promote(String base, String current) {
+        String[] urls = current.split(",");
+        boolean listed = false;
+        for (String u : urls) if (u.equals(base)) listed = true;
+        if (!listed) return current;
         StringBuilder b = new StringBuilder(base);
         for (String u : urls) if (!u.equals(base) && !u.isEmpty()) b.append(',').append(u);
         return b.toString();

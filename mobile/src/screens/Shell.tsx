@@ -2,11 +2,14 @@ import { useEffect, useState } from 'react'
 import type { Link } from '../App.tsx'
 import { ApprovalSheet, useNow } from '../components/ApprovalSheet.tsx'
 import { Icon, type IconName } from '../components/icons.tsx'
+import { LocalNetworkSheet } from '../components/LocalNetworkSheet.tsx'
 import { useBackLayer } from '../components/ui.tsx'
 import type { JarodChannel, PushedEvent } from '../lib/channel.ts'
 import { formatCountdown, secondsLeft } from '../lib/countdown.ts'
 import { linkMode } from '../lib/diagnostics.ts'
 import { haptic } from '../lib/haptics.ts'
+import { loadExplained, noteAnswer, saveExplained, shouldExplain } from '../lib/localnet.ts'
+import { system } from '../lib/native.ts'
 import { badge } from '../lib/news.ts'
 import type { PairedPc } from '../lib/pairing-store.ts'
 import type { LockDelay } from '../lib/settings.ts'
@@ -45,6 +48,14 @@ export function Shell({ pc, channel, link, subscribe, lockDelay, onLockDelay, on
   // A request the owner put off ("later"): hidden until they open it again from the banner.
   const [hidden, setHidden] = useState<Set<string>>(new Set())
   const mode = linkMode(channel?.base, link === 'online')
+  // Android 16's local network permission: explained once, before the system asks (Diagnostic tells the rest).
+  const [explain, setExplain] = useState(false)
+  useEffect(() => {
+    void system
+      .localNetwork()
+      .then(({ state }) => shouldExplain(state, loadExplained()) && setExplain(true))
+      .catch(() => {})
+  }, [])
 
   // Away from the chat, the back gesture returns to it before leaving the app.
   useBackLayer(tab !== 'chat', () => {
@@ -157,6 +168,22 @@ export function Shell({ pc, channel, link, subscribe, lockDelay, onLockDelay, on
           </button>
         ))}
       </nav>
+
+      <LocalNetworkSheet
+        open={explain && !shown}
+        onLater={() => {
+          saveExplained()
+          setExplain(false)
+        }}
+        onAllow={() => {
+          saveExplained()
+          setExplain(false)
+          void system
+            .requestLocalNetwork()
+            .then(({ state }) => noteAnswer(state))
+            .catch(() => {})
+        }}
+      />
 
       <ApprovalSheet
         approval={shown}

@@ -1,9 +1,12 @@
+import { isTailnetName } from './addresses.ts'
+
 /** How the phone reaches the PC right now. */
 export type LinkMode = 'lan' | 'tailscale' | 'offline'
 
-/** Tailscale's range, 100.64.0.0/10, and its IPv6 one (fd7a:115c:a1e0::/48). */
+/** Tailscale's range, 100.64.0.0/10, its IPv6 one (fd7a:115c:a1e0::/48), or a MagicDNS name (.ts.net). */
 export function isTailnetHost(host: string): boolean {
   const h = host.replace(/^\[|\]$/g, '').toLowerCase()
+  if (isTailnetName(h)) return true
   const m = /^100\.(\d{1,3})\.\d{1,3}\.\d{1,3}$/.exec(h)
   if (m) return Number(m[1]) >= 64 && Number(m[1]) <= 127
   return h.startsWith('fd7a:115c:a1e0:')

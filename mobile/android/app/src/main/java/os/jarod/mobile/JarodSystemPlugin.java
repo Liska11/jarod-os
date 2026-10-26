@@ -1,5 +1,6 @@
 package os.jarod.mobile;
 
+import android.Manifest;
 import android.app.usage.UsageStatsManager;
 import android.content.ComponentName;
 import android.content.Context;
@@ -15,16 +16,56 @@ import androidx.core.view.WindowInsetsControllerCompat;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
+import com.getcapacitor.PermissionState;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
+import com.getcapacitor.annotation.Permission;
+import com.getcapacitor.annotation.PermissionCallback;
 
 /**
  * What the page may know about the phone's system: the wallpaper's colours (Android 12+, Material
  * You), the battery state an app is allowed to read, and shortcuts into the system settings. Nothing
  * here touches the channel, the key or the voice.
  */
-@CapacitorPlugin(name = "JarodSystem")
+@CapacitorPlugin(
+    name = "JarodSystem",
+    permissions = {@Permission(alias = "nearby", strings = {Manifest.permission.NEARBY_WIFI_DEVICES})}
+)
 public class JarodSystemPlugin extends Plugin {
+
+    /**
+     * The local network permission. Android 16 can restrict an app's access to the local network until
+     * "Nearby devices" (NEARBY_WIFI_DEVICES) is granted. Below Android 13 the permission does not exist:
+     * "unneeded". Jarod uses no location and scans no device: it only dials its own PC's address.
+     */
+    private String nearbyState() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return "unneeded";
+        PermissionState s = getPermissionState("nearby");
+        if (s == PermissionState.GRANTED) return "granted";
+        return s == PermissionState.DENIED ? "denied" : "prompt";
+    }
+
+    @PluginMethod
+    public void localNetwork(PluginCall call) {
+        JSObject out = new JSObject();
+        out.put("state", nearbyState());
+        call.resolve(out);
+    }
+
+    /** The system's own dialog; the answer is the state afterwards (a permanent refusal answers at once). */
+    @PluginMethod
+    public void requestLocalNetwork(PluginCall call) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU || getPermissionState("nearby") == PermissionState.GRANTED) {
+            localNetwork(call);
+            return;
+        }
+        requestPermissionForAlias("nearby", call, "localNetworkDone");
+    }
+
+    @PermissionCallback
+    private void localNetworkDone(PluginCall call) {
+        localNetwork(call);
+    }
 
     /** Colours: the system's own tonal palette, mapped to Material 3 roles for both schemes. */
     @PluginMethod

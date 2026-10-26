@@ -1,5 +1,6 @@
 import { Capacitor, registerPlugin } from '@capacitor/core'
 import type { PowerState } from './diagnostics.ts'
+import type { LocalNetState } from './localnet.ts'
 import type { SystemColors } from './theme.ts'
 
 /**
@@ -20,6 +21,8 @@ interface WakePlugin {
   /** Also comes back by itself after the phone restarts (`BootReceiver.java`), until stopped. */
   start(o: { urls: string[]; token: string; seq: number; title: string; text: string; notify?: boolean }): Promise<void>
   /** `notify: false` keeps the watch quiet: every kind of notification is off on this phone. */
+  /** The PC's addresses changed: the watch uses them from its next round (no restart, same token). */
+  setUrls(o: { urls: string[] }): Promise<void>
   configure(o: { notify: boolean }): Promise<void>
   stop(): Promise<void>
   status(): Promise<{ running: boolean }>
@@ -52,7 +55,7 @@ export const vault: DeviceVaultPlugin = isNative ? NativeVault : devVault
 
 export const wake: WakePlugin = isNative
   ? NativeWake
-  : { start: async () => {}, configure: async () => {}, stop: async () => {}, status: async () => ({ running: false }) }
+  : { start: async () => {}, setUrls: async () => {}, configure: async () => {}, stop: async () => {}, status: async () => ({ running: false }) }
 
 /** Reading aloud with the phone's installed voices only (native, `JarodSpeechPlugin.java`). */
 export interface SpeechPlugin {
@@ -102,6 +105,9 @@ export interface SystemPlugin {
   colors(): Promise<SystemColors>
   /** The status and navigation bars follow the app's scheme (icon colour everywhere, bar colour before Android 15). */
   setBars(o: { scheme: 'light' | 'dark'; status: string; nav: string }): Promise<void>
+  /** Android 16's local network permission ("Nearby devices"): its state, and the system's dialog. */
+  localNetwork(): Promise<{ state: LocalNetState }>
+  requestLocalNetwork(): Promise<{ state: LocalNetState }>
   power(): Promise<PowerState>
   /** Opens a system settings screen; `via` says which one it was (a fallback is possible). */
   openSettings(o: { target: 'battery-optimization' | 'battery' | 'battery-saver' | 'autostart' | 'app' | 'notifications' }): Promise<{ opened: boolean; via: string }>
@@ -114,6 +120,8 @@ export const system: SystemPlugin = isNative
   : {
       colors: async () => ({ supported: false, light: {}, dark: {} }),
       setBars: async () => {},
+      localNetwork: async () => ({ state: 'unneeded' as const }),
+      requestLocalNetwork: async () => ({ state: 'unneeded' as const }),
       power: async () => ({ ignoringBatteryOptimizations: false, powerSave: false, manufacturer: 'navigateur', model: '', sdk: 0 }),
       openSettings: async () => ({ opened: false, via: 'navigateur' })
     }

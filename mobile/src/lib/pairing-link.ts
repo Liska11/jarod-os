@@ -1,4 +1,5 @@
-import { b64uDecode, isPrivateAddress } from '@jarod-protocol'
+import { b64uDecode } from '@jarod-protocol'
+import { cleanAddresses } from './addresses.ts'
 
 /** What the PC's QR code says (`jarod://pair#v=2&h=…&k=…&p=…&u=…&n=…`). */
 export interface PairingLink {
@@ -8,7 +9,7 @@ export interface PairingLink {
   hostKeyText: string
   /** The one-time code, 32 bytes. */
   code: Uint8Array
-  /** Where the PC listens: LAN first, then Tailscale. Only private addresses are kept. */
+  /** Where the PC listens: LAN first, then Tailscale (IP, then its MagicDNS name). Only private IPs and .ts.net names are kept. */
   urls: string[]
   name: string
 }
@@ -38,17 +39,6 @@ export function parsePairingLink(text: string): PairingLink | null {
     return null
   }
   if (hostKey.length !== 32 || secret.length !== 32) return null
-  const urls = (p.get('u') ?? '')
-    .split(',')
-    .map(u => u.trim())
-    .filter(u => {
-      try {
-        const url = new URL(u)
-        return url.protocol === 'http:' && !url.username && !url.password && url.pathname === '/' && isPrivateAddress(url.hostname.replace(/^\[|\]$/g, ''))
-      } catch {
-        return false
-      }
-    })
-    .map(u => new URL(u).origin)
-  return { hostId, hostKey, hostKeyText: k, code: secret, urls: [...new Set(urls)], name: (p.get('n') ?? '').slice(0, 60) || 'PC' }
+  const urls = cleanAddresses((p.get('u') ?? '').split(','))
+  return { hostId, hostKey, hostKeyText: k, code: secret, urls, name: (p.get('n') ?? '').slice(0, 60) || 'PC' }
 }

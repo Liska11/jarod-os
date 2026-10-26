@@ -4,7 +4,7 @@ import { DEMO, demoChannel, demoKeys, demoPc } from './dev/demo.ts'
 import { DeniedError, type JarodChannel, type PushedEvent } from './lib/channel.ts'
 import { isNative } from './lib/native.ts'
 import { loadPc, type PairedPc } from './lib/pairing-store.ts'
-import { connect, forget } from './lib/session.ts'
+import { connect, forget, learnAddresses } from './lib/session.ts'
 import { type LockDelay, loadLockDelay, lockNotice, saveLockDelay, shouldLock } from './lib/settings.ts'
 import { LockScreen } from './screens/LockScreen.tsx'
 import { PairScreen } from './screens/PairScreen.tsx'
@@ -61,7 +61,12 @@ export function App() {
       setLink('connecting')
       try {
         const ch = await connect(pc, keys, {
-          onEvent,
+          onEvent: e => {
+            if (e.event !== 'addresses') return onEvent(e)
+            // The PC's current addresses: kept for next time, and shown from now on.
+            const next = learnAddresses(e.data)
+            if (next) setState(s => (s.screen === 'ready' && s.pc !== next ? { ...s, pc: next } : s))
+          },
           onClose: () => {
             if (live.current !== ch) return
             live.current = null

@@ -84,6 +84,12 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!--
+      Android 16 can restrict an app's access to the local network (the home Wi-Fi, where the PC is)
+      until "Nearby devices" is granted. Jarod uses no location and scans no device: the app only dials
+      its own PC's address, hence neverForLocation (see docs/ANDROID-APP.md).
+    -->
+    <uses-permission android:name="android.permission.NEARBY_WIFI_DEVICES" android:usesPermissionFlags="neverForLocation" />
 
     <!-- The phone's own speech engine, to read replies aloud (JarodSpeechPlugin). -->
     <queries>
