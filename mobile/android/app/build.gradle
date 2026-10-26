@@ -3,6 +3,9 @@ apply plugin: 'com.android.application'
 android {
     namespace = "os.jarod.mobile"
     compileSdk = rootProject.ext.compileSdkVersion
+    buildFeatures {
+        buildConfig true
+    }
     defaultConfig {
         applicationId "os.jarod.mobile"
         minSdkVersion rootProject.ext.minSdkVersion
@@ -16,8 +19,30 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    // Release signing: read from a local, unversioned properties file (storeFile, storePassword,
+    // keyAlias, keyPassword). Its path is -Pjarod.keystoreProps=..., else android/keystore.properties.
+    def keystoreFile = file(project.findProperty('jarod.keystoreProps') ?: "$rootDir/keystore.properties")
+    def keystoreProps = new Properties()
+    if (keystoreFile.exists()) keystoreFile.withInputStream { keystoreProps.load(it) }
+    signingConfigs {
+        if (keystoreFile.exists()) {
+            release {
+                storeFile file(keystoreProps['storeFile'])
+                storePassword keystoreProps['storePassword']
+                keyAlias keystoreProps['keyAlias']
+                keyPassword keystoreProps['keyPassword']
+            }
+        }
+    }
     buildTypes {
+        debug {
+            // Side by side with the signed release (another application id, another label): a debug
+            // build must never block the release from installing over the owner's real app.
+            applicationIdSuffix ".dev"
+            versionNameSuffix "-dev"
+        }
         release {
+            if (keystoreFile.exists()) signingConfig signingConfigs.release
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
