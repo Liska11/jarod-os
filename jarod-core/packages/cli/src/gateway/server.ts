@@ -7,10 +7,12 @@ import { redactKeyedText, redactText } from "@jarod/kernel/redact";
 import { sameSecret } from "@jarod/kernel/secret";
 import { addKey, createTrustService, loadStore, rotateKey, saveStore } from "@jarod/kernel/publisher-trust";
 import { actionVerdict, evaluate, guardMode, outputVerdict, taintOf } from "@jarod/kernel/injection-guard";
+import { type EvaluationReport, evaluate as evaluateCapability, fiche, integrate, loadRegistry, loadSources, remove as removeCapability, rollback as rollbackCapability, saveRegistry, scanSource, setActive, setStatus } from "@jarod/kernel/capability-engine";
+import { type Policy, applyPortable, applySystem, inventory as depsInventory, loadState as loadDepsState, propose as proposeUpdate, rollbackPortable, saveState as saveDepsState, setPolicy } from "@jarod/kernel/runtime-deps";
 import { randomBytes } from "node:crypto";
 import { statSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
 import type { Message, Session, SessionContext } from "@jarod/contracts";
@@ -424,6 +426,16 @@ export function createGateway(opts: GatewayOptions): Gateway {
   }
   const platformService = (): PlatformLike | undefined => service<PlatformLike>("plugins");
   const pluginHost = (): HostLike | undefined => service<HostLike>("pluginHost");
+  /** Dossier des capacités : mêmes chemins que l'installation existante (HERMES_HOME/jarod-os). */
+  const capabilitiesPaths = () => {
+    const base = process.env.HERMES_HOME ? join(process.env.HERMES_HOME, "jarod-os") : join(tmpdir(), "jarod-os");
+    return { root: join(base, "capabilities"), sources: join(base, "capabilities", "sources.json"), registry: join(base, "capabilities", "registry.json"), quarantine: join(base, "capabilities", "quarantine"), store: join(base, "capabilities", "store") };
+  };
+  /** Dépendances d'exécution : état sous jarod-os, moteurs sous <data>/engines. */
+  const depsPaths = () => {
+    const home = process.env.HERMES_HOME ?? tmpdir();
+    return { file: join(home, "jarod-os", "runtime-policies.json"), engines: resolve(home, "..", "..", "engines") };
+  };
 
   type Method = (params: Record<string, unknown>, conn: Conn) => unknown | Promise<unknown>;
   const methods: Record<string, Method> = {
@@ -607,6 +619,192 @@ export function createGateway(opts: GatewayOptions): Gateway {
         action: actionVerdict({ tier, tool, args: p.args && typeof p.args === "object" ? p.args : { content: text }, taint: asked }),
         output: outputVerdict({ tier, tool, text }),
       };
+    },
+    // ------------------------------------------------------------------
+    // Capacités (Phase 2) : radar, évaluation, intégration réversible.
+    // ------------------------------------------------------------------
+    "capability.sources": () => {
+      const paths = capabilitiesPaths();
+      return { ...loadSources(paths.sources), file: paths.sources, dataRoot: paths.root };
+    },
+    "capability.registry": () => {
+      const paths = capabilitiesPaths();
+      return { registry: loadRegistry(paths.registry), file: paths.registry, dataRoot: paths.root };
+    },
+    "capability.radar": (p) => {
+      const paths = capabilitiesPaths();
+      const overrides = p?.paths && typeof p.paths === "object" ? (p.paths as Record<string, string>) : {};
+      const registry = loadRegistry(paths.registry);
+      const scanned: unknown[] = [];
+      const errors: { source: string; error: string }[] = [];
+      for (const source of loadSources(paths.sources).sources) {
+        if (source.enabled === false) continue;
+        const local = overrides[source.id] ?? source.path ?? null;
+        if (!local) {
+          errors.push({ source: source.id, error: "aucun chemin local (le radar ne télécharge rien)" });
+          continue;
+        }
+        try {
+          const scan = scanSource({ ...source, path: local }, registry);
+          scanned.push({ source: source.id, kind: scan.kind, found: scan.found.length, fiches: scan.found.map((d) => fiche(d)) });
+          if (scan.found.length) {
+            const previous = registry.sources[source.id]?.versions ?? [];
+            registry.sources[source.id] = { lastScanAt: new Date().toISOString(), lastVersion: scan.lastVersion, versions: [...new Set([...previous, ...scan.found.map((d) => d.version)])].slice(-200) };
+          }
+        } catch (e) {
+          errors.push({ source: source.id, error: e instanceof Error ? e.message : String(e) });
+        }
+      }
+      saveRegistry(paths.registry, registry);
+      return { scanned, errors, at: new Date().toISOString() };
+    },
+    "capability.evaluate": async (p, conn) => {
+      const source = str(p.path);
+      const id = str(p.id) || (source ? String(source).split(/[\\/]/).pop() ?? "" : "");
+      if (!source) throw new RpcError(RPC.params, "capability.evaluate : chemin du composant requis");
+      const ok = await approveWith(conn, str(p.session_id), { name: "capability.evaluate", args: { path: source, id } }, `Évaluer le composant « ${id} » : copie en quarantaine, analyse, puis exécution contrôlée (réseau coupé, écriture temporaire)`);
+      if (!ok) throw new RpcError(RPC.params, "approbation refusée");
+      const paths = capabilitiesPaths();
+      const report: EvaluationReport = evaluateCapability(source, { quarantineRoot: paths.quarantine, id, publicPem: str(p.publicPem) || null });
+      const registry = loadRegistry(paths.registry);
+      const entry = setStatus(registry, id, "analyzed", { verdict: report.verdict, treeSha256: report.quarantine.treeSha256 });
+      Object.assign(entry, {
+        name: report.analysis.manifest?.name ?? id,
+        type: report.analysis.type ?? null,
+        version: report.analysis.manifest?.version ?? null,
+        source,
+        hash: report.quarantine.treeSha256,
+        permissions: report.analysis.permissions ?? [],
+        signature: report.signature.valid ? (report.signature.keyId ?? "valide") : report.signature.present ? "invalide" : null,
+        verdict: report.verdict,
+        why: report.why,
+        quarantine: report.quarantine.root,
+      });
+      registry.evaluations = { ...(registry.evaluations ?? {}), [id]: report };
+      saveRegistry(paths.registry, registry);
+      return { ok: report.verdict !== "dangerous", report };
+    },
+    "capability.integrate": async (p, conn) => {
+      const id = str(p.id);
+      const kind = str(p.kind) || "skill";
+      if (!id) throw new RpcError(RPC.params, "capability.integrate : identifiant requis");
+      const paths = capabilitiesPaths();
+      const registry = loadRegistry(paths.registry);
+      const report = registry.evaluations?.[id];
+      if (!report) throw new RpcError(RPC.params, `${id} n'a pas été évalué : évaluer avant d'intégrer`);
+      const ok = await approveWith(conn, str(p.session_id), { name: "capability.integrate", args: { id, kind } }, `Intégrer la capacité « ${id} » comme ${kind} (verdict ${report.verdict}, empreinte ${String(report.quarantine?.treeSha256 ?? "").slice(0, 12)})`);
+      if (!ok) throw new RpcError(RPC.params, "approbation refusée");
+      try {
+        const entry = integrate(registry, report, { kind, targetRoot: paths.store, approve: true });
+        saveRegistry(paths.registry, registry);
+        return { ok: true, entry };
+      } catch (e) {
+        throw new RpcError(RPC.params, e instanceof Error ? e.message : String(e));
+      }
+    },
+    "capability.set-active": async (p, conn) => {
+      const id = str(p.id);
+      const active = p.active !== false;
+      const ok = await approveWith(conn, str(p.session_id), { name: "capability.set-active", args: { id, actif: active } }, `${active ? "Activer" : "Désactiver"} la capacité « ${id} »`);
+      if (!ok) throw new RpcError(RPC.params, "approbation refusée");
+      const paths = capabilitiesPaths();
+      const registry = loadRegistry(paths.registry);
+      try {
+        const r = setActive(registry, id, active);
+        saveRegistry(paths.registry, registry);
+        return { ok: true, ...r };
+      } catch (e) {
+        throw new RpcError(RPC.params, e instanceof Error ? e.message : String(e));
+      }
+    },
+    "capability.rollback": async (p, conn) => {
+      const id = str(p.id);
+      const ok = await approveWith(conn, str(p.session_id), { name: "capability.rollback", args: { id } }, `Annuler l'intégration de la capacité « ${id} » (fichiers retirés, registre restauré)`);
+      if (!ok) throw new RpcError(RPC.params, "approbation refusée");
+      const paths = capabilitiesPaths();
+      const registry = loadRegistry(paths.registry);
+      try {
+        const r = rollbackCapability(registry, id);
+        saveRegistry(paths.registry, registry);
+        return { ok: true, ...r };
+      } catch (e) {
+        throw new RpcError(RPC.params, e instanceof Error ? e.message : String(e));
+      }
+    },
+    "capability.remove": async (p, conn) => {
+      const id = str(p.id);
+      const ok = await approveWith(conn, str(p.session_id), { name: "capability.remove", args: { id } }, `Supprimer définitivement la capacité « ${id} » (artefact et entrée de registre)`);
+      if (!ok) throw new RpcError(RPC.params, "approbation refusée");
+      const paths = capabilitiesPaths();
+      const registry = loadRegistry(paths.registry);
+      try {
+        const r = removeCapability(registry, id);
+        saveRegistry(paths.registry, registry);
+        return { ok: true, ...r };
+      } catch (e) {
+        throw new RpcError(RPC.params, e instanceof Error ? e.message : String(e));
+      }
+    },
+    // ------------------------------------------------------------------
+    // Dépendances d'exécution (Phase 3) : inventaire, politiques, bascule réversible.
+    // ------------------------------------------------------------------
+    "deps.inventory": () => depsInventory(),
+    "deps.state": () => {
+      const paths = depsPaths();
+      return { state: loadDepsState(paths.file), file: paths.file, engines: paths.engines, policies: ["manual", "notify", "auto-safe", "auto-full"] };
+    },
+    "deps.policy": async (p, conn) => {
+      const id = str(p.id);
+      const policy = str(p.policy) as Policy;
+      const ok = await approveWith(conn, str(p.session_id), { name: "deps.policy", args: { composant: id, politique: policy } }, `Fixer la politique de mise à jour de « ${id} » : ${policy}`);
+      if (!ok) throw new RpcError(RPC.params, "approbation refusée");
+      const paths = depsPaths();
+      const state = loadDepsState(paths.file);
+      try {
+        const entry = setPolicy(state, id, policy, { compatibility: str(p.compatibility) || "unverified" });
+        saveDepsState(paths.file, state);
+        return { ok: true, entry };
+      } catch (e) {
+        throw new RpcError(RPC.params, e instanceof Error ? e.message : String(e));
+      }
+    },
+    "deps.propose": (p) => {
+      const paths = depsPaths();
+      const state = loadDepsState(paths.file);
+      return proposeUpdate(state, str(p.id), p.disc && typeof p.disc === "object" ? (p.disc as { version?: string }) : {});
+    },
+    "deps.update": async (p, conn) => {
+      const id = str(p.id);
+      const paths = depsPaths();
+      const state = loadDepsState(paths.file);
+      const kind = str(p.kind) || "portable";
+      const ok = await approveWith(conn, str(p.session_id), { name: "deps.update", args: { composant: id, genre: kind } }, `Mettre à jour le composant « ${id} » (${kind}) : version précédente conservée, retour arrière possible`);
+      if (!ok) throw new RpcError(RPC.params, "approbation refusée");
+      try {
+        const r =
+          kind === "portable"
+            ? applyPortable(state, id, { ...(str(p.newDir) ? { newDir: str(p.newDir) } : {}), enginesRoot: paths.engines, approve: true })
+            : applySystem(state, id, { approve: true, compatibility: str(p.compatibility) || null });
+        saveDepsState(paths.file, state);
+        return { ok: (r as { executed?: boolean }).executed !== false, result: r };
+      } catch (e) {
+        saveDepsState(paths.file, state);
+        throw new RpcError(RPC.params, e instanceof Error ? e.message : String(e));
+      }
+    },
+    "deps.rollback": async (p, conn) => {
+      const id = str(p.id);
+      const paths = depsPaths();
+      const state = loadDepsState(paths.file);
+      const ok = await approveWith(conn, str(p.session_id), { name: "deps.rollback", args: { composant: id } }, `Revenir à la version précédente du composant « ${id} »`);
+      if (!ok) throw new RpcError(RPC.params, "approbation refusée");
+      try {
+        const r = rollbackPortable(state, id, { enginesRoot: paths.engines, approve: true });
+        saveDepsState(paths.file, state);
+        return { ok: true, ...r };
+      } catch (e) {
+        throw new RpcError(RPC.params, e instanceof Error ? e.message : String(e));
+      }
     },
     "trust.install": async (p, conn) => {
       const manifest = p.manifest as { name?: string; version?: string; trust?: string; permissions?: string[] } | undefined;
