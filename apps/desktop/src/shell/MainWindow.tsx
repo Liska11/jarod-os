@@ -16,6 +16,7 @@ const PAGE_VIEW: Record<PageId, ComponentType> = {
   kanban: lazy(() => import('../features/kanban/KanbanPage.tsx').then(m => ({ default: m.KanbanPage }))),
   workspace: lazy(() => import('../features/workspace/WorkspacePage.tsx').then(m => ({ default: m.WorkspacePage }))),
   connections: lazy(() => import('../features/connections/ConnectionsPage.tsx').then(m => ({ default: m.ConnectionsPage }))),
+  capabilities: lazy(() => import('../features/capabilities/CapabilitiesPage.tsx').then(m => ({ default: m.CapabilitiesPage }))),
   settings: lazy(() => import('../features/settings/SettingsPage.tsx').then(m => ({ default: m.SettingsPage })))
 }
 
@@ -29,6 +30,7 @@ const PAGE_LABEL: Record<PageId, string> = {
   kanban: 'Kanban',
   workspace: 'Workspace',
   connections: 'Connections',
+  capabilities: 'Capacités & Évolution',
   settings: 'Settings'
 }
 

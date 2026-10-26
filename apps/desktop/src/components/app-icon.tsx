@@ -47,6 +47,13 @@ const PATHS: Record<AppIconId, React.ReactNode> = {
       <rect x="15.4" y="4.5" width="4.6" height="12" rx="1.2" />
     </>
   ),
+  capabilities: (
+    <>
+      <path d="M5 19V9.5L12 5l7 4.5V19" />
+      <path d="M9.5 19v-5h5v5" />
+      <path d="M12 9.5v4" />
+    </>
+  ),
   connections: (
     <>
       <path d="M10 14 14 10" />

@@ -2,7 +2,7 @@ import type { ComponentType } from 'react'
 import type { InstalledApp } from '../../shared/ipc.ts'
 
 /** Pages inside the main Hermes window (sidebar navigation). */
-export type PageId = 'overview' | 'hermes' | 'missions' | 'memory' | 'files' | 'automations' | 'kanban' | 'workspace' | 'connections' | 'settings'
+export type PageId = 'overview' | 'hermes' | 'missions' | 'memory' | 'files' | 'automations' | 'kanban' | 'workspace' | 'connections' | 'capabilities' | 'settings'
 
 /** Apps that open in their own floating window. */
 export type FloatingAppId = 'terminal' | 'system' | 'chat-popout' | 'web' | 'studio' | 'capture-editor' | 'camera' | 'widget' | 'pinokio'
@@ -35,6 +35,7 @@ export type AppIconId =
   | 'automations'
   | 'kanban'
   | 'connections'
+  | 'capabilities'
   | 'settings'
   | 'terminal'
   | 'system'
@@ -55,6 +56,7 @@ export const PAGES: readonly HermesAppDef<PageId>[] = [
   { id: 'kanban', name: 'Kanban', tagline: 'Tasks the agent can pick up.', category: 'productivity', kind: 'page', icon: 'kanban' },
   { id: 'workspace', name: 'Workspace', tagline: 'Code tasks in their own branches.', category: 'development', kind: 'page', icon: 'code' },
   { id: 'connections', name: 'Connections', tagline: 'Bring your tools into one workspace.', category: 'system', kind: 'page', icon: 'connections', shortcut: '7' },
+  { id: 'capabilities', name: 'Capacités & Évolution', tagline: "Ce que Jarod-OS sait faire, d'où cela vient, et ce qui peut être mis à jour.", category: 'system', kind: 'page', icon: 'capabilities' },
   { id: 'settings', name: 'Settings', tagline: 'Choose how Hermes works with you.', category: 'system', kind: 'page', icon: 'settings', shortcut: ',' }
 ]
 
