@@ -42,13 +42,15 @@ l'installeur ici (`npm run dist:win`). Ce document suit ce portage.
 | 2 | Intégration à la plateforme : `verify()` décide avant la signature, `list()` expose `trust`/`trustRevoked`, `uninstall()` refuse un plugin actif | `packages/plugins/platform/src/platform.ts`, `index.ts` | **fait** |
 | 3 | RPC `trust.list` / `trust.check` / `trust.add` / `trust.rotate` (approbation pour les mutations) | `packages/cli/src/gateway/server.ts` | **fait** |
 | 4 | Tests de la matrice | `packages/kernel/test/publisher-trust.test.ts` | **fait** (10 cas) |
-| 5 | RPC `trust.install`, `trust.installed`, `trust.uninstall`, `trust.disable`, `trust.enable` + ponts de portée plugin (même mécanisme que la reconstruction) | `packages/plugins/workflows/src/plugins.ts` (ponts) + `server.ts` | à faire |
-| 6 | Mode test des plugins (`testPlugin`) + RPC `trust.test`, `plugins.host` | `plugins.ts`, `server.ts` | à faire |
-| 7 | Garde anti-injection en blocage (politique, teinture par tour, motifs) + RPC `injection.check` | `packages/kernel/src/injection-guard.ts` + `packages/plugins/agent` | à faire |
+| 5 | RPC `trust.install`, `trust.installed`, `trust.uninstall`, `trust.disable`, `trust.enable` (approbation, refus explicites) | `server.ts` (services lus par `core.app.get`) + `governance.withPermissionGrant` | **fait** |
+| 6 | Mode test des plugins (`testPlugin`, réseau coupé même déclaré, dossier temporaire, rien de retenu) + RPC `trust.test`, `plugins.host` | `plugins.ts`, `runner.cjs`, `server.ts` | **fait** |
+| 7 | Garde anti-injection en blocage (politique, teinture par tour, corpus, mode mesuré) + RPC `injection.check` | `kernel/src/injection-guard.ts` + `plugins/agent` | **fait** |
 | 8 | Moteur de capacités (radar, quarantaine, intégration réversible) + RPC `capability.*` | nouveau paquet `packages/plugins/capabilities` | à faire |
 | 9 | Gestionnaire de dépendances d'exécution + RPC `deps.*` | nouveau paquet `packages/plugins/dependencies` | à faire |
 | 10 | Page « Capacités & Évolution » (badges de confiance, registre, dépendances, mises à jour) + entrée de navigation | `apps/desktop/src/renderer` | à faire |
 | 11 | Installeur : `npm run dist:win`, vérifier le bundle produit (24 plugins), installer sur place | `apps/desktop` | à faire |
+
+`BUNDLE.json` : le script de bundle écrit déjà `node: process.version` et `gatewayBytes` **mesuré** (vérifié le 26/10 : v26.12.1, 9 029 571 octets, 24 plugins). Le fichier installé aujourd'hui est périmé parce qu'il vient de la copie statique de `D:\Jarod-OS\repo` ; le build final depuis ce dépôt le rendra exact, sans retouche à la main.
 
 ## Vérifications de référence (à chaque étape)
 
@@ -64,8 +66,12 @@ l'installeur ici (`npm run dist:win`). Ce document suit ce portage.
 `pnpm` du PATH est cassé sur cette machine (shim vers `S:\.pnpm-store` absent) : utiliser les
 binaires locaux `node_modules\.bin\*` ou `npm exec`.
 
-## État au 2026-10-26 22:52
+## État au 2026-10-26 23:36
 
-- Étapes 1 à 4 faites et prouvées : `kernel` 10 tests, `platform` 21 tests, `cli/gateway-server`
-  29 tests, `tsc --noEmit` vert sur les trois paquets.
-- Reste les étapes 5 à 11 (dont l'installeur et l'installation).
+- Étapes 1 à 7 faites et prouvées. `tsc --noEmit` **vert** sur kernel, platform, cli, workflows, agent.
+- Tests : kernel **88**, platform **21**, workflows **39**, cli **502** (501 + 1 attendu en échec), agent **470** (469 + 1 ignoré).
+- Le contrat V-04 est **préservé** : la sortie d'une lecture passe inchangée au modèle ; le signal d'injection
+  reste dans la ligne d'audit et dans la teinture du tour. Seules les actions bloquantes retiennent leur sortie.
+- Banc AgentDojo : couche `injection` ajoutée au classement ; mesure 68 non applicables + **2 bloquées par la
+  garde** (elles l'étaient par l'accord) — aucune attaque réussie, une couche plus tôt.
+- Reste les étapes 8 à 11 : moteur de capacités, dépendances d'exécution, page, `dist:win` et installation.
