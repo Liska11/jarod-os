@@ -1,9 +1,11 @@
 import { type PointerEvent, useEffect, useReducer, useRef, useState } from 'react'
 import type { PushedEvent } from '../lib/channel.ts'
+import { haptic } from '../lib/haptics.ts'
 import { LIVE_START, liveStep, PHASE_LABEL } from '../lib/live-model.ts'
 import { speech } from '../lib/native.ts'
 import { readAloud, speechStatus, stopReading } from '../lib/speech.ts'
 import { type Recording, startRecording } from '../lib/voice.ts'
+import { IconButton, useBackLayer } from './ui.tsx'
 import { Markdown } from './Markdown.tsx'
 
 interface Props {
@@ -27,6 +29,8 @@ export function LiveTalk({ ensureSession, call, subscribe, onClose }: Props) {
   const session = useRef('')
   const phase = useRef(state.phase)
   phase.current = state.phase
+  // The back gesture leaves live talk, like the close button.
+  useBackLayer(true, onClose)
 
   // Jarod's events for the conversation being talked in.
   useEffect(
@@ -68,7 +72,7 @@ export function LiveTalk({ ensureSession, call, subscribe, onClose }: Props) {
     void stopReading()
     pressedAt.current = Date.now()
     dispatch({ type: 'press' })
-    navigator.vibrate?.(15)
+    haptic('confirm')
     try {
       recording.current = await startRecording(() => void release(), setLevel)
       // Released before the microphone was ready: drop it.
@@ -109,9 +113,7 @@ export function LiveTalk({ ensureSession, call, subscribe, onClose }: Props) {
     <div className="live" role="dialog" aria-label="Conversation en direct">
       <header className="live-top">
         <span>Conversation en direct</span>
-        <button type="button" className="icon ghost" aria-label="Fermer" onClick={onClose}>
-          ✕
-        </button>
+        <IconButton icon="close" label="Fermer" onClick={onClose} />
       </header>
 
       <section className="live-text" aria-live="polite">

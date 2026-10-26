@@ -1,5 +1,7 @@
 import type { CryptoKeyPair } from '@jarod-protocol'
 import { useEffect, useRef, useState } from 'react'
+import { Icon } from '../components/icons.tsx'
+import { Button, Dialog } from '../components/ui.tsx'
 import type { PairedPc } from '../lib/pairing-store.ts'
 import { forget, unlock } from '../lib/session.ts'
 
@@ -36,29 +38,49 @@ export function LockScreen({ pc, notice, onUnlocked, onForgotten }: Props) {
     // biome-ignore lint/correctness/useExhaustiveDependencies: once, on open
   }, [])
 
+  const [forgetting, setForgetting] = useState(false)
+
   return (
     <main className="screen center">
+      <span className="auth-mark">
+        <Icon name="lock" size={32} />
+      </span>
       <h1 className="brand">Jarod</h1>
       <p className="muted">
         Associé à <b>{pc.name}</b> depuis le {new Date(pc.pairedAt).toLocaleDateString()}.
       </p>
       {notice && <p className="note">{notice}</p>}
       {error && <p className="note danger">{error}</p>}
-      <button type="button" className="primary wide" disabled={busy} onClick={() => void open()}>
+      <Button tone="filled" icon="lock" wide disabled={busy} feel="tap" onClick={() => void open()}>
         Déverrouiller
-      </button>
-      <button
-        type="button"
-        className="ghost"
-        disabled={busy}
-        onClick={async () => {
-          if (!window.confirm(`Oublier ${pc.name} ? Il faudra l’associer à nouveau avec un code.`)) return
-          await forget(null)
-          onForgotten()
-        }}
-      >
+      </Button>
+      <Button tone="text" disabled={busy} onClick={() => setForgetting(true)}>
         Oublier ce PC
-      </button>
+      </Button>
+      <Dialog
+        open={forgetting}
+        onClose={() => setForgetting(false)}
+        title={`Oublier ${pc.name} ?`}
+        actions={
+          <>
+            <Button tone="text" onClick={() => setForgetting(false)}>
+              Annuler
+            </Button>
+            <Button
+              tone="danger"
+              feel="warn"
+              onClick={async () => {
+                await forget(null)
+                onForgotten()
+              }}
+            >
+              Oublier ce PC
+            </Button>
+          </>
+        }
+      >
+        <p>Il faudra l’associer à nouveau avec un code.</p>
+      </Dialog>
     </main>
   )
 }

@@ -7,6 +7,8 @@ export interface Line {
   streaming?: boolean
   /** Photos and files sent with the message (names only: the files stay on the PC). */
   files?: FileRef[]
+  /** A tool call's arguments, when the PC sent them with the call. */
+  args?: unknown
 }
 
 export interface FileRef {
@@ -55,7 +57,7 @@ type AgentEvent =
   | { type: 'message'; sessionId: string; streamId?: string; message: StoredMessage }
   | { type: 'stream-start' | 'stream-reset'; sessionId: string; streamId: string }
   | { type: 'delta'; sessionId: string; streamId: string; text?: string }
-  | { type: 'tool-start'; sessionId: string; call: { id: string; name: string } }
+  | { type: 'tool-start'; sessionId: string; call: { id: string; name: string; args?: unknown } }
   | { type: 'error'; sessionId: string; error: string }
   | { type: 'done'; sessionId: string }
   | { type: string; sessionId: string }
@@ -100,8 +102,10 @@ export function applyEvent(c: Conversation, raw: Record<string, unknown>): Conve
       return { ...c, running: c.running || m.role === 'user', lines }
     }
     case 'tool-start': {
-      const { call } = e as { call: { id: string; name: string } }
-      return { ...c, lines: [...c.lines, { id: `tool:${call.id}`, role: 'tool', text: call.name }] }
+      const { call } = e as { call: { id: string; name: string; args?: unknown } }
+      const line: Line = { id: `tool:${call.id}`, role: 'tool', text: call.name }
+      if (call.args !== undefined) line.args = call.args
+      return { ...c, lines: [...c.lines, line] }
     }
     case 'error': {
       const { error } = e as { error: string }
@@ -113,6 +117,29 @@ export function applyEvent(c: Conversation, raw: Record<string, unknown>): Conve
       return c
   }
 }
+
+/** What the chat draws: a message, or a run of tool calls folded into one entry. */
+export type Block = { kind: 'line'; line: Line } | { kind: 'tools'; id: string; calls: Line[] }
+
+/**
+ * Folds each run of consecutive tool calls (and their failures) into one block, so a long chain of
+ * tools is one line to open instead of a wall of them.
+ */
+export function groupLines(lines: Line[]): Block[] {
+  const blocks: Block[] = []
+  for (const line of lines) {
+    const last = blocks.at(-1)
+    if (!isToolLine(line)) blocks.push({ kind: 'line', line })
+    else if (last?.kind === 'tools') last.calls.push(line)
+    else blocks.push({ kind: 'tools', id: line.id, calls: [line] })
+  }
+  return blocks
+}
+
+/** A tool call, or a tool that was refused or failed (the run's own errors are not tools). */
+export const isToolLine = (l: Line): boolean => l.role === 'tool' || (l.role === 'error' && TOOL_FAILURE.test(l.text))
+
+const TOOL_FAILURE = / : refusé ou en échec$/
 
 /** A tool call's arguments, shortened for a phone screen but never hidden. */
 export function describeArgs(args: unknown, max = 600): string {

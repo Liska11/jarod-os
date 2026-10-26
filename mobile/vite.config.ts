@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vitest/config'
@@ -5,8 +6,11 @@ import { defineConfig } from 'vitest/config'
 // The protocol is the core's own file, imported as is: both ends run the same bytes.
 const protocol = fileURLToPath(new URL('../jarod-core/packages/plugins/gateways/src/remote-protocol.ts', import.meta.url))
 
+const { version } = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')) as { version: string }
+
 export default defineConfig({
   plugins: [react()],
+  define: { __APP_VERSION__: JSON.stringify(version) },
   resolve: { alias: { '@jarod-protocol': protocol } },
   // Relative paths: Capacitor serves the build from the app's own files.
   base: './',

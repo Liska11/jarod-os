@@ -1,15 +1,14 @@
 import type { CryptoKeyPair } from '@jarod-protocol'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { DEMO, demoChannel, demoKeys, demoPc } from './dev/demo.ts'
 import { DeniedError, type JarodChannel, type PushedEvent } from './lib/channel.ts'
 import { isNative } from './lib/native.ts'
 import { loadPc, type PairedPc } from './lib/pairing-store.ts'
 import { connect, forget } from './lib/session.ts'
-import { ChatScreen } from './screens/ChatScreen.tsx'
+import { type LockDelay, loadLockDelay, lockNotice, saveLockDelay, shouldLock } from './lib/settings.ts'
 import { LockScreen } from './screens/LockScreen.tsx'
 import { PairScreen } from './screens/PairScreen.tsx'
-
-/** Away longer than this, the app locks itself: the device key leaves memory. */
-const AUTO_LOCK_MS = 5 * 60_000
+import { Shell } from './screens/Shell.tsx'
 
 export type Link = 'connecting' | 'online' | 'offline'
 
@@ -20,6 +19,7 @@ type State =
 
 export function App() {
   const [state, setState] = useState<State>(() => {
+    if (DEMO) return { screen: 'ready', pc: demoPc, keys: demoKeys }
     const pc = loadPc()
     return pc ? { screen: 'locked', pc } : { screen: 'pair' }
   })
@@ -29,6 +29,10 @@ export function App() {
   const retry = useRef<ReturnType<typeof setTimeout> | null>(null)
   const attempt = useRef(0)
   const live = useRef<JarodChannel | null>(null)
+  // Away longer than this, the app locks itself: the device key leaves memory. The owner chooses it.
+  const [lockDelay, setLockDelay] = useState<LockDelay>(loadLockDelay)
+  const lockDelayRef = useRef(lockDelay)
+  lockDelayRef.current = lockDelay
 
   const onEvent = useCallback((e: PushedEvent) => {
     for (const l of listeners.current) l(e)
@@ -52,6 +56,8 @@ export function App() {
 
   const dial = useCallback(
     async (pc: PairedPc, keys: CryptoKeyPair) => {
+      // The demo's pretend PC is always there: there is nothing to dial.
+      if (DEMO) return
       setLink('connecting')
       try {
         const ch = await connect(pc, keys, {
@@ -98,7 +104,7 @@ export function App() {
         hiddenAt = Date.now()
         return
       }
-      if (hiddenAt && Date.now() - hiddenAt > AUTO_LOCK_MS) return lock('Verrouillé après 5 minutes d’absence.')
+      if (hiddenAt && shouldLock(Date.now() - hiddenAt, lockDelayRef.current)) return lock(lockNotice(lockDelayRef.current))
       if (state.screen === 'ready' && !live.current) {
         attempt.current = 0
         void dial(state.pc, state.keys)
@@ -109,6 +115,13 @@ export function App() {
   }, [state, dial, lock])
 
   useEffect(() => () => live.current?.close(), [])
+
+  // Demo build only (never in a release): a pretend PC answers, so the screens can be looked at.
+  useEffect(() => {
+    if (!DEMO) return
+    setChannel(demoChannel(onEvent))
+    setLink('online')
+  }, [onEvent])
 
   if (state.screen === 'pair') {
     return (
@@ -137,11 +150,16 @@ export function App() {
     )
   }
   return (
-    <ChatScreen
+    <Shell
       pc={state.pc}
       channel={channel}
       link={link}
       subscribe={subscribe}
+      lockDelay={lockDelay}
+      onLockDelay={d => {
+        saveLockDelay(d)
+        setLockDelay(d)
+      }}
       onLock={() => lock()}
       onPcChanged={pc => setState({ ...state, pc })}
       onForgotten={() => {

@@ -1,4 +1,6 @@
 import { Capacitor, registerPlugin } from '@capacitor/core'
+import type { PowerState } from './diagnostics.ts'
+import type { SystemColors } from './theme.ts'
 
 /**
  * The device key's safe (native, `DeviceVaultPlugin.java`): an AES-256-GCM key in the Android
@@ -91,6 +93,30 @@ const devSpeech: SpeechPlugin = {
 }
 
 export const speech: SpeechPlugin = isNative ? NativeSpeech : devSpeech
+
+/**
+ * What the phone's system tells the page (native, `JarodSystemPlugin.java`): the wallpaper's colours
+ * (Android 12+), the battery state the app may read, and shortcuts into the system settings.
+ */
+export interface SystemPlugin {
+  colors(): Promise<SystemColors>
+  /** The status and navigation bars follow the app's scheme (icon colour everywhere, bar colour before Android 15). */
+  setBars(o: { scheme: 'light' | 'dark'; status: string; nav: string }): Promise<void>
+  power(): Promise<PowerState>
+  /** Opens a system settings screen; `via` says which one it was (a fallback is possible). */
+  openSettings(o: { target: 'battery-optimization' | 'battery' | 'battery-saver' | 'autostart' | 'app' | 'notifications' }): Promise<{ opened: boolean; via: string }>
+}
+
+const NativeSystem = registerPlugin<SystemPlugin>('JarodSystem')
+
+export const system: SystemPlugin = isNative
+  ? NativeSystem
+  : {
+      colors: async () => ({ supported: false, light: {}, dark: {} }),
+      setBars: async () => {},
+      power: async () => ({ ignoringBatteryOptimizations: false, powerSave: false, manufacturer: 'navigateur', model: '', sdk: 0 }),
+      openSettings: async () => ({ opened: false, via: 'navigateur' })
+    }
 
 const NativeLaunch = registerPlugin<LaunchPlugin>('JarodLaunch')
 

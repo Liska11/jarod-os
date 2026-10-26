@@ -1,6 +1,8 @@
 import type { CryptoKeyPair } from '@jarod-protocol'
 import jsQR from 'jsqr'
 import { useEffect, useRef, useState } from 'react'
+import { Icon } from '../components/icons.tsx'
+import { Button } from '../components/ui.tsx'
 import { DeniedError, type JarodChannel } from '../lib/channel.ts'
 import { launch } from '../lib/native.ts'
 import { parsePairingLink } from '../lib/pairing-link.ts'
@@ -91,20 +93,23 @@ export function PairScreen({ notice, onPaired }: Props) {
 
   return (
     <main className="screen center">
+      <span className="auth-mark">
+        <Icon name="link" size={32} />
+      </span>
       <h1 className="brand">Jarod</h1>
       <p className="muted">Sur le PC : Réglages › Appareils › Pont téléphone › Afficher un code (onglet « Appli Jarod »).</p>
       {notice && <p className="note warn">{notice}</p>}
       {scanning ? (
         <div className="scanner">
           <video ref={video} playsInline muted />
-          <button type="button" className="ghost" onClick={() => setScanning(false)}>
+          <Button tone="text" onClick={() => setScanning(false)}>
             Annuler
-          </button>
+          </Button>
         </div>
       ) : (
-        <button type="button" className="primary wide" onClick={() => setScanning(true)} disabled={busy}>
+        <Button tone="filled" icon="camera" wide onClick={() => setScanning(true)} disabled={busy}>
           Scanner le QR code
-        </button>
+        </Button>
       )}
       <label className="field">
         <span>Ou collez le lien</span>
@@ -118,12 +123,12 @@ export function PairScreen({ notice, onPaired }: Props) {
       )}
       <label className="field">
         <span>Nom de ce téléphone (affiché sur le PC)</span>
-        <input value={name} onChange={e => setName(e.target.value)} maxLength={60} />
+        <input className="text-field" value={name} onChange={e => setName(e.target.value)} maxLength={60} />
       </label>
       {error && <p className="note danger">{error}</p>}
-      <button type="button" className="primary wide" disabled={!link || busy} onClick={() => void submit()}>
+      <Button tone="filled" wide disabled={!link || busy} feel="confirm" onClick={() => void submit()}>
         {busy ? 'Association…' : 'Associer'}
-      </button>
+      </Button>
       <p className="fine">
         La clé de ce téléphone est créée ici et protégée par votre empreinte, votre visage ou votre code. Le canal est chiffré de bout en bout ; rien ne passe par un service tiers.
       </p>
