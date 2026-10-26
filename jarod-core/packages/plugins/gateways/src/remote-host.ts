@@ -199,6 +199,8 @@ export class RemoteHost extends Emitter<{ status: RemoteStatus }> implements App
   private wakeWaiters = new Set<() => void>();
   /** Requests from the approval broker (`phone-approvals.ts`), offered to every app device. */
   private offers = new Map<string, { request: PhoneApproval; answer(ok: boolean): void }>();
+  /** The mobile bridge's current addresses, set while it runs (`MobileBridge.start`). */
+  private addressProvider: (() => Promise<string[]>) | null = null;
   status: RemoteStatus = { state: "stopped", clients: 0 };
 
   constructor(private readonly core: JarodCore) {
@@ -491,6 +493,22 @@ export class RemoteHost extends Emitter<{ status: RemoteStatus }> implements App
     c.device = device;
     this.touch(device.id);
     this.setStatus({});
+    void this.announceAddresses(c);
+  }
+
+  /** Where the phone can reach this computer now (LAN, Tailscale IP, MagicDNS name), once it has proved itself. */
+  setAddressProvider(provider: (() => Promise<string[]>) | null): void {
+    this.addressProvider = provider;
+  }
+
+  /**
+   * Tells a device that just authenticated the addresses this computer has right now, inside the sealed
+   * channel (so the phone can follow a change of IP). Only a list of origins, never anything else; the
+   * phone checks every entry against the same rules as the QR code.
+   */
+  private async announceAddresses(c: Client): Promise<void> {
+    const urls = await this.addressProvider?.().catch(() => []);
+    if (urls?.length) await this.push(c, { event: "addresses", data: { urls } });
   }
 
   private touch(id: string): void {

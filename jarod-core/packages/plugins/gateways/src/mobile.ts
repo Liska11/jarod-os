@@ -1,4 +1,5 @@
 // Portage de packages/core/src/services/mobile.ts (rév. 2e180305).
+import { execFile } from "node:child_process";
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { hostname, networkInterfaces } from "node:os";
@@ -50,6 +51,58 @@ export interface MobileStatus {
 
 const VIRTUAL_ADAPTER = /vEthernet|VirtualBox|VMware|Hyper-V|WSL|docker|vboxnet|vmnet|br-/i;
 
+/** How long a Tailscale answer is trusted: the name does not change, and asking costs a process. */
+const TAILNET_NAME_TTL_MS = 60_000;
+const TAILNET_NAME_LABEL = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
+
+/**
+ * A MagicDNS name: `machine.tailnet.ts.net`, nothing else. The same rule the phone applies to every
+ * address it is given (`mobile/src/lib/addresses.ts`): the suffix is matched on whole labels from the
+ * right, so a look-alike (`x.ts.net.evil.com`), a bare tailnet (`tailnet.ts.net`) or a trailing dot is
+ * refused. A name under any other domain is never listed, whatever Tailscale reports.
+ */
+export function isMagicDnsName(host: string): boolean {
+  const h = host.toLowerCase();
+  if (h.length > 253 || !h.endsWith(".ts.net")) return false;
+  const labels = h.split(".");
+  return labels.length >= 4 && labels.every((l) => TAILNET_NAME_LABEL.test(l));
+}
+
+/** This computer's MagicDNS name from `tailscale status --json`, or null (stopped, logged out, no name). */
+export function magicDnsNameFrom(status: unknown): string | null {
+  const s = status as { BackendState?: unknown; Self?: { DNSName?: unknown } } | null;
+  if (s?.BackendState !== "Running") return null;
+  const raw = s.Self?.DNSName;
+  if (typeof raw !== "string") return null;
+  // Tailscale writes the name as a fully qualified one, with a final dot.
+  const name = raw.replace(/\.$/, "").toLowerCase();
+  return isMagicDnsName(name) ? name : null;
+}
+
+/** Asks the local Tailscale for its status. Null when it is not installed, not running, or too slow. */
+async function tailscaleStatus(): Promise<unknown> {
+  const bins =
+    process.platform === "win32"
+      ? ["tailscale", "C:\\Program Files\\Tailscale\\tailscale.exe"]
+      : process.platform === "darwin"
+        ? ["tailscale", "/Applications/Tailscale.app/Contents/MacOS/Tailscale"]
+        : ["tailscale"];
+  for (const bin of bins) {
+    const out = await new Promise<string | null>((done) => {
+      execFile(bin, ["status", "--json"], { timeout: 3000, windowsHide: true, maxBuffer: 4 * 1024 * 1024 }, (err, stdout) =>
+        done(err ? null : String(stdout)),
+      );
+    });
+    if (out === null) continue;
+    try {
+      return JSON.parse(out) as unknown;
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
 /** Tailscale's IPv4 range: listed after the LAN, which is shorter when the phone is home. */
 function isTailscale(address: string): boolean {
   const m = /^100\.(\d{1,3})\./.exec(address);
@@ -77,7 +130,13 @@ export class MobileBridge {
   /** One wake long-poll per device: a new one replaces the old. */
   private wakePolls = new Map<string, ServerResponse>();
 
-  constructor(private readonly core: JarodCore) {}
+  private tailnet: { at: number; name: string | null } | null = null;
+
+  /** `tailnetName` is replaced in tests (and wherever `tailscale` cannot be run): it answers the MagicDNS name or null. */
+  constructor(
+    private readonly core: JarodCore,
+    private readonly options: { tailnetName?: () => Promise<string | null> } = {},
+  ) {}
 
   status(): MobileStatus {
     const all = this.core.settings.getAll();
@@ -121,13 +180,39 @@ export class MobileBridge {
     return [...new Set([...lan, ...tailnet])];
   }
 
+  /** This computer's MagicDNS name (`machine.tailnet.ts.net`), or null. Cached for a minute. */
+  private async tailnetName(): Promise<string | null> {
+    if (this.tailnet && Date.now() - this.tailnet.at < TAILNET_NAME_TTL_MS) return this.tailnet.name;
+    let name: string | null = null;
+    try {
+      const raw = this.options.tailnetName ? await this.options.tailnetName() : magicDnsNameFrom(await tailscaleStatus());
+      // Checked again whoever answered: only machine.tailnet.ts.net is ever listed.
+      name = raw && isMagicDnsName(raw) ? raw.toLowerCase() : null;
+    } catch {
+      name = null;
+    }
+    this.tailnet = { at: Date.now(), name };
+    return name;
+  }
+
+  /**
+   * Every address a phone may use right now: the LAN, then the Tailscale IP, then the MagicDNS name
+   * (which survives a change of Tailscale address). Sent in the QR code, and again inside the encrypted
+   * channel after each connection, so the phone follows a change of address by itself.
+   */
+  async hostAddresses(port = this.port()): Promise<string[]> {
+    const name = await this.tailnetName();
+    const urls = this.addresses(port);
+    return name ? [...new Set([...urls, `http://${name}:${port}`])] : urls;
+  }
+
   /**
    * The Android app's pairing link (and the browser's, from the same one-time code): the app link
    * carries this computer's key and every address it can be reached on.
    */
   async appPairing(): Promise<{ url: string; appLink: string; secret: string; expiresAt: number }> {
     const browser = this.pairing();
-    const { link } = await this.core.remoteHost().appPairingFor(browser.secret, this.addresses(), hostname());
+    const { link } = await this.core.remoteHost().appPairingFor(browser.secret, await this.hostAddresses(), hostname());
     return { ...browser, appLink: link };
   }
 
@@ -175,6 +260,8 @@ export class MobileBridge {
       });
     });
     this.server = server;
+    // A phone that proves itself is told the current addresses, inside the encrypted channel.
+    this.core.remoteHost().setAddressProvider(() => this.hostAddresses());
     const cfg = this.core.settings.getAll();
     this.core.settings.set("mobile", { ...cfg.mobile, enabled: true, port: this.port() });
     this.core.notifications.add(
@@ -186,6 +273,7 @@ export class MobileBridge {
   }
 
   async stop(): Promise<MobileStatus> {
+    this.core.remoteHost().setAddressProvider(null);
     const server = this.server;
     for (const stream of [...this.streams]) stream.res.end();
     this.streams.clear();
@@ -205,6 +293,7 @@ export class MobileBridge {
    * le processus Electron mourait avec.) Même fermeture que `stop()`.
    */
   async close(): Promise<void> {
+    this.core.remoteHost().setAddressProvider(null);
     const server = this.server;
     for (const stream of [...this.streams]) stream.res.end();
     this.streams.clear();

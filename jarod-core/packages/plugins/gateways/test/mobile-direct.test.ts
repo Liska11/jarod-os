@@ -1,6 +1,6 @@
 // The Android app's door: the end-to-end protocol (`jarod-relay/1`) carried directly by the mobile
 // bridge (`/m1/*`), over the LAN or Tailscale. Real server, real requests, real handshake.
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { APP_ORIGIN, isPrivateAddress, MobileBridge } from "../src/mobile.js";
 import {
   b64uDecode,
@@ -22,7 +22,8 @@ interface Rig {
 
 async function started(): Promise<Rig> {
   const core = await makeCore();
-  const bridge = new MobileBridge(core);
+  // No real Tailscale here: the tests must not depend on the machine they run on.
+  const bridge = new MobileBridge(core, { tailnetName: async () => null });
   await bridge.start(0);
   return { core, bridge, base: `http://127.0.0.1:${bridge.status().port}`, stop: () => bridge.stop() };
 }
@@ -223,7 +224,7 @@ describe("mobile bridge — pairing the app", () => {
       expect(info.secret.length).toBe(32);
       expect(expiresAt).toBeGreaterThan(Date.now());
       // Every address in the link is one the bridge itself would accept.
-      for (const u of info.urls) expect(isPrivateAddress(new URL(u).hostname)).toBe(true);
+      for (const u of info.urls) expect(phoneAccepts(u), u).toBe(true);
       // The browser link is the same one-time code: either door, once.
       if (url) expect(url.endsWith(new URLSearchParams(appLink.slice(appLink.indexOf("#") + 1)).get("p")!)).toBe(true);
 
@@ -305,6 +306,115 @@ describe("mobile bridge — pairing the app", () => {
     } finally {
       await r.stop();
     }
+  });
+});
+
+/** The rules the phone applies to every address it is given (mobile/src/lib/addresses.ts). */
+const phoneAccepts = (u: string): boolean => {
+  try {
+    const url = new URL(u);
+    const host = url.hostname.replace(/^\[|\]$/g, "");
+    const name = /^([a-z0-9]([a-z0-9-]*[a-z0-9])?\.){3,}[a-z0-9-]+$/.test(host) && host.endsWith(".ts.net");
+    return url.protocol === "http:" && !url.username && url.pathname === "/" && (isPrivateAddress(host) || name);
+  } catch {
+    return false;
+  }
+};
+
+describe("mobile bridge — the PC's addresses", () => {
+  const NAME = "hp-z2i.tailb39d55.ts.net";
+
+  async function startedWith(tailnetName: () => Promise<string | null>): Promise<Rig> {
+    const core = await makeCore();
+    const bridge = new MobileBridge(core, { tailnetName });
+    await bridge.start(0);
+    return { core, bridge, base: `http://127.0.0.1:${bridge.status().port}`, stop: () => bridge.stop() };
+  }
+
+  it("puts the MagicDNS name after the IPs in the QR code, and the phone accepts every entry", async () => {
+    const r = await startedWith(async () => NAME);
+    try {
+      const { appLink } = await r.bridge.appPairing();
+      const urls = parseAppLink(appLink).urls;
+      expect(urls.at(-1)).toBe(`http://${NAME}:${r.bridge.status().port}`);
+      for (const u of urls) expect(phoneAccepts(u), u).toBe(true);
+    } finally {
+      await r.stop();
+    }
+  });
+
+  it("leaves the name out when Tailscale is off or gives none", async () => {
+    const r = await startedWith(async () => null);
+    try {
+      const urls = parseAppLink((await r.bridge.appPairing()).appLink).urls;
+      expect(urls.some((u) => u.includes(".ts.net"))).toBe(false);
+    } finally {
+      await r.stop();
+    }
+  });
+
+  it("never lists a name that is not machine.tailnet.ts.net, whatever Tailscale says", async () => {
+    for (const bad of ["jarod.example.org", "evil.ts.net.attacker.com", "tailb39d55.ts.net", "ts.net", "8.8.8.8", "a b.tail.ts.net", ""]) {
+      const r = await startedWith(async () => bad);
+      try {
+        const all = await r.bridge.hostAddresses();
+        expect(all.some((u) => u.includes(bad) && bad !== ""), bad).toBe(false);
+        for (const u of all) expect(phoneAccepts(u), u).toBe(true);
+      } finally {
+        await r.stop();
+      }
+    }
+  });
+
+  it("sends its current list inside the encrypted channel after each connection", async () => {
+    const r = await startedWith(async () => NAME);
+    try {
+      const { keys, info, phone } = await pairPhone(r);
+      await phone.waitFor((e) => e.event === "addresses");
+      const first = phone.events.find((e) => e.event === "addresses")!.data.urls as string[];
+      expect(first).toEqual(await r.bridge.hostAddresses());
+      expect(first.at(-1)).toBe(`http://${NAME}:${r.bridge.status().port}`);
+      phone.hangUp();
+      await phone.closed;
+
+      // The LAN address changes (DHCP), the Tailscale one too: the next connection tells the phone.
+      const port = r.bridge.status().port;
+      vi.spyOn(r.bridge, "addresses").mockReturnValue([`http://192.168.1.99:${port}`, `http://100.88.1.9:${port}`]);
+      const again = await connect(r.base, info.hostKey, keys);
+      expect(again.denied).toBeUndefined();
+      await again.waitFor((e) => e.event === "addresses");
+      expect(again.events.find((e) => e.event === "addresses")!.data.urls).toEqual([
+        `http://192.168.1.99:${port}`,
+        `http://100.88.1.9:${port}`,
+        `http://${NAME}:${port}`,
+      ]);
+      again.hangUp();
+    } finally {
+      vi.restoreAllMocks();
+      await r.stop();
+    }
+  });
+
+  it("sends nothing to a phone that has not proved itself", async () => {
+    const r = await startedWith(async () => NAME);
+    try {
+      const { appLink } = await r.bridge.appPairing();
+      const info = parseAppLink(appLink);
+      const stranger = await connect(r.base, info.hostKey, await generateKeyPair());
+      expect(stranger.denied).toBeDefined();
+      await stranger.closed;
+      expect(stranger.events).toEqual([]);
+    } finally {
+      await r.stop();
+    }
+  });
+
+  it("sends no list once the bridge is stopped (its addresses lead nowhere)", async () => {
+    const r = await startedWith(async () => NAME);
+    const host = r.core.remoteHost() as unknown as { addressProvider: unknown };
+    expect(host.addressProvider).not.toBeNull();
+    await r.stop();
+    expect(host.addressProvider).toBeNull();
   });
 });
 
