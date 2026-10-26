@@ -45,8 +45,8 @@ l'installeur ici (`npm run dist:win`). Ce document suit ce portage.
 | 5 | RPC `trust.install`, `trust.installed`, `trust.uninstall`, `trust.disable`, `trust.enable` (approbation, refus explicites) | `server.ts` (services lus par `core.app.get`) + `governance.withPermissionGrant` | **fait** |
 | 6 | Mode test des plugins (`testPlugin`, réseau coupé même déclaré, dossier temporaire, rien de retenu) + RPC `trust.test`, `plugins.host` | `plugins.ts`, `runner.cjs`, `server.ts` | **fait** |
 | 7 | Garde anti-injection en blocage (politique, teinture par tour, corpus, mode mesuré) + RPC `injection.check` | `kernel/src/injection-guard.ts` + `plugins/agent` | **fait** |
-| 8 | Moteur de capacités (radar, quarantaine, intégration réversible) + RPC `capability.*` | nouveau paquet `packages/plugins/capabilities` | à faire |
-| 9 | Gestionnaire de dépendances d'exécution + RPC `deps.*` | nouveau paquet `packages/plugins/dependencies` | à faire |
+| 8 | Moteur de capacités (radar, quarantaine, intégration réversible) + RPC `capability.*` | `kernel/src/capability-engine.ts` + `server.ts` | **fait** |
+| 9 | Gestionnaire de dépendances d'exécution + RPC `deps.*` | `kernel/src/runtime-deps.ts` + `server.ts` | **fait** |
 | 10 | Page « Capacités & Évolution » (badges de confiance, registre, dépendances, mises à jour) + entrée de navigation | `apps/desktop/src/renderer` | à faire |
 | 11 | Installeur : `npm run dist:win`, vérifier le bundle produit (24 plugins), installer sur place | `apps/desktop` | à faire |
 
@@ -66,7 +66,7 @@ l'installeur ici (`npm run dist:win`). Ce document suit ce portage.
 `pnpm` du PATH est cassé sur cette machine (shim vers `S:\.pnpm-store` absent) : utiliser les
 binaires locaux `node_modules\.bin\*` ou `npm exec`.
 
-## État au 2026-10-26 23:36
+## État au 2026-10-26 23:47
 
 - Étapes 1 à 7 faites et prouvées. `tsc --noEmit` **vert** sur kernel, platform, cli, workflows, agent.
 - Tests : kernel **88**, platform **21**, workflows **39**, cli **502** (501 + 1 attendu en échec), agent **470** (469 + 1 ignoré).
@@ -74,4 +74,15 @@ binaires locaux `node_modules\.bin\*` ou `npm exec`.
   reste dans la ligne d'audit et dans la teinture du tour. Seules les actions bloquantes retiennent leur sortie.
 - Banc AgentDojo : couche `injection` ajoutée au classement ; mesure 68 non applicables + **2 bloquées par la
   garde** (elles l'étaient par l'accord) — aucune attaque réussie, une couche plus tôt.
-- Reste les étapes 8 à 11 : moteur de capacités, dépendances d'exécution, page, `dist:win` et installation.
+- Étapes 8 et 9 faites : deux moteurs dans le **noyau** (`capability-engine.ts`, `runtime-deps.ts`) plus 14 RPC,
+  pas dans deux nouveaux paquets : cela évite d'ajouter des entrées à `pnpm-lock.yaml` (impossible à régénérer ici,
+  `pnpm` du PATH étant cassé). `tsc` vert ; kernel **102** tests (dont 14 nouveaux), cli **502**.
+- Reste les étapes 10 et 11 : page « Capacités & Évolution » dans `apps/desktop`, puis `dist:win` et installation.
+  **Aucun build ni installation n'a été lancé.**
+
+Sauvegarde : un bundle git de **toutes les refs** du dépôt S: (16 branches, 45 refs, stash et têtes de worktrees
+comprises) est vérifié dans `D:\Jarod-OS\backups\jarod-os-S-toutes-branches-2026-10-26.bundle`.
+
+Incident mineur : lancer les binaires `node_modules/.bin/*` fait réécrire `jarod-core/pnpm-lock.yaml` (ajout de
+`@pnpm/exe@12.6.0`). Remis à HEAD après chaque série (copies dans `backups/pnpm-lock.apres-*.yaml`) ; je n'ai
+jamais committé cette modification.
