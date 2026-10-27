@@ -366,3 +366,30 @@ its own CLI, `pterm`, uses).
   `pinokio_logs` (audited reads), `pinokio_install`, `pinokio_run`, `pinokio_stop` (an approval each),
   `pinokio_open`; offered only when the shell announces the engine (`JAROD_PINOKIO_URL`), which they
   start through the control socket (`pinokio.start`).
+
+## ADR-023: "installation == build of S:" is a test again, and its fingerprints live in `history/base-hashes.json`
+
+`D:\Jarod-OS\repo` carried the reference suite whose T01 and T03 defined the app as "the build of
+D:". The port moved the source into this repository and the installer is now produced here: the
+installed gateway (`78dd5db4…`) and `app.asar` (`799b3e63…`) are byte-identical to what this tree
+builds, so the same two tests failed in D: — the truth they encoded had moved, not the code.
+
+- **Decision.** T01 and T03 live here now, in `scripts/install-parity.mjs` (also run as
+  `apps/desktop/electron/install-parity.test.ts` in the desktop suite). D: stays a historical
+  reference, unmodified.
+- **What T01 checks.** The core gateway in `jarod-core/dist/gateway` equals `resources/jarod-core/gateway.mjs`;
+  the asar's `dist/` tree equals `apps/desktop/dist` (129 files, `*.map` excluded: they are not
+  shipped); the asar's `package.json` equals the app's minus `scripts`, `devDependencies` and `build`
+  (the exact normalization electron-builder performs); and the installed `app.asar` and gateway match
+  the fingerprints in `history/base-hashes.json`.
+- **What T03 checks.** Two independent builds (vite renderer + esbuild shell + the gateway bundle)
+  produce the same bytes as each other and as the tree that is shipped. `dist/` is restored
+  afterwards, so the test never changes the evidence. Source maps are excluded for the same reason as
+  in T01: they depend on the bundler's cache, not on the installation.
+- **Fingerprints.** `history/base-hashes.json` is this repository's equivalent of D:'s file: the
+  installed asar and gateway, the `dist/` tree hash and the chain that produced them. `write` records
+  them after a build and an installation made from this tree; `check` fails as soon as the
+  installation and the tree diverge.
+- **Consequence.** A source change only counts as delivered once this tree is rebuilt, installed and
+  the fingerprints recorded again; a hand-edited installation makes T01 red, which is the point.
+
