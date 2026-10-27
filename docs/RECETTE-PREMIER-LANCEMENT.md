@@ -1,7 +1,7 @@
 # Recette du premier lancement (après l'étape 11b)
 
-Instance installée le 27/10/2026 : `C:\Program Files\Jarod-OS`, version **0.1.0-alpha.1**,
-`gateway.mjs` **9 077 565** o, `app.asar` **6 324 061** o, `BUNDLE.json` **v26.12.1 / 24 plugins**.
+Instance installée le 27/10/2026 (deuxième pose à 19:14, avec le bouton « Tout autoriser ») : `C:\Program Files\Jarod-OS`,
+version **0.1.0-alpha.1**, `gateway.mjs` **9 079 705** o, `app.asar` **6 331 110** o, `BUNDLE.json` **v26.12.1 / 24 plugins**.
 Données : `D:\Jarod-OS` (profil `data\profile\profiles\default`, `HERMES_HOME = data\herald-home`).
 
 Ces six essais se font **à la main, dans l'ordre** ; ils couvrent ce que le portage a changé et ce que
@@ -83,12 +83,25 @@ proposé que si MagicDNS est actif.
   (fenêtre ou téléphone) l'emporte ;
 - « Révoquer » retire l'appareil immédiatement ; un appareil révoqué ne peut plus se reconnecter.
 
-## 6. Contrôles finaux
+## 6. Le bouton « Tout autoriser »
+
+**Faire** : dans une demande qui enchaîne plusieurs appels, cliquer **« Tout autoriser »** sur une carte d'accord (ou la pastille en bas à
+gauche), confirmer une fois dans la boîte native.
+
+**Attendu** :
+
+- la boîte native dit « Autoriser toutes les commandes ? », avec « Annuler » par défaut ;
+- la pastille passe en rouge « Tout autorisé — Éteindre », et les appels suivants **ne demandent plus** (l'appel en cours est accordé) ;
+- « Éteindre » (pastille, ou interrupteur des Réglages › Agent) rend le profil d'avant : les commandes redemandent ;
+- les règles « refuser »/« demander », l'interrupteur Internet, le mode Plan et les gardes des outils s'appliquent toujours — un outil
+  frappé par une règle « refuser » reste refusé, bouton allumé ou non.
+
+## 7. Contrôles finaux
 
 ```powershell
 (Get-Item 'C:\Program Files\Jarod-OS\Jarod-OS.exe').VersionInfo.FileVersion          # 0.1.0-alpha.1
-(Get-Item 'C:\Program Files\Jarod-OS\resources\app.asar').Length                    # 6324061
-(Get-Item 'C:\Program Files\Jarod-OS\resources\jarod-core\gateway.mjs').Length      # 9077565
+(Get-Item 'C:\Program Files\Jarod-OS\resources\app.asar').Length                    # 6331110
+(Get-Item 'C:\Program Files\Jarod-OS\resources\jarod-core\gateway.mjs').Length      # 9079705
 Get-Content 'C:\Program Files\Jarod-OS\resources\jarod-core\BUNDLE.json' -Raw | ConvertFrom-Json | Select-Object node,gatewayBytes
 ```
 

@@ -1,8 +1,10 @@
 import { IconAdjustments, IconArrowDown, IconArrowUp, IconBrain, IconHandStop, IconListCheck, IconShieldCheck, IconShieldLock, IconSettings, IconTerminal2, IconTrash, IconWorld, IconBolt } from '@tabler/icons-react'
+import { useStore } from '@nanostores/react'
 import { useState } from 'react'
 import { GlassButton, Pill } from '../../../components/ui/glass.tsx'
 import { jarod } from '../../../lib/jarod.ts'
 import { notify } from '../../../store/notifications.ts'
+import { $allowAll, setAllowAll } from '../../../store/allow-all.ts'
 import { useBackendData } from '../../../lib/use-async.ts'
 import { ChipsEditor, ChoiceRow, NumberRow, reportEngineError, SwitchRow, useJarodSettings } from './jarod-controls.tsx'
 import {
@@ -104,6 +106,18 @@ function AccessProfileGroup({ s, api }: Props) {
 function BehaviourGroup({ s, api }: Props) {
   useT()
   const { save, saving } = api
+  // « Tout autoriser » : le même bouton que la pastille et la carte d'accord. Depuis un autre profil, il fait le changement complet
+  // (profil « Personnalisé » + interrupteur) avec une seule confirmation native, au lieu d'un interrupteur grisé.
+  const allowAll = useStore($allowAll)
+
+  const toggleAllowAll = async (value: boolean): Promise<void> => {
+    try {
+      await setAllowAll(value)
+      api.reload()
+    } catch (error) {
+      reportEngineError(t('settings.agent.auto'), error)
+    }
+  }
 
   return (
     <SettingsGroup title={t('settings.agent.behaviour')}>
@@ -120,11 +134,11 @@ function BehaviourGroup({ s, api }: Props) {
       <SwitchRow
         icon={<IconShieldLock />}
         label={t('settings.agent.auto')}
-        description={(s.accessProfile ?? 'custom') === 'custom' ? t('settings.agent.auto.hint') : t('settings.agent.auto.profile')}
-        keywords="auto approve tools yolo ask permission"
-        value={s.autoApproveTools}
-        disabled={saving || (s.accessProfile ?? 'custom') !== 'custom'}
-        onChange={value => void save({ autoApproveTools: value })}
+        description={`${(s.accessProfile ?? 'custom') === 'custom' ? t('settings.agent.auto.hint') : t('settings.agent.auto.profile')} ${t('settings.agent.auto.all')}`}
+        keywords="auto approve tools yolo ask permission allow everything"
+        value={allowAll.on}
+        disabled={saving || allowAll.busy}
+        onChange={value => void toggleAllowAll(value)}
       />
       <NumberRow icon={<IconListCheck />} label={t('settings.agent.steps')} description={t('settings.agent.steps.hint')} keywords="max agent steps iterations limit" value={s.maxAgentSteps} validate={text => intProblem(text, 1, 500)} disabled={saving} onSave={value => save({ maxAgentSteps: value })} />
       <NumberRow

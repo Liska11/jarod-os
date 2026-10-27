@@ -88,6 +88,17 @@ Aucun profil ne lève : une règle « refuser » (refusé sans même demander), 
 
 Preuves : `plugins/agent/test/access-profile.test.ts` (table de décision), `access-profile.engine.test.ts` (boucle réelle : Plein écrit sans accord mais `run_shell` demande ; Plein ne lève pas un refus ; Demander demande une lecture et ignore une règle « sans accord » ; M'approuver ignore l'interrupteur global ; Personnalisé inchangé), `bridge/test/jarod-settings.test.ts` (confirmation native), e2e `access-profile.spec.ts` (application construite).
 
+### « Tout autoriser » : un bouton, réversible (2026-10-27)
+
+Une demande qui enchaîne plusieurs appels obligeait à valider chaque carte ; quand la carte suivante arrive pendant qu'on répond à la précédente, le tour peut même échouer. Le bouton **« Tout autoriser »** — pastille en bas à gauche de la fenêtre, bouton dans la carte d'accord, et interrupteur « Utiliser les outils sans demander » des Réglages — fait le changement complet en **un geste** : profil **Personnalisé** + interrupteur global allumé. C'est la seule combinaison où les **limites dures** ne demandent plus ; aucun préréglage à lui seul ne les lève.
+
+- Allumer demande **une** confirmation native (« Annuler » par défaut), qui nomme ce qui passe sans accord et ce qui reste.
+- Éteindre ne demande rien (c'est un durcissement) : l'interrupteur retombe et le profil d'avant revient (canal `tools-allow-all`, argument `restore` ; à défaut, **Plein**).
+- Ce qui reste hors de l'accord dans les deux états : règles « refuser » et « demander », interrupteur Internet, mode Plan, gardes propres aux outils, journal d'audit.
+- L'état est toujours visible (pastille rouge « Tout autorisé — Éteindre ») et relu du moteur au démarrage comme après chaque changement de réglage : il n'est jamais allumé en silence.
+
+Preuves : `bridge/test/tools-allow-all.test.ts` (le patch et la liste blanche des canaux), `apps/desktop/src/shell/AllowAllPill.test.tsx` (un clic pour allumer, refus = reste éteint, éteindre rend le profil d'avant) et `RequestHost.test.tsx` (le bouton de la carte accorde l'appel en cours).
+
 ## La commande
 
 ```

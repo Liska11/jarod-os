@@ -8,6 +8,7 @@ import { type MessageKey, t, useT } from '../lib/i18n.ts'
 import { thisDevice } from '../lib/platform-labels.ts'
 import { takeRequestFocus } from '../lib/request-focus.ts'
 import { $pendingRequests, type PendingRequest, resolveRequest } from '../store/requests.ts'
+import { setAllowAll } from '../store/allow-all.ts'
 
 /**
  * One host for every server->client question. Cards stack bottom-right; the oldest is on top so
@@ -87,6 +88,20 @@ function ApprovalCard({ id, params }: { id: string; params: ApprovalRequestParam
     return true
   })
 
+  /**
+   * « Tout autoriser » : allume le bouton global, puis répond « une fois » à CETTE carte pour que l'appel en cours continue.
+   * Si la confirmation native est refusée (ou le moteur indisponible), la carte reste et rien n'est accordé.
+   */
+  const allowEverything = async (): Promise<void> => {
+    try {
+      if (await setAllowAll(true)) {
+        resolveRequest(id, { choice: 'once' })
+      }
+    } catch {
+      // refusé ou indisponible : la carte reste, la personne répond normalement
+    }
+  }
+
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-start gap-2.5">
@@ -104,7 +119,18 @@ function ApprovalCard({ id, params }: { id: string; params: ApprovalRequestParam
       {params.command && !bridgeTool && (
         <pre className="selectable max-h-40 overflow-auto rounded-md bg-surface px-3 py-2 font-mono text-[12px] leading-relaxed text-fg hairline whitespace-pre-wrap">{params.command}</pre>
       )}
-      <div className="flex flex-wrap justify-end gap-2">
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        {choices.includes('once') && (
+          <Button
+            variant="ghost"
+            size="sm"
+            data-testid="allow-all-card"
+            title={t('allowAll.card.hint')}
+            onClick={() => void allowEverything()}
+          >
+            {t('allowAll.card')}
+          </Button>
+        )}
         {choices.map(choice => (
           <Button
             key={choice}

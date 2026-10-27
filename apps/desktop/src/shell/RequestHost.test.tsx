@@ -5,12 +5,14 @@
  * gets a new card, so the focus never lands on the next approval's button after the first is answered.
  */
 
-import { act, cleanup, fireEvent, render, within } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { $pendingRequests, type PendingRequest } from '../store/requests.ts'
+import { setAllowAll } from '../store/allow-all.ts'
 import { RequestHost } from './RequestHost.tsx'
 
 vi.mock('../store/gateway.ts', () => ({ gatewayRequest: vi.fn(), onAnyGatewayEvent: vi.fn(), onGatewayEvent: vi.fn(), onServerRequest: vi.fn() }))
+vi.mock('../store/allow-all.ts', () => ({ setAllowAll: vi.fn(async () => true) }))
 
 const approval = (id: string, respond = vi.fn()): PendingRequest => ({
   kind: 'approval',
@@ -58,9 +60,9 @@ describe('RequestHost focus (V-20)', () => {
     const second = vi.fn()
     render(<RequestHost />)
     act(() => $pendingRequests.set([approval('a', first), approval('b', second)]))
-    const answers = within(card('a')).getAllByRole('button')
-    answers[0]!.focus()
-    act(() => answers[0]!.click())
+    const once = within(card('a')).getByRole('button', { name: 'Allow once' })
+    once.focus()
+    act(() => once.click())
 
     expect(first).toHaveBeenCalledWith({ choice: 'once' })
     expect(card('b')).toBeTruthy()
@@ -91,5 +93,31 @@ describe('RequestHost focus (V-20)', () => {
     act(() => $pendingRequests.set([]))
 
     expect(document.activeElement).toBe(before)
+  })
+})
+
+describe('carte d’accord — « Tout autoriser »', () => {
+  it('allume le bouton global puis accorde CET appel, sans quitter la demande en cours', async () => {
+    const respond = vi.fn()
+    render(<RequestHost />)
+    act(() => $pendingRequests.set([approval('a', respond)]))
+
+    fireEvent.click(within(card('a')).getByTestId('allow-all-card'))
+
+    await waitFor(() => expect(respond).toHaveBeenCalledWith({ choice: 'once' }))
+    expect(vi.mocked(setAllowAll)).toHaveBeenCalledWith(true)
+  })
+
+  it('si la confirmation native est refusée, la carte reste et rien n’est accordé', async () => {
+    vi.mocked(setAllowAll).mockRejectedValueOnce(new Error("[oneai] accord global : refusé par l'utilisateur"))
+    const respond = vi.fn()
+    render(<RequestHost />)
+    act(() => $pendingRequests.set([approval('a', respond)]))
+
+    fireEvent.click(within(card('a')).getByTestId('allow-all-card'))
+
+    await waitFor(() => expect(vi.mocked(setAllowAll)).toHaveBeenCalled())
+    expect(respond).not.toHaveBeenCalled()
+    expect(card('a')).toBeTruthy()
   })
 })

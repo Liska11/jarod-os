@@ -40,6 +40,8 @@ export const JAROD_INVOKE_CHANNELS = [
   // Réglages propres à Jarod sans équivalent hermesAPI (SPECS-P5-UI-PARITE.md §2) : lecture et écriture validées, liste blanche.
   "get-jarod-settings",
   "set-jarod-settings",
+  // « Tout autoriser » : un seul geste réversible (profil Personnalisé + interrupteur), confirmation native à l'allumage seulement.
+  "tools-allow-all",
   // Listes de choix pour ces écrans (fournisseurs et leurs modèles), sans clé ni secret.
   "get-jarod-options",
   // Règles de permissions depuis Réglages : le MÊME service que `jarod permissions` (plan, affaiblissements confirmés, relecture avant écriture).

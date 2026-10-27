@@ -4,6 +4,7 @@ import { GlassButton, Toggle } from '../../../components/ui/glass.tsx'
 import { jarod } from '../../../lib/jarod.ts'
 import { useBackendData } from '../../../lib/use-async.ts'
 import { notify } from '../../../store/notifications.ts'
+import { loadAllowAll } from '../../../store/allow-all.ts'
 import { isUserRefusal, type JarodSettings, settingErrorText } from './jarod-settings-model.ts'
 import { InlineNote, markSaved, SettingsRow } from './shared.tsx'
 
@@ -54,6 +55,8 @@ export function useJarodSettings(): JarodSettingsApi {
     } finally {
       setSaving(false)
       reload()
+      // Le profil d'accès a pu changer ici : la pastille « Tout autoriser » relit son état réel.
+      void loadAllowAll()
     }
   }
 

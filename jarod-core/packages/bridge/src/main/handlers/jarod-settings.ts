@@ -823,6 +823,18 @@ export function planPermissionsAction(current: Settings["permissionsRules"], act
   }
 }
 
+/**
+ * Le patch de « Tout autoriser », isolé du canal pour être testé sans noyau :
+ *  - allumer  : profil « Personnalisé » + « sans demander » — la seule combinaison où les limites dures ne demandent plus ;
+ *  - éteindre : l'interrupteur retombe et le profil revient à `restore` s'il est valide, sinon « Plein ».
+ */
+export function allowAllPatch(on: boolean, restore?: unknown): { accessProfile: AccessProfile; autoApproveTools: boolean } {
+  if (on) {
+    return { accessProfile: "custom", autoApproveTools: true };
+  }
+  return { autoApproveTools: false, accessProfile: isAccessProfile(restore) ? restore : "full" };
+}
+
 export function createJarodSettingsHandlers(ctx: HandlerContext) {
   const settings = () => ctx.kernel().agent.settings;
   const env = (): Env => ({
@@ -923,6 +935,31 @@ export function createJarodSettingsHandlers(ctx: HandlerContext) {
       }
       for (const run of applies) run(); // le système d'abord : s'il refuse, rien n'est écrit
       settings().patch(merged);
+      return snapshot();
+    },
+    /**
+     * « Tout autoriser » : un seul bouton, réversible, pour l'usage courant — plusieurs appels d'affilée dans une même demande.
+     *
+     * Allumer passe au profil « Personnalisé » avec l'interrupteur « sans demander » : c'est la SEULE combinaison où les limites dures
+     * (`run_shell`, `system_files`, `web_fetch`…) ne demandent plus, et c'est une décision de sécurité : confirmation native, « Annuler » par défaut.
+     * Éteindre ne demande rien (c'est un durcissement) : l'interrupteur retombe et le profil revient à celui d'avant (`restore`), sinon « Plein ».
+     * Ce qui reste hors de l'accord ne bouge pas : règles « refuser »/« demander », interrupteur Internet, mode Plan, gardes des outils, journal.
+     */
+    "tools-allow-all": async (on: unknown, restore?: unknown): Promise<Record<string, unknown>> => {
+      if (on === true) {
+        if (!ctx.shell.confirm) throw new Error("[oneai] accord global : confirmation native indisponible, refusé");
+        const ok = await ctx.shell.confirm(
+          "Autoriser toutes les commandes ?",
+          "L'agent exécutera ses outils SANS vous demander : commandes shell, fichiers, réseau, tâches planifiées. " +
+            "Restent en place : les règles « refuser » et « demander » du garde de permissions, l'interrupteur Internet, le mode Plan et les gardes propres aux outils. " +
+            "Cela reste actif jusqu'à ce que vous l'éteigniez — bouton « Tout autoriser » ou Réglages › Agent.",
+          "Tout autoriser",
+        );
+        if (!ok) throw new Error("[oneai] accord global : refusé par l'utilisateur");
+        settings().patch(allowAllPatch(true));
+      } else {
+        settings().patch(allowAllPatch(false, restore));
+      }
       return snapshot();
     },
   };
