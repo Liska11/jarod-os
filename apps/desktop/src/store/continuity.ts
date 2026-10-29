@@ -3,7 +3,8 @@ import { isExcluded } from '../../shared/continuity.ts'
 import type { ContinuityItem, ContinuityPrefs, ContinuityThread } from '../../shared/ipc.ts'
 import { type FileItem, messageOf, navigate, openItem } from '../features/files/files-store.ts'
 import type { ChatState } from '../lib/chat-model.ts'
-import { buildCatchUp, CATCH_UP_INSTRUCTIONS, type CatchUpChat, type CatchUpEvidence, parseThreads, readTranscript, type StoredMessage, type TranscriptFacts } from '../lib/continuity.ts'
+import { buildCatchUp, catchUpInstructions, type CatchUpChat, type CatchUpEvidence, parseThreads, readTranscript, type StoredMessage, type TranscriptFacts } from '../lib/continuity.ts'
+import { $locale } from '../lib/i18n.ts'
 import { rest } from '../lib/rest.ts'
 import { $env, $prefs, updatePrefs } from './backend.ts'
 import { createChat, LISTED_SESSION_SOURCES, openStoredSession, sendPrompt } from './chat.ts'
@@ -96,7 +97,7 @@ async function catchUp(awayMs?: number): Promise<ContinuityThread[]> {
     let threads: ContinuityThread[] = []
 
     if (request) {
-      const answer = await gatewayRequest('llm.oneshot', { instructions: CATCH_UP_INSTRUCTIONS, input: request.input, max_tokens: MAX_TOKENS, temperature: 0.2 }, 150_000)
+      const answer = await gatewayRequest('llm.oneshot', { instructions: catchUpInstructions($locale.get() === 'fr' ? 'French' : 'English'), input: request.input, max_tokens: MAX_TOKENS, temperature: 0.2 }, 150_000)
       const parsed = parseThreads(answer.text, request.refs)
 
       if (!parsed) {

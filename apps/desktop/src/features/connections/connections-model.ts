@@ -313,8 +313,8 @@ export function normalise(input: { servers: McpServerRow[]; catalog: McpCatalogE
       browse.push({
         id: `provider:${provider.id}`,
         name: provider.name,
-        description: provider.flow === 'external' ? `Sign in with \`${provider.cli_command ?? 'hermes auth'}\`.` : 'Sign in to use this model provider with Hermes.',
-        scope: 'Model provider',
+        description: provider.flow === 'external' ? t('conn.providerExternal', { command: provider.cli_command ?? 'hermes auth' }) : t('conn.providerSignIn'),
+        scope: t('conn.scope.provider'),
         logoKey: provider.id,
         category: 'Provider',
         install: { kind: 'provider', provider }
@@ -335,17 +335,17 @@ function mcpConnection(server: McpServerRow, catalog?: McpCatalogEntry): Connect
   const name = prettyName(server.name)
   const knownTools = server.tools ?? catalog?.default_enabled ?? []
   const status: ConnectionStatus = !server.enabled ? 'disabled' : 'connected'
-  const description = catalog?.description || (server.transport === 'http' ? `Remote MCP server at ${hostOf(server.url)}.` : `Local MCP server (${[server.command, ...(server.args ?? [])].filter(Boolean).join(' ').slice(0, 80) || 'stdio'}).`)
+  const description = catalog?.description || (server.transport === 'http' ? t('conn.remoteMcp', { host: hostOf(server.url) }) : t('conn.localMcp', { command: [server.command, ...(server.args ?? [])].filter(Boolean).join(' ').slice(0, 80) || 'stdio' }))
 
   return {
     id: `mcp:${server.name}`,
     kind: 'mcp',
     name,
-    description: `Access ${name} through Hermes. ${description}`.trim(),
+    description: `${t('conn.accessThrough', { name })} ${description}`.trim(),
     status,
     scope: scopeFor(server.name, catalog?.description ?? '', knownTools),
     tools: [
-      { id: 'server', label: `Let Hermes use ${name}`, enabled: server.enabled, toggle: { kind: 'mcp-server', name: server.name }, tools: [] },
+      { id: 'server', label: t('conn.letUse', { name }), enabled: server.enabled, toggle: { kind: 'mcp-server', name: server.name }, tools: [] },
       ...groupTools(knownTools, server.name).map(group => ({ ...group, enabled: server.enabled }))
     ],
     logoKey: server.name,
@@ -367,7 +367,7 @@ function messagingConnection(platform: MessagingPlatformRow, toolsets: ToolsetRo
   }
 
   const rows: ConnectionTool[] = [
-    { id: 'gateway', label: `Chat with Hermes on ${platform.name}`, enabled: platform.enabled, toggle: { kind: 'messaging-platform', id: platform.id }, tools: [] },
+    { id: 'gateway', label: t('conn.chatOn', { name: platform.name }), enabled: platform.enabled, toggle: { kind: 'messaging-platform', id: platform.id }, tools: [] },
     ...toolsets.map(ts => ({ id: `toolset:${ts.name}`, label: toolsetRowLabel(ts, platform.name), enabled: ts.enabled, toggle: { kind: 'toolset' as const, name: ts.name }, tools: ts.tools }))
   ]
 
@@ -375,7 +375,7 @@ function messagingConnection(platform: MessagingPlatformRow, toolsets: ToolsetRo
     id: `platform:${platform.id}`,
     kind: 'platform',
     name: platform.name,
-    description: platform.description || `Talk to Hermes from ${platform.name} and let it act on your behalf there.`,
+    description: platform.description || t('conn.talkFrom', { name: platform.name }),
     status,
     scope: scopeFor(platform.id, platform.description, toolsets.flatMap(ts => ts.tools)),
     tools: rows,
@@ -391,11 +391,11 @@ function toolsetConnection(toolset: ToolsetRow): Connection {
     id: `toolset:${toolset.name}`,
     kind: 'platform',
     name: toolset.label,
-    description: toolset.description ? `${capitalise(toolset.description)}.`.replace(/\.\.$/, '.') : `Hermes tools for ${toolset.label}.`,
+    description: toolset.description ? `${capitalise(toolset.description)}.`.replace(/\.\.$/, '.') : t('conn.toolsFor', { name: toolset.label }),
     status,
     scope: scopeFor(toolset.name, toolset.description, toolset.tools),
     tools: [
-      { id: 'toolset', label: `Let Hermes use ${toolset.label}`, enabled: toolset.enabled, toggle: { kind: 'toolset', name: toolset.name }, tools: [] },
+      { id: 'toolset', label: t('conn.letUse', { name: toolset.label }), enabled: toolset.enabled, toggle: { kind: 'toolset', name: toolset.name }, tools: [] },
       ...groupTools(toolset.tools, toolset.name).map(group => ({ ...group, enabled: toolset.enabled }))
     ],
     logoKey: toolset.name,
@@ -408,9 +408,9 @@ function providerConnection(provider: OAuthProviderRow): Connection {
     id: `provider:${provider.id}`,
     kind: 'provider',
     name: provider.name,
-    description: `Signed in${provider.status.source_label ? ` via ${provider.status.source_label}` : ''}. Hermes can use ${provider.name} models on your account.`,
+    description: provider.status.source_label ? t('conn.providerSignedInVia', { source: provider.status.source_label, name: provider.name }) : t('conn.providerSignedIn', { name: provider.name }),
     status: 'connected',
-    scope: 'Model provider',
+    scope: t('conn.scope.provider'),
     tools: [],
     logoKey: provider.id,
     source: { kind: 'provider', provider }
@@ -450,27 +450,27 @@ function hostOf(url: string | null | undefined): string {
 
 function toolsetRowLabel(toolset: ToolsetRow, platformName: string): string {
   if (/admin/i.test(toolset.name)) {
-    return `Manage ${platformName} servers`
+    return t('conn.manageServers', { name: platformName })
   }
 
-  return `Read and participate in ${platformName}`
+  return t('conn.participate', { name: platformName })
 }
 
-const KNOWN_SCOPE: [RegExp, string][] = [
-  [/drive|dropbox|box\b|onedrive/i, 'Files and documents'],
-  [/calendar|cal\b/i, 'Events and availability'],
-  [/github|gitlab|bitbucket/i, 'Repositories and issues'],
-  [/slack/i, 'Channels and conversations'],
-  [/discord/i, 'Servers and messages'],
-  [/telegram|whatsapp|signal|matrix|imessage|sms/i, 'Chats and messages'],
-  [/gmail|mail|outlook/i, 'Mail and drafts'],
-  [/notion|confluence|obsidian/i, 'Pages and databases'],
-  [/linear|jira|asana|todoist|trello/i, 'Issues and projects'],
-  [/spotify|music/i, 'Playback and playlists'],
-  [/home ?assistant|hass|homekit/i, 'Devices and automations'],
-  [/browser|playwright|puppeteer/i, 'Web pages'],
-  [/postgres|sqlite|mysql|database|supabase/i, 'Databases and queries'],
-  [/x_search|twitter|\bx\b/i, 'Posts and search']
+const KNOWN_SCOPE: [RegExp, MessageKey][] = [
+  [/drive|dropbox|box\b|onedrive/i, 'conn.scope.files'],
+  [/calendar|cal\b/i, 'conn.scope.events'],
+  [/github|gitlab|bitbucket/i, 'conn.scope.repos'],
+  [/slack/i, 'conn.scope.channels'],
+  [/discord/i, 'conn.scope.servers'],
+  [/telegram|whatsapp|signal|matrix|imessage|sms/i, 'conn.scope.chats'],
+  [/gmail|mail|outlook/i, 'conn.scope.mail'],
+  [/notion|confluence|obsidian/i, 'conn.scope.pages'],
+  [/linear|jira|asana|todoist|trello/i, 'conn.scope.issues'],
+  [/spotify|music/i, 'conn.scope.music'],
+  [/home ?assistant|hass|homekit/i, 'conn.scope.devices'],
+  [/browser|playwright|puppeteer/i, 'conn.scope.web'],
+  [/postgres|sqlite|mysql|database|supabase/i, 'conn.scope.databases'],
+  [/x_search|twitter|\bx\b/i, 'conn.scope.posts']
 ]
 
 export function scopeFor(key: string, description: string, tools: string[]): string {
@@ -478,7 +478,7 @@ export function scopeFor(key: string, description: string, tools: string[]): str
 
   for (const [pattern, label] of KNOWN_SCOPE) {
     if (pattern.test(haystack)) {
-      return label
+      return t(label)
     }
   }
 
@@ -490,7 +490,7 @@ export function scopeFor(key: string, description: string, tools: string[]): str
     }
   }
 
-  return tools.length ? `${tools.length} tool${tools.length === 1 ? '' : 's'}` : 'Tools and actions'
+  return tools.length ? t(tools.length === 1 ? 'conn.scope.toolCount.one' : 'conn.scope.toolCount.other', { count: tools.length }) : t('conn.scope.tools')
 }
 
 type Verb = 'read' | 'create' | 'delete' | 'run'
@@ -531,18 +531,19 @@ export function groupTools(names: string[], contextKey = ''): Omit<ConnectionToo
 
   const nounHaystack = `${contextKey} ${names.join(' ')}`
   const noun = NOUNS.find(([pattern]) => pattern.test(nounHaystack))?.[1] ?? 'content'
+  const nounText = t(`conn.noun.${noun}` as MessageKey)
   const label = (verb: Verb | 'other'): string => {
     switch (verb) {
       case 'read':
-        return `Find and read ${noun}`
+        return t('conn.group.read', { noun: nounText })
       case 'create':
-        return noun === 'mail' ? 'Create drafts' : noun === 'messages' ? 'Send messages' : `Create and edit ${noun}`
+        return noun === 'mail' ? t('conn.group.drafts') : noun === 'messages' ? t('conn.group.send') : t('conn.group.create', { noun: nounText })
       case 'delete':
-        return `Delete ${noun}`
+        return t('conn.group.delete', { noun: nounText })
       case 'run':
-        return noun === 'music' ? 'Control playback' : noun === 'devices' ? 'Control devices' : 'Run actions'
+        return noun === 'music' ? t('conn.group.playback') : noun === 'devices' ? t('conn.group.devices') : t('conn.group.run')
       default:
-        return 'Other actions'
+        return t('conn.group.other')
     }
   }
   const order: (Verb | 'other')[] = ['read', 'create', 'delete', 'run', 'other']

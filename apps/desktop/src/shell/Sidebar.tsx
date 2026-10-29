@@ -11,6 +11,7 @@ import { shortcutLabel } from '../lib/platform-labels.ts'
 import { $sidebar, SIDEBAR_COLLAPSED, SIDEBAR_MAX, SIDEBAR_MIN, SIDEBAR_SNAP, setSidebarCollapsed, setSidebarWidth, toggleSidebar } from '../store/sidebar.ts'
 import { $activeSpace, $spaces, addSpace, setActiveSpace } from '../store/spaces.ts'
 import { $page, showPage } from '../store/windows.ts'
+import { AllowAllPill } from './AllowAllPill.tsx'
 import { PAGES } from './apps.ts'
 
 /** The persistent left rail of the main Hermes window: identity, pages, spaces. Resizable; collapses to icons. */
@@ -126,7 +127,7 @@ export function Sidebar() {
               )}
             >
               <AppGlyph id={def.icon} size={16} stroke={1.9} className={activePage ? 'text-accent-fg' : 'text-fg-2 group-hover:text-fg'} />
-              {collapsed ? <span className="side-tip">{name}</span> : <span className="truncate">{name}</span>}
+              {collapsed ? <span className="side-tip">{name}</span> : <span className="truncate" title={name}>{name}</span>}
             </button>
           )
         })}
@@ -223,6 +224,8 @@ export function Sidebar() {
       )}
 
       </div>
+
+      <AllowAllPill iconOnly={collapsed} />
 
       {/* Resize handle: drag to resize, drag past the snap point to collapse, double-click to toggle. */}
       <div

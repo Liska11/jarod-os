@@ -49,7 +49,8 @@ export function OverviewComposer({ disabled, placeholder, onSubmit, className, d
   useEffect(() => {
     const el = textarea.current
 
-    if (!el) {
+    // A hidden page has no width: measured now, every character wraps and the box sticks at 200 px.
+    if (!el || el.clientWidth === 0) {
       return
     }
 

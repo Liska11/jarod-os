@@ -1,5 +1,5 @@
 import { BrowserWindow, dialog, ipcMain, nativeImage, shell, type WebContents } from 'electron'
-import { type FSWatcher, watch as watchFs } from 'node:fs'
+import { type Dirent, type FSWatcher, watch as watchFs } from 'node:fs'
 import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
@@ -43,6 +43,33 @@ export function normalizeUserPath(input: string): string {
   return path.normalize(expanded)
 }
 
+/**
+ * Windows marks its profile plumbing Hidden+System, which the dot rule cannot see: the registry hives (NTUSER.DAT…) and the legacy
+ * junctions (Application Data, Cookies, Mes documents, Menu Démarrer…) that deny listing. Shown, they cluttered Files and failed with EPERM.
+ * A junction the user made stays visible: only one that refuses to be listed counts.
+ */
+async function isWindowsSystemEntry(dirent: Dirent, full: string): Promise<boolean> {
+  if (process.platform !== 'win32') {
+    return false
+  }
+
+  if (/^ntuser\./i.test(dirent.name)) {
+    return true
+  }
+
+  if (!dirent.isSymbolicLink()) {
+    return false
+  }
+
+  try {
+    await (await fs.opendir(full)).close()
+
+    return false
+  } catch (error) {
+    return (error as NodeJS.ErrnoException).code === 'EPERM' || (error as NodeJS.ErrnoException).code === 'EACCES'
+  }
+}
+
 async function readDir(target: string): Promise<DirEntry[]> {
   const dir = assertReadable(target)
   const dirents = await fs.readdir(dir, { withFileTypes: true })
@@ -71,7 +98,7 @@ async function readDir(target: string): Promise<DirEntry[]> {
         kind,
         size,
         modifiedAt,
-        hidden: dirent.name.startsWith('.'),
+        hidden: dirent.name.startsWith('.') || (await isWindowsSystemEntry(dirent, full)),
         extension: path.extname(dirent.name).toLowerCase()
       }
     })

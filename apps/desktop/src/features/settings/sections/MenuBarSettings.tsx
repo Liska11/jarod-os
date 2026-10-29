@@ -141,13 +141,13 @@ export function MenuBarSettings() {
         </div>
       </Filterable>
       <SettingsRow icon={<IconClock />} label={t('menubar.clock')} description={<span className="tabular-nums">{[preview.date, preview.time].filter(Boolean).join('  ')}</span>} keywords={t('menubar.kw.clock')}>
-        <Chips items={HOURS} value={layout.clock.hours} onChange={hours => void run('bar.clock', { hours })} />
+        <Chips items={HOURS.map(hours => ({ ...hours, label: t(hours.label) }))} value={layout.clock.hours} onChange={hours => void run('bar.clock', { hours })} />
       </SettingsRow>
       <SettingsRow icon={<IconClock />} label={t('menubar.seconds')} keywords={t('menubar.kw.seconds')}>
         <Toggle checked={layout.clock.seconds} onChange={seconds => void run('bar.clock', { seconds })} label={t('menubar.seconds')} />
       </SettingsRow>
       <SettingsRow icon={<IconCalendar />} label={t('menubar.date')} description={t('menubar.dateDesc')} keywords={t('menubar.kw.date')}>
-        <Chips items={DATES} value={layout.clock.date} onChange={date => void run('bar.clock', { date })} />
+        <Chips items={DATES.map(date => ({ ...date, label: t(date.label) }))} value={layout.clock.date} onChange={date => void run('bar.clock', { date })} />
       </SettingsRow>
       <SettingsRow icon={<IconRestore />} label={t('menubar.reset')} description={t('menubar.resetDesc')} keywords={t('menubar.kw.reset')}>
         <GlassButton size="sm" variant="ghost" onClick={() => void run('bar.reset')}>

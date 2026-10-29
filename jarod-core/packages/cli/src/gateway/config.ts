@@ -240,16 +240,16 @@ const startsWith = (...prefixes: string[]) => (t: string) => prefixes.some((p) =
 
 /** Dans l'ordre : le premier qui reconnaît le nom l'emporte. Le dernier recueille le reste. */
 const FAMILIES: readonly Family[] = [
-  { name: "memory", label: "Memory", description: "Remember and recall facts and preferences.", match: startsWith("memory_", "user_profile", "annotat", "state_") },
-  { name: "system", label: "This computer", description: "Look at and control this computer: processes, disks, network, apps, volume, files.", match: startsWith("system_") },
-  { name: "files", label: "Files", description: "Read, search and edit files in the working folder.", match: startsWith("read_file", "write_file", "edit_file", "list_dir", "search_files", "find_files", "diff_numbered", "rag_") },
-  { name: "terminal", label: "Terminal", description: "Run commands.", match: startsWith("run_shell", "android_") },
-  { name: "web", label: "Web", description: "Search and fetch the web, call APIs.", match: startsWith("web_", "http_request", "browser_") },
-  { name: "agents", label: "Agents", description: "Delegate work to sub-agents.", match: startsWith("delegate_task", "spawn_subagent", "subagent_") },
-  { name: "automation", label: "Automation", description: "Scheduled tasks and event rules.", match: startsWith("cronjob", "automation_") },
-  { name: "skills", label: "Skills", description: "Load and manage skills.", match: startsWith("load_skill", "read_skill_file", "skill_", "tool_search") },
-  { name: "code", label: "Code", description: "Diagnostics and navigation in a codebase.", match: startsWith("code_", "refine") },
-  { name: "other", label: "Other tools", description: "Everything else.", match: () => true },
+  { name: "memory", label: "Mémoire", description: "Retenir et retrouver des faits et des préférences.", match: startsWith("memory_", "user_profile", "annotat", "state_") },
+  { name: "system", label: "Cet ordinateur", description: "Observer et piloter cet ordinateur : processus, disques, réseau, applications, volume, fichiers.", match: startsWith("system_") },
+  { name: "files", label: "Fichiers", description: "Lire, chercher et modifier les fichiers du dossier de travail.", match: startsWith("read_file", "write_file", "edit_file", "list_dir", "search_files", "find_files", "diff_numbered", "rag_") },
+  { name: "terminal", label: "Terminal", description: "Lancer des commandes.", match: startsWith("run_shell", "android_") },
+  { name: "web", label: "Web", description: "Chercher et lire sur le web, appeler des API.", match: startsWith("web_", "http_request", "browser_") },
+  { name: "agents", label: "Agents", description: "Confier du travail à des sous-agents.", match: startsWith("delegate_task", "spawn_subagent", "subagent_") },
+  { name: "automation", label: "Automatisations", description: "Tâches planifiées et règles sur événement.", match: startsWith("cronjob", "automation_") },
+  { name: "skills", label: "Compétences", description: "Charger et gérer les compétences.", match: startsWith("load_skill", "read_skill_file", "skill_", "tool_search") },
+  { name: "code", label: "Code", description: "Diagnostics et navigation dans un code source.", match: startsWith("code_", "refine") },
+  { name: "other", label: "Autres outils", description: "Tout le reste.", match: () => true },
 ];
 
 export interface ToolsetRow {

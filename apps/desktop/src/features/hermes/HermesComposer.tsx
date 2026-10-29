@@ -25,22 +25,33 @@ export function HermesComposer({ disabled, streaming, placeholder, autoFocus, on
     }
 
     const fit = () => {
+      // A hidden page has no width: measured now, every character wraps and the box sticks at 200 px.
+      if (el.clientWidth === 0) {
+        return
+      }
+
       el.style.height = '0px'
       el.style.height = `${Math.min(200, Math.max(24, el.scrollHeight))}px`
     }
 
     fit()
     // A width change rewraps the text (or the placeholder): measured while the page was still sliding in, the box stayed 200 px tall.
+    // The refit waits for the next frame: resizing inside the observer looped it, and Chromium dropped the notification that would fix the height.
     let lastWidth = el.clientWidth
+    let frame = 0
     const observer = new ResizeObserver(() => {
       if (el.clientWidth !== lastWidth) {
         lastWidth = el.clientWidth
-        fit()
+        cancelAnimationFrame(frame)
+        frame = requestAnimationFrame(fit)
       }
     })
     observer.observe(el)
 
-    return () => observer.disconnect()
+    return () => {
+      observer.disconnect()
+      cancelAnimationFrame(frame)
+    }
   }, [value, placeholder])
 
   const submit = async () => {

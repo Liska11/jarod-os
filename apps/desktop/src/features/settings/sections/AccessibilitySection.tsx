@@ -88,7 +88,7 @@ export function AccessibilitySection() {
 
       <SettingsGroup title={t('accessibility.vision')}>
         <SettingsRow icon={<IconTextSize />} label={t('accessibility.textSize')} description={t('accessibility.textSizeDesc')} keywords={t('accessibility.textSize.kw')}>
-          <Chips items={TEXT_SIZES} value={textSize} onChange={changeText} />
+          <Chips items={TEXT_SIZES.map(size => ({ ...size, label: t(size.label) }))} value={textSize} onChange={changeText} />
         </SettingsRow>
         <SettingsRow icon={<IconContrast />} label={t('accessibility.highContrast')} description={t('accessibility.highContrastDesc')} keywords={t('accessibility.highContrast.kw')}>
           <Toggle checked={contrast} onChange={changeContrast} label={t('accessibility.highContrast')} />

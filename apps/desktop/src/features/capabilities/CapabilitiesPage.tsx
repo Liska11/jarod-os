@@ -1,3 +1,4 @@
+import { IconPuzzle, IconShieldCheck } from '@tabler/icons-react'
 import { useCallback, useEffect, useState } from 'react'
 import { EmptyGlass, GlassButton, GlassCard, PageHeader, Pill, Section } from '../../components/ui/glass.tsx'
 import { gatewayCall } from '../../store/gateway.ts'
@@ -156,13 +157,14 @@ export function CapabilitiesPage() {
         </p>
       )}
 
+      {/* Sections en shrink-0 : sans cela, la colonne qui défile les écrase sous leur contenu et elles se chevauchent. */}
       <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-6 pb-6">
-        <Section title="Confiance">
+        <Section title="Confiance" className="shrink-0">
           <p className="mb-2 text-[12.5px] text-fg-3" data-testid="trust-count">
             {trust.length} plugin(s) de la plateforme — niveau de la clé qui a signé chaque plugin ; une clé révoquée est signalée.
           </p>
           {trust.length === 0 ? (
-            <EmptyGlass icon="capabilities" title="Aucun plugin de plateforme" description="Les plugins approuvés apparaîtront ici avec leur niveau de confiance." />
+            <EmptyGlass icon={<IconShieldCheck />} title="Aucun plugin de plateforme" description="Les plugins approuvés apparaîtront ici avec leur niveau de confiance." />
           ) : (
             <div className="flex flex-col gap-2">
               {trust.map(plugin => (
@@ -185,12 +187,12 @@ export function CapabilitiesPage() {
           )}
         </Section>
 
-        <Section title="Capacités">
+        <Section title="Capacités" className="shrink-0">
           <p className="mb-2 text-[12.5px] text-fg-3" data-testid="capabilities-count">
             {caps.length} capacité(s) au registre — statut réel, verdict d'évaluation, empreinte du contenu.
           </p>
           {caps.length === 0 ? (
-            <EmptyGlass icon="capabilities" title="Registre vide" description="Le radar n'a encore rien évalué." />
+            <EmptyGlass icon={<IconPuzzle />} title="Registre vide" description="Le radar n'a encore rien évalué." />
           ) : (
             <div className="flex flex-col gap-2">
               {caps.map(capability => {
@@ -232,7 +234,7 @@ export function CapabilitiesPage() {
           )}
         </Section>
 
-        <Section title="Dépendances d'exécution">
+        <Section title="Dépendances d'exécution" className="shrink-0">
           <p className="mb-2 text-[12.5px] text-fg-3" data-testid="deps-count">
             {deps.length} composant(s) — versions installées, politique de mise à jour, risque et retour arrière.
           </p>
@@ -264,7 +266,7 @@ export function CapabilitiesPage() {
           </div>
         </Section>
 
-        <Section title="Mises à jour disponibles">
+        <Section title="Mises à jour disponibles" className="shrink-0">
           {proposals.length === 0 ? (
             <p className="text-[12.5px] text-fg-3" data-testid="updates-empty">
               Aucune proposition : utilisez « Vérifier » sur un composant. La version disponible n'est pas interrogée sur le réseau.

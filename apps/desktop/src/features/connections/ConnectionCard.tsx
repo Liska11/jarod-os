@@ -30,19 +30,21 @@ export function ConnectionCard({ connection, selected, onSelect, actions, busy }
     >
       <div className="flex items-start gap-3">
         <BrandLogo keys={[connection.name, connection.id, connection.logoKey]} size={44} />
-        <div className="min-w-0 flex-1 pt-2">
-          <div className="truncate text-[16px] leading-tight font-semibold text-fg">{connection.name}</div>
-        </div>
+        <div className="flex-1" />
         <div onClick={event => event.stopPropagation()}>
           <ConnectionMenu connection={connection} actions={actions} />
         </div>
+      </div>
+      {/* Le nom prend toute la largeur sous le logo : à côté, il ne restait que ~70 px et « Automatisations » ou « Cet ordinateur » étaient coupés. */}
+      <div className="mt-2.5 truncate text-[16px] leading-tight font-semibold text-fg" title={connection.name}>
+        {connection.name}
       </div>
 
       <div className="mt-3.5 flex items-center gap-2 text-[12.5px]">
         <StatusDot tone={STATUS_TONE[connection.status]} pulse={connection.status === 'error'} />
         <span className={cn(connection.status === 'connected' ? 'text-ok' : connection.status === 'needs-auth' ? 'text-warn' : connection.status === 'error' ? 'text-danger' : 'text-fg-3')}>{statusLabel(connection.status)}</span>
       </div>
-      <div className="mt-1.5 truncate text-[12.5px] text-fg-3">{connection.scope}</div>
+      <div className="mt-1.5 truncate text-[12.5px] text-fg-3" title={connection.scope}>{connection.scope}</div>
 
       <div className="mt-auto flex justify-end pt-3">
         <GlassButton

@@ -49,7 +49,7 @@ export interface CatchUpRequest {
 
 export const MAX_THREADS = 3
 
-export const CATCH_UP_INSTRUCTIONS = `You are the memory of Jarod-OS, a desktop built around the Hermes agent. You get evidence of what the user was recently doing on this computer: documents, project folders, Hermes conversations and today's calendar. Find the threads of work they will most likely want to pick up again.
+export const CATCH_UP_INSTRUCTIONS = `You are the memory of Jarod-OS, a desktop built around its AI assistant. You get evidence of what the user was recently doing on this computer: documents, project folders, conversations with the assistant and today's calendar. Find the threads of work they will most likely want to pick up again.
 
 Rules:
 - At most ${MAX_THREADS} threads, the one most worth resuming first. Fewer is fine, and an empty list is fine when nothing is worth resuming.
@@ -62,11 +62,18 @@ Rules:
 Reply with JSON only, no prose and no code fence:
 {"threads":[{"title":"","summary":"","stopped":"","next":"","prompt":"","items":[]}]}
 - title: the work in 2 to 5 words, named the way the user would say it: the product, site or document, not a folder name when the evidence shows a better one.
-- summary: one sentence starting with "You were", saying what the work is about.
+- summary: one sentence starting with "You were" (or its equivalent in the reply language), saying what the work is about.
 - stopped: where it stopped, under 14 words, from the evidence: what was done last, or what is still open.
-- next: the most useful next step Hermes can take now, 2 to 6 words, starting with a verb. Make it concrete ("Add an online ordering page"), never generic ("Continue the project"), and prefer a step that moves the work forward (writes, builds, fixes or sends something) over one that only looks at it.
-- prompt: the request the user would send Hermes to take that step: first person, specific, with the paths it needs.
+- next: the most useful next step the assistant can take now, 2 to 6 words, starting with a verb. Make it concrete ("Add an online ordering page"), never generic ("Continue the project"), and prefer a step that moves the work forward (writes, builds, fixes or sends something) over one that only looks at it.
+- prompt: the request the user would send the assistant to take that step: first person, specific, with the paths it needs.
 - items: ids of the evidence entries that belong to the thread, like ["p1", "c2", "f3"].`
+
+/** The instructions plus the reply language: without it a local model answered in English (or Chinese) under a French interface. */
+export function catchUpInstructions(language: string): string {
+  return `${CATCH_UP_INSTRUCTIONS}
+
+Write every text value (title, summary, stopped, next, prompt) in ${language}. Keep the JSON keys in English.`
+}
 
 const MAX_FILES = 16
 const MAX_PROJECTS = 8
