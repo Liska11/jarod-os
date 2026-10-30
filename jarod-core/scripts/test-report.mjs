@@ -112,7 +112,10 @@ for (const pkg of packages) {
     // pas de JSON : aucun fichier de test dans ce régime, un délai dépassé ou un plantage — dit dans le statut
   }
   const noFiles = /No test files found/i.test(run.out);
-  const status = run.timedOut ? "DÉLAI DÉPASSÉ" : noFiles ? "aucun fichier dans ce régime" : !files.length && run.status !== 0 ? "ÉCHEC" : failed ? "ÉCHEC" : "ok";
+  // Le canari du plancher DOIT figurer au rapport lent de l'agent : absent (renommé, exclu), la mesure échoue.
+  const canaryMissing = mode === "slow" && name === "agent" && !files.some((f) => f.file.includes("floor-canary.engine.test.ts"));
+  const status = run.timedOut ? "DÉLAI DÉPASSÉ" : canaryMissing ? "ÉCHEC" : noFiles ? "aucun fichier dans ce régime" : !files.length && run.status !== 0 ? "ÉCHEC" : failed ? "ÉCHEC" : "ok";
+  if (canaryMissing) failures.push("canari du plancher ABSENT du régime lent (floor-canary.engine.test.ts)");
   rows.push({
     package: name,
     wallMs: wall,

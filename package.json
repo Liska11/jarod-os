@@ -39,10 +39,11 @@
     "dev": "npm run dev --workspace apps/desktop",
     "build": "npm run build --workspace apps/desktop",
     "typecheck": "npm run typecheck --workspaces --if-present",
-    "test": "npm run test --workspaces --if-present",
+    "test": "node jarod-core/scripts/test-report.mjs fast",
+    "test:slow": "node jarod-core/scripts/test-report.mjs slow",
     "lint": "biome lint",
     "typecheck:core": "pnpm --dir jarod-core -r typecheck",
-    "test:core": "pnpm --dir jarod-core -r --workspace-concurrency=1 --no-bail test",
+    "test:core": "node jarod-core/scripts/test-report.mjs fast",
     "test:bridge": "node scripts/run.mjs test-bridge",
     "dist:mac": "npm run dist:mac --workspace apps/desktop",
     "dist:win": "npm run dist:win --workspace apps/desktop"

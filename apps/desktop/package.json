@@ -23,7 +23,7 @@
     "bundle:restic": "node scripts/bundle-restic.mjs",
     "bundle:updater": "node scripts/bundle-updater.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.electron.json --noEmit",
-    "test": "vitest run",
+    "test": "node ../../jarod-core/scripts/test-report.mjs fast --only desktop",
     "test:e2e": "playwright test",
     "dist:mac": "npm run bundle:core && npm run build && electron-builder --mac --arm64 -c.npmRebuild=false --publish never",
     "dist:linux": "npm run bundle:core && npm run build && electron-builder --linux --publish never",

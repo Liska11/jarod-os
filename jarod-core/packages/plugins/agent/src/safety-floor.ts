@@ -12,7 +12,7 @@
 //     qui suit un résultat externe n'est jamais lancée sans que la personne la voie.
 // « Activer Gemini » n'est pas un outil : c'est un réglage, et les réglages qui envoient hors de la machine passent par une confirmation native
 // (jarod-settings.ts, `confirm`) ; l'agent n'a aucun outil qui écrit les réglages.
-import { copyFileSync, existsSync, mkdirSync, statSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readdirSync, rmdirSync, rmSync, statSync } from "node:fs";
 import { basename, join } from "node:path";
 
 export interface FloorInput {
@@ -82,8 +82,40 @@ export function backupBeforeOverwrite(file: string, dir: string, now: Date = new
     let copy = join(target, basename(file));
     for (let n = 2; existsSync(copy); n++) copy = join(target, `${n}-${basename(file)}`);
     copyFileSync(file, copy);
+    pruneBackups(dir, BACKUP_KEEP_LAST, BACKUP_KEEP_DAYS, now);
     return copy;
   } catch {
     return null;
   }
+}
+
+/** Rétention des copies : on garde les 20 plus récentes ET tout ce qui a moins de 7 jours ; le reste (plus ancien que 7 jours ET au-delà des 20 dernières) est retiré. */
+export const BACKUP_KEEP_LAST = 20;
+export const BACKUP_KEEP_DAYS = 7;
+
+export function pruneBackups(dir: string, keepLast = BACKUP_KEEP_LAST, keepDays = BACKUP_KEEP_DAYS, now: Date = new Date()): string[] {
+  const removed: string[] = [];
+  try {
+    const copies: { path: string; mtime: number; folder: string }[] = [];
+    for (const d of readdirSync(dir)) {
+      const folder = join(dir, d);
+      if (!statSync(folder).isDirectory()) continue;
+      for (const f of readdirSync(folder)) {
+        const path = join(folder, f);
+        const st = statSync(path);
+        if (st.isFile()) copies.push({ path, mtime: st.mtimeMs, folder });
+      }
+    }
+    copies.sort((a, b) => b.mtime - a.mtime);
+    const limit = now.getTime() - keepDays * 86_400_000;
+    for (const c of copies.slice(keepLast)) {
+      if (c.mtime >= limit) continue;
+      rmSync(c.path, { force: true });
+      removed.push(c.path);
+    }
+    for (const folder of new Set(copies.map((c) => c.folder))) if (readdirSync(folder).length === 0) rmdirSync(folder);
+  } catch {
+    // la rétention ne doit jamais empêcher une sauvegarde ni cacher l'action
+  }
+  return removed;
 }

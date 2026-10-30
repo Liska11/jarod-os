@@ -86,3 +86,36 @@ describe("l'accord ne déborde pas", () => {
     expect(r.backups).toEqual([]);
   });
 });
+
+describe("rétention des copies avant écrasement : les 20 dernières, ou moins de 7 jours", () => {
+  it("retire ce qui est à la fois plus vieux que 7 jours ET au-delà des 20 plus récentes ; garde le reste", async () => {
+    const { pruneBackups } = await import("../src/safety-floor.js");
+    const { utimesSync } = await import("node:fs");
+    const dir = tempDir();
+    const now = new Date("2026-10-30T12:00:00Z");
+    const day = 86_400_000;
+    const make = (name: string, ageDays: number) => {
+      const folder = join(dir, `d${name}`);
+      mkdirSync(folder, { recursive: true });
+      const f = join(folder, `${name}.txt`);
+      writeFileSync(f, name);
+      const t = new Date(now.getTime() - ageDays * day);
+      utimesSync(f, t, t);
+      return f;
+    };
+    const vieux = Array.from({ length: 30 }, (_, i) => make(`vieux${i}`, 10 + i)); // 30 copies de plus de 7 jours
+    const recent = make("recent", 2); // moins de 7 jours : gardée même hors des 20 dernières
+    const removed = pruneBackups(dir, 20, 7, now);
+    // 31 copies : les 20 plus récentes = « recent » + les 19 moins vieilles ; les 11 plus vieilles (> 7 jours) partent
+    expect(removed).toHaveLength(11);
+    expect(existsSync(recent)).toBe(true);
+    expect(vieux.filter((f) => existsSync(f))).toHaveLength(19);
+    expect(existsSync(vieux[29]!)).toBe(false);
+    expect(existsSync(vieux[0]!)).toBe(true);
+  });
+
+  it("une boucle de 25 réécritures garde 25 copies (toutes récentes) : la rétention ne mord que sur l'âge", async () => {
+    const r = await loop({ profile: "plein", files: { "a.txt": "o" }, steps: Array.from({ length: 25 }, (_, i) => write("a.txt", `v${i}`)) });
+    expect(r.backups).toHaveLength(25);
+  });
+});

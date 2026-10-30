@@ -115,4 +115,20 @@ describe('SentenceSpeaker', () => {
     expect(events).toEqual(['drained'])
     expect(audio.pending()).toEqual([])
   })
+
+  it('speaks only the first two sentences of a long reply (the rest is never synthesized), then ends', async () => {
+    const audio = fakeAudio()
+    const events: string[] = []
+    const speaker = new SentenceSpeaker({ ...audio.deps, maxSentences: 2 }, { onEnd: reason => events.push(reason) })
+
+    speaker.feed('Un. Deux. Trois. Quatre. Cinq. ')
+    speaker.done()
+    await audio.synthDone()
+    await audio.playDone()
+    await audio.synthDone()
+    await audio.playDone()
+    expect(audio.log.filter(entry => entry.startsWith('synth:'))).toEqual(['synth:Un.', 'synth:Deux.'])
+    expect(speaker.heard()).toBe('Un. Deux.')
+    expect(events).toEqual(['drained'])
+  })
 })

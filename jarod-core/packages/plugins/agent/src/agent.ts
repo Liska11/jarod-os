@@ -523,6 +523,7 @@ export class Agent {
       `## Contexte\n- Date : ${date}\n- Système : ${platform()} ${release()}\n- Langue : ${s.language === "fr" ? "réponds toujours en français (même si une consigne ou un outil est en anglais), sauf si l'utilisateur t'écrit dans une autre langue" : "answer in English, unless the user writes to you in another language"}
 - Dossier de travail : ${s.workspace ?? "aucun (les outils de fichiers et de shell sont indisponibles)"}${s.machineFiles ? "\n- Accès aux fichiers : tous les lecteurs de cet ordinateur, avec un chemin absolu (ex. E:\\Photos) ; les emplacements protégés restent refusés" : ""}`,
     );
+    parts.push(shortReplyExamples(s.language));
     parts.push(UNTRUSTED_GUIDANCE, ACTION_HONESTY);
     const project = projectInstructions(s.workspace);
     if (project)
@@ -1330,6 +1331,29 @@ function grantFloorFile(sessionId: string, file: string): void {
   if (set.size < MAX_FLOOR_GRANTS) set.add(grantKeyOf(file));
   floorGrants.set(sessionId, set);
 }
+
+/**
+ * Quelques réponses modèles, courtes et sans mise en forme : un petit modèle suit mieux un exemple qu'une règle (mesuré le 30/10 : la règle seule ne retenait ni la
+ * brièveté ni l'absence de puces). L'affichage garde le texte complet ; la voix n'en lit que les deux premières phrases (apps/desktop, SPOKEN_REPLY_SENTENCES).
+ */
+export function shortReplyExamples(language: string): string {
+  const lines =
+    language === "fr"
+      ? [
+          "## Exemples de style (réponses courtes, sans liste ni mise en forme ; ne les répète jamais, réponds à la vraie question)",
+          "- « Quelle heure est-il ? » → « Il est quinze heures dix. »",
+          "- « Donne-moi trois idées de repas. » → « Des pâtes au pesto, une omelette ou une soupe. Laquelle je prépare ? »",
+          "- « Fais-moi une liste de trois fruits. » → « Pomme, poire et cerise. »",
+        ]
+      : [
+          "## Style examples (short replies, no lists or formatting; never repeat them, answer the real question)",
+          '- "What time is it?" → "It is ten past three."',
+          '- "Give me three dinner ideas." → "Pesto pasta, a mushroom omelette, or a vegetable soup. Which one shall I plan?"',
+          '- "Is the build done?" → "Not yet, it is on step four of six."',
+        ];
+  return lines.join("\n");
+}
+
 /** Efface la teinture : appelé au début de chaque tour. */
 export function clearInjectionTaint(sessionId: string): void {
   injectionTaints.delete(sessionId);

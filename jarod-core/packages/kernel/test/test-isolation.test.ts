@@ -2,6 +2,7 @@
 // Les fonctions de décision se testent toujours ; la preuve « en vrai » (la garde est armée dans CE processus et refuse) ne tourne que sous le lanceur
 // `scripts/test-report.mjs`, qui l'arme — sans lui ce fichier le dit au lieu de faire semblant.
 import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
 import { connect, createServer } from "node:net";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
@@ -15,10 +16,12 @@ const armed = process.env.JAROD_GUARD_ACTIVE === "1";
 function canary<T>(fn: () => T): T {
   const g = globalThis as { __jarodGuardCanary?: boolean };
   g.__jarodGuardCanary = true;
+  process.env.JAROD_GUARD_CANARY = "1"; // les processus fils que le test lance le voient aussi
   try {
     return fn();
   } finally {
     g.__jarodGuardCanary = false;
+    delete process.env.JAROD_GUARD_CANARY;
   }
 }
 
@@ -68,6 +71,25 @@ describe.runIf(armed)("la garde est ARMÉE dans ce processus de test (sous le la
   it("se connecter au moteur réel (127.0.0.1:8080) ou à la vision (8792) est refusé", () => {
     expect(() => canary(() => connect(8080, "127.0.0.1"))).toThrow(/port réel/);
     expect(() => canary(() => connect({ port: 8792, host: "localhost" }))).toThrow(/port réel/);
+  });
+
+  describe("HÉRITAGE : un sous-processus ne contourne pas la garde", () => {
+    const real = (name: string) => `D:\\Jarod-OS\\${name}`;
+    it("PowerShell dont la ligne de commande nomme le profil réel : lancement refusé, rien n'est écrit", () => {
+      expect(() => canary(() => spawnSync("powershell", ["-NoProfile", "-Command", `Set-Content -Path '${real("__canari_ps.txt")}' -Value x`]))).toThrow(/sous-processus/);
+      expect(existsSync(real("__canari_ps.txt"))).toBe(false);
+    });
+
+    it("un navigateur lancé avec un profil dans le dossier réel : refusé", () => {
+      expect(() => canary(() => spawnSync("chrome.exe", [`--user-data-dir=${real("navigateur")}`, "about:blank"]))).toThrow(/sous-processus/);
+    });
+
+    it("un processus node qui CALCULE le chemin (rien de réel dans sa ligne de commande) hérite de la garde : son écriture échoue", () => {
+      const r = canary(() => spawnSync(process.execPath, ["-e", "require('fs').writeFileSync(['D:','Jarod-OS','__canari_node.txt'].join('/'),'x')"], { encoding: "utf8" }));
+      expect(r.status).not.toBe(0);
+      expect(`${r.stderr}`).toMatch(/isolation des tests/);
+      expect(existsSync(real("__canari_node.txt"))).toBe(false);
+    });
   });
 
   it("un fichier dans le dossier temporaire reste permis", () => {

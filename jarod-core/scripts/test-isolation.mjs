@@ -9,7 +9,8 @@
 // Inactif hors vitest, donc sans effet sur pnpm ni sur le lanceur.
 import { createRequire } from "node:module";
 import { appendFileSync } from "node:fs";
-import { resolve, sep } from "node:path";
+import { basename, resolve, sep } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const require = createRequire(import.meta.url);
 
@@ -47,7 +48,7 @@ const PROBES = new Set(["stat", "statSync", "lstat", "lstatSync", "access", "acc
 export function install({ roots, log, sandbox }) {
   const record = (kind0, detail) => {
     // les tentatives VOLONTAIRES du test de la garde (globalThis.__jarodGuardCanary) sont du « canari » : elles prouvent le refus sans compter comme violation
-    const kind = globalThis.__jarodGuardCanary && kind0 !== "armée" && kind0 !== "sonde" ? "canari" : kind0;
+    const kind = (globalThis.__jarodGuardCanary || process.env.JAROD_GUARD_CANARY === "1") && kind0 !== "armée" && kind0 !== "sonde" ? "canari" : kind0;
     // les images du projet seulement (pas celles de node ni de la garde) : c'est le test ou le code appelant qu'on cherche
     const stack = new Error().stack
       ?.split("\n")
@@ -131,13 +132,57 @@ export function install({ roots, log, sandbox }) {
     return connect.apply(this, args);
   };
 
+  // Sous-processus (PowerShell, navigateur, node…) : (1) une ligne de commande qui NOMME un dossier réel de Jarod-OS est refusée ; (2) un fils node reçoit la garde
+  // (NODE_OPTIONS --import), sauf sous `--permission` (qui ne peut pas la lire). Un programme natif qui écrit ailleurs que dans ce qu'il reçoit en argument (un script
+  // PowerShell qui calcule son chemin) N'EST PAS arrêté : limite dite dans SECURITY.md.
+  const cp = require("node:child_process");
+  const rootsNorm = roots.map((r) => String(r).replaceAll("/", "\\").toLowerCase().replace(/\\+$/, ""));
+  const named = (parts) => {
+    const text = parts.map(String).join(" ").replaceAll("/", "\\").toLowerCase();
+    return rootsNorm.find((r) => text.includes(r));
+  };
+  const selfImport = `--import ${pathToFileURL(fileURLToPath(import.meta.url)).href}`;
+  const isNode = (file) => /^node(\.exe)?$/i.test(basename(String(file))) || resolve(String(file)) === resolve(process.execPath);
+  const withGuardEnv = (opts) => {
+    const base = opts && typeof opts === "object" ? opts : {};
+    const env = { ...(base.env ?? process.env) };
+    if (!/test-isolation\.mjs/.test(env.NODE_OPTIONS ?? "")) env.NODE_OPTIONS = `${env.NODE_OPTIONS ?? ""} ${selfImport}`.trim();
+    return { ...base, env };
+  };
+  const optIndex = (args, from) => (args[from] && typeof args[from] === "object" && !Array.isArray(args[from]) ? from : args[from + 1] && typeof args[from + 1] === "object" && !Array.isArray(args[from + 1]) && typeof args[from + 1] !== "function" ? from + 1 : -1);
+  for (const name of ["spawn", "spawnSync", "execFile", "execFileSync", "fork"]) {
+    const original = cp[name];
+    cp[name] = function guardedProcess(...args) {
+      const list = Array.isArray(args[1]) ? args[1] : [];
+      const hit = named([args[0], ...list]);
+      if (hit) refuse(`sous-processus (${name})`, `${basename(String(args[0]))} nomme ${hit}`);
+      const node = name === "fork" || isNode(args[0]);
+      const permission = list.some((a) => String(a).startsWith("--permission")) || (args.find((a) => a && typeof a === "object" && Array.isArray(a.execArgv))?.execArgv ?? []).some((a) => String(a).startsWith("--permission"));
+      if (node && !permission) {
+        const i = optIndex(args, name === "fork" ? 1 : 1) >= 0 ? optIndex(args, 1) : -1;
+        const at = i >= 0 ? i : Array.isArray(args[1]) ? 2 : 1;
+        if (typeof args[at] === "function") args.splice(at, 0, withGuardEnv({}));
+        else args[at] = withGuardEnv(args[at]);
+      }
+      return original.apply(this, args);
+    };
+  }
+  for (const name of ["exec", "execSync"]) {
+    const original = cp[name];
+    cp[name] = function guardedShell(...args) {
+      const hit = named([args[0]]);
+      if (hit) refuse(`sous-processus (${name})`, `commande nomme ${hit}`);
+      return original.apply(this, args);
+    };
+  }
+
   require("node:module").syncBuiltinESMExports();
   globalThis.__jarodTestGuard = { roots, sandbox: sandbox?.home ?? null };
   record("armée", sandbox?.home ?? "");
 }
 
 const inVitest = /vitest/i.test(process.argv[1] ?? "") || process.env.VITEST_WORKER_ID !== undefined || process.env.VITEST_POOL_ID !== undefined;
-if (process.env.JAROD_GUARD_ACTIVE === "1" && inVitest && !globalThis.__jarodTestGuard) {
+if (process.env.JAROD_GUARD_ACTIVE === "1" && (inVitest || process.env.JAROD_GUARD_OWNER) && !globalThis.__jarodTestGuard) {
   install({
     roots: JSON.parse(process.env.JAROD_GUARD_ROOTS ?? "[]"),
     log: process.env.JAROD_GUARD_LOG,

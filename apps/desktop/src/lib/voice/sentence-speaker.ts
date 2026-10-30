@@ -13,6 +13,8 @@ export interface SentenceSpeakerDeps {
   play: (audio: string) => Promise<void>
   /** Silences what `play` is playing now. */
   silence: () => void
+  /** Speak at most this many sentences of the reply (the rest stays on screen only). Absent: all of it. */
+  maxSentences?: number
 }
 
 export interface SentenceSpeakerHandlers {
@@ -28,6 +30,7 @@ export class SentenceSpeaker {
   private stopped = false
   private ended = false
   private started = false
+  private enqueued = 0
   private readonly spoken: string[] = []
 
   constructor(
@@ -75,6 +78,10 @@ export class SentenceSpeaker {
     const text = sanitizeForSpeech(raw)
 
     if (!text) return
+
+    if (this.deps.maxSentences !== undefined && this.enqueued >= this.deps.maxSentences) return
+
+    this.enqueued++
 
     // Synthesis starts now (in parallel with what plays); a failure is kept in the promise and reported when its turn comes.
     const audio = this.deps.synth(text)

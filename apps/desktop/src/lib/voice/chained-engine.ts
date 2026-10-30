@@ -12,7 +12,7 @@ import { SentenceSpeaker } from './sentence-speaker.ts'
 import { isDuplexActive, noteEmptyBargeIn, noteHeardBargeIn } from '../../store/voice-echo.ts'
 import { beginTurnTiming, recordFalseBargeIn, recordFirstAudio, recordFirstToken, recordStop, recordTranscript } from '../../store/voice-metrics.ts'
 import { t } from '../i18n.ts'
-import { isNoiseTranscript, isStopPhrase, sanitizeForSpeech } from './speech-text.ts'
+import { firstSentences, isNoiseTranscript, isStopPhrase, sanitizeForSpeech, SPOKEN_REPLY_SENTENCES } from './speech-text.ts'
 import { BARGE_IN_ENDPOINTER, DEFAULT_ENDPOINTER, Endpointer } from './vad.ts'
 
 type Mode = 'idle' | 'listen' | 'monitor'
@@ -496,7 +496,7 @@ export class ChainedEngine implements ConversationEngine {
   /** Sentence-by-sentence speech for this reply (the turn's SpeakStream said the backend has no streaming voice). */
   private startSentences(speak: SpeakStream): void {
     const sentences = new SentenceSpeaker(
-      { synth: synthesize, play: playDataUrl, silence: stopFallbackAudio },
+      { synth: synthesize, play: playDataUrl, silence: stopFallbackAudio, maxSentences: SPOKEN_REPLY_SENTENCES },
       {
         onStart: () => {
           this.clearThinkingTimer()
@@ -548,7 +548,7 @@ export class ChainedEngine implements ConversationEngine {
     this.stopObserving = null
 
     if (this.fallbackText !== null) {
-      const text = sanitizeForSpeech(this.replyText)
+      const text = firstSentences(sanitizeForSpeech(this.replyText))
       this.fallbackText = null
 
       if (text) {

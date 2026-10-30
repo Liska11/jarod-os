@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { chunkForCommentary, COMMENTARY_MAX_CHARS, isNoiseTranscript, isStopPhrase, sanitizeForSpeech, SentenceChunker } from './speech-text.ts'
+import { chunkForCommentary, COMMENTARY_MAX_CHARS, firstSentences, isNoiseTranscript, isStopPhrase, sanitizeForSpeech, SentenceChunker } from './speech-text.ts'
 
 describe('sanitizeForSpeech', () => {
   it('strips markdown, code and links', () => {
@@ -86,5 +86,14 @@ describe('isNoiseTranscript', () => {
     expect(isNoiseTranscript('Thank you.')).toBe(true)
     expect(isNoiseTranscript('you')).toBe(true)
     expect(isNoiseTranscript('Open Safari')).toBe(false)
+  })
+})
+
+describe('firstSentences', () => {
+  it('keeps the first two sentences of a long reply, whatever its form', () => {
+    expect(firstSentences('Un. Deux. Trois. Quatre.')).toBe('Un. Deux.')
+    expect(firstSentences('Un seul.')).toBe('Un seul.')
+    expect(firstSentences('Salut ! Ça va ? Très bien.')).toBe('Salut ! Ça va ?')
+    expect(firstSentences('')).toBe('')
   })
 })

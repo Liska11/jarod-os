@@ -75,6 +75,17 @@ export class SentenceChunker {
 }
 
 /** ~4 characters per token keeps appends comfortably under the 500-token cap. */
+/** A spoken reply is short: the first sentences are read aloud, the whole text stays on screen. */
+export const SPOKEN_REPLY_SENTENCES = 2
+
+/** The first `max` sentences of a reply (the part that is spoken). */
+export function firstSentences(text: string, max = SPOKEN_REPLY_SENTENCES): string {
+  const chunker = new SentenceChunker()
+  const all = [...chunker.feed(text), ...chunker.flush()]
+
+  return all.slice(0, max).join(' ')
+}
+
 export const COMMENTARY_MAX_CHARS = 1400
 
 /** Split text at sentence boundaries into pieces the live model accepts in one append. */
