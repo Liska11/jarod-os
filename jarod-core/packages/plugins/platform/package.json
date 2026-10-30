@@ -16,6 +16,6 @@
   },
   "dependencies": {
     "@jarod/kernel": "workspace:*",
-    "cordis": "4.0.0-rc.10"
+    "cordis": "4.0.0-rc.12"
   }
 }
