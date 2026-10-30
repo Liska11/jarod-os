@@ -27,7 +27,7 @@
     "@jarod/bridge": "workspace:*"
   },
   "devDependencies": {
-    "@agentclientprotocol/sdk": "1.5.0",
-    "@modelcontextprotocol/client": "2.2.0"
+    "@agentclientprotocol/sdk": "2.0.2",
+    "@modelcontextprotocol/client": "2.4.0"
   }
 }

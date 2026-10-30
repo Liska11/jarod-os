@@ -15,11 +15,11 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "cordis": "4.0.0-rc.10",
+    "cordis": "4.0.0-rc.12",
     "@jarod/contracts": "workspace:*",
     "@jarod/kernel": "workspace:*",
     "@jarod/plugin-storage": "workspace:*",
     "@jarod/plugin-llm": "workspace:*",
-    "openvino-node": "2026.4.0"
+    "openvino-node": "2026.4.1"
   }
 }

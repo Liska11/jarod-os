@@ -15,10 +15,10 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "cordis": "4.0.0-rc.10",
+    "cordis": "4.0.0-rc.12",
     "@jarod/contracts": "workspace:*",
     "@jarod/kernel": "workspace:*",
-    "@anthropic-ai/sdk": "^0.128.0",
+    "@anthropic-ai/sdk": "^1.3.0",
     "@jarod/plugin-rag": "workspace:*",
     "@jarod/plugin-storage": "workspace:*"
   }
