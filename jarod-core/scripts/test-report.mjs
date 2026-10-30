@@ -55,16 +55,16 @@ const guardRoots = [
 ];
 const guardLog = join(outDir, "isolation.jsonl");
 const guardEnv = {
-  JAROD_GUARD_ACTIVE: "1", JAROD_GUARD_ROOTS: JSON.stringify(guardRoots), JAROD_GUARD_LOG: guardLog, JAROD_GUARD_SANDBOX: JSON.stringify(sandbox),
+  JAROD_GUARD_ACTIVE: "1", JAROD_GUARD_REAL_HOME: realHome, JAROD_GUARD_REAL_ENV: JSON.stringify({ USERPROFILE: realHome, HOME: process.env.HOME ?? realHome, APPDATA: process.env.APPDATA ?? "", LOCALAPPDATA: process.env.LOCALAPPDATA ?? "" }), JAROD_GUARD_ROOTS: JSON.stringify(guardRoots), JAROD_GUARD_LOG: guardLog, JAROD_GUARD_SANDBOX: JSON.stringify(sandbox),
   NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ""} --import ${pathToFileURL(join(ROOT, "scripts", "test-isolation.mjs")).href}`.trim(),
 };
 const rows = [];
 const t0 = Date.now();
 
 /** Lance une commande, attend au plus `limitMs`, puis arrête TOUT l'arbre de processus (Windows : taskkill /T). */
-function runLimited(args, limitMs, cwd = ROOT, command = "pnpm") {
+function runLimited(args, limitMs, cwd = ROOT, command = "pnpm", extraEnv = {}) {
   return new Promise((done) => {
-    const child = spawn(command, args, { cwd, env: { ...process.env, ...guardEnv }, shell: true, windowsHide: true, stdio: ["ignore", "pipe", "pipe"] });
+    const child = spawn(command, args, { cwd, env: { ...process.env, ...guardEnv, ...extraEnv }, shell: true, windowsHide: true, stdio: ["ignore", "pipe", "pipe"] });
     let out = "";
     const keep = (d) => (out = (out + d).slice(-20_000));
     child.stdout.on("data", keep);
@@ -86,6 +86,8 @@ for (const pkg of packages) {
   const name = pkg.split("/").pop();
   const jsonFile = join(outDir, `${name}.json`);
   const isDesktop = pkg === "desktop";
+  // La parité installation/build COMPARE l'installation à la source : elle lit C:Program FilesJarod-OS par nature. Seul ce dossier est ouvert à ce paquet, en régime lent ; le profil et les données restent protégés.
+  const installParity = isDesktop && mode === "slow";
   // Le bureau n'a pas ses propres node_modules : vitest vient de la racine du dépôt (`pnpm exec` tenterait une installation réseau).
   const args = [...(isDesktop ? [VITEST_MJS] : ["--filter", `@jarod/${pkg.startsWith("plugins/") ? `plugin-${name}` : name}`, "exec", "vitest"]), "run", "--reporter=json", `--outputFile=${jsonFile}`, `--testTimeout=${TIMEOUT[mode]}`, `--hookTimeout=${Math.max(30_000, TIMEOUT[mode])}`];
   if (isDesktop) {
@@ -96,7 +98,7 @@ for (const pkg of packages) {
   else if (mode === "fast") for (const g of SLOW_GLOBS) args.push("--exclude", `"${g}"`);
   else args.push("--fileParallelism=false");
   const started = Date.now();
-  const run = await runLimited(args, PACKAGE_TIMEOUT_MS[mode], isDesktop ? DESKTOP_DIR : ROOT, isDesktop ? "node" : "pnpm");
+  const run = await runLimited(args, PACKAGE_TIMEOUT_MS[mode], isDesktop ? DESKTOP_DIR : ROOT, isDesktop ? "node" : "pnpm", installParity ? { JAROD_GUARD_ROOTS: JSON.stringify(guardRoots.filter((r) => !/Program Files/i.test(r))) } : {});
   const wall = Date.now() - started;
   let files = [];
   let tests = 0;

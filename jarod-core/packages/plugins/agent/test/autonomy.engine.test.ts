@@ -25,6 +25,9 @@ async function boot() {
   plugins.scheduler = { autoStart: false };
   const core = (await bootApp(plugins)).agent;
   core.settings.set("autoTitle", false);
+  // Ce banc mesure l'AUTONOMIE BORNÉE d'une règle (cible, nombre d'utilisations, échéance) : le plancher de sécurité, qui redemande pour tout déplacement quelle que soit la règle,
+  // la masquerait. Son effet est prouvé ailleurs (mcp-injection.test.ts, floor-canary.engine.test.ts).
+  core.settings.set("safetyFloor", false);
   let next: { name: string; args: Record<string, unknown> } | null = null;
   core.providers.client = () =>
     ({

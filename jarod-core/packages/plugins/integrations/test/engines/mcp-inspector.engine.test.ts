@@ -9,6 +9,17 @@ import { AdapterRefused } from "../../src/impl/common.js";
 import { inspectorList, portFree, startInspector } from "../../src/impl/mcp-inspector.js";
 import { ROOT } from "./helpers.js";
 
+/** Deux ports libres choisis par le système (le banc n'écoute jamais sur un port fixe : voir scripts/test-isolation.mjs). */
+async function freePort(): Promise<number> {
+  const s = createServer();
+  await new Promise<void>((r) => s.listen(0, "127.0.0.1", () => r()));
+  const port = (s.address() as { port: number }).port;
+  await new Promise<void>((r) => s.close(() => r()));
+  return port;
+}
+const P = await freePort();
+const Q = await freePort();
+
 const ENGINE = join(ROOT, "engines", "mcp-inspector");
 const has = existsSync(join(ENGINE, "node_modules", "@modelcontextprotocol", "inspector", "package.json"));
 if (!has) console.warn(`[moteurs] ${ENGINE} absent : les tests MCP Inspector réels sont ignorés (voir engines.lock/README.md)`);
@@ -29,9 +40,9 @@ describe.skipIf(!has)("G9 contre MCP Inspector réel", () => {
 
   it("interface web : bouclage seul, jeton exigé, jeton absent de l'URL et de la sortie ; arrêt et port libéré", async () => {
     const before = readdirSync(tmpdir()).filter((f) => f.startsWith("jarod-mcp-inspector-")).length;
-    const inst = await startInspector({ engineDir: ENGINE, server, port: 26274 });
+    const inst = await startInspector({ engineDir: ENGINE, server, port: P });
     try {
-      expect(inst.url).toBe("http://127.0.0.1:26274/");
+      expect(inst.url).toBe(`http://127.0.0.1:${P}/`);
       expect(inst.url).not.toContain(inst.token);
       const anon = await fetch(`${inst.url}api/config`);
       expect(anon.status).toBe(401);
@@ -40,22 +51,22 @@ describe.skipIf(!has)("G9 contre MCP Inspector réel", () => {
       expect(Object.keys(((await authed.json()) as { mcpServers: object }).mcpServers)).toEqual(["sdk-fixture"]);
       const wrong = await fetch(`${inst.url}api/config`, { headers: { "x-mcp-remote-auth": "Bearer faux" } });
       expect(wrong.status).toBe(401);
-      if (lanAddress) await expect(fetch(`http://${lanAddress}:26274/`, { signal: AbortSignal.timeout(2000) })).rejects.toThrow();
+      if (lanAddress) await expect(fetch(`http://${lanAddress}:${P}/`, { signal: AbortSignal.timeout(2000) })).rejects.toThrow();
       expect(inst.output()).toContain("[jeton]");
       expect(inst.output()).not.toContain(inst.token);
     } finally {
       await inst.stop();
     }
-    expect(await portFree(26274)).toBe(true);
-    expect(await portFree(26275)).toBe(true);
+    expect(await portFree(P)).toBe(true);
+    expect(await portFree((P + 1))).toBe(true);
     expect(readdirSync(tmpdir()).filter((f) => f.startsWith("jarod-mcp-inspector-")).length).toBeLessThanOrEqual(before);
   }, 90_000);
 
   it("port déjà pris par un AUTRE programme : refus, et ce programme reste en marche", async () => {
     const other: Server = createServer();
-    await new Promise<void>((r) => other.listen({ host: "127.0.0.1", port: 26284 }, () => r()));
+    await new Promise<void>((r) => other.listen({ host: "127.0.0.1", port: Q }, () => r()));
     try {
-      await expect(startInspector({ engineDir: ENGINE, port: 26284 })).rejects.toThrow(/déjà utilisé par un autre programme/);
+      await expect(startInspector({ engineDir: ENGINE, port: Q })).rejects.toThrow(/déjà utilisé par un autre programme/);
       expect(other.listening).toBe(true);
     } finally {
       await new Promise((r) => other.close(r));

@@ -25,6 +25,8 @@ describe("G15 — lecture de la configuration et des chemins (pur)", () => {
   });
 });
 
+// Sandboxie réel : le service et ses programmes lisent le VRAI environnement utilisateur ; le lanceur d'isolation le rend à CE fichier seulement (il tourne dans son propre processus). La garde des dossiers réels de Jarod-OS reste active.
+if (process.env.JAROD_GUARD_REAL_ENV) Object.assign(process.env, JSON.parse(process.env.JAROD_GUARD_REAL_ENV));
 const dir = process.platform === "win32" ? sandboxieDir() : null;
 if (process.platform === "win32" && !dir) console.warn("[moteurs] Sandboxie-Plus absent : le banc G15 est ignoré");
 const BOX = "JarodTest";
@@ -38,7 +40,8 @@ describe.skipIf(!dir)("G15 — Sandboxie-Plus réel, bac de test", () => {
   const [run, changes, discard] = sandboxTools({ dir: () => dir, box: BOX, internet: () => internet, scratch });
   const box = new SandboxieBox({ dir: dir!, box: BOX });
   const ctx = { sessionId: "banc-g15", workspace: null };
-  const marker = join(process.env.USERPROFILE ?? "", `jarod-g15-banc-${process.pid}.txt`);
+  // Le lanceur d'isolation redirige USERPROFILE : ce banc prouve justement que le programme du bac n'écrit PAS dans le vrai profil, il lui faut donc le vrai chemin (JAROD_GUARD_REAL_HOME).
+  const marker = join(process.env.JAROD_GUARD_REAL_HOME ?? process.env.USERPROFILE ?? "", `jarod-g15-banc-${process.pid}.txt`);
 
   beforeAll(async () => {
     witness = createServer((_q, r) => {
