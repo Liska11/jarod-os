@@ -4,6 +4,8 @@
  * Portage de la V2 (services/automation.ts, bundled-plugins.ts) avec gardes Cordis.
  */
 import { randomUUID } from "node:crypto";
+import { readdirSync, statSync } from "node:fs";
+import { extname, isAbsolute, join } from "node:path";
 import { createHash } from "node:crypto";
 import type { Db, SqlValue } from "@jarod/plugin-storage";
 import type { JobsService } from "@jarod/plugin-scheduler";
@@ -13,9 +15,48 @@ import { normalizeAutomationTickMs } from "./normalize.js";
 export { normalizeAutomationTickMs };
 
 export interface AutomationTrigger {
-  kind: "schedule" | "manual" | "webhook";
+  kind: "schedule" | "manual" | "webhook" | "folder";
   cron?: string;           // schedule only
   hookId?: string;         // webhook only
+  /** folder : le dossier surveillé (chemin absolu, non récursif). Idée reprise de Jarvisol `watch_folder_service.dart` (principe seulement). */
+  folder?: string;
+  /** folder : extensions retenues (« .wav », « .mp3 »…) ; absent = tous les fichiers. */
+  extensions?: string[];
+}
+
+/** Un fichier n'est pris qu'une fois FINI d'écrire : non modifié depuis ce délai. */
+export const FOLDER_STABLE_MS = 5_000;
+/** Au plus tant de fichiers traités par passe : un dossier plein ne lance pas cent tours d'agent d'un coup. */
+export const FOLDER_MAX_PER_TICK = 10;
+
+/** Le texte d'une action agent pour un fichier : `{fichier}` est remplacé par son chemin ; sans lui, le chemin est ajouté à la fin. */
+export function promptForFile(prompt: string, file: string): string {
+  return prompt.includes("{fichier}") ? prompt.split("{fichier}").join(file) : `${prompt}\n\nFichier : ${file}`;
+}
+
+/** Les fichiers d'un dossier arrivés depuis `since` et finis d'écrire, du plus ancien au plus récent ; un dossier illisible n'en a aucun. */
+export function newFolderFiles(trigger: AutomationTrigger, since: number, now: number): { path: string; mtime: number }[] {
+  if (!trigger.folder || !isAbsolute(trigger.folder)) return [];
+  const exts = (trigger.extensions ?? []).map((e) => (e.startsWith(".") ? e : `.${e}`).toLowerCase());
+  let names: string[];
+  try {
+    names = readdirSync(trigger.folder);
+  } catch {
+    return [];
+  }
+  const out: { path: string; mtime: number }[] = [];
+  for (const name of names) {
+    if (exts.length && !exts.includes(extname(name).toLowerCase())) continue;
+    const path = join(trigger.folder, name);
+    try {
+      const st = statSync(path);
+      const mtime = Math.floor(st.mtimeMs);
+      if (st.isFile() && mtime >= since && now - mtime >= FOLDER_STABLE_MS) out.push({ path, mtime });
+    } catch {
+      // Disparu entre la lecture du dossier et celle du fichier.
+    }
+  }
+  return out.sort((a, b) => a.mtime - b.mtime || a.path.localeCompare(b.path));
 }
 
 export interface AutomationAction {
@@ -123,6 +164,19 @@ export class AutomationService {
           this.d.log?.(`Automation : cron invalide pour règle ${rule.id} : ${(e as Error).message}`);
         }
       }
+      if (rule.trigger.kind === "folder") {
+        // Les fichiers arrivés depuis la dernière exécution (ou depuis la création de la règle) : chacun lance les actions UNE fois
+        // (clé d'idempotence par fichier), même si deux fichiers ont la même date.
+        const since = this.getLastRunTime(rule.id, rule.createdAt);
+        for (const f of newFolderFiles(rule.trigger, since, now).slice(0, FOLDER_MAX_PER_TICK)) {
+          try {
+            const r = await this.executeRuleAt(rule, f.mtime, f.path);
+            if (r.created > 0) executed++;
+          } catch (e) {
+            this.d.log?.(`Automation : dossier ${rule.id} — ${f.path} : ${(e as Error).message}`);
+          }
+        }
+      }
       // manual : exécuté seulement via run()
     }
     return executed;
@@ -150,20 +204,21 @@ export class AutomationService {
    * `run()` s'en sert pour ne plus annoncer « ok » sur un échec (H7), et `tick()` pour ne compter que ce
    * qu'il a vraiment lancé (H6).
    */
-  async executeRuleAt(rule: AutomationRule, scheduledAt: number): Promise<{ created: number; failed: string[] }> {
+  async executeRuleAt(rule: AutomationRule, scheduledAt: number, file?: string): Promise<{ created: number; failed: string[] }> {
     let created = 0;
     const failed: string[] = [];
     for (let i = 0; i < rule.actions.length; i++) {
       const action = rule.actions[i]!;
       // Idempotence persistante : clé = ruleId:actionIndex:scheduledAt
+      // (déclencheur dossier : + le fichier, pour que deux fichiers de même date passent chacun)
       const idempotencyKey = createHash("sha256")
-        .update(`${rule.id}:${i}:${scheduledAt}`)
+        .update(`${rule.id}:${i}:${scheduledAt}${file ? `:${file}` : ""}`)
         .digest("hex");
 
       const { job, created: isNew } = this.d.jobs.enqueue({
         kind: "automation",
         ref: rule.id,
-        payload: { ruleId: rule.id, actionIndex: i, action },
+        payload: { ruleId: rule.id, actionIndex: i, action, ...(file ? { file } : {}) },
         idempotencyKey,
         dueAt: scheduledAt,
         // H6 : UNE tentative. `jobs.fail` remettait sinon l'exécution en attente… que PERSONNE ne reprend
@@ -184,10 +239,11 @@ export class AutomationService {
       try {
         if (action.type === "agent") {
           // Mode Plan par défaut (SPECS-P5-AUTOMATION § 2.3, Q2) ; « build » seulement s'il est écrit dans l'action.
-          const r = await this.d.runAgent(action.prompt ?? "", action.sessionId, action.mode ?? "plan");
+          const prompt = file ? promptForFile(action.prompt ?? "", file) : (action.prompt ?? "");
+          const r = await this.d.runAgent(prompt, action.sessionId, action.mode ?? "plan");
           if (!r.ok) throw new Error(r.summary || "L'action agent a échoué");
         } else if (action.type === "notify") {
-          this.d.notify("success", action.title ?? "Automation", action.body ?? "");
+          this.d.notify("success", action.title ?? "Automation", file ? `${action.body ?? ""}${action.body ? " — " : ""}${file}` : (action.body ?? ""));
         } else if (action.type === "webhook") {
           // Pas d'envoi sortant dans ce chantier (décision en attente) : un échec FRANC, jamais un « ok » trompeur.
           throw new Error("action webhook non implémentée");

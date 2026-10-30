@@ -7,7 +7,7 @@
 import "@jarod/kernel/legacy-env-adopt";
 import { existsSync, realpathSync, statSync } from "node:fs";
 import { isAbsolute, join } from "node:path";
-import { assertOneaiChannel, bindLocalModelsEvents, bindUpdateEvents, bindVoiceEvents, closeAllApiServers, createHandlers, desktopKernelOf, HERMES_REGISTRY, RegistryClient, startRememberedApiServers } from "@jarod/bridge";
+import { assertOneaiChannel, autoStartLocalEngine, bindLocalModelsEvents, bindUpdateEvents, bindVoiceEvents, closeAllApiServers, createHandlers, desktopKernelOf, HERMES_REGISTRY, RegistryClient, startRememberedApiServers } from "@jarod/bridge";
 import { ProfileManager } from "@jarod/plugin-persona";
 import { defaultDataRoot, openCore } from "../context.js";
 import { createBridgePort } from "./bridge.js";
@@ -128,6 +128,9 @@ console.log(`HERMES_BACKEND_READY port=${port}`);
 // Où lire l'adresse et le jeton : le jeton n'est jamais imprimé, il est dans ce fichier (réservé à l'utilisateur).
 console.log(`JAROD_GATEWAY_FILE ${file}`);
 console.error(`[passerelle] profil ${dataDir} ; url+jeton dans ${file} ; dossier de travail ${workspace ?? "(celui du shell)"}`);
+// Le moteur local (`localEngine.autoStart`) : lancé APRÈS l'écoute, sans l'attendre — la fenêtre s'ouvre pendant que le modèle se charge.
+// Mêmes trois gardes que `jarod serve` (`autoStartLocalEngine` ne rejette jamais ; jamais en mode test ni sur un profil temporaire).
+void autoStartLocalEngine(kernel, env, (line) => console.error(boundedMessage(`[passerelle] ${line}`)));
 
 let stopping = false;
 const stop = async () => {
@@ -140,6 +143,8 @@ const stop = async () => {
   await connectedBrowser?.stop().catch(() => {});
   detachBrowser?.();
   closeAllApiServers();
+  // Le `llama-server` que cette passerelle a lancé (au démarrage automatique ou par « Démarrer ») ne lui survit pas.
+  await kernel.localEngine?.engine.stop().catch(() => {});
   await gateway.close();
   removeSecretFile(file); // un jeton ne survit pas à la passerelle qui l'a produit
   await core.dispose().catch(() => {});

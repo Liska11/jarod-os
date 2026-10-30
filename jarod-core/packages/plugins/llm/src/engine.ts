@@ -1,7 +1,7 @@
 // Portage de packages/core/src/services/engine.ts (rév. 2e180305).
 import { createHash } from "node:crypto";
 import { chmodSync, existsSync, mkdirSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
-import { isAbsolute, join } from "node:path";
+import { dirname, isAbsolute, join } from "node:path";
 import type { LlamaServerState, LlamaServerSupervisor } from "./llama-server.js";
 import type { Hardware } from "./local.js";
 import type { SettingsService } from "@jarod/plugin-storage";
@@ -55,6 +55,18 @@ export const newPreset = (over: Partial<EnginePreset> = {}): EnginePreset => ({
   extraArgs: [],
   ...over,
 });
+
+/** Le projecteur multimodal posé à côté d'un modèle (`mmproj*.gguf`), s'il n'y en a qu'un seul : sinon on ne devine pas. */
+export function siblingMmproj(model: string): string {
+  if (!model) return "";
+  try {
+    const dir = dirname(model);
+    const found = readdirSync(dir).filter((n) => /^mmproj.*\.gguf$/i.test(n));
+    return found.length === 1 ? join(dir, found[0]!) : "";
+  } catch {
+    return "";
+  }
+}
 
 export const ENGINE_BACKENDS: readonly EngineBackend[] = ["cuda", "vulkan", "hip", "sycl", "metal", "cpu"];
 
@@ -141,6 +153,8 @@ export function presetArgs(p: EnginePreset): string[] {
   if (p.reasoning === "off") args.push("--reasoning-budget", "0");
   if (p.reasoning === "on") args.push("--reasoning-budget", "-1");
   if (p.reasoning === "deepseek") args.push("--reasoning-format", "deepseek");
+  const mmproj = p.mmproj ?? siblingMmproj(p.model);
+  if (mmproj) args.push("--mmproj", mmproj);
   if (p.draftModel) args.push("--model-draft", p.draftModel, "--draft-max", "16", "--draft-min", "1");
   if (p.parallelSlots) args.push("--parallel", String(p.parallelSlots));
   return [...args, ...p.extraArgs.filter(Boolean)];

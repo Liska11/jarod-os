@@ -52,6 +52,8 @@ const lastUserText = (r: ChatRequest) => {
 describe("compaction (Q18)", () => {
   it("/compact <consigne> transmet ce qu'il faut préserver au résumé ; sans consigne, le prompt source est inchangé", async () => {
     const core = await makeCore();
+    // Q3 : la revue d'apprentissage avant compaction ajoute un appel au modèle ; ce test porte sur le résumé seul.
+    core.settings.set("learning", { enabled: false, reviewEvery: 8 });
     const s = core.sessions.create();
     const reqs = fakeProvider(core, [{}, {}, {}, { text: "résumé A" }]);
     await threeExchanges(core, s.id);
@@ -69,6 +71,8 @@ describe("compaction (Q18)", () => {
 
   it("outil `compact` du modèle : approbation demandée, historique résumé (originaux gardés), écran rechargé", async () => {
     const core = await makeCore();
+    // Q3 : la revue d'apprentissage avant compaction ajoute un appel au modèle ; ce test porte sur le résumé seul.
+    core.settings.set("learning", { enabled: false, reviewEvery: 8 });
     const s = core.sessions.create();
     fakeProvider(core, [
       {},
@@ -107,5 +111,31 @@ describe("compaction (Q18)", () => {
     const s = core.sessions.create();
     await core.agent.runSubAgent("explore", new AbortController().signal, s.id);
     expect(reqs[0]!.tools.map((t) => t.name)).not.toContain("compact");
+  });
+});
+
+describe("Q3 sauvegarde en mémoire avant compaction", () => {
+  it("la revue d'apprentissage passe AVANT le résumé, et ce qu'elle trouve est mémorisé", async () => {
+    const core = await makeCore();
+    const s = core.sessions.create();
+    for (const t of ["Je m'appelle Demba.", "Je travaille sur Jarod-OS.", "Note bien ça.", "Et encore ceci."]) core.messages.add(s.id, { role: "user", content: t });
+    const order: string[] = [];
+    core.agent.beforeCompact = async () => void order.push("revue");
+    fakeProvider(core, [{ text: "- résumé" }]);
+    const realComplete = core.agent.complete.bind(core.agent);
+    core.agent.complete = (async (...a: Parameters<typeof realComplete>) => (order.push("résumé"), realComplete(...a))) as typeof realComplete;
+    expect(await core.agent.compact(s.id, new AbortController().signal)).toBe(true);
+    expect(order).toEqual(["revue", "résumé"]);
+  });
+
+  it("une revue qui échoue n'empêche pas la compaction", async () => {
+    const core = await makeCore();
+    const s = core.sessions.create();
+    for (const t of ["un", "deux", "trois", "quatre"]) core.messages.add(s.id, { role: "user", content: t });
+    core.agent.beforeCompact = async () => {
+      throw new Error("modèle absent");
+    };
+    fakeProvider(core, [{ text: "- résumé" }]);
+    expect(await core.agent.compact(s.id, new AbortController().signal)).toBe(true);
   });
 });

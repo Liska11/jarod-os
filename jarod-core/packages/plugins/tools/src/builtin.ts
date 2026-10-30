@@ -6,6 +6,7 @@ import { mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { decodeConsoleOutput } from "./console-text.js";
 import { realOfNearestSync } from "./system/files.js";
+import { expandHome, protectedRoot, protectedRoots } from "./system/disk.js";
 import { assertPublicUrl } from "./net-guard.js";
 import type { LlamaServerSupervisor } from "@jarod/plugin-llm";
 import type { MemoryService } from "@jarod/plugin-memory";
@@ -69,6 +70,18 @@ function realPathOf(p: string): string {
  * including through a symbolic link or junction pointing outside.
  */
 export function resolveInWorkspace(ctx: ToolContext, p: unknown): string {
+  // « Accès à tous les lecteurs » : un chemin absolu (ou ~) est accepté où qu'il soit, sauf dans un emplacement protégé — vérifié sur le nom
+  // ET sur le chemin réel, pour qu'une jonction ne mène pas dans un magasin d'identifiants.
+  if (ctx.machineFiles && typeof p === "string" && p.trim()) {
+    const abs = expandHome(p.trim());
+    if (isAbsolute(abs)) {
+      const target = resolve(abs);
+      const roots = protectedRoots();
+      const hit = protectedRoot(target, roots) ?? protectedRoot(realPathOf(target), roots);
+      if (hit) throw new Error(`Chemin refusé : ${target} est dans l'emplacement protégé ${hit}.`);
+      return target;
+    }
+  }
   if (!ctx.workspace) {
     throw new Error(
       "Aucun dossier de travail défini. Choisissez-en un (barre latérale → Fichiers, ou /workspace <chemin>).",
@@ -455,12 +468,12 @@ export function builtinTools(memory: MemoryService, localServer?: LlamaServerSup
     {
       name: "memory_save",
       description:
-        "Enregistre un souvenir durable sur l'utilisateur (fait, préférence ou contexte) pour les futures conversations.",
+        "Enregistre un souvenir durable sur l'utilisateur (fait, préférence ou contexte) pour les futures conversations. type=rule : une consigne de comportement que l'utilisateur t'a donnée en te corrigeant (« ne me tutoie plus », « toujours répondre en français ») ; elle sera respectée dans toutes les conversations. Écris-la comme une consigne courte.",
       parameters: {
         type: "object",
         properties: {
           content: { type: "string" },
-          type: { type: "string", enum: ["fact", "preference", "context"] },
+          type: { type: "string", enum: ["fact", "preference", "context", "rule"] },
         },
         required: ["content"],
       },

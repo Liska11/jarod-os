@@ -95,6 +95,7 @@ export const JAROD_INVOKE_CHANNELS = [
   "local-engine-install",
   "local-engine-install-cancel",
   "local-engine-add-preset",
+  "local-engine-add-preset-path",
   "local-engine-pick-model",
   "local-engine-preset-save",
   "local-engine-preset-remove",

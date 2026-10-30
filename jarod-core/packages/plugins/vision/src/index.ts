@@ -6,8 +6,10 @@ import type {} from "@jarod/plugin-llm";
 import type {} from "@jarod/plugin-rag";
 import type {} from "@jarod/plugin-storage";
 import type { Context } from "cordis";
+import { LocalVisionServer } from "./local-vision.js";
 import { ImageDescriber } from "./vision.js";
 
+export * from "./local-vision.js";
 export * from "./vision.js";
 
 declare module "cordis" {
@@ -20,6 +22,8 @@ export const name = "vision";
 export const inject = ["storage", "llm", "rag"];
 
 export function apply(ctx: Context): void {
+  const local = new LocalVisionServer({ settings: ctx.storage.settings });
+  ctx.effect(() => () => void local.dispose(), "vision:local-server");
   ctx.provide(
     "vision",
     new ImageDescriber({
@@ -27,6 +31,7 @@ export function apply(ctx: Context): void {
       settings: ctx.storage.settings,
       providers: ctx.llm.providers,
       attachments: ctx.rag.attachments,
+      local,
     }),
   );
 }

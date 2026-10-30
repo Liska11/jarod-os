@@ -8,7 +8,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { EnginePreset } from "@jarod/contracts";
 import { cleanup, tempDir } from "@jarod/kernel/testing";
-import { newPreset } from "@jarod/plugin-llm";
+import { newPreset, presetArgs } from "@jarod/plugin-llm";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { setupKernel } from "./ui-parite-helpers.js";
 
@@ -124,6 +124,30 @@ describe("moteur local : préréglages sans chemin ni argument libre", () => {
     expect(((await call("local-engine-status")) as View).presets).toHaveLength(1);
     const none = await setupKernel();
     await rejects(() => none.call("local-engine-add-preset"), /indisponible/);
+  });
+
+  it("préréglage par chemin (modèle déjà dans le dossier des modèles) : projecteur voisin pris, activé avec le démarrage automatique, refus hors dossier", async () => {
+    const root = join(tempDir(), "models");
+    const dir = join(root, "LiquidAI", "LFM3-Omni-2B-GGUF");
+    mkdirSync(dir, { recursive: true });
+    const model = join(dir, "LFM3-Omni-2B-Q8_0.gguf");
+    writeFileSync(model, "GGUF");
+    writeFileSync(join(dir, "mmproj-LFM3-Omni-2B-F16.gguf"), "GGUF");
+    const outside = ggufFile("dehors.gguf");
+    const { call, engine } = await wired();
+    await rejects(() => call("local-engine-add-preset-path", { model }), /dossier des modèles n'est pas choisi/);
+    engine.setModelsDir(root);
+    await rejects(() => call("local-engine-add-preset-path", { model: outside }), /dans le dossier des modèles/);
+    await rejects(() => call("local-engine-add-preset-path", { model: join(dir, "mmproj-LFM3-Omni-2B-F16.gguf") }), /dans le dossier des modèles/);
+    await rejects(() => call("local-engine-add-preset-path", { model, extra: 1 }), /non accepté/);
+    const v = (await call("local-engine-add-preset-path", { model, name: "LFM3-Omni-2B", reasoning: "off", temperature: 0, activate: true })) as View;
+    expect(v.presets).toHaveLength(1);
+    expect(v.presets[0]).toMatchObject({ name: "LFM3-Omni-2B", model, reasoning: "off", temperature: 0, parallelSlots: 1 });
+    expect(v.activePreset).toBe(v.presets[0]!.id);
+    expect(v.autoStart).toBe(true);
+    expect(presetArgs(engine.config().presets[0]!)).toEqual(expect.arrayContaining(["--mmproj", join(dir, "mmproj-LFM3-Omni-2B-F16.gguf"), "--reasoning-budget", "0"]));
+    // le même modèle une seconde fois : le préréglage existant est réutilisé
+    expect(((await call("local-engine-add-preset-path", { model })) as View).presets).toHaveLength(1);
   });
 
   it("enregistrer : réglages bornés écrits ; l'objet reçu de `status` se renvoie tel quel ; créneaux vidés = défaut du serveur", async () => {

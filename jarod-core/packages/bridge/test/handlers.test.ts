@@ -1275,7 +1275,8 @@ describe("W8 handlers : carte et garde", () => {
     // + 3 canaux de l'historique de la mémoire (2026-10-24, V-18 : memory-history, memory-restore, memory-history-purge).
     // + 8 canaux de l'espace de code (2026-10-24, page Workspace : codespace-agents, -worktrees, -create-worktree, -diff, -merge, -run-agent, -github-list, -github-pr).
     // + 1 canal du bouton « Tout autoriser » (2026-10-27 : tools-allow-all ; profil Personnalisé + interrupteur, confirmation native à l'allumage).
-    expect(keys).toHaveLength(308);
+    // + 1 canal du préréglage par chemin (2026-10-30 : local-engine-add-preset-path ; modèle déjà dans le dossier des modèles, projecteur multimodal compris).
+    expect(keys).toHaveLength(309);
     const hermes = keys.filter((k) => (HERMES_INVOKE_CHANNELS as readonly string[]).includes(k));
     expect(hermes).toHaveLength(207);
     expect(keys.filter((k) => !hermes.includes(k)).sort()).toEqual([...JAROD_INVOKE_CHANNELS].filter((k) => !k.startsWith("terminal-")).sort());

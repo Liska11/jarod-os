@@ -71,6 +71,11 @@ function originOf(event: SenderEvent): string {
 
 export interface GuardOptions {
   isShell?: ShellPageTest
+  /**
+   * Des canaux réservés à UNE autre page de l'application (la bulle) : pour eux, seule cette page est acceptée — et plus la page du shell. Le canal
+   * n'en devient pas ouvert à tout le monde : un frame qui n'est pas cette page est refusé comme les autres.
+   */
+  channelPages?: Readonly<Record<string, ShellPageTest>>
   logger?: (message: string) => void
   /** Clock for the log throttle. */
   now?: () => number
@@ -156,7 +161,7 @@ export function installIpcSenderGuard(ipc: Guardable, options: GuardOptions = {}
   const lastLogged = new Map<string, number>()
 
   const refused = (channel: string, event: SenderEvent): boolean => {
-    const verdict = checkSender(event, isShell)
+    const verdict = checkSender(event, options.channelPages?.[channel] ?? isShell)
 
     if (verdict.ok) {
       return false

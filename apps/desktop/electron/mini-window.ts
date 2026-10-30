@@ -12,13 +12,14 @@ import { log } from './log.ts'
  * Surface minimale, avant que BL-01 ne soit entièrement levé :
  *  - la mini-fenêtre charge sa PROPRE page statique (pas la page du shell) avec un preload qui ne fait que RECEVOIR le résumé : aucun canal
  *    du shell, aucune connexion au moteur ;
- *  - elle ne répond à rien : un clic dessus ramène la fenêtre principale (événement `focus` lu ici, aucun canal IPC) — c'est là qu'on
- *    accorde ou refuse ;
+ *  - 30/10 : c'est maintenant une BULLE ronde, déplaçable (`drag`) et cliquable (`click`) ; ces deux envois sont les seuls, vérifiés ici et
+ *    dans main.ts. Un clic ouvre le chat compact : c'est là qu'on accorde ou refuse ;
  *  - le résumé vient de la fenêtre principale par un seul canal (`IPC.miniState`, gardé par le contrôle d'émetteur et accepté seulement de la
  *    fenêtre principale), puis est RE-VALIDÉ ici (`normalizeMiniSummary`) : des textes bornés, sans caractères de contrôle.
  */
 
 const KINDS = new Set(['approval', 'clarify', 'sudo', 'secret'])
+const VOICES = new Set<MiniSummary['voice']>(['off', 'listening', 'thinking', 'speaking'])
 // biome-ignore lint/suspicious/noControlCharactersInRegex: intended, control characters are stripped
 const CONTROL = /[\u0000-\u001f\u007f]/g
 const clip = (v: unknown, n: number): string => (typeof v === 'string' ? v.replace(CONTROL, ' ').trim().slice(0, n) : '')
@@ -44,31 +45,63 @@ export function normalizeMiniSummary(raw: unknown): MiniSummary | null {
     workingCount: Math.max(count(r.workingCount), working.length),
     waiting,
     waitingCount: Math.max(count(r.waitingCount), waiting.length),
-    agents: count(r.agents)
+    agents: count(r.agents),
+    voice: VOICES.has(r.voice as MiniSummary['voice']) ? (r.voice as MiniSummary['voice']) : 'off'
   }
 }
 
-export const MINI_SIZE = { width: 420, height: 76 }
+/** La fenêtre de la bulle : un carré transparent un peu plus grand que la bulle (64 px) pour laisser place à son halo. */
+export const MINI_SIZE = { width: 88, height: 88 }
 
-/** Le coin haut-gauche de la mini-fenêtre : centrée en haut de la zone de travail de l'écran principal. */
-export function miniPosition(workArea: { x: number; y: number; width: number }): { x: number; y: number } {
-  return { x: Math.round(workArea.x + (workArea.width - MINI_SIZE.width) / 2), y: workArea.y + 8 }
+interface Area {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
+/** Le coin haut-gauche de la bulle par défaut : en bas à droite de la zone de travail de l'écran principal. */
+export function miniPosition(workArea: Area): { x: number; y: number } {
+  return { x: Math.round(workArea.x + workArea.width - MINI_SIZE.width - 16), y: Math.round(workArea.y + workArea.height - MINI_SIZE.height - 16) }
+}
+
+/** Ramène un coin haut-gauche dans la zone de travail : la bulle ne peut pas être perdue hors de l'écran. */
+export function clampToArea(pos: { x: number; y: number }, area: Area): { x: number; y: number } {
+  const x = Math.min(Math.max(pos.x, area.x), area.x + area.width - MINI_SIZE.width)
+  const y = Math.min(Math.max(pos.y, area.y), area.y + area.height - MINI_SIZE.height)
+
+  return { x: Math.round(x), y: Math.round(y) }
+}
+
+/** Un déplacement reçu de la page : deux entiers raisonnables, sinon rien. */
+export function normalizeDrag(dx: unknown, dy: unknown): { dx: number; dy: number } | null {
+  const ok = (v: unknown): v is number => typeof v === 'number' && Number.isInteger(v) && Math.abs(v) <= 400
+
+  return ok(dx) && ok(dy) ? { dx, dy } : null
 }
 
 export interface MiniDeps {
   /** La fabrique de fenêtre d'Electron (injectée : le module se teste sans Electron). */
   createWindow: (options: Electron.BrowserWindowConstructorOptions) => BrowserWindowType
-  workArea: () => { x: number; y: number; width: number }
+  workArea: () => Area
+  /** La zone de travail de l'écran où se trouve ce rectangle (la bulle peut être posée sur un autre écran). */
+  workAreaAt?: (rect: Area) => Area
+  /** Où la bulle avait été posée (absent : en bas à droite). */
+  savedPosition?: () => { x: number; y: number } | null
+  /** La bulle vient d'être lâchée ici : à garder pour la prochaine fois. */
+  onMoved?: (pos: { x: number; y: number }) => void
   /** Le dossier de `dist/electron` (le preload) et l'adresse de la page : fichier empaqueté ou serveur de développement. */
   preloadPath: string
   page: { file: string } | { url: string }
-  /** Ramener la fenêtre principale (clic sur la mini-fenêtre). */
+  /** Un clic (sans déplacement) sur la bulle : ouvre ou referme le chat compact. */
   openMain: () => void
 }
 
 export class MiniWindow {
   private win: BrowserWindowType | null = null
-  private last: MiniSummary = { working: [], workingCount: 0, waiting: [], waitingCount: 0, agents: 0 }
+  private last: MiniSummary = { working: [], workingCount: 0, waiting: [], waitingCount: 0, agents: 0, voice: 'off' }
+  /** 30/10 : la bulle ne se montre que lorsque Jarod est réduit ou en chat compact (comme dans brahma), pas par-dessus le bureau ouvert. */
+  private visible = false
 
   constructor(private readonly d: MiniDeps) {}
 
@@ -85,6 +118,56 @@ export class MiniWindow {
     }
   }
 
+  /** Montre ou cache la bulle sans la détruire (la fenêtre principale réduite, rouverte…). */
+  setVisible(on: boolean): void {
+    this.visible = on
+    const win = this.window
+
+    if (!win) {
+      return
+    }
+
+    if (on && !win.isVisible()) {
+      win.showInactive()
+    } else if (!on && win.isVisible()) {
+      win.hide()
+    }
+  }
+
+  /** Un clic reçu de la page (sans déplacement). */
+  click(): void {
+    this.d.openMain()
+  }
+
+  /** Les limites actuelles de la bulle (pour placer le chat compact à côté). */
+  get bounds(): Area | null {
+    return this.window?.getBounds() ?? null
+  }
+
+  /** Déplace la bulle de (dx, dy) pixels, sans la laisser sortir de l'écran où elle se trouve. */
+  dragBy(dx: number, dy: number): void {
+    const win = this.window
+
+    if (!win) {
+      return
+    }
+
+    const now = win.getBounds()
+    const area = this.d.workAreaAt?.(now) ?? this.d.workArea()
+    const next = clampToArea({ x: now.x + dx, y: now.y + dy }, area)
+
+    win.setBounds({ ...next, width: MINI_SIZE.width, height: MINI_SIZE.height })
+  }
+
+  /** Le geste est fini : la place est gardée. */
+  dragEnd(): void {
+    const b = this.bounds
+
+    if (b) {
+      this.d.onMoved?.({ x: b.x, y: b.y })
+    }
+  }
+
   /** Un nouveau résumé (déjà validé) : gardé, et poussé si la fenêtre est là. */
   push(summary: MiniSummary): void {
     this.last = summary
@@ -92,7 +175,9 @@ export class MiniWindow {
   }
 
   private open(): void {
-    const { x, y } = miniPosition(this.d.workArea())
+    const area = this.d.workArea()
+    const saved = this.d.savedPosition?.() ?? null
+    const { x, y } = clampToArea(saved ?? miniPosition(area), saved ? (this.d.workAreaAt?.({ ...saved, ...MINI_SIZE }) ?? area) : area)
     const win = this.d.createWindow({
       ...MINI_SIZE,
       x,
@@ -100,7 +185,10 @@ export class MiniWindow {
       frame: false,
       transparent: true,
       resizable: false,
-      movable: true,
+      movable: false,
+      hasShadow: false,
+      // Un clic sur la bulle ne vole pas le focus à ce que l'utilisateur faisait.
+      focusable: false,
       minimizable: false,
       maximizable: false,
       fullscreenable: false,
@@ -115,13 +203,12 @@ export class MiniWindow {
     // Aucune navigation, aucune nouvelle fenêtre : la page ne fait qu'afficher.
     win.webContents.on('will-navigate', event => event.preventDefault())
     win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
-    // Un clic donne le focus à la mini-fenêtre : on le rend à la fenêtre principale.
-    win.on('focus', () => {
-      win.blur()
-      this.d.openMain()
-    })
     win.webContents.on('did-finish-load', () => win.webContents.send(IPC.miniPush, this.last))
-    win.once('ready-to-show', () => win.showInactive())
+    win.once('ready-to-show', () => {
+      if (this.visible) {
+        win.showInactive()
+      }
+    })
     win.on('closed', () => {
       if (this.win === win) {
         this.win = null

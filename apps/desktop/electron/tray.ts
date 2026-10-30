@@ -10,9 +10,9 @@ import { log } from './log.ts'
 
 type Language = 'en' | 'fr'
 
-const LABELS: Record<Language, { show: string; safe: string; normal: string; quit: string; mini: string }> = {
-  en: { show: 'Show Jarod-OS', safe: 'Restart in safe mode', normal: 'Restart normally', quit: 'Quit Jarod-OS', mini: 'Mini window' },
-  fr: { show: 'Afficher Jarod-OS', safe: 'Redémarrer en mode sans échec', normal: 'Redémarrer normalement', quit: 'Quitter Jarod-OS', mini: 'Mini-fenêtre' }
+const LABELS: Record<Language, { show: string; safe: string; normal: string; quit: string; mini: string; login: string }> = {
+  en: { show: 'Show Jarod-OS', safe: 'Restart in safe mode', normal: 'Restart normally', quit: 'Quit Jarod-OS', mini: 'Mini window', login: 'Start with Windows' },
+  fr: { show: 'Afficher Jarod-OS', safe: 'Redémarrer en mode sans échec', normal: 'Redémarrer normalement', quit: 'Quitter Jarod-OS', mini: 'Mini-fenêtre', login: 'Lancer au démarrage de Windows' }
 }
 
 /** The menu's language: the one chosen in Settings, else the system's when it is French. */
@@ -24,10 +24,10 @@ export function trayLanguage(preference: JarodOSPrefs['language'], systemLocale:
   return systemLocale.toLowerCase().startsWith('fr') ? 'fr' : 'en'
 }
 
-export function trayLabels(language: Language, safeMode: boolean): { show: string; restart: string; quit: string; mini: string } {
+export function trayLabels(language: Language, safeMode: boolean): { show: string; restart: string; quit: string; mini: string; login: string } {
   const labels = LABELS[language]
 
-  return { show: labels.show, restart: safeMode ? labels.normal : labels.safe, quit: labels.quit, mini: labels.mini }
+  return { show: labels.show, restart: safeMode ? labels.normal : labels.safe, quit: labels.quit, mini: labels.mini, login: labels.login }
 }
 
 export interface TrayActions {
@@ -35,6 +35,8 @@ export interface TrayActions {
   relaunch: (safe: boolean) => void
   /** Lot C : la mini-fenêtre (en haut de l'écran), allumée ou éteinte depuis ce menu. */
   miniWindow?: { get: () => boolean; set: (on: boolean) => void }
+  /** Lot 5 (Mark-LVI « Auto-Start on Boot ») : ouvrir Jarod-OS à l'ouverture de la session Windows. Absent hors application installée. */
+  launchAtLogin?: { get: () => boolean; set: (on: boolean) => void }
 }
 
 export class ShellTray {
@@ -73,10 +75,12 @@ export class ShellTray {
 
     const labels = trayLabels(language, this.safeMode)
     const mini = this.actions.miniWindow
+    const login = this.actions.launchAtLogin
     this.tray.setContextMenu(
       Menu.buildFromTemplate([
         { label: labels.show, click: () => this.actions.show() },
         ...(mini ? [{ label: labels.mini, type: 'checkbox' as const, checked: mini.get(), click: (item: { checked: boolean }) => mini.set(item.checked) }] : []),
+        ...(login ? [{ label: labels.login, type: 'checkbox' as const, checked: login.get(), click: (item: { checked: boolean }) => login.set(item.checked) }] : []),
         { type: 'separator' },
         { label: labels.restart, click: () => this.actions.relaunch(!this.safeMode) },
         { label: labels.quit, click: () => app.quit() }

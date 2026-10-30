@@ -15,7 +15,7 @@ describe("réglages Agent", () => {
     const v = (await call("get-jarod-settings")) as Record<string, unknown>;
     // La liste blanche exacte : une clé de plus (ou de moins) doit se voir ici.
     expect(Object.keys(v).sort()).toEqual(
-      ["accessProfile", "alwaysAllowTools", "android", "apiServer", "anthropicFallbacks", "autoApproveTools", "agentMode", "autoTitle", "browserPersistent", "browserVisible", "capabilityRouting", "compactThreshold", "connectedBrowser", "contextProxy", "desktop", "disabledSkills", "ecosystem", "fallbacks", "imageDescription", "learning", "localTraces", "maxAgentSteps", "memoryInject", "mobile", "permissionsRules", "phoneApprovals", "rag", "sessionBudget", "shellGuard", "terminalShell", "toolSearch", "voice"].sort(),
+      ["accessProfile", "alwaysAllowTools", "android", "apiServer", "anthropicFallbacks", "autoApproveTools", "agentMode", "autoTitle", "browserPersistent", "browserVisible", "capabilityRouting", "compactThreshold", "connectedBrowser", "contextProxy", "desktop", "disabledSkills", "ecosystem", "fallbacks", "imageDescription", "learning", "localTraces", "machineFiles", "maxAgentSteps", "memoryInject", "mobile", "permissionsRules", "phoneApprovals", "rag", "safetyFloor", "sessionBudget", "shellGuard", "terminalShell", "toolSearch", "voice"].sort(),
     );
     expect(v).toMatchObject({
       accessProfile: "custom",
@@ -23,6 +23,8 @@ describe("réglages Agent", () => {
       alwaysAllowTools: [],
       terminalShell: "",
       browserVisible: true,
+      machineFiles: false,
+      safetyFloor: true,
       browserPersistent: false,
       phoneApprovals: false,
       agentMode: "build",
@@ -128,6 +130,22 @@ describe("réglages Agent", () => {
     }
     expect(app.agent.settings.getAll()).toEqual(before); // `agentMode: "plan"` valide, mais jamais écrit
     for (const bad of [null, [], "x", 3]) await expect(Promise.resolve().then(() => call("set-jarod-settings", bad))).rejects.toThrow(/objet/);
+  });
+});
+
+describe("plancher de sécurité : allumé par défaut, l'éteindre demande une boîte native", () => {
+  it("éteint seulement si la personne accepte ; le rallumer ne demande rien", async () => {
+    const { call, app, confirms } = await setupKernel(undefined, [false, true]);
+    expect(app.agent.settings.get("safetyFloor")).toBe(true);
+    await expect(Promise.resolve().then(() => call("set-jarod-settings", { safetyFloor: false }))).rejects.toThrow(/refusé par l'utilisateur/);
+    expect(app.agent.settings.get("safetyFloor")).toBe(true);
+    expect(confirms[0]!.message).toMatch(/plancher de sécurité/i);
+    await call("set-jarod-settings", { safetyFloor: false });
+    expect(app.agent.settings.get("safetyFloor")).toBe(false);
+    await call("set-jarod-settings", { safetyFloor: true });
+    expect(app.agent.settings.get("safetyFloor")).toBe(true);
+    expect(confirms).toHaveLength(2);
+    await expect(Promise.resolve().then(() => call("set-jarod-settings", { safetyFloor: "non" }))).rejects.toThrow(/booléen/);
   });
 });
 

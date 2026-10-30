@@ -2,7 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { describe, expect, it, vi } from 'vitest'
-import { isShellPage } from '../paths.ts'
+import { isMiniPage, isShellPage } from '../paths.ts'
 import { checkSender, installIpcSenderGuard, ipcGuardReport, type SenderFrame } from './sender-guard.ts'
 
 const index = path.resolve('/opt/jarod/resources/app.asar/dist/renderer/index.html')
@@ -141,6 +141,42 @@ describe('installIpcSenderGuard', () => {
   })
 })
 
+describe('la bulle : deux canaux réservés à sa page', () => {
+  const miniFile = pathToFileURL(path.join(path.dirname(index), 'mini.html')).href
+  const miniPacked = (url: string) => isMiniPage(url, path.join(path.dirname(index), 'mini.html'), undefined)
+  const miniDev = (url: string) => isMiniPage(url, path.join(path.dirname(index), 'mini.html'), 'http://127.0.0.1:5180')
+
+  it('isMiniPage : le fichier mini.html (ou /mini.html du serveur de développement), rien d’autre', () => {
+    expect(miniPacked(miniFile)).toBe(true)
+    expect(miniPacked(shellFile)).toBe(false)
+    expect(miniPacked('https://example.com/mini.html')).toBe(false)
+    expect(miniDev('http://127.0.0.1:5180/mini.html')).toBe(true)
+    expect(miniDev('http://127.0.0.1:5180/')).toBe(false)
+    expect(miniDev('http://127.0.0.1:5181/mini.html')).toBe(false)
+  })
+
+  it('un canal réservé à la bulle est servi à la bulle et refusé au shell et aux autres ; les autres canaux restent ceux du shell', () => {
+    const { ipc, listeners } = fakeIpc()
+    const logger = vi.fn()
+    installIpcSenderGuard(ipc as never, { isShell: packaged, channelPages: { 'jarod-os:mini:click': miniPacked }, logger })
+    const click = vi.fn()
+    const other = vi.fn()
+    ipc.on('jarod-os:mini:click', click)
+    ipc.on('jarod-os:other', other)
+
+    run(listeners.get('jarod-os:mini:click'), event(top(miniFile)))
+    expect(click).toHaveBeenCalledTimes(1)
+    run(listeners.get('jarod-os:mini:click'), event(top(shellFile)))
+    run(listeners.get('jarod-os:mini:click'), event(top('https://evil.example/')))
+    run(listeners.get('jarod-os:mini:click'), event(sub(miniFile, miniFile)))
+    expect(click).toHaveBeenCalledTimes(1)
+
+    run(listeners.get('jarod-os:other'), event(top(shellFile)))
+    run(listeners.get('jarod-os:other'), event(top(miniFile)))
+    expect(other).toHaveBeenCalledTimes(1)
+  })
+})
+
 describe('registrations', () => {
   // The guard wraps ipcMain when main.ts starts; a channel registered while a module is imported would
   // run before that and slip past it. Registrations must sit inside a function or a method.
@@ -166,7 +202,7 @@ describe('registrations', () => {
 
   it('main.ts installs the guard before its first registration', () => {
     const main = fs.readFileSync(path.join(path.dirname(path.dirname(fileURLToPath(import.meta.url))), 'main.ts'), 'utf8')
-    const install = main.indexOf('installIpcSenderGuard(ipcMain)')
+    const install = main.indexOf('installIpcSenderGuard(ipcMain')
     const first = main.search(/ipcMain\.(handle|handleOnce|on|once)\(/)
 
     expect(install).toBeGreaterThan(-1)

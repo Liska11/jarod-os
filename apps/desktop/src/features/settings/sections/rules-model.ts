@@ -3,7 +3,7 @@
  * A rule is a trigger (a cron schedule, a webhook, or a manual button) and one or more actions (ask the agent, show a notification, call a web address).
  */
 
-export type Trigger = { kind: 'schedule'; cron: string } | { kind: 'webhook'; hookId: string } | { kind: 'manual' }
+export type Trigger = { kind: 'schedule'; cron: string } | { kind: 'webhook'; hookId: string } | { kind: 'manual' } | { kind: 'folder'; folder: string; extensions?: string[] }
 
 export type Action =
   | { type: 'agent'; prompt: string; sessionId?: string; mode?: 'plan' | 'build' }
@@ -146,6 +146,10 @@ export function inputOf(draft: RuleDraft): { name: string; trigger: Trigger; act
 }
 
 export function triggerText(trigger: Trigger): string {
+  if (trigger.kind === 'folder') {
+    return `when a file arrives in ${trigger.folder}${trigger.extensions?.length ? ` (${trigger.extensions.join(', ')})` : ''}`
+  }
+
   return trigger.kind === 'schedule' ? `on schedule ${trigger.cron}` : trigger.kind === 'webhook' ? `when webhook “${trigger.hookId}” is called` : 'by hand only'
 }
 

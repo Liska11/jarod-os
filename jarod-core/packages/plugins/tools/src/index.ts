@@ -19,6 +19,9 @@ import { profileTools } from "./profile-tools.js";
 import { ragTools } from "./rag-tools.js";
 import { systemActTools } from "./system/act.js";
 import { systemDestroyTools } from "./system/destroy.js";
+import { UndoStack, undoTool } from "./system/undo.js";
+import { everydayTools } from "./system/everyday.js";
+import { dailyTools } from "./daily.js";
 import { systemReadTools } from "./system/tools.js";
 import { pinokioTools } from "./pinokio/tools.js";
 import { ToolRegistry } from "./registry.js";
@@ -52,6 +55,10 @@ export { systemReadTools, type SystemToolDeps } from "./system/tools.js";
 export { pinokioTools, type PinokioToolDeps } from "./pinokio/tools.js";
 export { systemActTools, type Launcher, type SystemActDeps } from "./system/act.js";
 export { systemDestroyTools, type SystemDestroyDeps } from "./system/destroy.js";
+export { UNDO_MAX_DEPTH, type UndoEntry, UndoStack, undoTool } from "./system/undo.js";
+export { everydayTools, MEDIA_KEYS, PROTOCOLS } from "./system/everyday.js";
+export { screenLookTool, type ScreenLookDeps } from "./system/screen-look.js";
+export { Agenda, categoryOf, dailyTools, organizePlan, parseWhen, WEATHER_CODES } from "./daily.js";
 export * from "./tool-search.js";
 export * from "./tool-search-tools.js";
 export * from "./vault-tools.js";
@@ -101,9 +108,16 @@ export class ToolsService extends Service {
     // Outils système, phase 1 (lecture seule, Windows) : sans accord par appel, mais chaque appel est audité (`audited`).
     for (const t of systemReadTools()) r.register(t);
     // Phase 2 (actions réversibles) : `dangerous`, donc un accord à chaque appel ; `system_state` seul est une lecture.
-    for (const t of systemActTools()) r.register(t);
+    // Q6 : une seule pile d'annulation pour les actions réversibles des phases 2 et 3, et l'outil qui la dépile.
+    const undo = new UndoStack();
+    for (const t of systemActTools({ undo })) r.register(t);
     // Phase 3 (modification et destruction) : `dangerous`, refus des emplacements protégés AVANT toute demande (`precheck`).
-    for (const t of systemDestroyTools()) r.register(t);
+    for (const t of systemDestroyTools({ undo })) r.register(t);
+    r.register(undoTool(undo));
+    // Lot 4 (30/10) : les capacités de brahma-ai-evo réécrites pour Jarod — presse-papiers, touches multimédia, fenêtre active, lecture de
+    // l'écran (OCR local), modes « protocole » (Windows) ; météo, débit, agenda, rangement de dossier, briefing (partout).
+    for (const t of everydayTools({ undo })) r.register(t);
+    for (const t of dailyTools({ db: ctx.storage.db })) r.register(t);
     // Pinokio (ADR-022) : offerts seulement quand Jarod-OS embarque le moteur (JAROD_PINOKIO_URL) ; installer, lancer, arrêter sont `dangerous`.
     for (const t of pinokioTools()) r.register(t);
     // Remote commands (docs/REMOTE-SSH.md): offered only while a declared host is enabled for them and the control journal is there;

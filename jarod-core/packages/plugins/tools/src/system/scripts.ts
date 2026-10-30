@@ -87,7 +87,9 @@ $out = @($rows | ForEach-Object {
 export const LISTENERS = OWNER_TYPE + String.raw`
 $port = [int]$A.port
 $found = @()
-$found += @(Get-NetTCPConnection -State Listen -LocalPort $port -ErrorAction SilentlyContinue | ForEach-Object { [pscustomobject]@{ pid = [int]$_.OwningProcess; protocol = 'tcp' } })
+# Un socket en écoute n'a pas de correspondant (port distant 0). On ne filtre PAS sur l'état : Windows 11 build 26300 le rend sous une valeur
+# inconnue de l'énumération (0) et -State Listen ne trouvait plus rien (analyse du 30/10).
+$found += @(Get-NetTCPConnection -LocalPort $port -ErrorAction SilentlyContinue | Where-Object { $_.RemotePort -eq 0 } | ForEach-Object { [pscustomobject]@{ pid = [int]$_.OwningProcess; protocol = 'tcp' } })
 $found += @(Get-NetUDPEndpoint -LocalPort $port -ErrorAction SilentlyContinue | ForEach-Object { [pscustomobject]@{ pid = [int]$_.OwningProcess; protocol = 'udp' } })
 $out = @($found | Sort-Object pid, protocol -Unique | ForEach-Object {
   $name = ''

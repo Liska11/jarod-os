@@ -310,6 +310,22 @@ const ENTRIES: Record<string, Entry> = {
   memoryInject: boolean("memoryInject"),
   // Navigateur de l'agent : sa fenêtre se montre (sans prendre le focus) ou reste cachée pendant qu'il navigue.
   browserVisible: boolean("browserVisible"),
+  machineFiles: boolean("machineFiles"),
+  // Plancher de sécurité : l'éteindre RETIRE une protection (accord natif toujours demandé pour écraser, supprimer, envoyer) : confirmation native.
+  safetyFloor: {
+    read: (s) => s.safetyFloor,
+    write: (v) => (typeof v === "boolean" ? { safetyFloor: v } : bad("safetyFloor", "booléen attendu")),
+    confirm: (patch, current) =>
+      patch.safetyFloor === false && current.safetyFloor !== false
+        ? {
+            message: "Éteindre le plancher de sécurité ?",
+            detail:
+              "Sans lui, selon votre profil d'accès (Plein, « Tout autoriser », règles « sans accord »), l'agent pourra écraser ou supprimer des fichiers, envoyer des données à un tiers " +
+              "et agir après avoir lu un contenu extérieur SANS vous demander, et sans copie du fichier écrasé. Vous pourrez le rallumer à tout moment dans Réglages › Agent.",
+            action: "Éteindre le plancher",
+          }
+        : null,
+  },
   // Session gardée sur disque : l'agent agira avec les comptes ouverts dans cette fenêtre. L'activer demande une confirmation native.
   browserPersistent: {
     read: (s) => s.browserPersistent,
@@ -695,9 +711,15 @@ const ENTRIES: Record<string, Entry> = {
     },
   },
   imageDescription: {
-    read: (s) => ({ mode: s.imageDescription.mode, provider: s.imageDescription.provider, model: s.imageDescription.model }),
+    read: (s) => ({
+      mode: s.imageDescription.mode,
+      provider: s.imageDescription.provider,
+      model: s.imageDescription.model,
+      fallbackProvider: s.imageDescription.fallbackProvider ?? "",
+      fallbackModel: s.imageDescription.fallbackModel ?? "",
+    }),
     write: (v, current, env) => {
-      const o = record("imageDescription", v, ["mode", "provider", "model"]);
+      const o = record("imageDescription", v, ["mode", "provider", "model", "fallbackProvider", "fallbackModel"]);
       const next = { ...current.imageDescription };
       if (o.mode !== undefined) {
         if (typeof o.mode !== "string" || !["auto", "always", "off"].includes(o.mode)) bad("imageDescription.mode", "une valeur parmi auto, always, off");
@@ -710,14 +732,28 @@ const ENTRIES: Record<string, Entry> = {
       }
       if (o.model !== undefined) next.model = text("imageDescription.model", o.model, 200);
       if (next.model && !next.provider) bad("imageDescription.model", "un modèle exige un fournisseur");
+      // Le modèle de secours (ex. Gemini en nuage) : tenté quand le premier échoue ou n'est pas disponible.
+      if (o.fallbackProvider !== undefined) {
+        const fp = text("imageDescription.fallbackProvider", o.fallbackProvider, 80);
+        if (fp) env.provider(fp);
+        next.fallbackProvider = fp;
+        if (!fp) next.fallbackModel = "";
+      }
+      if (o.fallbackModel !== undefined) next.fallbackModel = text("imageDescription.fallbackModel", o.fallbackModel, 200);
+      if (next.fallbackModel && !next.fallbackProvider) bad("imageDescription.fallbackModel", "un modèle de secours exige un fournisseur");
       return { imageDescription: next };
     },
     // Décrire une image envoie l'image au fournisseur choisi : un fournisseur qui sort de la machine demande une confirmation.
     confirm: (patch, current, env) => {
       const next = patch.imageDescription;
-      if (!next || next.mode === "off" || !next.provider || next.provider === current.imageDescription.provider) return null;
-      const p = env.provider(next.provider);
-      if (!p.leavesMachine) return null;
+      if (!next || next.mode === "off") return null;
+      // Le fournisseur à nommer : le principal s'il change, sinon le modèle de secours (nouveau) — seulement s'il sort de la machine.
+      const named = [
+        next.provider && next.provider !== current.imageDescription.provider ? next.provider : "",
+        next.fallbackProvider && next.fallbackProvider !== (current.imageDescription.fallbackProvider ?? "") ? next.fallbackProvider : "",
+      ].find((id) => id !== "" && env.provider(id).leavesMachine);
+      if (!named) return null;
+      const p = env.provider(named);
       return {
         message: `Envoyer vos images à ${p.name} pour les décrire ?`,
         detail: "Quand le modèle de la conversation ne voit pas les images, Jarod les envoie à ce fournisseur, hors de cette machine, pour en obtenir une description. Vous pouvez désactiver cette fonction à tout moment (Réglages › Modèles).",

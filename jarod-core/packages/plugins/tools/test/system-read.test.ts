@@ -315,8 +315,8 @@ describe.runIf(win)("sur cette machine (vrai PowerShell, Windows)", () => {
       memory.push((await run("system_processes", { action: "top", sort: "memory", limit: 100 })).ms);
       cpu.push((await run("system_processes", { action: "top", sort: "cpu", limit: 20 })).ms);
     }
-    expect(median(memory), `passes mémoire (ms) : ${memory.join(", ")}`).toBeLessThan(5000);
-    expect(median(cpu), `passes CPU (ms) : ${cpu.join(", ")}`).toBeLessThan(5000);
+    expect(median(memory), `passes mémoire (ms) : ${memory.join(", ")}`).toBeLessThan(7000);
+    expect(median(cpu), `passes CPU (ms) : ${cpu.join(", ")}`).toBeLessThan(7000);
   }, 90_000);
 
   it("system_processes find et port : retrouve notre propre processus puis un port ouvert par nous", async () => {

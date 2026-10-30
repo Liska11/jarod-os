@@ -1,3 +1,4 @@
+import { join } from "node:path";
 /**
  * @jarod/plugin-agent — `ctx.agent` : la boucle d'agent (`agent.ts`) et son runtime de tours
  * (`runtime.ts`, port de `JarodCore`). Câblage repris de `core.ts:353-354,472,536-555,567-633,683`
@@ -18,7 +19,7 @@ import { WebhookRunner } from "@jarod/plugin-scheduler";
 import type {} from "@jarod/plugin-skills";
 import type {} from "@jarod/plugin-storage";
 import { CuratorService } from "@jarod/plugin-memory";
-import { presentTools, resolveInWorkspace, skillTools, toolSearchTools } from "@jarod/plugin-tools";
+import { presentTools, resolveInWorkspace, screenLookTool, skillTools, toolSearchTools } from "@jarod/plugin-tools";
 import type {} from "@jarod/plugin-vision";
 import type { Context } from "cordis";
 import { registerAgentCommands } from "./builtin-commands.js";
@@ -120,6 +121,8 @@ export function apply(ctx: Context, config: AgentConfig = {}): void {
     attachments: ctx.rag.attachments,
     vault: ctx.rag.vault,
     ...(ctx.get("vision") ? { vision: ctx.vision } : {}),
+    // Plancher de sécurité : la copie d'un fichier avant son écrasement (safety-floor.ts).
+    backupDir: join(ctx.storage.dataDir, "overwritten"),
     ...(ctx.get("persona") ? { persona: ctx.persona } : {}),
     plugins: noPlugins,
     // Garde unifié : règles utilisateur, puis « déclaré au registre → allow », puis `* → deny`.
@@ -221,6 +224,8 @@ export function apply(ctx: Context, config: AgentConfig = {}): void {
   }
   // core.ts:634
   for (const t of sessionTools(runtime.sessions, runtime.messages)) tools.register(t);
+  // 30/10 : regarder l'écran avec le modèle de vision réglé par l'utilisateur (repli : lecture du texte).
+  for (const t of screenLookTool(ctx.get("vision") ? { vision: ctx.vision } : {})) tools.register(t);
   // Cockpit, lot 2 : l'agent relit ses propres actions et leurs preuves (lecture seule).
   tools.register(taskStatusTool(runtime.tasks));
   // Cockpit, lot 3 : chercher et relire les sorties volumineuses gardées hors du contexte.
@@ -248,6 +253,8 @@ export function apply(ctx: Context, config: AgentConfig = {}): void {
     complete: (prompt, signal, opts) => runtime.agent.complete(prompt, signal, opts),
     busy: (id) => runtime.isRunning(id),
   });
+  // Q3 : avant chaque compaction, la revue d'apprentissage sauve ce que le résumé va effacer.
+  runtime.agent.beforeCompact = (sessionId, signal) => runtime.learning.beforeCompaction(sessionId, signal);
   // A failed or stopped turn teaches nothing; a review failure is not the user's problem. (core.ts:1616-1617)
   ctx.on("agent:turn-done" as never, ((sessionId: string, _hooks: unknown, turn: TurnOutcome) => {
     if (!turn.aborted && !turn.error) void runtime.learning.afterTurn(sessionId).catch(() => {});

@@ -76,6 +76,48 @@ describe("ImageDescriber", () => {
   });
 });
 
+describe("modèle de secours (Gemini en nuage)", () => {
+  async function withFallback(chat: (provider: string) => Promise<{ text: string }>) {
+    const app = await bootApp({ storage: { dataDir: tempDir(), encryptDb: false } });
+    app.storage.settings.set("imageDescription", { mode: "always", provider: "local", model: "m1", fallbackProvider: "google", fallbackModel: "gemini-2.5-flash" });
+    const asked: string[] = [];
+    const d = new ImageDescriber({
+      db: app.storage.db,
+      settings: app.storage.settings,
+      providers: { client: (p: string) => ({ chat: () => (asked.push(p), chat(p)) }) } as never,
+      attachments: { load: () => ({ data: "AAAA" }) } as never,
+    });
+    return { d, asked };
+  }
+
+  it("le premier modèle échoue : le secours répond ; s'il répond, le secours n'est pas dérangé", async () => {
+    const down = await withFallback(async (p) => {
+      if (p === "local") throw new Error("moteur arrêté");
+      return { text: "un écran d'erreur" };
+    });
+    expect(await down.d.look({ data: "AAAA", mime: "image/jpeg" }, "?")).toBe("un écran d'erreur");
+    expect(down.asked).toEqual(["local", "google"]);
+    const up = await withFallback(async () => ({ text: "ok local" }));
+    expect(await up.d.look({ data: "AAAA", mime: "image/jpeg" }, "?")).toBe("ok local");
+    expect(up.asked).toEqual(["local"]);
+  });
+
+  it("tous échouent : la première erreur est dite ; l'annulation n'appelle pas le secours", async () => {
+    const all = await withFallback(async (p) => {
+      throw new Error(`panne ${p}`);
+    });
+    await expect(all.d.look({ data: "AAAA", mime: "image/jpeg" }, "?")).rejects.toThrow("panne local");
+    expect(all.d.canLook()).toBe(true);
+    const user = new AbortController();
+    const cut = await withFallback(async () => {
+      user.abort();
+      throw new Error("annulé");
+    });
+    await expect(cut.d.look({ data: "AAAA", mime: "image/jpeg" }, "?", user.signal)).rejects.toThrow("annulé");
+    expect(cut.asked).toEqual(["local"]);
+  });
+});
+
 describe("supportsVision", () => {
   it("familles connues vraies, modèle inconnu faux (il recevra une description)", () => {
     for (const [p, m] of [["anthropic", "x"], ["openai", "gpt-4o-mini"], ["x", "gemini-2.5-pro"], ["x", "qwen2.5-vl-7b"], ["x", "llava:13b"]] as const) expect(supportsVision(p, m), `${p}/${m}`).toBe(true);

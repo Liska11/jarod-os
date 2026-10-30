@@ -16,6 +16,8 @@ export interface ToolContext {
   shellGuard?: Partial<ShellPolicy>;
   /** The credential vault: names for the model, values only where their owner allowed them. */
   vault?: VaultService;
+  /** Réglage « Accès à tous les lecteurs » : un chemin absolu hors du dossier de travail est accepté (hors emplacements protégés). */
+  machineFiles?: boolean;
 }
 
 export interface ToolDef {

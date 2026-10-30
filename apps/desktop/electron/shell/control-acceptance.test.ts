@@ -150,7 +150,7 @@ describe('the host control pipeline, end to end', () => {
     } finally {
       door.close()
     }
-  })
+  }, 30_000) // 30/10 : même raison que os-control.test.ts (canal nommé lent sous charge)
 
   it('refuses a mutation when the person says no, and changes nothing', async () => {
     const door = await openDoor()

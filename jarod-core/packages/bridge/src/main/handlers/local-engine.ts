@@ -15,7 +15,7 @@
  * - le serveur n'écoute que sur 127.0.0.1 (`LlamaServerSupervisor`) ; un seul téléchargement à la fois.
  */
 import { existsSync } from "node:fs";
-import { basename } from "node:path";
+import { basename, isAbsolute, relative, resolve as resolvePath } from "node:path";
 import type { EngineBackend, EnginePreset, LocalEngineConfig } from "@jarod/contracts";
 import { type FitReport, newPreset, reportGgufFit } from "@jarod/plugin-llm";
 import { type EngineBudgetBasis, engineBudget } from "../engine-budget.js";
@@ -97,7 +97,7 @@ function tuning(o: Record<string, unknown>): Tuning {
   };
 }
 
-const PRESET_KEYS = new Set(["id", "name", "model", "draftModel", "extraArgs", "ctxSize", "gpuLayers", "flashAttn", "cacheType", "temperature", "topP", "topK", "minP", "reasoning", "parallelSlots", "modelName", "modelPresent", "draftModelName"]);
+const PRESET_KEYS = new Set(["id", "name", "model", "draftModel", "mmproj", "mmprojName", "extraArgs", "ctxSize", "gpuLayers", "flashAttn", "cacheType", "temperature", "topP", "topK", "minP", "reasoning", "parallelSlots", "modelName", "modelPresent", "draftModelName"]);
 // Les trois derniers sont des champs d'AFFICHAGE que `status` ajoute : un écran qui renvoie l'objet reçu tel quel ne doit pas être refusé pour cela.
 
 export function createLocalEngineHandlers(ctx: HandlerContext) {
@@ -224,6 +224,46 @@ export function createLocalEngineHandlers(ctx: HandlerContext) {
       return view();
     },
 
+    /**
+     * Un préréglage pour un modèle DÉJÀ dans le dossier des modèles (sans boîte : modèles téléchargés par Jarod ou posés dans ce dossier). Le chemin
+     * doit être un .gguf existant, sous `modelsDir`, qui n'est pas un projecteur ; un modèle déjà enregistré est réutilisé. Le projecteur multimodal
+     * à côté du modèle est pris tel quel. `activate` : en faire le préréglage actif, avec le démarrage automatique.
+     */
+    "local-engine-add-preset-path": async (input: unknown): Promise<EngineView> => {
+      if (!input || typeof input !== "object" || Array.isArray(input)) return bad("demande attendue");
+      const o = input as Record<string, unknown>;
+      const extra = Object.keys(o).filter((k) => !["model", "name", "activate", "reasoning", "temperature", "ctxSize"].includes(k));
+      if (extra.length) return bad(`champ(s) non accepté(s) : ${extra.join(", ")}`);
+      const cfg = engine().config();
+      const root = cfg.modelsDir;
+      if (!root) return bad("le dossier des modèles n'est pas choisi");
+      const model = typeof o.model === "string" ? resolvePath(o.model) : "";
+      const rel = model ? relative(resolvePath(root), model) : "..";
+      if (!model.toLowerCase().endsWith(".gguf") || /mmproj/i.test(basename(model)) || rel.startsWith("..") || isAbsolute(rel) || !existsSync(model)) {
+        return bad("un modèle .gguf existant, dans le dossier des modèles, est attendu");
+      }
+      let preset = cfg.presets.find((p) => resolvePath(p.model).toLowerCase() === model.toLowerCase());
+      if (!preset) {
+        if (cfg.presets.length >= MAX_PRESETS) return bad(`${MAX_PRESETS} préréglages au plus`);
+        const name = typeof o.name === "string" && o.name.trim() ? o.name.trim().slice(0, 60) : basename(model).replace(/\.gguf$/i, "").slice(0, 60);
+        preset = newPreset({
+          id: `p${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`,
+          name,
+          model,
+          parallelSlots: 1,
+          ...(o.reasoning === undefined ? {} : { reasoning: oneOf("reasoning", o.reasoning, REASONING) }),
+          ...(o.temperature === undefined ? {} : { temperature: ratio("temperature", o.temperature, 5) }),
+          ...(o.ctxSize === undefined ? {} : { ctxSize: int("ctxSize", o.ctxSize, 512, 2_097_152) }),
+        });
+        write([...cfg.presets, preset], cfg.activePreset || preset.id);
+      }
+      if (o.activate === true) {
+        write(engine().config().presets, preset.id);
+        engine().configure({ autoStart: true });
+      }
+      return view();
+    },
+
     /** Boîte « Ouvrir » native : remplace le modèle ou le brouillon d'un préréglage. Null si la boîte est annulée. */
     "local-engine-pick-model": async (id: unknown, field: unknown): Promise<EngineView | null> => {
       const target = stored(id);
@@ -253,7 +293,9 @@ export function createLocalEngineHandlers(ctx: HandlerContext) {
       if (!Array.isArray(args) || !args.every((a) => typeof a === "string")) return bad("« extraArgs » : liste attendue");
       if (args.length && JSON.stringify(args) !== JSON.stringify(current.extraArgs)) return bad("les arguments avancés ne se tapent pas : ils se gardent ou se suppriment");
       const t = tuning(o);
-      const next: EnginePreset = { ...current, name: o.name.trim(), draftModel: o.draftModel as string, extraArgs: args as string[], ...t };
+      // Le projecteur multimodal se garde ou se retire (jamais un autre chemin tapé).
+      if (o.mmproj !== undefined && o.mmproj !== current.mmproj && o.mmproj !== "") return bad("le projecteur multimodal se garde ou se retire (vide) ; il ne se change pas ici");
+      const next: EnginePreset = { ...current, ...(o.mmproj === "" ? { mmproj: "" } : {}), name: o.name.trim(), draftModel: o.draftModel as string, extraArgs: args as string[], ...t };
       if (t.parallelSlots === undefined) delete next.parallelSlots;
       const cfg = engine().config();
       write(cfg.presets.map((p) => (p.id === current.id ? next : p)), cfg.activePreset);

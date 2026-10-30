@@ -21,6 +21,12 @@ const PRE_ROLL_MS = 400
 const MAX_CONTEXT_EXCHANGES = 6
 /** Silence before a stray tone tells the user Hermes is still working. */
 const THINKING_TICK_MS = 1800
+const ACK_KEYS = ['voice.ack.1', 'voice.ack.2', 'voice.ack.3', 'voice.ack.4'] as const
+
+/** Q4 : une phrase d'attente, tirée au hasard pour ne pas répéter la même à chaque tour. */
+export function acknowledgement(random: () => number = Math.random): string {
+  return t(ACK_KEYS[Math.min(ACK_KEYS.length - 1, Math.floor(random() * ACK_KEYS.length))]!)
+}
 
 interface TranscribeResult {
   ok: boolean
@@ -48,6 +54,9 @@ export class ChainedEngine implements ConversationEngine {
   private fallbackText: string | null = null
   private speechEnded = false
   private thinkingTimer: ReturnType<typeof setTimeout> | null = null
+  /** Q4 : l'accusé de réception parlé est dit au plus une fois par tour ; annulé si la réponse arrive pendant sa synthèse. */
+  private ackSpoken = false
+  private ackSignal: { stopped: boolean } = { stopped: false }
   /** `hermes`: what was said aloud (all of it, or up to an interruption); `interrupted`: the person cut it short. */
   private readonly exchanges: Array<{ user: string; hermes: string; interrupted?: boolean }> = []
   /** Sentence-by-sentence speech when the backend has no streaming voice (the Jarod core). */
@@ -352,6 +361,7 @@ export class ChainedEngine implements ConversationEngine {
 
   private async runTurn(text: string): Promise<void> {
     this.host.setState('thinking')
+    this.ackSpoken = false
     this.turnDone = false
     this.replyText = ''
     this.fallbackText = null
@@ -564,13 +574,28 @@ export class ChainedEngine implements ConversationEngine {
     this.thinkingTimer = setTimeout(() => {
       this.thinkingTimer = null
 
-      if (!this.stopped && !this.turnDone && !this.speak?.speaking) {
-        earcons.captured()
+      if (this.stopped || this.turnDone || this.speak?.speaking) {
+        return
       }
+
+      // Q4 (analyse du 29/10, idée de Mark-LVI « Instant Acknowledgment », principe seulement) : la première attente d'un tour est dite par une
+      // courte phrase dans la langue de l'interface, sans appel au modèle ; les attentes suivantes (un outil qui tourne) gardent le son discret.
+      if (!this.ackSpoken && !this.firstTokenSeen) {
+        this.ackSpoken = true
+        this.ackSignal = { stopped: false }
+        void speakOnce(acknowledgement(), this.ackSignal).catch(() => earcons.captured())
+
+        return
+      }
+
+      earcons.captured()
     }, THINKING_TICK_MS)
   }
 
   private clearThinkingTimer(): void {
+    // La réponse arrive : un accusé encore en synthèse ne doit pas la recouvrir.
+    this.ackSignal.stopped = true
+
     if (this.thinkingTimer) {
       clearTimeout(this.thinkingTimer)
       this.thinkingTimer = null

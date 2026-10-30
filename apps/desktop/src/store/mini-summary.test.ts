@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { ChatState } from '../lib/chat-model.ts'
-import { computeMiniSummary } from './mini-summary.ts'
+import { computeMiniSummary, miniVoice } from './mini-summary.ts'
 
 const chat = (title: string, streaming: boolean, status?: string) => ({ title, streaming, ...(status ? { status: { kind: 'tool', text: status } } : {}) }) as unknown as ChatState
 const pending = (kind: string, params: Record<string, unknown>) => ({ kind, request: { id: Math.random().toString(), params }, receivedAt: 0 }) as never
@@ -32,5 +32,13 @@ describe('le résumé de la mini-fenêtre', () => {
     expect(s.waiting[0]).toEqual({ kind: 'secret', text: '' })
     expect(s.waiting[1]!.text.length).toBe(100)
     expect(s.waiting[1]!.text.endsWith('…')).toBe(true)
+  })
+})
+
+describe('la voix dans la bulle', () => {
+  it('écoute, réflexion et parole se montrent ; le reste est éteint', () => {
+    expect(['listening', 'transcribing', 'thinking', 'connecting', 'speaking', 'armed', 'off'].map(miniVoice)).toEqual(['listening', 'thinking', 'thinking', 'thinking', 'speaking', 'off', 'off'])
+    expect(computeMiniSummary({}, [], {}, 'listening').voice).toBe('listening')
+    expect(computeMiniSummary({}, [], {}).voice).toBe('off')
   })
 })

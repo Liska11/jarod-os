@@ -30,28 +30,30 @@ test.afterAll(async () => {
 
 const miniPage = () => shell.app.windows().find(w => w.url().endsWith('/mini.html'))
 
-test('allumée : sa page à part, sans API du shell ; elle affiche l’état ; un clic ramène Jarod ; éteinte, elle disparaît', async () => {
+test('allumée : sa page à part, sans API du shell ; la bulle montre l’état ; un clic ouvre Jarod ; éteinte, elle disparaît', async () => {
   expect(miniPage()).toBeUndefined()
   await page.evaluate(() => window.jarodOS.prefs.set({ miniWindow: true }))
   await expect.poll(() => Boolean(miniPage()), { timeout: 15_000 }).toBe(true)
   const mini = miniPage()!
 
-  await expect(mini.locator('#line2')).toHaveText(/Au repos|répond|travaille|en cours/, { timeout: 15_000 })
+  await expect(mini.locator('#orb')).toHaveClass(/idle|working|listening|thinking|speaking|waiting/, { timeout: 15_000 })
   // Ni l'API du shell, ni Node : seulement de quoi recevoir le résumé.
   expect(await mini.evaluate(() => ({ shell: typeof (window as unknown as { jarodOS?: unknown }).jarodOS, node: typeof (globalThis as unknown as { require?: unknown }).require, mini: Object.keys((window as unknown as { jarodMini: object }).jarodMini) }))).toEqual({
     shell: 'undefined',
     node: 'undefined',
-    mini: ['onSummary']
+    mini: ['onSummary', 'drag', 'click']
   })
   await mini.screenshot({ path: path.join(test.info().outputDir, 'mini-fenetre.png') })
 
   // Un résumé avec une demande en attente, envoyé comme la fenêtre principale le fait : la mini-fenêtre passe à « Accord demandé ».
-  await page.evaluate(() => window.jarodOS.mini.state({ working: [], workingCount: 0, waiting: [{ kind: 'approval', text: 'Déplacer 3 fichiers' }], waitingCount: 1, agents: 0 }))
-  await expect(mini.locator('#line1')).toHaveText('Accord demandé')
-  await expect(mini.locator('#line2')).toHaveText('Déplacer 3 fichiers')
+  await page.evaluate(() => window.jarodOS.mini.state({ working: [], workingCount: 0, waiting: [{ kind: 'approval', text: 'Déplacer 3 fichiers' }], waitingCount: 1, agents: 0, voice: 'off' }))
+  await expect(mini.locator('#orb')).toHaveClass(/waiting/)
+  await expect(mini.locator('#orb')).toHaveAttribute('title', /Accord demandé/)
+  await page.evaluate(() => window.jarodOS.mini.state({ working: [], workingCount: 0, waiting: [], waitingCount: 0, agents: 0, voice: 'listening' }))
+  await expect(mini.locator('#orb')).toHaveClass(/listening/)
   await mini.screenshot({ path: path.join(test.info().outputDir, 'mini-fenetre-accord.png') })
 
-  await mini.locator('#pill').click()
+  await mini.locator('#orb').click()
   await expect.poll(() => shell.app.evaluate(({ BrowserWindow }) => BrowserWindow.getFocusedWindow()?.webContents.getURL() ?? ''), { timeout: 10_000 }).not.toMatch(/mini\.html$/)
 
   await page.evaluate(() => window.jarodOS.prefs.set({ miniWindow: false }))

@@ -1,6 +1,7 @@
 /**
  * Outils agent pour l'automatisation.
  */
+import { isAbsolute } from "node:path";
 import type { ToolDef } from "@jarod/plugin-tools";
 import type { AutomationService, AutomationTrigger, AutomationAction } from "./automation.js";
 
@@ -47,7 +48,7 @@ export function automationTools(automation: AutomationService): ToolDef[] {
     },
     {
       name: "automation_create",
-      description: "Crée une règle d'automatisation. Exige un accord.",
+      description: "Crée une règle d'automatisation. Exige un accord. Déclencheurs : schedule (cron), manual, folder (un nouveau fichier dans un dossier surveillé).",
       parameters: {
         type: "object",
         properties: {
@@ -55,7 +56,9 @@ export function automationTools(automation: AutomationService): ToolDef[] {
           trigger: {
             type: "object",
             properties: {
-              kind: { type: "string", enum: ["schedule", "manual"] },
+              kind: { type: "string", enum: ["schedule", "manual", "folder"] },
+              folder: { type: "string", description: "folder seulement : dossier surveillé (chemin absolu). Chaque nouveau fichier lance les actions ; dans le prompt, {fichier} est remplacé par son chemin." },
+              extensions: { type: "array", items: { type: "string" }, description: "folder seulement : extensions retenues (ex. .wav, .mp3)." },
               cron: { type: "string", description: "Expression cron (schedule seulement)." },
             },
             required: ["kind"],
@@ -84,8 +87,11 @@ export function automationTools(automation: AutomationService): ToolDef[] {
       async run(args, _ctx) {
         // Validation basique
         const trigger = args.trigger as AutomationTrigger;
-        if (!trigger || (trigger.kind !== "schedule" && trigger.kind !== "manual")) {
-          return "Erreur : trigger inconnu (attendu : schedule ou manual).";
+        if (!trigger || (trigger.kind !== "schedule" && trigger.kind !== "manual" && trigger.kind !== "folder")) {
+          return "Erreur : trigger inconnu (attendu : schedule, manual ou folder).";
+        }
+        if (trigger.kind === "folder" && (!trigger.folder || !isAbsolute(trigger.folder))) {
+          return "Erreur : trigger folder requiert un champ folder (chemin absolu d'un dossier).";
         }
         if (trigger.kind === "schedule" && !trigger.cron) {
           return "Erreur : trigger schedule requiert un champ cron.";
@@ -120,7 +126,9 @@ export function automationTools(automation: AutomationService): ToolDef[] {
           trigger: {
             type: "object",
             properties: {
-              kind: { type: "string", enum: ["schedule", "manual"] },
+              kind: { type: "string", enum: ["schedule", "manual", "folder"] },
+              folder: { type: "string", description: "folder seulement : dossier surveillé (chemin absolu). Chaque nouveau fichier lance les actions ; dans le prompt, {fichier} est remplacé par son chemin." },
+              extensions: { type: "array", items: { type: "string" }, description: "folder seulement : extensions retenues (ex. .wav, .mp3)." },
               cron: { type: "string" },
             },
             required: ["kind"],

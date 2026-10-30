@@ -74,6 +74,8 @@ export interface RuntimeDeps {
   vision?: ImageDescriber;
   /** SOUL.md du profil (plugin-persona, `core.ts:381`) ; absent : réglage `persona` seul. */
   persona?: PersonaService;
+  /** Plancher de sécurité : où garder la copie d'un fichier avant qu'il soit écrasé (absent : pas de copie). */
+  backupDir?: string;
   plugins: PluginHost;
   gate?: ToolGate;
   appVersion: string;
@@ -106,6 +108,7 @@ export class AgentRuntime {
   readonly vault: VaultService;
   readonly vision: ImageDescriber | undefined;
   readonly persona: PersonaService | undefined;
+  readonly backupDir: string | undefined;
   /** Remplacé par plugin-workflows (`attachPlugins`) ; l'agent le relit à chaque tour. */
   plugins: PluginHost;
   readonly gate: ToolGate | undefined;
@@ -179,6 +182,7 @@ export class AgentRuntime {
     this.vault = d.vault;
     this.vision = d.vision;
     this.persona = d.persona;
+    this.backupDir = d.backupDir;
     this.plugins = d.plugins;
     this.gate = d.gate;
     this.appVersion = d.appVersion;

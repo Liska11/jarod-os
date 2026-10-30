@@ -70,7 +70,8 @@ export interface SearchHit {
   updatedAt: number;
 }
 
-export type MemoryType = "fact" | "preference" | "context" | "conversation";
+/** `rule` (Q2, analyse du 29/10) : une consigne de comportement donnée par l'utilisateur en corrigeant Jarod, injectée dans chaque conversation. */
+export type MemoryType = "fact" | "preference" | "context" | "conversation" | "rule";
 
 export interface Memory {
   id: string;

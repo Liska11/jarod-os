@@ -292,6 +292,10 @@ const api = {
     /** Quit and start again, in safe mode (no widget plugins, hook scripts or event automations) or normally. */
     relaunch: (safeMode: boolean): Promise<void> => ipcRenderer.invoke(IPC.windowRelaunch, safeMode),
     minimize: (): Promise<void> => ipcRenderer.invoke(IPC.windowMinimize),
+    /** Quitte le chat compact : la fenêtre reprend sa place et sa taille d'avant. */
+    compactExit: (): Promise<void> => ipcRenderer.invoke(IPC.windowCompactExit),
+    /** Le main dit quand la fenêtre entre en chat compact (clic sur la bulle) ou en sort. */
+    onCompact: (listener: (compact: boolean) => void): Unsubscribe => subscribe(IPC.windowCompact, listener),
     toggleMaximize: (): Promise<void> => ipcRenderer.invoke(IPC.windowToggleMaximize),
     close: (): Promise<void> => ipcRenderer.invoke(IPC.windowClose)
   },

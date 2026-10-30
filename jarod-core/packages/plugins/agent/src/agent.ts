@@ -1,5 +1,5 @@
 // Portage de packages/core/src/agent.ts (rév. 2e180305).
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { platform, release } from "node:os";
 import { join } from "node:path";
 import type { ProviderRouter } from "@jarod/plugin-llm";
@@ -23,13 +23,14 @@ import type { RoutingService } from "@jarod/plugin-llm";
 import type { MessageService, SessionService } from "./sessions.js";
 import type { Settings, SettingsService } from "@jarod/plugin-storage";
 import type { SkillRegistry } from "@jarod/plugin-skills";
-import { type Proof, type ToolContext, type ToolDef, type ToolRegistry, validateArgs } from "@jarod/plugin-tools";
+import { type Proof, resolveInWorkspace, type ToolContext, type ToolDef, type ToolRegistry, validateArgs } from "@jarod/plugin-tools";
 import type { TaskLedger } from "./tasks.js";
 import type { OutputStore } from "./outputs.js";
 import type { Attachment, Message, ToolCall } from "@jarod/contracts";
 import { auditArgs, redactCommandText } from "@jarod/kernel/redact";
 import { detect as detectInjection, type InjectionCategory } from "@jarod/kernel/injection";
 import { actionVerdict, type GuardMode, guardMode, outputVerdict, type Taint, taintOf } from "@jarod/kernel/injection-guard";
+import { markUntrusted, UNTRUSTED_GUIDANCE } from "@jarod/kernel/untrusted";
 import { activePolicy, toolVerdict } from "@jarod/kernel/network";
 import { newId, truncate } from "@jarod/kernel/util";
 import { explainResolution, type Resolution, reservedReason, type ToolGate } from "@jarod/plugin-permissions";
@@ -161,6 +162,8 @@ export interface AgentDeps {
   persona?: { read(): string };
   /** G2 : traces locales (plugin-integrations les branche) ; absent = rien de mesuré. */
   spans?: SpanSink;
+  /** Plancher de sécurité : le dossier des copies faites avant d'écraser un fichier (absent : pas de copie, l'accord est demandé quand même). */
+  backupDir?: string;
 }
 
 const MAX_HISTORY_CHARS = 600_000;
@@ -409,6 +412,7 @@ import { LoopGuardService } from "./loop-guards.js";
 import { type AccessProfile, autonomyHonoured, isAccessProfile, needsApproval } from "./access-profile.js";
 import { NEVER_ALWAYS, NEVER_ALWAYS_REASONS } from "./never-always.js";
 import { COCKPIT_PREROGATIVE } from "./prerogative.js";
+import { backupBeforeOverwrite, floorReason } from "./safety-floor.js";
 import type { SessionStateService } from "./session-state.js";
 import { SpillService } from "./spill.js";
 import { RAG_TOOLS, type ToolSearchService } from "@jarod/plugin-tools";
@@ -516,8 +520,10 @@ export class Agent {
     const parts = [this.personaOf(s).trim(), COCKPIT_PREROGATIVE];
     const date = new Date().toLocaleDateString(s.language === "fr" ? "fr-FR" : "en-US", { dateStyle: "full" });
     parts.push(
-      `## Contexte\n- Date : ${date}\n- Système : ${platform()} ${release()}\n- Dossier de travail : ${s.workspace ?? "aucun (les outils de fichiers et de shell sont indisponibles)"}`,
+      `## Contexte\n- Date : ${date}\n- Système : ${platform()} ${release()}\n- Langue : ${s.language === "fr" ? "réponds toujours en français (même si une consigne ou un outil est en anglais), sauf si l'utilisateur t'écrit dans une autre langue" : "answer in English, unless the user writes to you in another language"}
+- Dossier de travail : ${s.workspace ?? "aucun (les outils de fichiers et de shell sont indisponibles)"}${s.machineFiles ? "\n- Accès aux fichiers : tous les lecteurs de cet ordinateur, avec un chemin absolu (ex. E:\\Photos) ; les emplacements protégés restent refusés" : ""}`,
     );
+    parts.push(UNTRUSTED_GUIDANCE, ACTION_HONESTY);
     const project = projectInstructions(s.workspace);
     if (project)
       parts.push(`## Instructions du projet (${project.file})
@@ -530,13 +536,16 @@ ${project.text}`);
     if (s.memoryInject) {
       const profile = this.d.userProfile.read();
       if (profile) parts.push(`## Profil de l'utilisateur (USER.md)\n${profile.replace(/^# .*\n?/, "").trim()}`);
+      // Q2 : les règles données en corrigeant Jarod passent AVANT le reste, dans chaque conversation.
+      const rules = this.d.memory.rules();
+      if (rules.length) parts.push(`## Règles que l'utilisateur t'a données (à respecter toujours)\n${rules.map((m) => `- ${m.content}`).join("\n")}`);
       const mems = this.d.memory.relevant(query);
       if (mems.length) {
         parts.push(`## Ce que tu sais de l'utilisateur\n${mems.map((m) => `- (${m.type}) ${m.content}`).join("\n")}`);
       }
       if (s.agentMode === "build") {
         parts.push(
-          "Quand l'utilisateur partage une information durable (préférence, fait personnel, contexte de projet), enregistre-la avec memory_save ; si elle change ton portrait de lui (qui il est, comment il travaille, ses projets), mets aussi à jour user_profile.",
+          "Quand l'utilisateur partage une information durable (préférence, fait personnel, contexte de projet), enregistre-la avec memory_save ; si elle change ton portrait de lui (qui il est, comment il travaille, ses projets), mets aussi à jour user_profile. Quand il te corrige sur ta façon de faire (« ne fais plus ça », « à partir de maintenant… »), enregistre la consigne avec memory_save type=rule.",
         );
       }
     }
@@ -999,6 +1008,7 @@ ${project.text}`);
       ...(this.d.tasks ? { tasks: this.d.tasks } : {}),
       ...(this.d.outputs ? { outputs: this.d.outputs } : {}),
       ...(this.d.spans ? { spans: this.d.spans } : {}),
+      ...(this.d.backupDir ? { backupDir: this.d.backupDir } : {}),
       ...(this.turnSpans.has(sessionId) ? { parentSpan: this.turnSpans.get(sessionId)! } : {}),
     });
   }
@@ -1067,6 +1077,12 @@ ${project.text}`);
    * Summarizes everything before the last two user turns into a single summary message.
    * Returns false when the conversation is too short to be worth compacting.
    */
+  /**
+   * Q3 : appelé juste avant une compaction, pour sauver en mémoire ce que le résumé va effacer (branché sur la revue d'apprentissage par
+   * index.ts). Son échec n'empêche jamais la compaction : il est ignoré.
+   */
+  beforeCompact?: (sessionId: string, signal: AbortSignal) => Promise<unknown>;
+
   async compact(
     sessionId: string,
     signal: AbortSignal,
@@ -1079,6 +1095,7 @@ ${project.text}`);
     if (userIdx.length < 3) return false;
     const cut = userIdx[userIdx.length - 2]!;
     const older = history.slice(0, cut);
+    if (this.beforeCompact) await this.beforeCompact(sessionId, signal).catch(() => undefined);
     const summary = await this.complete(
       `Résume la conversation ci-dessous pour qu'un assistant puisse la poursuivre sans la relire. Conserve : objectifs de l'utilisateur, décisions prises, faits et chiffres importants, fichiers et commandes concernés, état d'avancement, questions en suspens. Sois dense et factuel (listes à puces).${preserve.trim() ? `\nConsigne de l'utilisateur, à respecter en priorité : ${preserve.trim()}` : ""}\n\n${transcript(
         older,
@@ -1290,9 +1307,16 @@ function injectionTaintOf(sessionId: string): Taint | null {
   }
   return taint;
 }
+/**
+ * Plancher de sécurité : le PREMIER outil de contenu extérieur (MCP, web, navigateur) lu pendant le tour, par conversation. Sans détection de texte :
+ * lire un contenu extérieur suffit à ce que toute action sensible qui suit, dans le même tour, passe par l'accord natif.
+ */
+const externalReads = new Map<string, string>();
+
 /** Efface la teinture : appelé au début de chaque tour. */
 export function clearInjectionTaint(sessionId: string): void {
   injectionTaints.delete(sessionId);
+  externalReads.delete(sessionId);
 }
 function injectionMode(): GuardMode {
   return guardMode();
@@ -1334,6 +1358,8 @@ type GuardedExtra = {
   /** G2 : récepteur de traces et trace parente (le tour de conversation). */
   spans?: SpanSink;
   parentSpan?: SpanHandle;
+  /** Plancher de sécurité : où garder la copie d'un fichier avant qu'il soit écrasé. */
+  backupDir?: string;
 };
 
 export async function executeGuardedTool(
@@ -1484,7 +1510,7 @@ async function runGuardedTool(
   let approvalText = tool.description;
   if (tool.precheck) {
     try {
-      const note = await tool.precheck(call.args, { sessionId, workspace: s.workspace, signal });
+      const note = await tool.precheck(call.args, { sessionId, workspace: s.workspace, signal, ...(s.machineFiles ? { machineFiles: true } : {}) });
       if (typeof note === "string" && note.trim()) approvalText = note;
     } catch (e) {
       mark.status = "denied";
@@ -1492,6 +1518,21 @@ async function runGuardedTool(
       refusedTask(tool.description, (e as Error).message);
       return { content: `Refusé : ${(e as Error).message}`, isError: true };
     }
+  }
+  // Plancher de sécurité (safety-floor.ts) : indépendant du profil, des règles « sans accord » et de « Tout autoriser ».
+  let floor: string | null = null;
+  let overwriteTarget: string | null = null;
+  if (s.safetyFloor !== false) {
+    if (call.name === "write_file" || call.name === "edit_file") {
+      try {
+        const p = resolveInWorkspace({ sessionId, workspace: s.workspace, signal, ...(s.machineFiles ? { machineFiles: true } : {}) } as ToolContext, (call.args as Record<string, unknown> | undefined)?.path);
+        if (existsSync(p) && statSync(p).isFile()) overwriteTarget = p;
+      } catch {
+        overwriteTarget = null; // chemin refusé : l'outil le refusera lui-même
+      }
+    }
+    floor = floorReason({ tool: call.name, args: (call.args ?? {}) as Record<string, unknown>, dangerous: Boolean(tool.dangerous), externalFrom: externalReads.get(sessionId) ?? null, existingTarget: overwriteTarget });
+    if (floor) approvalText = `Plancher de sécurité : ${floor}. ${approvalText}`;
   }
   const task = tasks?.begin({ sessionId, tool: call.name, summary: approvalText, ...(target !== null ? { target } : {}) }, signal);
   // Le signal de la tâche suit celui du tour ET l'annulation de la tâche seule (écran Tâches).
@@ -1506,7 +1547,7 @@ async function runGuardedTool(
   // « Toujours autoriser » dispense l'accord de l'outil, jamais celui qu'impose une règle « demander » du garde, ni pour un outil de NEVER_ALWAYS (§ 23.2) : une entrée
   // déjà enregistrée pour lui est IGNORÉE (la demande est posée), non supprimée.
   const alwaysAllowed = (s.alwaysAllowTools ?? []).includes(call.name) && !NEVER_ALWAYS.has(call.name);
-  if (res.autonomous && autonomyHonoured(profile)) {
+  if (res.autonomous && autonomyHonoured(profile) && !floor) {
     // Autonomie configurable : une règle de l'utilisateur (allow + autonomous) couvre CET appel — outil, cibles, opération, conversation,
     // échéance, utilisations. L'accord n'est pas demandé ; tout le reste a joué (Internet, mode Plan, refus placés avant, garde de l'outil).
     // Une utilisation est retirée AVANT l'exécution : deux appels simultanés ne passent pas sur la même dernière.
@@ -1522,6 +1563,7 @@ async function runGuardedTool(
     if (task) tasks!.step(task.id, "accordée", `sans accord, par la règle ${res.rule?.id ?? `n° ${(res.index ?? 0) + 1}`}`, "running");
     decision = "autorisé (règle)";
   } else if (
+    floor ||
     needsApproval({ profile, tool: call.name, dangerous: Boolean(tool.dangerous), verdict: verdict === "ask" ? "ask" : "allow", autoApproveTools: s.autoApproveTools, alwaysAllowed })
   ) {
     if (task) tasks!.step(task.id, "accord demandé", undefined, "awaiting-approval");
@@ -1572,11 +1614,19 @@ async function runGuardedTool(
       approve: hooks.approve,
       ...(s.shellGuard ? { shellGuard: s.shellGuard } : {}),
       ...(extra.vault ? { vault: extra.vault } : {}),
+      ...(s.machineFiles ? { machineFiles: true } : {}),
     };
     const exec = child("tool.execute");
     let out: string;
+    // Plancher de sécurité : la copie du fichier est faite AVANT l'écrasement, accord donné ou non requis.
+    let backupNote = "";
+    if (overwriteTarget && extra.backupDir) {
+      const copy = backupBeforeOverwrite(overwriteTarget, extra.backupDir);
+      backupNote = copy ? `\n\n[Sauvegarde avant écrasement : ${copy}]` : "\n\n[Pas de copie avant écrasement : fichier trop gros ou illisible]";
+    }
     try {
       out = await tool.run(call.args, ctx);
+      if (backupNote) out += backupNote;
     } catch (e) {
       exec?.end(runSignal.aborted ? "cancelled" : "error");
       throw e;
@@ -1595,11 +1645,14 @@ async function runGuardedTool(
     // Garde anti-injection sur la SORTIE : teinture du tour quand le contenu lu porte une instruction ;
     // sortie retenue pour un palier bloquant ; marqueur seul pour read/act (jamais de blocage).
     const injected = injectionMode() === "enforce" ? outputVerdict({ tier: callTier ?? "read", tool: call.name, text: out, assistantNames: ASSISTANT_NAMES }) : null;
-    let shown = out;
+    // Q1 : tout contenu venu de l'extérieur (web, navigateur, MCP) part au modèle dans l'enveloppe « donnée non fiable », détecté ou non.
+    if ((OUTSIDE_CONTENT_TOOLS.has(call.name) || tool.source === "mcp") && !externalReads.has(sessionId)) externalReads.set(sessionId, call.name);
+    const enveloped = OUTSIDE_CONTENT_TOOLS.has(call.name) || tool.source === "mcp" ? markUntrusted(out, tool.source === "mcp" ? `serveur MCP, outil ${call.name}` : `outil ${call.name}`) : out;
+    let shown = enveloped;
     if (injected) {
       if (injected.taint) noteInjectionTaint(sessionId, injected.taint);
       if (injected.block) shown = "[sortie de « " + call.name + " » retenue : motifs " + injected.motif.join(", ") + " — contenu non fiable dans une action " + (callTier ?? "read") + "]";
-      else if (injected.marker) shown = injected.marker + out;
+      else if (injected.marker) shown = injected.marker + enveloped;
     }
     const injectionCategories = injected ? (injected.categories.length ? injected.categories : undefined) : injectionIn(out);
     audit(decision ?? "sans accord", !failed, proof?.status, injectionCategories, tool.verify ? proof?.evidence : undefined);
@@ -1620,6 +1673,19 @@ async function runGuardedTool(
     return { content: `Erreur : ${(e as Error).message}`, isError: true };
   }
 }
+
+/**
+ * Les outils qui rapportent un contenu écrit par d'autres que l'utilisateur (pages, recherches). Les outils MCP le sont tous.
+ * `connected_browser` n'y est pas : il pose déjà ses propres repères « donnée non fiable » (connected-browser-tool.ts).
+ */
+const OUTSIDE_CONTENT_TOOLS: ReadonlySet<string> = new Set(["web_fetch", "web_search", "browser_open", "browser_read"]);
+
+/**
+ * Q5/Q6 (analyse du 29/10) : la preuve n'a de valeur que si le modèle la respecte en parlant, et l'annulation que s'il sait qu'elle existe.
+ * Le libellé « [Vérification : …] » est celui que la boucle ajoute au résultat de l'outil (PROOF_LABEL).
+ */
+export const ACTION_HONESTY = `## Dire vrai sur les actions
+Après une action, lis la ligne « [Vérification : …] » du résultat. « constatée » : tu peux dire que c'est fait. « impossible » : dis ce que tu as lancé et que tu n'as pas pu le constater, sans dire « c'est fait ». « ÉCHEC » : dis que cela n'a pas marché et ce qui a été observé. Quand l'utilisateur dit « annule » ou « remets comme avant » à propos d'une action sur l'ordinateur, utilise undo_last_action.`;
 
 const PROOF_LABEL: Record<Proof["status"], string> = { verified: "constatée", failed: "ÉCHEC", unverifiable: "impossible" };
 

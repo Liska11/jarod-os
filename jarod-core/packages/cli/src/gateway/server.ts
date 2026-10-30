@@ -975,7 +975,9 @@ export function createGateway(opts: GatewayOptions): Gateway {
     const fn = methods[frame.method];
     if (!fn) {
       bump(unhandled, `rpc ${frame.method}`);
-      log(`rpc non servi : ${frame.method}`);
+      // Une méthode connue et volontairement non portée (forfait Nous Portal, facturation…) est comptée, pas journalisée à chaque appel : la page
+      // Usage la redemande toutes les 15 min et remplissait le journal de lignes qui n'annoncent aucune panne.
+      if (!UNAVAILABLE_RPC.has(frame.method)) log(`rpc non servi : ${frame.method}`);
       if (id !== undefined) send(conn, { jsonrpc: "2.0", id, error: { code: RPC.notFound, message: UNAVAILABLE_RPC.has(frame.method) ? NOT_AVAILABLE : `method not found: ${frame.method}` } });
       return;
     }

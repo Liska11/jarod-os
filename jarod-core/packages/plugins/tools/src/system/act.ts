@@ -22,7 +22,9 @@ import { protectedReason, stopErrorMessage } from "./proc.js";
 import { asList, powershellExe, type PsRunner, realPsRunner } from "./ps.js";
 import * as A from "./scripts-act.js";
 import * as S from "./scripts.js";
+import { BRIGHTNESS, RAISE_WINDOW } from "./scripts-everyday.js";
 import type { SystemToolDeps } from "./tools.js";
+import type { UndoStack } from "./undo.js";
 import { childEnv } from "@jarod/kernel/child-env";
 
 /** Lance un programme détaché et rend la main dès qu'il a démarré. Remplaçable dans les tests. */
@@ -44,6 +46,8 @@ export interface SystemActDeps extends SystemToolDeps {
   protectedPids?: readonly number[];
   /** Cockpit, lot 2 : les attentes successives avant chaque constat de la preuve (défaut : 0,5 s, 1 s, 1,5 s, 2 s). */
   verifyDelaysMs?: readonly number[];
+  /** Q6 : la pile d'annulation où chaque action réussie dépose son inverse (absente : rien n'est annulable). */
+  undo?: UndoStack;
 }
 
 // --- listes -----------------------------------------------------------------------------------------------
@@ -168,6 +172,17 @@ export function systemActTools(deps: SystemActDeps = {}): ToolDef[] {
     return undefined;
   };
   const runningNow = async (signal?: AbortSignal) => parseRunningApps(await runner().json(S.RUNNING_APPS, undefined, { timeoutMs: 30_000, signal }));
+  /** Vrai quand l'application tourne déjà avec une fenêtre et qu'elle a été ramenée devant ; toute erreur vaut « non » (on la lance alors). */
+  const raiseIfRunning = async (label: string, signal?: AbortSignal): Promise<boolean> => {
+    try {
+      const hit = (await runningNow(signal)).find((r) => sameApp(r, label));
+      if (!hit) return false;
+      const res = (await runner().json(RAISE_WINDOW, { pid: hit.pid }, { timeoutMs: 20_000, signal })) as { raised?: boolean } | null;
+      return res?.raised === true;
+    } catch {
+      return false;
+    }
+  };
   const sameApp = (r: AppInfo, label: string) => {
     const l = label.toLowerCase().replace(/\.exe$/, "");
     return r.name.toLowerCase() === l || (r.path !== "" && programStem(r.path) === l);
@@ -239,12 +254,38 @@ export function systemActTools(deps: SystemActDeps = {}): ToolDef[] {
       ...base,
       name: "system_control",
       dangerous: true,
-      description: "Change un réglage de cet ordinateur (un accord est demandé à chaque fois). action=set_volume : percent (0-100) et/ou muted (vrai/faux) ; action=set_dark_mode : enabled (vrai/faux) ; action=notify : title (et body) en notification de bureau ; action=sleep_display : éteint les écrans (ils se rallument au premier mouvement). Rend l'état après le changement quand il existe. Le verrouillage de la session n'est pas disponible.",
+      // Q5 : la preuve relit le réglage changé. Une notification ou des écrans éteints ne se relisent pas : la preuve le dit.
+      async verify(args, _out, vctx) {
+        const opts = { timeoutMs: 30_000, signal: vctx.signal };
+        if (args.action === "set_volume") {
+          const now = parseAudio(((await runner().json(A.AUDIO, undefined, opts)) ?? {}) as Record<string, unknown>);
+          const wantPct = typeof args.percent === "number" ? Math.min(100, Math.max(0, Math.round(args.percent))) : null;
+          const pctOk = wantPct === null || (now.output_volume !== null && Math.abs(now.output_volume - wantPct) <= 1);
+          const muteOk = typeof args.muted !== "boolean" || now.muted === args.muted;
+          const seen = `volume ${now.output_volume ?? "?"} %, son ${now.muted === true ? "coupé" : now.muted === false ? "actif" : "?"}`;
+          return pctOk && muteOk ? { status: "verified", evidence: seen } : { status: "failed", evidence: `relu après coup : ${seen}` };
+        }
+        if (args.action === "set_dark_mode") {
+          const now = parseAppearance(((await runner().json(A.APPEARANCE, undefined, opts)) ?? {}) as Record<string, unknown>);
+          return now.dark_mode === args.enabled
+            ? { status: "verified", evidence: `mode sombre ${now.dark_mode ? "actif" : "inactif"}` }
+            : { status: "failed", evidence: `relu après coup : mode sombre ${now.dark_mode ? "actif" : "inactif"}` };
+        }
+        if (args.action === "set_brightness") {
+          const now = ((await runner().json(BRIGHTNESS, undefined, opts)) ?? {}) as { supported?: boolean; percent?: number };
+          const want = typeof args.percent === "number" ? Math.min(100, Math.max(0, Math.round(args.percent))) : null;
+          return now.supported && want !== null && typeof now.percent === "number" && Math.abs(now.percent - want) <= 2
+            ? { status: "verified", evidence: `luminosité ${now.percent} %` }
+            : { status: "failed", evidence: now.supported ? `relu après coup : luminosité ${now.percent ?? "?"} %` : "cet écran ne se règle pas par logiciel" };
+        }
+        return { status: "unverifiable", evidence: args.action === "notify" ? "une notification affichée ne se relit pas" : "l'état des écrans ne se relit pas" };
+      },
+      description: "Change un réglage de cet ordinateur (un accord est demandé à chaque fois). action=set_volume : percent (0-100) et/ou muted (vrai/faux) ; action=set_dark_mode : enabled (vrai/faux) ; action=notify : title (et body) en notification de bureau ; action=sleep_display : éteint les écrans (ils se rallument au premier mouvement) ; action=set_brightness : percent (0-100), écran intégré d'un portable seulement. Rend l'état après le changement quand il existe. Le verrouillage de la session n'est pas disponible.",
       parameters: {
         type: "object",
         properties: {
-          action: { type: "string", enum: ["set_volume", "set_dark_mode", "notify", "sleep_display"] },
-          percent: { type: "integer", description: "Pour set_volume : 0 à 100." },
+          action: { type: "string", enum: ["set_volume", "set_dark_mode", "notify", "sleep_display", "set_brightness"] },
+          percent: { type: "integer", description: "Pour set_volume et set_brightness : 0 à 100." },
           muted: { type: "boolean", description: "Pour set_volume : couper ou rétablir le son." },
           enabled: { type: "boolean", description: "Pour set_dark_mode." },
           title: { type: "string", description: "Pour notify (120 caractères au plus)." },
@@ -254,8 +295,26 @@ export function systemActTools(deps: SystemActDeps = {}): ToolDef[] {
       },
     },
     async (args, signal) => {
-      const action = oneOf(args, "action", ["set_volume", "set_dark_mode", "notify", "sleep_display"] as const);
+      const action = oneOf(args, "action", ["set_volume", "set_dark_mode", "notify", "sleep_display", "set_brightness"] as const);
       const opts = { timeoutMs: 30_000, signal };
+      if (action === "set_brightness") {
+        if (typeof args.percent !== "number" || !Number.isFinite(args.percent)) throw new Error("percent (0-100) est requis pour set_brightness");
+        const percent = Math.min(100, Math.max(0, Math.round(args.percent)));
+        return {
+          summary: `Sur cet ordinateur : régler la luminosité à ${percent} %`,
+          go: async () => {
+            const before = ((await runner().json(BRIGHTNESS, undefined, opts)) ?? {}) as { supported?: boolean; percent?: number };
+            if (!before.supported) throw new Error("Cet écran ne se règle pas par logiciel (écran externe, ou pilote sans réglage) : utilisez ses boutons.");
+            const after = ((await runner().json(BRIGHTNESS, { percent }, opts)) ?? {}) as { percent?: number };
+            if (typeof before.percent === "number" && before.percent !== percent)
+              deps.undo?.push(`régler la luminosité à ${percent} %`, async () => {
+                const now = ((await runner().json(BRIGHTNESS, { percent: before.percent }, { timeoutMs: 30_000 })) ?? {}) as { percent?: number };
+                return `Luminosité revenue à ${now.percent ?? before.percent} %.`;
+              });
+            return json({ brightness: after.percent ?? null });
+          },
+        };
+      }
       if (action === "set_volume") {
         const set: Record<string, unknown> = {};
         if (args.percent !== undefined && args.percent !== null) {
@@ -268,7 +327,24 @@ export function systemActTools(deps: SystemActDeps = {}): ToolDef[] {
         }
         if (Object.keys(set).length === 0) throw new Error("set_volume demande percent et/ou muted");
         const what = [set.percent !== undefined ? `régler le volume à ${String(set.percent)} %` : "", set.muted === true ? "couper le son" : set.muted === false ? "rétablir le son" : ""].filter(Boolean).join(" et ");
-        return { summary: `Sur cet ordinateur : ${what}`, go: async () => json({ audio: parseAudio(((await runner().json(A.AUDIO, set, opts)) ?? {}) as Record<string, unknown>) }) };
+        return {
+          summary: `Sur cet ordinateur : ${what}`,
+          go: async () => {
+            // L'état d'avant n'est relu que s'il y a une pile où déposer l'inverse.
+            const before = deps.undo ? parseAudio(((await runner().json(A.AUDIO, undefined, opts)) ?? {}) as Record<string, unknown>) : null;
+            const after = parseAudio(((await runner().json(A.AUDIO, set, opts)) ?? {}) as Record<string, unknown>);
+            // Q6 : l'inverse rétablit ce qui a été relu AVANT le changement (seulement ce qui a été changé).
+            const back: Record<string, unknown> = {};
+            if (before && set.percent !== undefined && before.output_volume !== null) back.percent = before.output_volume;
+            if (before && set.muted !== undefined && before.muted !== null) back.muted = before.muted;
+            if (Object.keys(back).length)
+              deps.undo?.push(what, async () => {
+                const now = parseAudio(((await runner().json(A.AUDIO, back, { timeoutMs: 30_000 })) ?? {}) as Record<string, unknown>);
+                return `Volume revenu à ${now.output_volume ?? "?"} %${now.muted === true ? " (son coupé)" : ""}.`;
+              });
+            return json({ audio: after });
+          },
+        };
       }
       if (action === "set_dark_mode") {
         if (typeof args.enabled !== "boolean") throw new Error("enabled (vrai/faux) est requis pour set_dark_mode");
@@ -276,7 +352,13 @@ export function systemActTools(deps: SystemActDeps = {}): ToolDef[] {
         return {
           summary: `Sur cet ordinateur : ${enabled ? "activer" : "désactiver"} le mode sombre`,
           go: async () => {
+            const before = deps.undo ? parseAppearance(((await runner().json(A.APPEARANCE, undefined, opts)) ?? {}) as Record<string, unknown>).dark_mode : enabled;
             await runner().json(A.SET_DARK_MODE, { enabled }, opts);
+            if (before !== enabled)
+              deps.undo?.push(`${enabled ? "activer" : "désactiver"} le mode sombre`, async () => {
+                await runner().json(A.SET_DARK_MODE, { enabled: before }, { timeoutMs: 30_000 });
+                return `Mode sombre ${before ? "réactivé" : "désactivé"}.`;
+              });
             return json({ appearance: parseAppearance(((await runner().json(A.APPEARANCE, undefined, opts)) ?? {}) as Record<string, unknown>) });
           },
         };
@@ -340,6 +422,8 @@ export function systemActTools(deps: SystemActDeps = {}): ToolDef[] {
           return {
             summary: `Lancer l'application « ${found.name} »`,
             go: async () => {
+              // Lot 5 (Mark-LVI « Raise, Don't Duplicate ») : une application déjà ouverte vient devant au lieu d'être lancée une 2e fois.
+              if (await raiseIfRunning(found.name, signal)) return json({ opened: found.name, raised: true });
               await launch("explorer.exe", [found.path]);
               return json({ opened: found.name });
             },
@@ -350,6 +434,7 @@ export function systemActTools(deps: SystemActDeps = {}): ToolDef[] {
         return {
           summary: `Lancer le programme ${exe}`,
           go: async () => {
+            if (await raiseIfRunning(programStem(exe), signal)) return json({ opened: appName, raised: true });
             await launch(exe, []);
             return json({ opened: appName });
           },

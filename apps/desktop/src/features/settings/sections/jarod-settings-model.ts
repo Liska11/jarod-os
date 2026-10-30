@@ -273,6 +273,8 @@ export interface JarodSettings {
   compactThreshold: number
   memoryInject: boolean
   browserVisible: boolean
+  machineFiles: boolean
+  safetyFloor: boolean
   browserPersistent: boolean
   autoTitle: boolean
   anthropicFallbacks: boolean

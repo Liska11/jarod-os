@@ -584,8 +584,13 @@ export interface JarodOSPrefs {
   usageInMenuBar?: boolean
   /** The menu bar's items (order, hidden ones) and clock; `normalizeMenuBar` fills the gaps. */
   menuBar?: MenuBarLayout
-  /** Lot C : la mini-fenêtre en haut de l'écran (ce que fait Jarod, ce qui attend une réponse) ; éteinte par défaut, menu de l'icône. */
+  /**
+   * La bulle flottante (mini-fenêtre) : visible quand Jarod est réduit ; un clic ouvre le chat compact. ALLUMÉE par défaut depuis le 30/10
+   * (seul `false`, posé depuis le menu de l'icône, l'éteint).
+   */
   miniWindow?: boolean
+  /** Où l'utilisateur a posé la bulle (coin haut-gauche, en pixels d'écran) ; absent : en bas à droite. */
+  miniPos?: { x: number; y: number }
   /** Hermes automations that run when something happens rather than on a schedule. */
   eventAutomations?: EventAutomation[]
   /** Toasts, system notifications and spoken announcements stay quiet; the bell still collects them. */
@@ -984,6 +989,9 @@ export const IPC = {
   windowQuit: 'jarod-os:window:quit',
   windowRelaunch: 'jarod-os:window:relaunch',
   windowMinimize: 'jarod-os:window:minimize',
+  // 30/10 : le chat compact (compact-chat.ts). La page demande d'en sortir (« Agrandir ») ; le main lui dit quand elle y entre ou en sort.
+  windowCompactExit: 'jarod-os:window:compact-exit',
+  windowCompact: 'jarod-os:window:compact',
   windowToggleMaximize: 'jarod-os:window:toggle-maximize',
   windowClose: 'jarod-os:window:close',
 
@@ -1133,6 +1141,10 @@ export const IPC = {
   // valide et le pousse à la mini-fenêtre, qui ne peut que le recevoir (aucun envoi depuis elle).
   miniState: 'jarod-os:mini:state',
   miniPush: 'jarod-os:mini:push',
+  // 30/10 : la bulle ronde se déplace et se clique. Deux envois seulement, gardés par le contrôle d'émetteur (la mini-fenêtre) ; le main
+  // re-valide : un déplacement est un couple de petits entiers, un clic ne porte rien.
+  miniDrag: 'jarod-os:mini:drag',
+  miniClick: 'jarod-os:mini:click',
 
   bridgePolicyRead: 'jarod-os:bridge:policy-read',
   bridgePolicyWrite: 'jarod-os:bridge:policy-write',
@@ -1227,4 +1239,6 @@ export interface MiniSummary {
   waitingCount: number
   /** Sous-agents en cours. */
   agents: number
+  /** La voix : `listening` = Jarod écoute (la bulle ondule), `thinking` = il réfléchit, `speaking` = il parle ; `off` sinon. */
+  voice: 'off' | 'listening' | 'thinking' | 'speaking'
 }

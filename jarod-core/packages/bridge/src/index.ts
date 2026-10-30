@@ -3,5 +3,6 @@ export { assertOneaiChannel, ONEAI_EVENT_CHANNELS, ONEAI_INVOKE_CHANNELS } from 
 export { bindLocalModelsEvents, bindUpdateEvents, bindVoiceEvents, closeAllApiServers, createHandlers, startRememberedApiServers } from "./main/handlers/index.js";
 export type { DesktopKernel, DesktopShell, HandlerContext } from "./main/handlers/index.js";
 export { desktopKernelOf } from "./main/kernel.js";
+export { autoStartLocalEngine } from "./main/engine-autostart.js";
 export type { OneaiHandler } from "./main/ipc.js";
 export { HERMES_REGISTRY, RegistryClient } from "./main/registry.js";

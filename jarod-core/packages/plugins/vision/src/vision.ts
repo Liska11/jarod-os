@@ -5,6 +5,7 @@ import type { ChatTurn } from "@jarod/contracts";
 import type { AttachmentService, LoadedAttachment } from "@jarod/plugin-rag";
 import type { SettingsService } from "@jarod/plugin-storage";
 import { type ImageDescriptionConfig } from "@jarod/contracts";
+import { LOCAL_VISION_PROVIDER, type LocalVisionServer } from "./local-vision.js";
 export type { ImageDescriptionConfig };
 
 /**
@@ -49,6 +50,8 @@ export class ImageDescriber {
       settings: SettingsService;
       providers: ProviderRouter;
       attachments: AttachmentService;
+      /** Le modèle de vision local (llama-server + mmproj), lancé à la demande. */
+      local?: LocalVisionServer;
     },
     /** Délai d'UNE description : un fournisseur qui ne répond jamais ne doit pas suspendre le tour (l'image est alors dite « non décrite »). */
     private readonly opts: { timeoutMs?: number } = {},
@@ -77,28 +80,83 @@ export class ImageDescriber {
     const cfg = this.config();
     const data = image.data ?? this.d.attachments.load(image).data;
     if (!data) throw new Error("image illisible");
-    const timeout = AbortSignal.timeout(this.opts.timeoutMs ?? DESCRIBE_TIMEOUT_MS);
-    const result = await this.d.providers.client(cfg.provider).chat(
-      {
-        model: cfg.model,
-        system: "",
-        messages: [{ role: "user", content: PROMPT, attachments: [{ ...image, kind: "image", data }] }],
-        tools: [],
-        maxTokens: 2000,
-        signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
-      },
-      {},
-    );
-    const text = result.text.trim();
-    if (!text) throw new Error("le modèle de description n'a rien répondu");
+    const answer = await this.ask([{ role: "user", content: PROMPT, attachments: [{ ...image, kind: "image", data }] }], 2000, signal);
+    const text = answer.text;
     this.d.db.run(
       "INSERT INTO image_descriptions (attachment_id, model, text, created_at) VALUES (?, ?, ?, ?) ON CONFLICT(attachment_id) DO UPDATE SET model = excluded.model, text = excluded.text, created_at = excluded.created_at",
       image.id,
-      `${cfg.provider}:${cfg.model}`,
+      answer.used,
       text,
       Date.now(),
     );
     return text;
+  }
+
+  /** Whether a model for looking at the screen is set (never guessed: the image is sent to that provider). */
+  canLook(): boolean {
+    return this.targets().some((t) => t.provider !== LOCAL_VISION_PROVIDER || Boolean(this.d.local?.available()));
+  }
+
+  /** Le modèle réglé, puis le modèle de secours s'il y en a un. */
+  private targets(): { provider: string; model: string }[] {
+    const cfg = this.config();
+    if (cfg.mode === "off") return [];
+    const out: { provider: string; model: string }[] = [];
+    if (cfg.provider && cfg.model) out.push({ provider: cfg.provider, model: cfg.model });
+    if (cfg.fallbackProvider && cfg.fallbackModel) out.push({ provider: cfg.fallbackProvider, model: cfg.fallbackModel });
+    return out;
+  }
+
+  /**
+   * Pose la question au premier modèle qui répond : le réglé, puis le secours (Gemini en nuage, par exemple). L'annulation de l'utilisateur
+   * interrompt tout ; une autre erreur passe au suivant, et si tous échouent c'est la première qui est dite.
+   */
+  private async ask(messages: ChatTurn[], maxTokens: number, signal?: AbortSignal): Promise<{ text: string; used: string }> {
+    let first: Error | null = null;
+    for (const t of this.targets()) {
+      try {
+        if (t.provider === LOCAL_VISION_PROVIDER) {
+          if (!this.d.local) throw new Error("la vision locale n'est pas disponible");
+          await this.warm();
+          signal?.throwIfAborted();
+        }
+        const timeout = AbortSignal.timeout(this.opts.timeoutMs ?? DESCRIBE_TIMEOUT_MS);
+        const result = await this.d.providers.client(t.provider).chat(
+          { model: t.model, system: "", messages, tools: [], maxTokens, signal: signal ? AbortSignal.any([signal, timeout]) : timeout },
+          {},
+        );
+        const text = result.text.trim();
+        if (!text) throw new Error("le modèle de vision n'a rien répondu");
+        return { text, used: `${t.provider}:${t.model}` };
+      } catch (e) {
+        if (signal?.aborted) throw e;
+        first ??= e instanceof Error ? e : new Error(String(e));
+      }
+    }
+    throw first ?? new Error("aucun modèle de vision n'est réglé (Réglages › Modèles › Description d'images)");
+  }
+
+  /** Le modèle local se lance à la première image qu'on lui donne. */
+  private async warm(): Promise<void> {
+    if (!this.d.local) throw new Error("la vision locale n'est pas disponible");
+    await this.d.local.ensure();
+  }
+
+  /** Looks at one image that is not an attachment (a screen capture) and answers `question`; nothing is cached or stored. */
+  async look(image: { data: string; mime: string }, question: string, signal?: AbortSignal): Promise<string> {
+    if (!this.canLook()) throw new Error("aucun modèle de vision n'est réglé (Réglages › Modèles › Description d'images)");
+    const answer = await this.ask(
+      [
+        {
+          role: "user",
+          content: question,
+          attachments: [{ id: "screen", name: "ecran.jpg", mime: image.mime, size: image.data.length, kind: "image", data: image.data }],
+        },
+      ],
+      1500,
+      signal,
+    );
+    return answer.text;
   }
 
   /**

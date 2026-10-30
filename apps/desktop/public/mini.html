@@ -2,19 +2,22 @@
 <html lang="fr">
   <head>
     <meta charset="utf-8" />
-    <!-- Lot C : la mini-fenêtre. Aucune ressource externe, aucun script en ligne, aucune connexion : elle affiche ce que le main lui pousse. -->
+    <!-- La bulle de Jarod (30/10). Aucune ressource externe, aucun script en ligne : elle affiche ce que le main lui pousse, se déplace à la
+         souris et se clique (deux envois au main, rien d'autre). -->
     <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'" />
-    <title>Jarod — mini</title>
+    <title>Jarod — bulle</title>
     <link rel="stylesheet" href="mini.css" />
   </head>
   <body>
-    <main id="pill" class="pill idle" aria-live="polite">
-      <span class="dot" aria-hidden="true"></span>
-      <div class="text">
-        <div id="line1" class="line1">Jarod</div>
-        <div id="line2" class="line2">Au repos</div>
-      </div>
-      <span id="count" class="count" hidden></span>
+    <main id="orb" class="orb idle" role="button" aria-live="polite" aria-label="Jarod">
+      <span class="ripple r1" aria-hidden="true"></span>
+      <span class="ripple r2" aria-hidden="true"></span>
+      <span class="ripple r3" aria-hidden="true"></span>
+      <span class="ring" aria-hidden="true"></span>
+      <span class="core" aria-hidden="true">
+        <span class="bars"><i></i><i></i><i></i><i></i><i></i></span>
+      </span>
+      <span id="count" class="badge" hidden></span>
     </main>
     <script src="mini.js"></script>
   </body>

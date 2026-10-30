@@ -1,26 +1,26 @@
 {
   "note": "Empreintes de « installation == build de S: » (T01/T03). check compare l'installation à ces valeurs ; write les recalcule après un build et une installation faits depuis S:.",
   "source": "S: (monorepo, branche feature/trust-matrix)",
-  "updated": "2026-10-27",
+  "updated": "2026-10-30",
   "install": {
     "root": "C:\\Program Files\\Jarod-OS",
-    "asarSha256": "799b3e631bff423cc0d0066eafcc26a0bed498e13724e831d928a8f8e9a1365d",
-    "asarBytes": 6331110,
-    "gatewaySha256": "78dd5db4046bf331d8a74d433a5f7b9e75bffd74977b4c8545717a558062355e",
-    "gatewayBytes": 9079705
+    "asarSha256": "72625ddbdf437600d21e5c4dade3c9fafcd825b18b073624bd37c697d57ebc18",
+    "asarBytes": 6354923,
+    "gatewaySha256": "1f7a3ef2d80e4bef6ed791aa312725315ed70ea774c5353ee509f72a0293bbef",
+    "gatewayBytes": 9143042
   },
   "build": {
     "gatewayPath": "jarod-core/dist/gateway/gateway.mjs",
     "distPath": "apps/desktop/dist",
-    "distTreeSha256": "d50629388d9e8086e4a6098bff211816a5052ec3419ea8c229edb464eaf2468f",
+    "distTreeSha256": "2701a053c738126afa0fbd8e5eac29543a8dfb235a29e73b8b13fef35ac8b5d5",
     "distTreeNote": "arbre dist/ sans les *.map (ce que l'asar embarque)"
   },
   "chain": {
     "gateway": {
-      "current": "78dd5db4046bf331d8a74d433a5f7b9e75bffd74977b4c8545717a558062355e"
+      "current": "1f7a3ef2d80e4bef6ed791aa312725315ed70ea774c5353ee509f72a0293bbef"
     },
     "asar": {
-      "current": "799b3e631bff423cc0d0066eafcc26a0bed498e13724e831d928a8f8e9a1365d"
+      "current": "72625ddbdf437600d21e5c4dade3c9fafcd825b18b073624bd37c697d57ebc18"
     }
   }
 }

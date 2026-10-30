@@ -23,6 +23,7 @@ import { ActionHud, OsHighlighter } from '../features/voice/ActionHud.tsx'
 import { VoiceOrb } from '../features/voice/VoiceOrb.tsx'
 import { FirstRunSetup } from '../features/setup/FirstRunSetup.tsx'
 import { WidgetWindow } from '../features/plugins/PluginSlots.tsx'
+import { CompactChat, useCompactChat } from './CompactChat.tsx'
 
 const TerminalSurface = lazy(() => import('../features/terminal/TerminalSurface.tsx').then(m => ({ default: m.TerminalSurface })))
 const SystemSurface = lazy(() => import('../features/system/SystemSurface.tsx').then(m => ({ default: m.SystemSurface })))
@@ -62,6 +63,7 @@ function FloatingContent({ win }: { win: OSWindow }) {
 /** The desktop: wallpaper, menu bar, windows, dock, overlays. */
 export function Desktop() {
   const windows = useStore($windows)
+  const compact = useCompactChat()
   const commandBarOpen = useStore($commandBarOpen)
   const applicationsOpen = useStore($applicationsOpen)
   const screensaverUp = useStore($screensaverUp)
@@ -86,6 +88,17 @@ export function Desktop() {
       offPrefs()
     }
   }, [])
+
+  // 30/10 : fenêtre en chat compact (clic sur la bulle) : la conversation seule, plus les demandes d'accord et les notifications.
+  if (compact) {
+    return (
+      <div className="relative h-full w-full overflow-clip bg-bg">
+        <CompactChat />
+        <RequestHost />
+        <Toasts />
+      </div>
+    )
+  }
 
   return (
     <div className="relative h-full w-full overflow-clip bg-bg">

@@ -226,6 +226,8 @@ describe("hotswap", () => {
 
   it("éteint : un appel du chat ne charge ni ne décharge rien", async () => {
     const { core, lmstudio, spawned } = await setup([{ key: "qwen", instances: ["qwen"] }, { key: "jean" }]);
+    // Isolé de la machine : llama.cpp pointe vers un port fermé (un vrai serveur local actif sur le port par défaut recevrait sinon la requête et la traiterait).
+    core.settings.set("providerOverrides", { ...core.settings.get("providerOverrides"), llamacpp: { baseUrl: "http://127.0.0.1:9/v1" } });
     await core.providers.client("lmstudio").chat({ model: "jean", system: "", messages: [], tools: [], maxAttempts: 1 }, {}).catch(() => undefined);
     await core.providers.client("llamacpp").chat({ model: "lourd", system: "", messages: [], tools: [], maxAttempts: 1 }, {}).catch(() => undefined);
     expect(lmstudio.calls.filter((c) => !c.startsWith("list"))).toEqual([]);

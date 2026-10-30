@@ -60,7 +60,7 @@ import { registerNotificationHistoryIpc } from './notifications-history.ts'
 import { osEnv } from './env.ts'
 import { claimSingleInstance } from './single-instance.ts'
 import { SwitchService } from './switches.ts'
-import { appUserModelId, devServerUrl, hermesHome, jarodOsDataDir, isDev, legacyShellConfigDir, shellConfigDir } from './paths.ts'
+import { appUserModelId, devServerUrl, hermesHome, isMiniPage, jarodOsDataDir, isDev, legacyShellConfigDir, shellConfigDir } from './paths.ts'
 import { readPrefs, writePrefs } from './prefs.ts'
 import { isOmarchy, readOmarchyTheme } from './theme/omarchy.ts'
 import { prefsForTheme } from './theme/themes.ts'
@@ -85,7 +85,8 @@ import { appIconPath, createMainWindow, loadShell, MAIN_WINDOW_MIN } from './win
 import { CrashPolicy, isSafeMode, recoveryAction, recoveryPage, relaunchArgs } from './recovery.ts'
 import { readWindowState, restoreBounds, roundingDrift, withoutDrift, writeWindowState } from './window-state.ts'
 import { ShellTray, trayLanguage } from './tray.ts'
-import { MiniWindow, miniPaths, normalizeMiniSummary } from './mini-window.ts'
+import { CompactChat } from './compact-chat.ts'
+import { MiniWindow, miniPaths, normalizeDrag, normalizeMiniSummary } from './mini-window.ts'
 import { ResticArchive } from './ipc/external-restic.ts'
 import { ResticKeyStore } from './restic-key.ts'
 import { resticBinary } from './restic-binary.ts'
@@ -93,7 +94,8 @@ import { installIpcSenderGuard, type IpcGuardReport, ipcGuardReport } from './ip
 
 // Every IPC channel answers only the shell's own page (audit A-06): installed before the first
 // registration, so no channel is left out — none of the modules above registers at import time.
-installIpcSenderGuard(ipcMain)
+// La bulle (mini.html) parle au main par deux canaux seulement ; ils lui sont réservés, le reste de l'application reste réservé au shell.
+installIpcSenderGuard(ipcMain, { channelPages: { [IPC.miniDrag]: isMiniPage, [IPC.miniClick]: isMiniPage } })
 // BL-01 : la liste des canaux passés par le garde, lisible depuis le processus principal seulement (le test de bout en bout la compare à
 // tous les gestionnaires qu'Electron connaît). Aucune fenêtre n'y accède : isolation de contexte, pas de Node dans les pages.
 ;(globalThis as { __jarodIpcGuard?: () => IpcGuardReport | null }).__jarodIpcGuard = () => ipcGuardReport(ipcMain)
@@ -117,13 +119,23 @@ const tray = new ShellTray(appIconPath(), safeMode, {
     }
   },
   relaunch: safe => relaunch(safe),
-  // Lot C : la mini-fenêtre, allumée ou éteinte depuis le menu de l'icône (préférence `miniWindow`, éteinte par défaut).
+  // Lot 5 : lancement à l'ouverture de la session. Seulement pour l'application installée : en développement, l'entrée serait l'exécutable d'Electron.
+  ...(app.isPackaged
+    ? {
+        launchAtLogin: {
+          get: () => app.getLoginItemSettings().openAtLogin,
+          set: (on: boolean) => app.setLoginItemSettings({ openAtLogin: on })
+        }
+      }
+    : {}),
+  // La bulle flottante, allumée ou éteinte depuis le menu de l'icône (préférence `miniWindow`, allumée par défaut depuis le 30/10).
   miniWindow: {
-    get: () => readPrefs().miniWindow === true,
+    get: () => readPrefs().miniWindow !== false,
     set: on => {
       const next = writePrefs({ miniWindow: on })
 
-      mini.setEnabled(next.miniWindow === true)
+      mini.setEnabled(next.miniWindow !== false)
+      syncMini()
       for (const win of shellWindows()) {
         win.webContents.send(IPC.prefsChanged, next)
       }
@@ -134,18 +146,50 @@ const tray = new ShellTray(appIconPath(), safeMode, {
 const mini = new MiniWindow({
   createWindow: options => new BrowserWindow(options),
   workArea: () => screen.getPrimaryDisplay().workArea,
-  ...miniPaths(path.dirname(fileURLToPath(import.meta.url)), devServerUrl() ?? null),
-  openMain: () => {
-    if (mainWindow) {
-      if (mainWindow.isMinimized()) {
-        mainWindow.restore()
-      }
+  workAreaAt: rect => screen.getDisplayMatching(rect).workArea,
+  savedPosition: () => {
+    const pos = readPrefs().miniPos
 
-      mainWindow.show()
-      mainWindow.focus()
+    return pos && Number.isFinite(pos.x) && Number.isFinite(pos.y) ? { x: pos.x, y: pos.y } : null
+  },
+  onMoved: pos => void writePrefs({ miniPos: pos }),
+  ...miniPaths(path.dirname(fileURLToPath(import.meta.url)), devServerUrl() ?? null),
+  // 30/10 : un clic sur la bulle ouvre le chat compact (Jarod réduit) ; un second clic le referme ; si le bureau est déjà ouvert, il est
+  // seulement ramené devant.
+  openMain: () => {
+    if (!mainWindow) {
+      return
     }
+
+    if (compact.open) {
+      mainWindow.minimize()
+      syncMini()
+
+      return
+    }
+
+    if (mainWindow.isMinimized() || !mainWindow.isVisible() || compact.active) {
+      compact.enter()
+      syncMini()
+
+      return
+    }
+
+    mainWindow.show()
+    mainWindow.focus()
   }
 })
+const compact = new CompactChat({
+  window: () => mainWindow,
+  workArea: () => (mini.bounds ? screen.getDisplayMatching(mini.bounds).workArea : screen.getPrimaryDisplay().workArea),
+  anchor: () => mini.bounds,
+  notify: on => mainWindow?.webContents.send(IPC.windowCompact, on)
+})
+/** La bulle se montre quand Jarod est réduit, caché, ou en chat compact ; elle se cache quand le bureau est ouvert. */
+function syncMini(): void {
+  const win = mainWindow
+  mini.setVisible(Boolean(win) && (win!.isMinimized() || !win!.isVisible() || compact.active))
+}
 /** Les fenêtres du shell : toutes, sauf la mini-fenêtre (qui ne reçoit que son résumé). */
 const shellWindows = (): BrowserWindow[] => BrowserWindow.getAllWindows().filter(win => win !== mini.window)
 const coreLocation = { packaged: app.isPackaged, resourcesPath: process.resourcesPath, appPath: app.getAppPath() }
@@ -623,6 +667,10 @@ function registerCoreIpc(): void {
   ipcMain.handle(IPC.windowRelaunch, (_event, safe: boolean) => relaunch(Boolean(safe)))
   // The window buttons Windows needs (macOS has its own, Linux a compositor).
   ipcMain.handle(IPC.windowMinimize, () => mainWindow?.minimize())
+  ipcMain.handle(IPC.windowCompactExit, () => {
+    compact.leave()
+    syncMini()
+  })
   ipcMain.handle(IPC.windowToggleMaximize, () => {
     if (!mainWindow) {
       return
@@ -688,7 +736,8 @@ function registerCoreIpc(): void {
     }
 
     if ('miniWindow' in patch) {
-      mini.setEnabled(next.miniWindow === true)
+      mini.setEnabled(next.miniWindow !== false)
+      syncMini()
       tray.refresh()
     }
 
@@ -856,6 +905,9 @@ function attachMainWindow(win: BrowserWindow): void {
   win.on('unmaximize', broadcastWindowState)
   win.on('focus', broadcastWindowState)
   win.on('blur', broadcastWindowState)
+  for (const ev of ['minimize', 'restore', 'show', 'hide'] as const) {
+    win.on(ev as 'minimize', () => syncMini())
+  }
 
   win.on('closed', () => {
     if (mainWindow === win) {
@@ -925,7 +977,8 @@ app.whenReady().then(async () => {
   })
   createWindow()
   tray.start(trayLanguage(readPrefs().language, app.getLocale()))
-  mini.setEnabled(readPrefs().miniWindow === true)
+  mini.setEnabled(readPrefs().miniWindow !== false)
+  syncMini()
   // Le résumé pour la mini-fenêtre : envoyé par la fenêtre principale SEULEMENT (en plus du contrôle d'émetteur), re-validé ici.
   ipcMain.on(IPC.miniState, (event, raw: unknown) => {
     if (!mainWindow || event.sender !== mainWindow.webContents) {
@@ -936,6 +989,27 @@ app.whenReady().then(async () => {
 
     if (summary) {
       mini.push(summary)
+    }
+  })
+  // La bulle ronde : déplacement et clic, acceptés de la mini-fenêtre seulement, valeurs re-validées ; la place est gardée après le geste.
+  let dragSettled: ReturnType<typeof setTimeout> | undefined
+
+  ipcMain.on(IPC.miniDrag, (event, dx: unknown, dy: unknown) => {
+    if (!mini.window || event.sender !== mini.window.webContents) {
+      return
+    }
+
+    const move = normalizeDrag(dx, dy)
+
+    if (move) {
+      mini.dragBy(move.dx, move.dy)
+      clearTimeout(dragSettled)
+      dragSettled = setTimeout(() => mini.dragEnd(), 400)
+    }
+  })
+  ipcMain.on(IPC.miniClick, event => {
+    if (mini.window && event.sender === mini.window.webContents) {
+      mini.click()
     }
   })
   // Cmd+Ctrl+F is the standard macOS fullscreen toggle; register it as a local shortcut so the

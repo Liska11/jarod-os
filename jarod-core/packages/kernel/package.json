@@ -17,6 +17,7 @@
     "./legacy-env-adopt": "./src/legacy-env-adopt.ts",
     "./publisher-trust": "./src/publisher-trust.ts",
     "./injection-guard": "./src/injection-guard.ts",
+    "./untrusted": "./src/untrusted.ts",
     "./capability-engine": "./src/capability-engine.ts",
     "./runtime-deps": "./src/runtime-deps.ts"
   },

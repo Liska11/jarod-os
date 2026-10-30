@@ -27,7 +27,25 @@ function waitingText(entry: PendingRequest): string {
   return ''
 }
 
-export function computeMiniSummary(chats: Record<string, ChatState>, pending: readonly PendingRequest[], agents: Record<string, AgentActivity>): MiniSummary {
+/** L'état de la voix tel que la bulle le montre : elle ondule quand Jarod écoute, tourne quand il réfléchit, pulse quand il parle. */
+export function miniVoice(state: string): MiniSummary['voice'] {
+  if (state === 'listening') {
+    return 'listening'
+  }
+
+  if (state === 'transcribing' || state === 'thinking' || state === 'connecting') {
+    return 'thinking'
+  }
+
+  return state === 'speaking' ? 'speaking' : 'off'
+}
+
+export function computeMiniSummary(
+  chats: Record<string, ChatState>,
+  pending: readonly PendingRequest[],
+  agents: Record<string, AgentActivity>,
+  voiceState = 'off'
+): MiniSummary {
   const working = Object.values(chats).filter(chat => chat.streaming)
 
   return {
@@ -36,7 +54,8 @@ export function computeMiniSummary(chats: Record<string, ChatState>, pending: re
     // Les plus anciennes d'abord : c'est la première qui bloque.
     waiting: pending.slice(0, 3).map(entry => ({ kind: entry.kind, text: waitingText(entry) })),
     waitingCount: pending.length,
-    agents: Object.values(agents).filter(agent => agent.status === 'running').length
+    agents: Object.values(agents).filter(agent => agent.status === 'running').length,
+    voice: miniVoice(voiceState)
   }
 }
 
@@ -49,11 +68,12 @@ export function bindMiniSummary(): () => void {
   }
 
   let last = ''
+  let voiceState = 'off'
   let timer: ReturnType<typeof setTimeout> | undefined
 
   const flush = () => {
     timer = undefined
-    const summary = computeMiniSummary($chats.get(), $pendingRequests.get(), $agents.get())
+    const summary = computeMiniSummary($chats.get(), $pendingRequests.get(), $agents.get(), voiceState)
     const text = JSON.stringify(summary)
 
     if (text !== last) {
@@ -67,10 +87,28 @@ export function bindMiniSummary(): () => void {
   }
 
   const offs = [$chats.listen(schedule), $pendingRequests.listen(schedule), $agents.listen(schedule)]
+  let closed = false
+
+  // Le store de la voix est chargé à part (il tire tout le moteur vocal) : la bulle ondule dès qu'il est là.
+  void import('./voice.ts').then(({ $voice }) => {
+    if (closed) {
+      return
+    }
+
+    voiceState = $voice.get().state
+    offs.push(
+      $voice.listen(voice => {
+        voiceState = voice.state
+        schedule()
+      })
+    )
+    schedule()
+  })
 
   schedule()
 
   return () => {
+    closed = true
     clearTimeout(timer)
     for (const off of offs) {
       off()

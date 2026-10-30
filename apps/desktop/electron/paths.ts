@@ -91,3 +91,23 @@ export function isShellPage(url: string, index = rendererIndex(), dev: string | 
     return false
   }
 }
+
+/** La page de la bulle (`mini.html`, à côté de l'index du shell). */
+export function miniIndex(): string {
+  return path.join(path.dirname(rendererIndex()), 'mini.html')
+}
+
+/** Vrai pour la page de la bulle SEULE : le serveur de développement (`/mini.html`) ou le fichier empaqueté. */
+export function isMiniPage(url: string, index = miniIndex(), dev: string | undefined = devServerUrl()): boolean {
+  try {
+    const target = new URL(url)
+
+    if (dev) {
+      return target.origin === new URL(dev).origin && target.pathname === '/mini.html'
+    }
+
+    return target.protocol === 'file:' && target.pathname === pathToFileURL(index).pathname
+  } catch {
+    return false
+  }
+}

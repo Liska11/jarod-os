@@ -4,6 +4,7 @@ import { jarod } from '../../../lib/jarod.ts'
 import { useBackendData } from '../../../lib/use-async.ts'
 import { ChoiceRow, NumberRow, TextRow, useJarodSettings } from './jarod-controls.tsx'
 import type { JarodOptions } from './jarod-settings-model.ts'
+import { MicrophoneRows } from './MicrophoneRows.tsx'
 import { InlineNote, SettingsGroup } from './shared.tsx'
 import { rateProblem, speechSummary, type SttProviderOption } from './speech-model.ts'
 
@@ -29,6 +30,7 @@ export function JarodSpeechGroup() {
 
   return (
     <SettingsGroup title={t('speech.group')}>
+      <MicrophoneRows />
       <ChoiceRow
         icon={<IconLanguage />}
         label={t('speech.stt')}

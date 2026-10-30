@@ -25,7 +25,9 @@ const turn = (core: Awaited<ReturnType<typeof makeCore>>, approve: boolean) =>
 describe("le journal d'audit", () => {
   it("inscrit chaque action qui demande un accord : accordée, refusée, automatique, bloquée", async () => {
     const core = await makeCore();
-    core.settings.patch({ workspace: tempDir() });
+    // Plancher éteint : ce test réécrit le MÊME fichier à chaque tour pour regarder le chemin « accord automatique » du journal ; avec le plancher, écraser un
+    // fichier existant demande toujours l'accord (voir mcp-injection.test.ts, qui couvre le plancher).
+    core.settings.patch({ workspace: tempDir(), safetyFloor: false });
     oneToolCall(core, "write_file", { path: "note.txt", content: "bonjour" });
 
     await turn(core, true);

@@ -18,15 +18,16 @@ import { PROFILE_SECTIONS, type UserProfileService } from "@jarod/plugin-memory"
 
 const REVIEW_SYSTEM = `Tu relis un extrait de conversation entre un utilisateur et son assistant pour retenir ce qui servira dans de FUTURES conversations.
 Réponds UNIQUEMENT par un objet JSON :
-{"memories":[{"type":"fact|preference|context","content":"..."}],"profile":[{"section":"...","line":"..."}],"skill":null}
+{"memories":[{"type":"fact|preference|context|rule","content":"..."}],"profile":[{"section":"...","line":"..."}],"skill":null}
 ou, si une méthode réutilisable a été mise au point, "skill":{"name":"...","description":"quand l'utiliser","why":"..."}.
 Règles :
 - Seulement des informations durables, dites par l'utilisateur ou clairement établies ; rien de ponctuel ni de déjà connu.
 - JAMAIS de secret (mot de passe, clé, jeton, numéro de carte ou de compte), ni de donnée de santé, d'opinion politique ou religieuse.
 - "profile" : sections ${PROFILE_SECTIONS.join(", ")} ; une phrase courte par ligne.
+- "rule" : une consigne de comportement que l'utilisateur a donnée en corrigeant l'assistant (« ne fais plus… », « toujours… »), écrite comme une consigne courte.
 - Au plus 5 souvenirs et 3 lignes de profil. Listes vides s'il n'y a rien : c'est souvent le cas.`;
 
-const MEMORY_TYPES: MemoryType[] = ["fact", "preference", "context"];
+const MEMORY_TYPES: MemoryType[] = ["fact", "preference", "context", "rule"];
 /** A line that looks like a credential is dropped even if the model kept it anyway. */
 const SECRET_RE = /(api[_-]?key|token|password|mot de passe|secret|sk-[a-z0-9]{8,}|\b\d{13,19}\b)/i;
 
@@ -114,6 +115,17 @@ export class LearningService {
     if (this.d.busy(sessionId)) return null;
     this.lastReviewed.set(sessionId, count);
     return this.review(sessionId);
+  }
+
+  /**
+   * Q3 (analyse du 29/10, idée de cindy `maker-core/src/memory/flush-controller.ts`, principe seulement) : juste AVANT qu'une compaction
+   * remplace l'historique ancien par un résumé, une revue en extrait ce qui doit durer (souvenirs, règles, profil). Sans elle, ce qui
+   * n'avait pas encore été revu disparaissait dans le résumé. Rien si l'apprentissage est éteint ou si une revue tourne déjà.
+   */
+  async beforeCompaction(sessionId: string, signal?: AbortSignal): Promise<ReviewResult | null> {
+    if (!this.config().enabled || this.reviewing.has(sessionId)) return null;
+    this.lastReviewed.set(sessionId, this.userCount(sessionId));
+    return this.review(sessionId, signal);
   }
 
   async review(sessionId: string, signal?: AbortSignal): Promise<ReviewResult> {

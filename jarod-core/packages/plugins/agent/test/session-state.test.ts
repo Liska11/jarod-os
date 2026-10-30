@@ -82,6 +82,8 @@ describe("état de travail par conversation (Q18)", () => {
 
   it("le résumé entre au prompt système et y reste après la compaction (l'historique, lui, est résumé)", async () => {
     const core = await makeCore();
+    // Q3 : la revue d'apprentissage avant compaction ajoute un appel au modèle ; ce test porte sur le résumé seul.
+    core.settings.set("learning", { enabled: false, reviewEvery: 8 });
     const s = core.sessions.create();
     const reqs = fakeProvider(core, [{}, {}, {}, { text: "résumé" }, {}]);
     core.state.set(s.id, "branche", "feat/q18");

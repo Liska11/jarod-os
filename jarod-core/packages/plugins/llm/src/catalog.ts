@@ -124,6 +124,34 @@ export const PROVIDERS: ProviderDef[] = [
     local: true,
     models: [],
   },
+  // Dictée locale OpenVINO (Whisper français distillé, `stt/server.py`), lancée par plugin-voice (stt-service.ts). Transcription seulement.
+  {
+    id: "local-openvino-stt",
+    name: "Dictée locale (Whisper français, OpenVINO)",
+    protocol: "openai",
+    baseUrl: "http://127.0.0.1:8790/v1",
+    local: true,
+    models: ["whisper-fr"],
+  },
+  // Dictée par LFM3-Omni (30/10) : le moteur local (llama-server, port réglé dans Modèles locaux) reçoit l'audio dans une requête de conversation
+  // (voice.ts, `transcribeWithOmni`). L'adresse ci-dessous est le port par défaut ; le vrai port est lu dans le réglage du moteur.
+  {
+    id: "local-omni-stt",
+    name: "Dictée par le modèle omni local (LFM3-Omni)",
+    protocol: "openai",
+    baseUrl: "http://127.0.0.1:8080/v1",
+    local: true,
+    models: ["omni"],
+  },
+  // Vision locale (30/10) : un llama-server avec un modèle multimodal + son mmproj, lancé à la demande par plugin-vision (local-vision.ts).
+  {
+    id: "local-vision",
+    name: "Vision locale (llama.cpp, modèle multimodal)",
+    protocol: "openai",
+    baseUrl: "http://127.0.0.1:8792/v1",
+    local: true,
+    models: ["vision-locale"],
+  },
   // Jarod-cordis (G3, PLAN §4) : whisper.cpp local, supervisé par plugin-voice. Transcription seulement.
   {
     id: "local-whisper-cpp",

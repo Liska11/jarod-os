@@ -19,6 +19,7 @@ import type { Context } from "cordis";
 import { type CaptureConfig, VoiceCapture } from "./capture.js";
 import { type PriorityConfig, VoicePriorityGate } from "./priority.js";
 import { type PiperConfig, SpeechService } from "./speech.js";
+import { findSttServer, STT_PROVIDER_ID, SttService } from "./stt-service.js";
 import { transcribe } from "./voice.js";
 import { type WakeWordConfig, WakeWordDetector, type WakeWordDetection } from "./wakeword.js";
 import { IsolatedWakeWordRuntime, type WorkerExitEvent, type WorkerSpawner, type WorkerStats } from "./wakeword-isolated.js";
@@ -27,6 +28,8 @@ import { type WhisperServerConfig, WhisperServerSupervisor } from "./whisper-ser
 export * from "./capture.js";
 export * from "./priority.js";
 export * from "./speech.js";
+export * from "./speech-text.js";
+export * from "./stt-service.js";
 export * from "./voice.js";
 export * from "./wakeword.js";
 export * from "./wakeword-isolated.js";
@@ -61,6 +64,8 @@ export interface VoiceService {
   /** Speech-to-text through the configured provider (`core.transcribe`, core.ts:1112). */
   transcribe(audio: Buffer, mime: string): Promise<string>;
   whisper: WhisperServerSupervisor;
+  /** La dictée locale OpenVINO (`stt/server.py`), lancée par Jarod quand le fournisseur `local-openvino-stt` est choisi. */
+  stt: SttService;
   /** Démarre whisper-server avec la config du plugin (défauts : port 8910, `fr`, iGPU = Vulkan 1). */
   startWhisper(): Promise<ReturnType<WhisperServerSupervisor["status"]>>;
   /** Dernières lignes écrites par whisper-server (périphérique Vulkan choisi, erreurs de modèle). */
@@ -117,10 +122,35 @@ export async function apply(ctx: Context, config: VoiceConfig = {}): Promise<voi
         })
       : null;
   const priority = new VoicePriorityGate(config?.priority, (l) => ctx.logger("voice").warn(l));
+  const stt = new SttService(findSttServer(ctx.storage.dataDir), {
+    spawn: (bin, args, opts) => {
+      const child = spawn(bin, args, { ...opts, shell: false, stdio: ["ignore", "ignore", "pipe"], windowsHide: true });
+      child.stderr?.on("data", (chunk: Buffer) => {
+        for (const line of chunk.toString("utf8").split(/\r?\n/)) if (line.trim()) log.push(`[stt] ${line}`);
+        if (log.length > 200) log.splice(0, log.length - 200);
+      });
+      return child as unknown as SpawnedProcess;
+    },
+    health: async (url, timeoutMs) => {
+      try {
+        const res = await fetch(url, { signal: AbortSignal.timeout(timeoutMs) });
+        return res.ok ? ((await res.json()) as { status?: string }) : null;
+      } catch {
+        return null;
+      }
+    },
+  });
+  const usesLocalStt = () => ctx.storage.settings.get("voice").sttProvider === STT_PROVIDER_ID;
   const service: VoiceService = {
     // Toute transcription (mot d'activation, bouton micro, messages vocaux) ouvre la fenêtre de priorité le temps de l'appel.
-    transcribe: (audio, mime) => priority.track(() => transcribe(ctx.llm.providers, ctx.storage.settings, audio, mime)),
+    transcribe: (audio, mime) =>
+      priority.track(async () => {
+        // La dictée locale OpenVINO : démarrée à la demande si elle ne tourne pas encore (premier usage, ou arrêt depuis).
+        if (usesLocalStt()) await stt.ensure();
+        return transcribe(ctx.llm.providers, ctx.storage.settings, audio, mime);
+      }),
     whisper,
+    stt,
     startWhisper: async () => whisper.start(resolved()),
     whisperLog: () => [...log],
     speech: new SpeechService(config?.piper ? { piper: config.piper } : {}),
@@ -177,8 +207,12 @@ export async function apply(ctx: Context, config: VoiceConfig = {}): Promise<voi
   ctx.provide("voice", service);
   ctx.effect(() => () => priority.dispose(), "voice:priority");
   ctx.effect(() => async () => void (await whisper.stop()), "voice:whisper");
+  ctx.effect(() => () => stt.stop(), "voice:stt");
   ctx.effect(() => async () => void (await service.speech.stop()), "voice:speech");
   if (isolated) ctx.effect(() => () => isolated.dispose(), "voice:wakeword-worker");
   if (w?.autoStart) await service.startWhisper();
+  // Le modèle de dictée met ~15 s à se charger : lancé dès l'ouverture, sans l'attendre, pour que la première dictée soit immédiate.
+  if (usesLocalStt() && process.env.JAROD_TEST_MODE !== "1")
+    void stt.ensure().catch((e: unknown) => ctx.logger("voice").warn(`dictée locale : ${e instanceof Error ? e.message : String(e)}`));
   if (config?.wakeword?.warmup) await service.wakeword!.warmup();
 }

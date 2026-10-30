@@ -1,7 +1,7 @@
 import path from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import { IPC } from '../shared/ipc.ts'
-import { MINI_SIZE, MiniWindow, miniPaths, miniPosition, normalizeMiniSummary } from './mini-window.ts'
+import { clampToArea, MINI_SIZE, MiniWindow, miniPaths, miniPosition, normalizeDrag, normalizeMiniSummary } from './mini-window.ts'
 
 describe('mini-fenêtre : le résumé re-validé par le main', () => {
   it('garde des textes bornés sans caractère de contrôle, au plus trois lignes, des nombres entiers', () => {
@@ -31,8 +31,24 @@ describe('mini-fenêtre : le résumé re-validé par le main', () => {
     expect(normalizeMiniSummary([1, 2])).toBeNull()
   })
 
-  it('centrée en haut de la zone de travail ; page et preload à part du shell', () => {
-    expect(miniPosition({ x: 0, y: 0, width: 1920 })).toEqual({ x: (1920 - MINI_SIZE.width) / 2, y: 8 })
+  it('bulle ronde : en bas à droite par défaut, jamais hors de l’écran, déplacement validé', () => {
+    const area = { x: 0, y: 0, width: 1920, height: 1040 }
+    expect(MINI_SIZE).toEqual({ width: 88, height: 88 })
+    expect(miniPosition(area)).toEqual({ x: 1920 - 88 - 16, y: 1040 - 88 - 16 })
+    expect(clampToArea({ x: -50, y: 5000 }, area)).toEqual({ x: 0, y: 1040 - 88 })
+    expect(clampToArea({ x: 300, y: 200 }, area)).toEqual({ x: 300, y: 200 })
+    expect(normalizeDrag(3, -4)).toEqual({ dx: 3, dy: -4 })
+    for (const bad of [[1.5, 0], [0, '4'], [9999, 0], [NaN, 0], [null, undefined]]) expect(normalizeDrag(bad[0], bad[1])).toBeNull()
+  })
+
+  it('le résumé porte l’état de la voix (écoute, réflexion, parole), `off` sinon', () => {
+    expect(normalizeMiniSummary({ voice: 'listening' })!.voice).toBe('listening')
+    expect(normalizeMiniSummary({ voice: 'speaking' })!.voice).toBe('speaking')
+    expect(normalizeMiniSummary({ voice: 'hack' })!.voice).toBe('off')
+    expect(normalizeMiniSummary({})!.voice).toBe('off')
+  })
+
+  it('page et preload à part du shell', () => {
     const dist = path.resolve('app', 'dist')
     expect(miniPaths(path.join(dist, 'electron'), null)).toEqual({ preloadPath: path.join(dist, 'electron', 'mini-preload.cjs'), page: { file: path.join(dist, 'renderer', 'mini.html') } })
     expect(miniPaths('/d/e', 'http://127.0.0.1:5180/').page).toEqual({ url: 'http://127.0.0.1:5180/mini.html' })
@@ -90,9 +106,10 @@ describe('mini-fenêtre : la fenêtre', () => {
     f.contents.get('will-navigate')!(nav)
     expect(nav.preventDefault).toHaveBeenCalled()
     expect(f.openHandler()!({ url: 'https://ailleurs.example' })).toEqual({ action: 'deny' })
-    f.handlers.get('focus')!()
+    expect(f.handlers.has('focus')).toBe(false) // le clic vient de la page (`click`), plus du focus
+    expect(created[0]).toMatchObject({ focusable: false, movable: false, width: 88, height: 88, transparent: true, frame: false })
+    mini.click()
     expect(openMain).toHaveBeenCalledTimes(1)
-    expect(f.win.blur).toHaveBeenCalled()
 
     const summary = normalizeMiniSummary({ waiting: [{ kind: 'approval', text: 'x' }], waitingCount: 1 })!
 

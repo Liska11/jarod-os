@@ -16,7 +16,7 @@ import { ERR, RpcError, serveJsonRpc } from "./jsonrpc-stdio.js";
  * c'est la dernière version « classique » du SDK officiel ; un serveur à outils seuls n'utilise rien de ce qu'elle ajoute (tâches, élicitation…).
  */
 const SUPPORTED_PROTOCOLS = ["2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05"] as const;
-const MEMORY_TYPES: readonly MemoryType[] = ["fact", "preference", "context", "conversation"];
+const MEMORY_TYPES: readonly MemoryType[] = ["fact", "preference", "context", "conversation", "rule"];
 const MAX_RESPONSE_CHARS = 30_000;
 const MAX_MESSAGE_CHARS = 4_000;
 const MAX_TITLE_CHARS = 200;

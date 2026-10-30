@@ -239,7 +239,7 @@ describe.skipIf(!HAS)("E2 — cycle de vie, révocation, confinement CDP, nettoy
       const marker = JSON.parse(readFileSync(join(s.browser.profileDir, "owner.json"), "utf8")) as { chromePid: number };
 
       // 1. écoute : toutes les adresses de LECTURE du navigateur sont des adresses de bouclage
-      const listen = execFileSync("powershell", ["-NoProfile", "-NonInteractive", "-Command", `Get-NetTCPConnection -State Listen -OwningProcess ${marker.chromePid} | ForEach-Object { "$($_.LocalAddress)|$($_.LocalPort)" }`], { encoding: "utf8", windowsHide: true }).trim().split(/\r?\n/u).filter(Boolean);
+      const listen = execFileSync("powershell", ["-NoProfile", "-NonInteractive", "-Command", `Get-NetTCPConnection -OwningProcess ${marker.chromePid} | Where-Object { $_.RemotePort -eq 0 } | ForEach-Object { "$($_.LocalAddress)|$($_.LocalPort)" }`], { encoding: "utf8", windowsHide: true }).trim().split(/\r?\n/u).filter(Boolean);
       expect(listen.length).toBeGreaterThan(0);
       expect(listen.some((l) => l.endsWith(`|${port}`))).toBe(true);
       for (const l of listen) expect(["127.0.0.1", "::1"], l).toContain(l.split("|")[0]);

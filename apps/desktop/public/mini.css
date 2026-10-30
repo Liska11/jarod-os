@@ -1,88 +1,225 @@
-/* Lot C : la mini-fenêtre — un îlot sombre et arrondi, lisible d'un coup d'œil ; fond transparent autour. */
+/* La bulle de Jarod : une sphère de 60 px dans une fenêtre transparente de 88 px (la marge porte le halo et les ondes). */
 :root {
   color-scheme: dark;
-  --bg: rgba(12, 16, 30, 0.92);
-  --fg: #e8ecf6;
-  --fg-dim: #9aa6c2;
-  --idle: #5b6b8c;
-  --work: #4d92ff;
+  --idle: #5b8cff;
+  --work: #7a6cff;
+  --listen: #35d6a8;
+  --speak: #ff9d4d;
   --wait: #f2b84b;
 }
 html,
 body {
   margin: 0;
+  width: 100%;
   height: 100%;
   background: transparent;
   overflow: hidden;
-  font-family: "Segoe UI", system-ui, sans-serif;
   user-select: none;
-  cursor: pointer;
+  font-family: "Segoe UI", system-ui, sans-serif;
 }
-.pill {
-  box-sizing: border-box;
-  margin: 6px;
-  height: calc(100% - 12px);
+.orb {
+  --c: var(--idle);
+  position: relative;
+  width: 88px;
+  height: 88px;
+  display: grid;
+  place-items: center;
+  cursor: grab;
+  touch-action: none;
+}
+.orb.dragging {
+  cursor: grabbing;
+}
+.core {
+  position: relative;
+  z-index: 2;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle at 32% 28%, rgba(255, 255, 255, 0.85), var(--c) 38%, rgba(8, 14, 40, 0.95) 100%);
+  box-shadow: 0 0 18px color-mix(in srgb, var(--c) 60%, transparent), 0 4px 14px rgba(0, 0, 0, 0.5), inset 0 -6px 12px rgba(0, 0, 0, 0.35);
+  transition: box-shadow 0.3s;
+}
+.idle .core {
+  animation: breathe 3.4s ease-in-out infinite;
+}
+.ripple,
+.ring {
+  position: absolute;
+  inset: 14px;
+  border-radius: 50%;
+  pointer-events: none;
+  opacity: 0;
+}
+.ripple {
+  border: 2px solid var(--c);
+}
+.ring {
+  inset: 11px;
+  border: 3px solid transparent;
+  border-top-color: var(--c);
+  border-right-color: color-mix(in srgb, var(--c) 40%, transparent);
+}
+.bars {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 0 16px;
-  border-radius: 999px;
-  background: var(--bg);
-  color: var(--fg);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
+  gap: 3px;
+  height: 22px;
+  opacity: 0;
+  transition: opacity 0.2s;
 }
-.dot {
-  flex: none;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: var(--idle);
+.bars i {
+  display: block;
+  width: 3px;
+  height: 6px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.95);
 }
-.working .dot {
-  background: var(--work);
-  animation: breathe 1.6s ease-in-out infinite;
+.bars i:nth-child(2) {
+  animation-delay: 0.12s;
 }
-.waiting .dot {
-  background: var(--wait);
+.bars i:nth-child(3) {
+  animation-delay: 0.24s;
 }
+.bars i:nth-child(4) {
+  animation-delay: 0.36s;
+}
+.bars i:nth-child(5) {
+  animation-delay: 0.48s;
+}
+
+/* Il écoute : trois ondes qui s'élargissent, et des barres de son qui dansent. */
+.listening {
+  --c: var(--listen);
+}
+.listening .ripple {
+  animation: ripple 2.1s ease-out infinite;
+}
+.listening .r2 {
+  animation-delay: 0.7s;
+}
+.listening .r3 {
+  animation-delay: 1.4s;
+}
+.listening .bars,
+.speaking .bars {
+  opacity: 1;
+}
+.listening .bars i {
+  animation: bar 0.9s ease-in-out infinite;
+}
+
+/* Il réfléchit ou travaille : un anneau qui tourne. */
+.thinking,
+.working {
+  --c: var(--work);
+}
+.thinking .ring,
+.working .ring {
+  opacity: 1;
+  animation: spin 1.1s linear infinite;
+}
+
+/* Il parle : la sphère pulse, les barres vont plus vite. */
+.speaking {
+  --c: var(--speak);
+}
+.speaking .core {
+  animation: pulse 0.7s ease-in-out infinite;
+}
+.speaking .bars i {
+  animation: bar 0.5s ease-in-out infinite;
+}
+
+/* Il attend une réponse : anneau ambre qui clignote, pastille du nombre. */
 .waiting {
-  border-color: rgba(242, 184, 75, 0.55);
+  --c: var(--wait);
 }
-.text {
-  min-width: 0;
-  flex: 1;
+.waiting .ring {
+  opacity: 1;
+  border-color: var(--wait);
+  animation: blink 1.2s ease-in-out infinite;
 }
-.line1,
-.line2 {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.line1 {
-  font-size: 13px;
-  font-weight: 600;
-}
-.line2 {
-  font-size: 12px;
-  color: var(--fg-dim);
-}
-.count {
-  flex: none;
-  min-width: 22px;
-  padding: 2px 7px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.1);
-  font-size: 12px;
+.badge {
+  position: absolute;
+  z-index: 3;
+  top: 8px;
+  right: 8px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  box-sizing: border-box;
+  border-radius: 9px;
+  background: #e5484d;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 18px;
   text-align: center;
 }
+.badge[hidden] {
+  display: none;
+}
+
 @keyframes breathe {
   50% {
-    opacity: 0.35;
+    transform: scale(1.05);
+  }
+}
+@keyframes ripple {
+  0% {
+    opacity: 0.75;
+    transform: scale(0.9);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.38);
+  }
+}
+@keyframes bar {
+  0%,
+  100% {
+    height: 5px;
+  }
+  50% {
+    height: 22px;
+  }
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes pulse {
+  50% {
+    transform: scale(1.1);
+  }
+}
+@keyframes blink {
+  50% {
+    opacity: 0.25;
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .working .dot {
+  .idle .core,
+  .speaking .core,
+  .listening .ripple,
+  .thinking .ring,
+  .working .ring,
+  .waiting .ring,
+  .bars i {
     animation: none;
+  }
+  .listening .ripple {
+    opacity: 0.4;
+  }
+  .thinking .ring,
+  .working .ring {
+    opacity: 1;
+  }
+  .bars i {
+    height: 12px;
   }
 }

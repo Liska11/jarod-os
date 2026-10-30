@@ -21,7 +21,9 @@ async function writing(rounds: number) {
   const script = Array.from({ length: rounds }, (_, i) => [toolCall(`call-${i + 1}`, "write_file", { path: "note.txt", content: `v${i + 1}` }), say("Terminé.")]).flat();
   const stub = await scripted(script);
   const k = await setupKernel(stub.port, []);
-  k.app.agent.settings.patch({ workspace: dir } as never);
+  // Plancher éteint : ces scénarios réécrivent le MÊME fichier à chaque tour pour tester « toujours autoriser » / « cette conversation » ; avec le plancher, écraser un
+  // fichier existant demande toujours l'accord (couvert par agent/test/mcp-injection.test.ts).
+  k.app.agent.settings.patch({ workspace: dir, safetyFloor: false } as never);
   const send = (runId: string, resume?: string) => k.call("send-message", "Écris la note", undefined, resume, [], [], undefined, runId) as Promise<{ response: string; sessionId: string }>;
   const requests = () => k.on("tool-approval-request").map(([r]) => r as Req);
   const resolved = () => k.on("tool-approval-resolved").map(([r]) => r as Done);

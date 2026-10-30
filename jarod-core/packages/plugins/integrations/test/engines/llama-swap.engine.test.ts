@@ -209,7 +209,7 @@ describe.skipIf(!has)("G6 — réexamen : llama-swap en écoute locale, avec cl�
     expect((await chat("rapide")).status).toBe(200);
     const out = execFileSync(
       "powershell.exe",
-      ["-NoProfile", "-Command", `$p=@(${swap2.pid}) + @(Get-CimInstance Win32_Process -Filter "ParentProcessId=${swap2.pid}" | ForEach-Object ProcessId); Get-NetTCPConnection -State Listen -OwningProcess $p -ErrorAction SilentlyContinue | ForEach-Object { $_.LocalAddress + ':' + $_.LocalPort }`],
+      ["-NoProfile", "-Command", `$p=@(${swap2.pid}) + @(Get-CimInstance Win32_Process -Filter "ParentProcessId=${swap2.pid}" | ForEach-Object ProcessId); Get-NetTCPConnection -OwningProcess $p -ErrorAction SilentlyContinue | Where-Object { $_.RemotePort -eq 0 } | ForEach-Object { $_.LocalAddress + ':' + $_.LocalPort }`],
       { encoding: "utf8" },
     );
     const addrs = out.split(/\r?\n/).map((x) => x.trim()).filter(Boolean);

@@ -38,11 +38,13 @@ describe("inventaire", () => {
       expect(by[id]!.version, `${id} version`).toBeTruthy();
     }
     expect(inv.components).toHaveLength(COMPONENTS.length);
-    // pnpm : au moins deux candidats, le résolu marqué, un candidat de l'utilisateur
+    // pnpm : le candidat résolu est marqué et vient en tête. Plusieurs candidats (dont un de l'utilisateur) ne se vérifient que s'il y en a
+    // plusieurs sur cette machine : un poste avec un seul pnpm sur le PATH est légitime (30/10 : le test exigeait le poste de développement d'origine).
     const pnpm = by.pnpm;
-    expect(pnpm!.candidates.length).toBeGreaterThanOrEqual(2);
+    expect(pnpm!.candidates.length).toBeGreaterThanOrEqual(1);
     expect(pnpm!.candidates[0]!.resolved).toBe(true);
-    expect(pnpm!.candidates.some((c) => c.user)).toBe(true);
+    expect(pnpm!.candidates.filter((c) => c.resolved)).toHaveLength(1);
+    if (pnpm!.candidates.length > 1) expect(pnpm!.candidates.some((c) => c.user)).toBe(true);
   });
 });
 

@@ -327,7 +327,9 @@ export function applyNetworkPolicyForEntry(env: NodeJS.ProcessEnv = process.env)
 /** Outils dont le travail EST d'aller sur Internet : refusés hors ligne. */
 const INTERNET_TOOLS = new Set(["web_search", "web_fetch", "http_request", "media_fetch",
   // G10 : télécharge une image de conteneur depuis son registre (la VM a le réseau le temps du téléchargement).
-  "linux_prepare", "connected_browser", "skill_hub_install", "skill_hub_search", "pinokio_install", "pinokio_search"]);
+  "linux_prepare", "connected_browser", "skill_hub_install", "skill_hub_search", "pinokio_install", "pinokio_search",
+  // Lot 4 (30/10) : météo (Open-Meteo, position IP) et mesure du débit. `briefing` n'y est pas : il saute la météo quand Internet est coupé.
+  "weather", "internet_speed"]);
 /** Outils qui lancent un programme quelconque : Jarod ne peut pas le couper du réseau, refusés hors ligne sauf exception « commandes locales ». */
 const PROCESS_TOOLS = new Set(["run_shell"]);
 

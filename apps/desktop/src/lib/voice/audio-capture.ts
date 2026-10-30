@@ -3,6 +3,7 @@
 // subscriber arrives and released when the last one leaves, so the privacy indicator maps 1:1
 // onto "the mic is actually open".
 import { atom } from 'nanostores'
+import { micConstraints, preferredInputId } from './audio-devices.ts'
 import { floatToInt16, resampleLinear, rms, TARGET_SAMPLE_RATE } from './pcm.ts'
 import { privacySettingsPath } from '../platform-labels.ts'
 
@@ -68,10 +69,18 @@ async function open(): Promise<void> {
     let media: MediaStream
 
     try {
-      media = await navigator.mediaDevices.getUserMedia({
-        audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-        video: false
-      })
+      // Lot 5 : le micro choisi dans Réglages › Voix ; s'il a été débranché, le défaut (jamais d'échec pour ça).
+      const wanted = preferredInputId()
+
+      try {
+        media = await navigator.mediaDevices.getUserMedia({ audio: micConstraints(wanted, null), video: false })
+      } catch (error) {
+        if (!wanted || !(error instanceof Error) || error.name !== 'OverconstrainedError') {
+          throw error
+        }
+
+        media = await navigator.mediaDevices.getUserMedia({ audio: micConstraints('', null), video: false })
+      }
     } catch (error) {
       const name = error instanceof Error ? error.name : ''
 

@@ -72,6 +72,11 @@ export interface EnginePreset {
   model: string;
   /** Smaller GGUF of the same family for speculative decoding (empty: none). */
   draftModel: string;
+  /**
+   * Projector of a multimodal model (`--mmproj`: images, and audio for omni models). Absent: the `mmproj*.gguf` next to the model is used when
+   * there is exactly one; empty string: none, even if one is there.
+   */
+  mmproj?: string;
   ctxSize: number;
   /** Layers offloaded to the GPU; -1 = all of them. */
   gpuLayers: number;
@@ -285,6 +290,9 @@ export interface ImageDescriptionConfig {
   /** The model that describes. Empty = nothing is described (no provider is chosen for the user). */
   provider: string;
   model: string;
+  /** Un second modèle, tenté quand le premier échoue ou n'est pas disponible (ex. Gemini en nuage, avec la clé de l'utilisateur). Vide = aucun. */
+  fallbackProvider?: string;
+  fallbackModel?: string;
 }
 
 // services/webhooks.ts:10-11
@@ -617,6 +625,18 @@ export interface Settings {
   /** Show the agent's browser window while it navigates. */
   browserVisible: boolean;
   /**
+   * Accès à tous les lecteurs (analyse du 30/10) : les outils de fichiers acceptent aussi un chemin ABSOLU hors du dossier de travail (C:, E:…),
+   * sauf les emplacements protégés (identifiants, Windows, Program Files). Un chemin relatif reste dans le dossier de travail ; les écritures
+   * demandent toujours l'accord. Faux par défaut : une installation existante ne change pas.
+   */
+  machineFiles: boolean;
+  /**
+   * Plancher de sécurité (30/10), indépendant du profil d'accès : l'accord natif est TOUJOURS demandé pour écraser ou supprimer un fichier existant, envoyer
+   * à un tiers, créer une tâche planifiée, et pour toute action sensible qui suit la lecture d'un contenu extérieur (MCP, web) dans le même tour — même avec
+   * « Tout autoriser » ou une règle « sans accord ». Un fichier écrasé est copié avant. Vrai par défaut ; l'éteindre demande une confirmation native.
+   */
+  safetyFloor: boolean;
+  /**
    * Navigateur de l'agent : session GARDÉE sur disque (cookies, connexions faites par l'utilisateur dans la fenêtre), propre à l'agent. Faux par
    * défaut : la session vit en mémoire et s'efface à `browser_close`. Activer exige une confirmation native ; « Oublier » l'efface.
    */
@@ -791,6 +811,8 @@ export const DEFAULT_SETTINGS: Settings = {
   webhooks: { enabled: false, port: DEFAULT_HOOK_PORT },
   voice: { sttProvider: "openai", sttModel: "whisper-1", autoSpeak: false, ttsVoice: "", ttsRate: 1 },
   browserVisible: true,
+  machineFiles: false,
+  safetyFloor: true,
   browserPersistent: false,
   rag: {
     enabled: false,

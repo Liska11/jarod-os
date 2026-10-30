@@ -185,7 +185,7 @@ describe('OsControlServer', () => {
     } finally {
       server.stop()
     }
-  })
+  }, 30_000) // 30/10 : le canal nommé et ses ACL tardent quand toute la suite tourne en parallèle (5 s par défaut ne suffisaient pas)
 
   it('does not fall back silently when it cannot open the door', async () => {
     const blocker = path.join(tempDir(), 'blocker')

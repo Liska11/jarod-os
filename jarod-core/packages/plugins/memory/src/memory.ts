@@ -19,7 +19,10 @@ const toMemory = (r: Row): Memory => ({
   updatedAt: r.updated_at,
 });
 
-export const MEMORY_TYPES: MemoryType[] = ["fact", "preference", "context", "conversation"];
+export const MEMORY_TYPES: MemoryType[] = ["fact", "preference", "context", "conversation", "rule"];
+
+/** Q2 : au-delà, les règles les plus anciennes ne sont plus injectées (elles restent visibles et supprimables) : le prompt d'un petit modèle est court. */
+export const MAX_INJECTED_RULES = 20;
 
 /** V-18 : une ligne de l'historique de la mémoire. `before`/`after` absents pour un ajout / un retrait. */
 export interface MemoryChange {
@@ -170,10 +173,16 @@ export class MemoryService {
    */
   relevant(query: string, limit = 12): Memory[] {
     const prefs = this.list("preference").slice(0, 8);
-    const matches = this.search(query, limit);
-    const recent = matches.length > 0 ? [] : this.list().slice(0, 5);
+    // Les règles ont leur propre section du prompt (`rules()`) : jamais deux fois.
+    const matches = this.search(query, limit).filter((m) => m.type !== "rule");
+    const recent = matches.length > 0 ? [] : this.list().filter((m) => m.type !== "rule").slice(0, 5);
     const byId = new Map<string, Memory>();
     for (const m of [...prefs, ...matches, ...recent]) byId.set(m.id, m);
     return [...byId.values()].slice(0, limit + prefs.length);
+  }
+
+  /** Q2 : les règles de comportement, les plus récentes d'abord, toutes injectées (bornées à MAX_INJECTED_RULES) quelle que soit la requête. */
+  rules(limit = MAX_INJECTED_RULES): Memory[] {
+    return this.list("rule").slice(0, limit);
   }
 }

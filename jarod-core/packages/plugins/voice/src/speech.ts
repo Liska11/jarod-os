@@ -1,4 +1,5 @@
 // Portage de packages/core/src/services/speech.ts (rév. 2e180305) — verbatim, sauf `findOnPath` (@jarod/kernel/find-on-path) et le moteur Piper (Jarod-cordis, PLAN §4.3), balisé « Piper ».
+import { type Pronunciation, spokenText } from "./speech-text.js";
 import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -53,6 +54,8 @@ export const PIPER_VOICE_PREFIX = "piper:";
 
 export interface SpeechDeps {
   spawn?: SpeechSpawn;
+  /** Dictionnaire de prononciation appliqué avant la synthèse (absent : celui par défaut ; `[]` : aucun). */
+  pronunciations?: readonly Pronunciation[];
   /** Piper ; absent = moteur de l'OS seul (comportement de la source). */
   piper?: PiperConfig;
   /** Where the text file waits for the engine. */
@@ -197,7 +200,7 @@ export class SpeechService {
     if (String(opts.voice ?? "").trim().startsWith(PIPER_VOICE_PREFIX)) return this.speakPiper(text, opts);
     const engine = this.engine();
     if (!engine) throw new Error("SPEECH_NO_ENGINE: aucun moteur vocal sur cette machine.");
-    const body = String(text ?? "").trim();
+    const body = spokenText(String(text ?? ""), this.d.pronunciations).trim();
     if (!body) throw new Error("SPEECH_EMPTY: rien à lire.");
     const rate = normaliseRate(opts.rate);
     const spoken = body.length > SPEECH_MAX_CHARS ? body.slice(0, SPEECH_MAX_CHARS) : body;
@@ -251,7 +254,7 @@ export class SpeechService {
         const engine = this.engine();
         if (!engine) throw new Error("SPEECH_NO_ENGINE: aucun moteur vocal sur cette machine.");
         if (engine.kind !== "sapi") throw new Error("SPEECH_NO_WAV: la sortie en fichier n'est pas prise en charge avec ce moteur vocal (Windows ou voix Piper).");
-        const body = String(text ?? "").trim();
+        const body = spokenText(String(text ?? ""), this.d.pronunciations).trim();
         if (!body) throw new Error("SPEECH_EMPTY: rien à lire.");
         const rate = normaliseRate(opts.rate);
         const spoken = body.length > SPEECH_MAX_CHARS ? body.slice(0, SPEECH_MAX_CHARS) : body;
@@ -290,7 +293,7 @@ export class SpeechService {
     if (!p || !model) throw new Error(`SPEECH_BAD_VOICE: voix Piper inconnue (${voice || "aucune"}).`);
     if (!existsSync(p.bin)) throw new Error(`SPEECH_NO_ENGINE: Piper introuvable (${p.bin}).`);
     if (!existsSync(model)) throw new Error(`SPEECH_NO_ENGINE: modèle Piper introuvable (${model}).`);
-    const body = String(text ?? "").trim();
+    const body = spokenText(String(text ?? ""), this.d.pronunciations).trim();
     if (!body) throw new Error("SPEECH_EMPTY: rien à lire.");
     const rate = normaliseRate(opts.rate);
     const spoken = body.length > SPEECH_MAX_CHARS ? body.slice(0, SPEECH_MAX_CHARS) : body;

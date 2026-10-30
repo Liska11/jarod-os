@@ -2,7 +2,7 @@
 // puis, sous Windows, de VRAIS essais sur des fichiers et des processus créés par le test lui-même (jamais autre chose). Barres : jarod-herald-reuse.md § 6.
 import { type ChildProcess, execFileSync, spawn } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
-import { createServer } from "node:net";
+import { connect, createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -344,7 +344,18 @@ describe.runIf(win)("sur cette machine (vrai PowerShell) : uniquement des fichie
     const child = spawn(process.execPath, ["-e", `require('net').createServer().listen(${free}, '127.0.0.1'); setInterval(() => {}, 1000)`], { stdio: "ignore", windowsHide: true });
     kids.push(child);
     const pid = child.pid!;
-    expect(await until(() => execFileSync("netstat", ["-ano"], { encoding: "utf8" }).includes(`127.0.0.1:${free}`), 10_000)).toBe(true);
+    // On attend que le port réponde en s'y connectant : `netstat` ne liste plus tous les ports en écoute sur Windows 11 build 26300 (30/10).
+    let open = false;
+    const deadline = Date.now() + 10_000;
+    while (!open && Date.now() < deadline) {
+      open = await new Promise<boolean>((ok) => {
+        const sock = connect(free, "127.0.0.1");
+        sock.once("connect", () => (sock.destroy(), ok(true)));
+        sock.once("error", () => ok(false));
+      });
+      if (!open) await new Promise((r) => setTimeout(r, 100));
+    }
+    expect(open).toBe(true);
     const out = JSON.parse(await kill.run({ port: free, force: true }, ctx));
     expect(out.stopped).toEqual([{ pid, name: "node" }]);
     expect(await until(() => !alive(pid))).toBe(true);
