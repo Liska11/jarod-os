@@ -66,6 +66,16 @@ deletes, moves or overwrites, an HTTP request that modifies, a scheduled task, a
 server, web, browser) was read**. With the floor on, all six cases above are blocked; the test fails without it. "Turning Gemini on" is a setting, not a tool:
 settings that send data off the machine go through a native confirmation, and the agent has no tool that writes settings.
 
+**Per-file grant.** A "yes" (or a write allowed by the profile or a rule) makes that file *granted for this conversation*: an agent loop that rewrites the same
+file asks once, not at every turn (`agent/test/floor-grant.test.ts`: three rewrites, one question, in both profiles; the test fails without the grant). A
+different existing file, a refusal, a rule that says "ask", or any outside content read in the turn asks again. A file the agent created itself is its own. The
+copy before overwrite is made **every** time; there is no retention limit on those copies yet.
+
+**Tests never touch the real machine.** `jarod-core/scripts/test-report.mjs` runs every vitest process with a temporary home (USERPROFILE, APPDATA, LOCALAPPDATA)
+and `scripts/test-isolation.mjs`, which refuses file access to the real Jarod-OS folders, listening on a fixed or real Jarod-OS port, and connecting to the real
+ports (8080, 8792, 8790…). Any attempt is logged and fails the run, except three reviewed ones listed in `scripts/test-isolation.allow.json` (blocked, never
+reaching the machine). Running plain `vitest` without the runner does not arm the guard.
+
 **What the floor does not cover.** The shell check looks at the program name in command position: a program that deletes without saying so
 (`node -e "fs.unlinkSync(...)"`, a script) is not recognised on its own: it is covered only by the "after outside content" rule. The backup is skipped above
 200 MB (the approval still happens). The rule that follows outside content is per turn and per conversation, not per piece of data.

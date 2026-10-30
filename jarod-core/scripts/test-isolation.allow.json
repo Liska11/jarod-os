@@ -1,0 +1,8 @@
+{
+  "_": "Tentatives de connexion aux ports réels de Jarod-OS que la garde BLOQUE (rien n'atteint la vraie machine) et que le lanceur ne compte pas comme échec : le code sous test sonde les moteurs locaux par défaut (8080, 8000, 8790, 8792) ; la garde les rend injoignables, comme sur une machine sans moteur. Toute AUTRE tentative fait échouer la mesure. À réduire en injectant les sondes dans ces tests.",
+  "allow": [
+    { "file": "jarod-core/packages/cli/test/gateway-discovery.test.ts", "kind": "connexion à un port réel", "why": "le noyau ouvert par le test sonde les moteurs locaux par défaut" },
+    { "file": "jarod-core/packages/cli/test/gateway-config.test.ts", "kind": "connexion à un port réel", "why": "idem" },
+    { "file": "jarod-core/packages/bridge/test/local-models.test.ts", "kind": "connexion à un port réel", "why": "le sondage du moteur llama.cpp local (8080) de la liste des modèles" }
+  ]
+}

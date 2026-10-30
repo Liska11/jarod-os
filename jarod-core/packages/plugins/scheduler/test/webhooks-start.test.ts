@@ -293,6 +293,13 @@ describe("WQ3 : idempotence", () => {
     // On récupère le service du noyau pour le tester.
     const webhooks = (core.app as unknown as { webhooks: WebhookService }).webhooks;
     webhooks.secret("build");
+    // Le noyau écoute par défaut sur 8790, le VRAI port des déclencheurs de l'utilisateur : le test prend un port libre choisi par le système.
+    const { createServer } = await import("node:http");
+    const probe = createServer();
+    await new Promise<void>((ok) => probe.listen(0, "127.0.0.1", () => ok()));
+    const free = (probe.address() as { port: number }).port;
+    await new Promise<void>((ok) => probe.close(() => ok()));
+    (webhooks as unknown as { d: { port: number } }).d.port = free;
     await webhooks.start();
 
     const body = JSON.stringify({ prompt: "test idempotence" });

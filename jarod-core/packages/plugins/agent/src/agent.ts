@@ -1256,7 +1256,8 @@ export interface AuditEntry {
     | "sans accord"
     | "annulé"
     | "refusé (invalide)"
-    | "refusé (injection)";
+    | "refusé (injection)"
+    | "autorisé (fichier déjà accordé)";
   /** Set once the tool ran: whether it succeeded. */
   ok?: boolean;
   /** V-02 : l'identifiant de l'appel du modèle, celui que la conversation affiche, pour rattacher la ligne à son tour. */
@@ -1313,6 +1314,22 @@ function injectionTaintOf(sessionId: string): Taint | null {
  */
 const externalReads = new Map<string, string>();
 
+/**
+ * Plancher de sécurité, accord « pour ce fichier » : les fichiers que la personne a laissé écrire (un oui à l'écrasement, ou une écriture permise par son profil
+ * ou sa règle) pour CETTE conversation, en mémoire seulement. Une boucle qui réécrit le même fichier ne redemande donc pas l'accord à chaque tour ; la COPIE avant
+ * écrasement, elle, est faite à chaque fois. Sans effet après la lecture d'un contenu extérieur (le plancher redemande), et sans effet sur une règle « demander ».
+ */
+const floorGrants = new Map<string, Set<string>>();
+const MAX_FLOOR_GRANTS = 500;
+const grantKeyOf = (file: string): string => file.replaceAll("/", "\\").toLowerCase();
+function floorGranted(sessionId: string, file: string): boolean {
+  return floorGrants.get(sessionId)?.has(grantKeyOf(file)) ?? false;
+}
+function grantFloorFile(sessionId: string, file: string): void {
+  const set = floorGrants.get(sessionId) ?? new Set<string>();
+  if (set.size < MAX_FLOOR_GRANTS) set.add(grantKeyOf(file));
+  floorGrants.set(sessionId, set);
+}
 /** Efface la teinture : appelé au début de chaque tour. */
 export function clearInjectionTaint(sessionId: string): void {
   injectionTaints.delete(sessionId);
@@ -1522,16 +1539,21 @@ async function runGuardedTool(
   // Plancher de sécurité (safety-floor.ts) : indépendant du profil, des règles « sans accord » et de « Tout autoriser ».
   let floor: string | null = null;
   let overwriteTarget: string | null = null;
+  let writeTarget: string | null = null; // le chemin réel que write_file / edit_file va écrire (existant ou non)
+  let fileGranted = false;
   if (s.safetyFloor !== false) {
     if (call.name === "write_file" || call.name === "edit_file") {
       try {
         const p = resolveInWorkspace({ sessionId, workspace: s.workspace, signal, ...(s.machineFiles ? { machineFiles: true } : {}) } as ToolContext, (call.args as Record<string, unknown> | undefined)?.path);
+        writeTarget = p;
         if (existsSync(p) && statSync(p).isFile()) overwriteTarget = p;
       } catch {
         overwriteTarget = null; // chemin refusé : l'outil le refusera lui-même
       }
     }
-    floor = floorReason({ tool: call.name, args: (call.args ?? {}) as Record<string, unknown>, dangerous: Boolean(tool.dangerous), externalFrom: externalReads.get(sessionId) ?? null, existingTarget: overwriteTarget });
+    // Accord « pour ce fichier » : déjà laissé écrire dans cette conversation, et aucun contenu extérieur lu dans ce tour ; une règle « demander » reste maîtresse.
+    fileGranted = Boolean(writeTarget) && verdict !== "ask" && !externalReads.has(sessionId) && floorGranted(sessionId, writeTarget!);
+    floor = fileGranted ? null : floorReason({ tool: call.name, args: (call.args ?? {}) as Record<string, unknown>, dangerous: Boolean(tool.dangerous), externalFrom: externalReads.get(sessionId) ?? null, existingTarget: overwriteTarget });
     if (floor) approvalText = `Plancher de sécurité : ${floor}. ${approvalText}`;
   }
   const task = tasks?.begin({ sessionId, tool: call.name, summary: approvalText, ...(target !== null ? { target } : {}) }, signal);
@@ -1564,7 +1586,7 @@ async function runGuardedTool(
     decision = "autorisé (règle)";
   } else if (
     floor ||
-    needsApproval({ profile, tool: call.name, dangerous: Boolean(tool.dangerous), verdict: verdict === "ask" ? "ask" : "allow", autoApproveTools: s.autoApproveTools, alwaysAllowed })
+    (!fileGranted && needsApproval({ profile, tool: call.name, dangerous: Boolean(tool.dangerous), verdict: verdict === "ask" ? "ask" : "allow", autoApproveTools: s.autoApproveTools, alwaysAllowed }))
   ) {
     if (task) tasks!.step(task.id, "accord demandé", undefined, "awaiting-approval");
     // Un service d'approbation en erreur (rejet OU levée synchrone) REFUSE : l'outil ne tourne jamais sur une erreur (SPECS-P5-UI-PARITE.md § 13, FC4).
@@ -1587,6 +1609,9 @@ async function runGuardedTool(
     }
     if (task) tasks!.step(task.id, "accordée", undefined, "running");
     decision = "accordé";
+  } else if (fileGranted) {
+    // Ce fichier a déjà été laissé écrire dans cette conversation (accord ou profil) : pas de nouvelle question, mais la copie avant écrasement est faite, et le journal le dit.
+    decision = "autorisé (fichier déjà accordé)";
   } else if (tool.dangerous || tool.audited) {
     // `audited` : une lecture sans accord (outils système) qui laisse tout de même sa ligne dans le journal.
     decision = "automatique";
@@ -1627,6 +1652,8 @@ async function runGuardedTool(
     try {
       out = await tool.run(call.args, ctx);
       if (backupNote) out += backupNote;
+      // L'écriture a eu lieu avec l'aval de la personne (oui, profil ou règle) : ce fichier est accordé pour cette conversation (jamais après un contenu extérieur).
+      if (writeTarget && s.safetyFloor !== false && !externalReads.has(sessionId)) grantFloorFile(sessionId, writeTarget);
     } catch (e) {
       exec?.end(runSignal.aborted ? "cancelled" : "error");
       throw e;
