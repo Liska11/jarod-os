@@ -17,7 +17,7 @@ import { type ConnectedBrowserSettings, connectedBrowserDomainProblem, DEFAULT_D
 import { ACCESS_PROFILES, type AccessProfile, describeShellGuard, HARD_LIMITS, isAccessProfile, profilePower } from "@jarod/plugin-agent";
 import { isLoopbackUrl } from "@jarod/plugin-llm";
 import { type GrantInput, normalizeRules, type Plan, planGrant, planMove, planRevoke, planUpdate, rebaseRules, type RuleChange, rulesWeakenings } from "@jarod/plugin-permissions";
-import { STT_DEFAULTS } from "@jarod/plugin-voice";
+import { readLocalOnly, STT_DEFAULTS, writeLocalOnly } from "@jarod/plugin-voice";
 import type { HandlerContext } from "./context.js";
 import { launchAtLoginRefusal, launchAtLoginView, type LoginItemsPort, setLaunchAtLogin } from "../tray-policy.js";
 import { shellsOf } from "./terminal.js";
@@ -764,10 +764,15 @@ const ENTRIES: Record<string, Entry> = {
   // La voix de la conversation parlée : le fournisseur de transcription (liste fermée : ceux qui ont un point d'accès de transcription), son modèle, la voix et le débit de
   // la synthèse locale. `autoSpeak` (lire les réponses sur le haut-parleur DU NOYAU) n'est pas ici : la fenêtre joue elle-même la voix.
   voice: {
-    read: (s) => ({ sttProvider: s.voice.sttProvider, sttModel: s.voice.sttModel, ttsVoice: s.voice.ttsVoice, ttsRate: s.voice.ttsRate }),
+    // `localOnly` (mode 100 % local) vit dans `qwen-flash.json`, pas dans la base chiffrée : le noyau le relit à chaque requête vocale, sans redémarrage.
+    read: (s) => ({ sttProvider: s.voice.sttProvider, sttModel: s.voice.sttModel, ttsVoice: s.voice.ttsVoice, ttsRate: s.voice.ttsRate, localOnly: readLocalOnly() }),
     write: (v, current, env) => {
-      const o = record("voice", v, ["sttProvider", "sttModel", "ttsVoice", "ttsRate"]);
+      const o = record("voice", v, ["sttProvider", "sttModel", "ttsVoice", "ttsRate", "localOnly"]);
       const next = { ...current.voice };
+      if (o.localOnly !== undefined) {
+        if (typeof o.localOnly !== "boolean") bad("voice.localOnly", "vrai ou faux");
+        writeLocalOnly(o.localOnly as boolean);
+      }
       if (o.sttProvider !== undefined) {
         const id = text("voice.sttProvider", o.sttProvider, 80, false);
         if (!Object.hasOwn(STT_DEFAULTS, id)) bad("voice.sttProvider", `un fournisseur de transcription parmi ${Object.keys(STT_DEFAULTS).join(", ")}`);

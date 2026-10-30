@@ -15,7 +15,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 const require = createRequire(import.meta.url);
 
 /** Les ports de Jarod-OS (moteurs, vision, voix, passerelle, WhatsApp, embeddings…) : un test n'a jamais à les joindre. */
-export const LIVE_PORTS = [8000, 8080, 8081, 8642, 8790, 8791, 8792, 8910, 8920, 8930, 9000, 9119];
+export const LIVE_PORTS = [8000, 8080, 8081, 8642, 8790, 8791, 8792, 8910, 8920, 8930, 9000, 9119, 8090, 30000];
 
 /** Vrai si `path` est dans l'un des dossiers `roots` (insensible à la casse, `/` ou `\`). */
 export function pathIsProtected(path, roots) {

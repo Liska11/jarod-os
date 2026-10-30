@@ -116,6 +116,17 @@ export const PROVIDERS: ProviderDef[] = [
     local: true,
     models: [],
   },
+  // Qwen3.8-Flash-Next (125B MoE, experts sur NVMe) servi par lean-qwenflash dans WSL2 (scripts/qwen-flash/start-qwen-flash.ps1). WSL relaie
+  // 127.0.0.1:30000 vers Windows ; le serveur parle l'API OpenAI et expose le modèle « qwen3.8-flash-next ». Il occupe ~17 Go des 20 Go de la RTX
+  // 4000 Ada : ne pas le lancer en même temps qu'un modèle llama.cpp / LM Studio chargé sur ce GPU.
+  {
+    id: "qwen-flash-wsl",
+    name: "Qwen3.8-Flash-Next (lean-qwenflash, WSL2)",
+    protocol: "openai",
+    baseUrl: "http://127.0.0.1:30000/v1",
+    local: true,
+    models: ["qwen3.8-flash-next"],
+  },
   {
     id: "vllm",
     name: "vLLM (local)",
@@ -132,6 +143,16 @@ export const PROVIDERS: ProviderDef[] = [
     baseUrl: "http://127.0.0.1:8790/v1",
     local: true,
     models: ["whisper-fr"],
+  },
+  // Dictée par défaut (31/10) : whisper.cpp sur CPU (large-v3-turbo q5_0), port 8090, démarré par l'autostart de Jarod (qwen-flash-autostart.ts).
+  // Repli sur Gemini si le serveur ne répond pas (plugin-voice, stt-gemini.ts). Transcription seulement.
+  {
+    id: "local-whisper-cpu",
+    name: "Dictée locale (Whisper large-v3-turbo, CPU)",
+    protocol: "openai",
+    baseUrl: "http://127.0.0.1:8090/v1",
+    local: true,
+    models: ["large-v3-turbo-q5_0"],
   },
   // Dictée par LFM3-Omni (30/10) : le moteur local (llama-server, port réglé dans Modèles locaux) reçoit l'audio dans une requête de conversation
   // (voice.ts, `transcribeWithOmni`). L'adresse ci-dessous est le port par défaut ; le vrai port est lu dans le réglage du moteur.

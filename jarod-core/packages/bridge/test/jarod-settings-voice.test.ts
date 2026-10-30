@@ -2,18 +2,43 @@
  * Jarod-OS — réglage `voice` de `set-jarod-settings` : fournisseur de transcription (liste fermée), modèle, voix et débit de la synthèse. VRAI kernel, VRAIS handlers.
  */
 import { cleanup } from "@jarod/kernel/testing";
-import { afterEach, describe, expect, it } from "vitest";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { setupKernel } from "./ui-parite-helpers.js";
 
-afterEach(cleanup);
+// Le mode 100 % local vit dans qwen-flash.json : les essais l'écrivent dans un dossier temporaire, jamais dans la configuration réelle.
+let configDir = "";
+beforeEach(() => {
+  configDir = mkdtempSync(join(tmpdir(), "jarod-voice-cfg-"));
+  process.env.JAROD_OS_CONFIG_DIR = configDir;
+});
+afterEach(() => {
+  cleanup();
+  delete process.env.JAROD_OS_CONFIG_DIR;
+  rmSync(configDir, { recursive: true, force: true });
+});
 
 describe("réglage voice", () => {
   it("se lit avec les valeurs par défaut et s'écrit : fournisseur local sans confirmation, modèle, voix, débit", async () => {
     const { call, app, confirms } = await setupKernel();
-    expect(((await call("get-jarod-settings")) as { voice: unknown }).voice).toEqual({ sttProvider: "openai", sttModel: "whisper-1", ttsVoice: "", ttsRate: 1 });
+    expect(((await call("get-jarod-settings")) as { voice: unknown }).voice).toEqual({ sttProvider: "openai", sttModel: "whisper-1", ttsVoice: "", ttsRate: 1, localOnly: false });
     await call("set-jarod-settings", { voice: { sttProvider: "lmstudio", sttModel: "whisper-large", ttsVoice: "Microsoft Hortense Desktop", ttsRate: 1.25 } });
     expect(app.agent.settings.get("voice")).toMatchObject({ sttProvider: "lmstudio", sttModel: "whisper-large", ttsVoice: "Microsoft Hortense Desktop", ttsRate: 1.25 });
     expect(confirms).toHaveLength(0);
+  });
+
+  it("le mode 100 % local s'écrit dans qwen-flash.json en gardant les autres champs, se relit, et refuse autre chose qu'un booléen", async () => {
+    const { call, app } = await setupKernel();
+    writeFileSync(join(configDir, "qwen-flash.json"), JSON.stringify({ autoStart: true, whisper: { port: 8090 } }));
+    await call("set-jarod-settings", { voice: { localOnly: true } });
+    expect(JSON.parse(readFileSync(join(configDir, "qwen-flash.json"), "utf8"))).toEqual({ autoStart: true, whisper: { port: 8090 }, localOnly: true });
+    expect(((await call("get-jarod-settings")) as { voice: { localOnly: boolean } }).voice.localOnly).toBe(true);
+    await call("set-jarod-settings", { voice: { localOnly: false } });
+    expect(((await call("get-jarod-settings")) as { voice: { localOnly: boolean } }).voice.localOnly).toBe(false);
+    await expect(call("set-jarod-settings", { voice: { localOnly: "oui" } })).rejects.toThrow(/vrai ou faux/);
+    expect(app.agent.settings.get("voice").sttProvider).toBe("openai");
   });
 
   it("autoSpeak n'est pas écrit ici (le haut-parleur du noyau n'est pas celui de la fenêtre) et reste tel quel", async () => {

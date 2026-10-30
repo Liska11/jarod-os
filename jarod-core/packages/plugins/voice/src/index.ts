@@ -18,8 +18,9 @@ import type {} from "@jarod/plugin-storage";
 import type { Context } from "cordis";
 import { type CaptureConfig, VoiceCapture } from "./capture.js";
 import { type PriorityConfig, VoicePriorityGate } from "./priority.js";
-import { type PiperConfig, SpeechService } from "./speech.js";
+import { type PiperConfig, type SpeechOptions, SpeechService } from "./speech.js";
 import { findSttServer, STT_PROVIDER_ID, SttService } from "./stt-service.js";
+import { synthesizeChain, type TtsResult } from "./tts-chain.js";
 import { transcribe } from "./voice.js";
 import { type WakeWordConfig, WakeWordDetector, type WakeWordDetection } from "./wakeword.js";
 import { IsolatedWakeWordRuntime, type WorkerExitEvent, type WorkerSpawner, type WorkerStats } from "./wakeword-isolated.js";
@@ -30,6 +31,11 @@ export * from "./priority.js";
 export * from "./speech.js";
 export * from "./speech-text.js";
 export * from "./stt-service.js";
+export * from "./stt-groq.js";
+export * from "./tts-chain.js";
+export * from "./tts-elevenlabs.js";
+export * from "./tts-gemini.js";
+export * from "./voice-mode.js";
 export * from "./voice.js";
 export * from "./wakeword.js";
 export * from "./wakeword-isolated.js";
@@ -72,6 +78,8 @@ export interface VoiceService {
   whisperLog(): string[];
   /** Synthèse vocale locale (`core.speech`) : moteur de l'OS + voix Piper configurées. */
   speech: SpeechService;
+  /** Voix en WAV par la chaîne ElevenLabs → Gemini TTS → voix locale (mode 100 % local : voix locale seule). Jamais de silence tant que la voix locale marche. */
+  synthesize(text: string, opts?: SpeechOptions): Promise<TtsResult>;
   /** Détecteur du mot d'activation (null : non configuré). */
   wakeword: WakeWordDetector | null;
   /** Processus dédié du mot d'activation : pid, démarrages, plantages (null : dans le processus courant). */
@@ -154,6 +162,7 @@ export async function apply(ctx: Context, config: VoiceConfig = {}): Promise<voi
     startWhisper: async () => whisper.start(resolved()),
     whisperLog: () => [...log],
     speech: new SpeechService(config?.piper ? { piper: config.piper } : {}),
+    synthesize: (text, opts) => synthesizeChain(text, opts ?? {}, { local: (t, o) => service.speech.synthesize(t, o) }),
     /** Lit autoSpeak/ttsRate des réglages et parle si autoSpeak=true. Retourne { spoken, reason?, chars?, rate? }. */
     speak: async (text: string) => {
       const v = ctx.storage.settings.get("voice");

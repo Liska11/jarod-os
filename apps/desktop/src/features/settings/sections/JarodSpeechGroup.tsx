@@ -1,8 +1,8 @@
-import { IconLanguage, IconSpeakerphone, IconWaveSine } from '@tabler/icons-react'
+import { IconLanguage, IconShieldCheck, IconSpeakerphone, IconWaveSine } from '@tabler/icons-react'
 import { useT } from '../../../lib/i18n.ts'
 import { jarod } from '../../../lib/jarod.ts'
 import { useBackendData } from '../../../lib/use-async.ts'
-import { ChoiceRow, NumberRow, TextRow, useJarodSettings } from './jarod-controls.tsx'
+import { ChoiceRow, NumberRow, SwitchRow, TextRow, useJarodSettings } from './jarod-controls.tsx'
 import type { JarodOptions } from './jarod-settings-model.ts'
 import { MicrophoneRows } from './MicrophoneRows.tsx'
 import { InlineNote, SettingsGroup } from './shared.tsx'
@@ -31,6 +31,7 @@ export function JarodSpeechGroup() {
   return (
     <SettingsGroup title={t('speech.group')}>
       <MicrophoneRows />
+      <SwitchRow icon={<IconShieldCheck />} label={t('speech.localOnly')} description={t('speech.localOnlyDesc')} keywords={t('speech.localOnlyKw')} value={voice.localOnly === true} disabled={api.saving} onChange={value => void api.save({ voice: { localOnly: value } }, t('speech.localOnlySaved'))} />
       <ChoiceRow
         icon={<IconLanguage />}
         label={t('speech.stt')}
