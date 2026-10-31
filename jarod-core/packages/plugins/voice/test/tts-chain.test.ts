@@ -167,7 +167,7 @@ describe("Gemini TTS", () => {
     expect((init.headers as Record<string, string>)["x-goog-api-key"]).toBe("clé-gemini-0000");
     const sent = JSON.parse(init.body);
     expect(sent.generationConfig.responseModalities).toEqual(["AUDIO"]);
-    expect(sent.generationConfig.speechConfig.voiceConfig.prebuiltVoiceConfig.voiceName).toBe("Kore");
+    expect(sent.generationConfig.speechConfig.voiceConfig.prebuiltVoiceConfig.voiceName).toBe("Charon");
     expect(out.subarray(0, 4).toString()).toBe("RIFF");
     expect(out.readUInt32LE(24)).toBe(24_000);
   });

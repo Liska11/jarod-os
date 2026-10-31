@@ -14,10 +14,10 @@ export async function synthesizeWithGemini(text: string, env: NodeJS.ProcessEnv 
   const key = apiKey(env, "GEMINI_API_KEY", "Gemini");
   const model = env.JAROD_GEMINI_TTS_MODEL?.trim() || "gemini-2.5-flash-preview-tts";
   const body = {
-    contents: [{ parts: [{ text: `Lis ce texte en français, d'une voix naturelle : ${text}` }] }],
+    contents: [{ parts: [{ text: `Lis ce texte en français, d'une voix d'homme naturelle : ${text}` }] }],
     generationConfig: {
       responseModalities: ["AUDIO"],
-      speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: env.JAROD_GEMINI_TTS_VOICE?.trim() || "Kore" } } },
+      speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: env.JAROD_GEMINI_TTS_VOICE?.trim() || "Charon" } } },
     },
   };
   const res = await fetchCloud(
