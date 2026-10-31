@@ -34,8 +34,8 @@ describe("décisions de la garde", () => {
     expect(pathIsProtected(join(tmpdir(), "x"), roots)).toBe(false);
   });
 
-  it("les ports réels de Jarod-OS sont connus (moteur 8080, vision 8792, voix 8790, passerelle WhatsApp 8791)", () => {
-    for (const p of [8080, 8792, 8790, 8791]) expect(portIsLive(p)).toBe(true);
+  it("les ports réels de Jarod-OS sont connus (moteur 8080, vision 8792, voix 8790, passerelle WhatsApp 8791, Qwen Flash 30000)", () => {
+    for (const p of [8080, 8792, 8790, 8791, 8090, 30000]) expect(portIsLive(p)).toBe(true);
     expect(portIsLive(54321)).toBe(false);
     expect(LIVE_PORTS.length).toBeGreaterThan(8);
   });

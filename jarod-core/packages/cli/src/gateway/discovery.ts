@@ -24,7 +24,7 @@ interface Entry {
 }
 
 /** Les fournisseurs locaux qui ne parlent pas : jamais proposés comme modèle de conversation (le Whisper local ne fait que transcrire). */
-export const NON_CHAT_PROVIDERS: ReadonlySet<string> = new Set(["local-whisper-cpp"]);
+export const NON_CHAT_PROVIDERS: ReadonlySet<string> = new Set(["local-whisper-cpp", "local-whisper-cpu"]);
 
 /** Les modèles d'embedding que LM Studio et d'autres listent avec les modèles de conversation : inutilisables pour converser. */
 export const isEmbeddingModel = (id: string): boolean => /embed/i.test(id);

@@ -7,7 +7,7 @@
 import "@jarod/kernel/legacy-env-adopt";
 import { existsSync, realpathSync, statSync } from "node:fs";
 import { isAbsolute, join } from "node:path";
-import { assertOneaiChannel, autoStartLocalEngine, bindLocalModelsEvents, bindUpdateEvents, bindVoiceEvents, closeAllApiServers, createHandlers, desktopKernelOf, HERMES_REGISTRY, RegistryClient, startRememberedApiServers } from "@jarod/bridge";
+import { assertOneaiChannel, autoStartLocalEngine, autoStartQwenFlash, bindLocalModelsEvents, bindUpdateEvents, bindVoiceEvents, closeAllApiServers, createHandlers, desktopKernelOf, HERMES_REGISTRY, RegistryClient, startRememberedApiServers } from "@jarod/bridge";
 import { ProfileManager } from "@jarod/plugin-persona";
 import { defaultDataRoot, openCore } from "../context.js";
 import { createBridgePort } from "./bridge.js";
@@ -67,14 +67,14 @@ if (init) {
 }
 await core.skills.reload();
 const gatewayVersion = "0.1.5-gateway-spike";
-// La voix : transcription par le fournisseur des réglages, synthèse par la voix de la machine (WAV) ; la fenêtre joue le son.
-const voiceService = (core.app as unknown as { voice?: { transcribe(audio: Buffer, mime: string): Promise<string>; speech: { synthesize(text: string, opts?: { voice?: string; rate?: number }): Promise<{ wav: Buffer }> } } }).voice;
+// La voix : transcription par le fournisseur des réglages, synthèse par la chaîne ElevenLabs → Gemini TTS → voix de la machine (WAV) ; la fenêtre joue le son.
+const voiceService = (core.app as unknown as { voice?: { transcribe(audio: Buffer, mime: string): Promise<string>; synthesize(text: string, opts?: { voice?: string; rate?: number }): Promise<{ wav: Buffer }> } }).voice;
 const voice = voiceService
   ? {
       transcribe: (audio: Buffer, mime: string) => voiceService.transcribe(audio, mime),
       synthesize: async (text: string) => {
         const v = core.settings.get("voice");
-        return (await voiceService.speech.synthesize(text, { ...(v.ttsVoice ? { voice: v.ttsVoice } : {}), rate: v.ttsRate })).wav;
+        return (await voiceService.synthesize(text, { ...(v.ttsVoice ? { voice: v.ttsVoice } : {}), rate: v.ttsRate })).wav;
       },
     }
   : undefined;
@@ -130,7 +130,16 @@ console.log(`JAROD_GATEWAY_FILE ${file}`);
 console.error(`[passerelle] profil ${dataDir} ; url+jeton dans ${file} ; dossier de travail ${workspace ?? "(celui du shell)"}`);
 // Le moteur local (`localEngine.autoStart`) : lancé APRÈS l'écoute, sans l'attendre — la fenêtre s'ouvre pendant que le modèle se charge.
 // Mêmes trois gardes que `jarod serve` (`autoStartLocalEngine` ne rejette jamais ; jamais en mode test ni sur un profil temporaire).
-void autoStartLocalEngine(kernel, env, (line) => console.error(boundedMessage(`[passerelle] ${line}`)));
+const aiLog = (line: string) => console.error(boundedMessage(`[passerelle] ${line}`));
+// IA locale (`<config>/qwen-flash.json`) : APRÈS le moteur local existant (préréglage actif), pour ne lever LFM3-Omni sur CPU que si rien ne répond sur 8080 ;
+// Whisper (8090) et Qwen (30000, une fois le store monté) en suivent. Mêmes gardes ; sans ce fichier, rien ne démarre.
+let aiServices: { stop(): void } | undefined;
+void autoStartLocalEngine(kernel, env, aiLog)
+  .then(() => autoStartQwenFlash(kernel.dataRoot, env, aiLog))
+  .then((h) => {
+    aiServices = h;
+    if (stopping) h.stop(); // la passerelle s'est fermée pendant l'attente du store
+  });
 
 let stopping = false;
 const stop = async () => {
@@ -145,6 +154,7 @@ const stop = async () => {
   closeAllApiServers();
   // Le `llama-server` que cette passerelle a lancé (au démarrage automatique ou par « Démarrer ») ne lui survit pas.
   await kernel.localEngine?.engine.stop().catch(() => {});
+  aiServices?.stop(); // whisper-server et le llama-server LFM3 lancés par l'autostart de l'IA locale
   await gateway.close();
   removeSecretFile(file); // un jeton ne survit pas à la passerelle qui l'a produit
   await core.dispose().catch(() => {});

@@ -296,7 +296,7 @@ export interface JarodSettings {
   capabilityRouting?: CapabilityRoutes
   imageDescription: { mode: 'auto' | 'always' | 'off'; provider: string; model: string }
   learning: { enabled: boolean; reviewEvery: number }
-  voice: { sttProvider: string; sttModel: string; ttsVoice: string; ttsRate: number }
+  voice: { sttProvider: string; sttModel: string; ttsVoice: string; ttsRate: number; localOnly?: boolean }
 }
 
 export interface JarodOptions {
