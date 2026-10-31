@@ -33,7 +33,7 @@ export function supportsVision(provider: string, model: string): boolean {
   if (/^(gpt-4o|gpt-4\.1|gpt-4-turbo|gpt-5|chatgpt-4o|o1|o3|o4)/.test(m)) return true;
   if (m.includes("gemini") || /^gemma-?3/.test(m)) return true;
   if (/^grok-(4|2-vision|vision)/.test(m)) return true;
-  return /(vision|[-_.]vl\b|[-_]vl[-_]|llava|moondream|minicpm-v|pixtral|llama-?4|internvl|glm-4(\.\d)?v|kimi-vl|multimodal|mistral-(small-3\.[12]|medium)|qwen[\d.]*-?omni)/.test(
+  return /(vision|[-_.]vl\b|[-_]vl[-_]|llava|moondream|minicpm-v|pixtral|llama-?4|internvl|glm-4(\.\d)?v|kimi-vl|multimodal|mistral-(small-3\.[12]|medium)|qwen[\d.]*-?omni|lfm[\d.]*-?omni)/.test(
     m,
   );
 }
@@ -92,9 +92,11 @@ export class ImageDescriber {
     return text;
   }
 
-  /** Whether a model for looking at the screen is set (never guessed: the image is sent to that provider). */
+  /** Whether a model that can actually see is set (never guessed: the image is sent to that provider). */
   canLook(): boolean {
-    return this.targets().some((t) => t.provider !== LOCAL_VISION_PROVIDER || Boolean(this.d.local?.available()));
+    return this.targets().some((t) =>
+      t.provider === LOCAL_VISION_PROVIDER ? Boolean(this.d.local?.available()) : supportsVision(t.provider, t.model),
+    );
   }
 
   /** Le modèle réglé, puis le modèle de secours s'il y en a un. */

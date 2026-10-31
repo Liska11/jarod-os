@@ -36,21 +36,29 @@ export function screenLookTool(deps: ScreenLookDeps = {}): ToolDef[] {
         const target = args.target === "window" ? "window" : "screen";
         const question = typeof args.question === "string" && args.question.trim() ? args.question.trim().slice(0, 1000) : QUESTION_DEFAULT;
         const vision = deps.vision;
+        const textOnly = async (note: string) => {
+          const r = ((await runner().json(E.SCREEN_OCR, { target }, { timeoutMs: 90_000, signal: ctx.signal })) ?? {}) as { lines?: unknown };
+          const text = (Array.isArray(r.lines) ? r.lines.map(String) : []).join("\n").slice(0, 30_000);
+          return json({ target, mode: "texte", note, text, empty: text.trim() === "" });
+        };
         if (vision?.canLook()) {
           const shot = ((await runner().json(E.SCREEN_SHOT, { target }, { timeoutMs: 60_000, signal: ctx.signal })) ?? {}) as { jpeg?: string; width?: number; height?: number };
           if (!shot.jpeg) throw new Error("la capture d'écran est vide");
-          const answer = await vision.look({ data: shot.jpeg, mime: "image/jpeg" }, question, ctx.signal);
-          return json({ target, mode: "vision", size: `${shot.width}x${shot.height}`, answer });
+          try {
+            const answer = await vision.look({ data: shot.jpeg, mime: "image/jpeg" }, question, ctx.signal);
+            return json({ target, mode: "vision", size: `${shot.width}x${shot.height}`, answer });
+          } catch (error) {
+            if (ctx.signal?.aborted) throw error;
+            const why = error instanceof Error ? error.message : String(error);
+            // A configured model that cannot read the image (wrong family, server down, wrong name) must not cost the person the text: read it.
+            return textOnly(
+              `Le modèle de vision réglé n'a pas répondu (${why.slice(0, 200)}) : seul le texte lisible à l'écran est rendu. Choisir un modèle qui voit dans Réglages › Modèles › Description d'images.`,
+            );
+          }
         }
-        const r = ((await runner().json(E.SCREEN_OCR, { target }, { timeoutMs: 90_000, signal: ctx.signal })) ?? {}) as { lines?: unknown };
-        const text = (Array.isArray(r.lines) ? r.lines.map(String) : []).join("\n").slice(0, 30_000);
-        return json({
-          target,
-          mode: "texte",
-          note: "Aucun modèle de vision n'est réglé : seul le texte lisible à l'écran est rendu (pas les images ni la mise en page). Réglages › Modèles › Description d'images pour voir vraiment.",
-          text,
-          empty: text.trim() === "",
-        });
+        return textOnly(
+          "Aucun modèle de vision n'est réglé : seul le texte lisible à l'écran est rendu (pas les images ni la mise en page). Réglages › Modèles › Description d'images pour voir vraiment.",
+        );
       },
     },
   ];

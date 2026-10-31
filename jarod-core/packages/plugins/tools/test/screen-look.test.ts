@@ -33,6 +33,16 @@ describe("screen_look", () => {
     expect(seen[0]).toEqual({ image: { data: "QUJD", mime: "image/jpeg" }, question: "Que dit l'erreur ?" });
   });
 
+  it("un modèle réglé qui échoue : repli sur le texte lisible, la raison dite", async () => {
+    const p = ps();
+    const [tool] = screenLookTool({ platform: "win32", ps: p, vision: { canLook: () => true, look: async () => Promise.reject(new Error("modèle inconnu du serveur")) } });
+    const out = JSON.parse(await tool!.run({}, ctx));
+    expect(out.mode).toBe("texte");
+    expect(out.text).toContain("Erreur 404");
+    expect(out.note).toMatch(/n'a pas répondu/);
+    expect(p.calls.map(call => call.script)).toEqual([E.SCREEN_SHOT, E.SCREEN_OCR]);
+  });
+
   it("sans modèle de vision : le texte lisible, avec la raison dite", async () => {
     const p = ps();
     const [tool] = screenLookTool({ platform: "win32", ps: p, vision: { canLook: () => false, look: async () => "jamais" } });

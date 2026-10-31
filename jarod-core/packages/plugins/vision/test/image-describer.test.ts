@@ -79,7 +79,7 @@ describe("ImageDescriber", () => {
 describe("modèle de secours (Gemini en nuage)", () => {
   async function withFallback(chat: (provider: string) => Promise<{ text: string }>) {
     const app = await bootApp({ storage: { dataDir: tempDir(), encryptDb: false } });
-    app.storage.settings.set("imageDescription", { mode: "always", provider: "local", model: "m1", fallbackProvider: "google", fallbackModel: "gemini-2.5-flash" });
+    app.storage.settings.set("imageDescription", { mode: "always", provider: "local", model: "llava:13b", fallbackProvider: "google", fallbackModel: "gemini-2.5-flash" });
     const asked: string[] = [];
     const d = new ImageDescriber({
       db: app.storage.db,
@@ -115,6 +115,26 @@ describe("modèle de secours (Gemini en nuage)", () => {
     });
     await expect(cut.d.look({ data: "AAAA", mime: "image/jpeg" }, "?", user.signal)).rejects.toThrow("annulé");
     expect(cut.asked).toEqual(["local"]);
+  });
+});
+
+describe("canLook", () => {
+  it("un modèle qui ne voit pas ne prétend pas voir l'écran ; un modèle de vision, si", async () => {
+    const app = await bootApp({ storage: { dataDir: tempDir(), encryptDb: false } });
+    const d = new ImageDescriber({
+      db: app.storage.db,
+      settings: app.storage.settings,
+      providers: { client: () => ({}) } as never,
+      attachments: { load: () => ({ data: "AAAA" }) } as never,
+    });
+    app.storage.settings.set("imageDescription", { mode: "always", provider: "deepseek", model: "deepseek-chat" });
+    expect(d.canLook()).toBe(false);
+    app.storage.settings.set("imageDescription", { mode: "always", provider: "google", model: "gemini-2.5-flash" });
+    expect(d.canLook()).toBe(true);
+    app.storage.settings.set("imageDescription", { mode: "always", provider: "llamacpp", model: "LFM3-Omni-2B" });
+    expect(d.canLook()).toBe(true);
+    app.storage.settings.set("imageDescription", { mode: "off", provider: "google", model: "gemini-2.5-flash" });
+    expect(d.canLook()).toBe(false);
   });
 });
 
