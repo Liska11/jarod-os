@@ -73,7 +73,7 @@ function blocksOf(items: ChatMessage[]): Block[] {
   return blocks
 }
 
-export function Conversation({ chat, online }: { chat: ChatState | null; online: boolean }) {
+export function Conversation({ chat, online, hideModelPicker }: { chat: ChatState | null; online: boolean; hideModelPicker?: boolean }) {
   const { assistant } = useT()
   const space = useStore($activeSpace)
   // While the agent works a message is queued (it leaves when the turn ends); otherwise it is sent at once.
@@ -89,7 +89,7 @@ export function Conversation({ chat, online }: { chat: ChatState | null; online:
           <div className="truncate text-[15px] leading-tight font-semibold text-fg">{assistant}</div>
           <div className="truncate text-[12px] text-fg-3">{chat?.title || t('chat.workspace', { name: space?.name ?? 'Personal' })}</div>
         </div>
-        <ModelPicker chat={chat} online={online} />
+        {!hideModelPicker && <ModelPicker chat={chat} online={online} />}
       </div>
 
       {chat ? <Transcript chat={chat} online={online} /> : <Hero online={online} />}

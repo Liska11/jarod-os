@@ -4,6 +4,8 @@
  */
 export interface DoublePress {
   press(): void
+  /** The second press already known to be one (the browser counted two clicks): run the double action and forget a pending single. */
+  double(): void
   /** Forget a pending press (the button unmounted). */
   cancel(): void
 }
@@ -25,6 +27,14 @@ export function createDoublePress(onSingle: () => void, onDouble: () => void, wi
         pending = null
         onSingle()
       }, windowMs)
+    },
+    double() {
+      if (pending !== null) {
+        timers.clear(pending)
+        pending = null
+      }
+
+      onDouble()
     },
     cancel() {
       if (pending !== null) {

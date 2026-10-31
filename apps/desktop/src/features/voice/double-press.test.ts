@@ -51,3 +51,19 @@ describe('createDoublePress', () => {
     vi.useRealTimers()
   })
 })
+
+describe('createDoublePress.double', () => {
+  it('runs the double action at once and forgets a pending single press', () => {
+    vi.useFakeTimers()
+    const single = vi.fn()
+    const double = vi.fn()
+    const p = createDoublePress(single, double, 300)
+
+    p.press()
+    p.double()
+    vi.advanceTimersByTime(1000)
+    expect(double).toHaveBeenCalledOnce()
+    expect(single).not.toHaveBeenCalled()
+    vi.useRealTimers()
+  })
+})

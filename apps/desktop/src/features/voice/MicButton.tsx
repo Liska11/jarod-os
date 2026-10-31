@@ -1,6 +1,6 @@
 import { useStore } from '@nanostores/react'
 import { IconMicrophone } from '@tabler/icons-react'
-import { useEffect, useMemo } from 'react'
+import { type MouseEvent, useEffect, useMemo } from 'react'
 import { cn } from '../../lib/cn.ts'
 import { $dictation, finishDictation, startDictation } from '../../store/dictation.ts'
 import { isMainSurface, relayToMain } from '../../store/shell.ts'
@@ -39,7 +39,7 @@ export function MicButton({ size = 17, className, disabled }: { size?: number; c
 
   useEffect(() => () => presses.cancel(), [presses])
 
-  const onClick = () => {
+  const onClick = (event: MouseEvent<HTMLButtonElement>) => {
     // Dictating: one press finishes it at once; in a voice conversation one press ends it at once (no waiting to tell a double press).
     if ($dictation.get().phase === 'listening') {
       presses.cancel()
@@ -51,6 +51,13 @@ export function MicButton({ size = 17, className, disabled }: { size?: number; c
     if ($voiceActive.get()) {
       presses.cancel()
       void toggleVoice('button')
+
+      return
+    }
+
+    // The browser counts quick clicks itself: this holds even if the button was re-rendered between the two presses.
+    if (event.detail >= 2) {
+      presses.double()
 
       return
     }

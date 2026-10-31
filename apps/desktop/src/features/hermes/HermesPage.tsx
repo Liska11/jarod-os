@@ -11,6 +11,7 @@ import { openApp } from '../../store/windows.ts'
 import { SessionList } from '../chat/SessionList.tsx'
 import { ArtifactPane } from './ArtifactPane.tsx'
 import { $paneReveal } from './pane-apps.ts'
+import { ModelPicker } from './ComposerBar.tsx'
 import { Conversation } from './Conversation.tsx'
 import { MenuDivider, MenuItem, PopMenu } from './Menu.tsx'
 import { t, useT } from '../../lib/i18n.ts'
@@ -97,7 +98,9 @@ export function HermesPage() {
 
   return (
     <div className="page-enter relative flex h-full flex-col">
-      <div className="flex items-center justify-end gap-2 px-6 pt-5 pb-4">
+      <div className="flex items-center gap-2 px-6 pt-5 pb-4">
+        <ModelPicker chat={chat} online={online} />
+        <div className="min-w-0 flex-1" />
         {renaming && (
           <input
             ref={renameInput}
@@ -167,7 +170,7 @@ export function HermesPage() {
         reveal={reveal}
         left={
           <GlassCard className="flex min-h-0 flex-1 flex-col overflow-hidden">
-            <Conversation chat={chat} online={online} />
+            <Conversation chat={chat} online={online} hideModelPicker />
           </GlassCard>
         }
         right={
