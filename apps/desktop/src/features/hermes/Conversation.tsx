@@ -3,6 +3,7 @@ import { IconChevronRight, IconUser } from '@tabler/icons-react'
 import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import { HermesAvatar } from '../../components/app-icon.tsx'
 import { cn } from '../../lib/cn.ts'
+import { type ErrorKind, explainError } from '../../lib/error-text.ts'
 import type { AssistantMessage, ChatMessage, ChatState, SystemMessage, ToolMessage, UserMessage } from '../../lib/chat-model.ts'
 import { interruptChat, queuePrompt, runSlash, sendPrompt, steerPrompt } from '../../store/chat.ts'
 import type { Artifact } from '../../store/missions.ts'
@@ -187,7 +188,7 @@ function Transcript({ chat, online }: { chat: ChatState; online: boolean }) {
               {divider && <DayDivider label={day} />}
               {turn.user && <UserBubble message={turn.user} />}
               {blocksOf(turn.items).map(block =>
-                block.kind === 'tools' ? <ToolSummaryRow key={block.id} tools={block.tools} /> : block.message.role === 'assistant' ? <AssistantBubble key={block.id} message={block.message} /> : <SystemRow key={block.id} message={block.message} />
+                block.kind === 'tools' ? <ToolSummaryRow key={block.id} tools={block.tools} /> : block.message.role === 'assistant' ? <AssistantBubble key={block.id} message={block.message} /> : <SystemRow key={block.id} message={block.message} onRetry={isLast && !chat.streaming && online && turn.user ? retryOf(turn.user) : undefined} />
               )}
               <AuditTimeline lines={linesForTurn(auditLines, turn, shownIds)} />
               {finished && produced.map(artifact => <ArtifactCard key={artifact.path} artifact={artifact} selected={selected?.path === artifact.path} onSelect={() => selectArtifact(artifact.path)} />)}
@@ -262,6 +263,47 @@ const AssistantBubble = memo(function AssistantBubble({ message }: { message: As
   )
 })
 
-function SystemRow({ message }: { message: SystemMessage }) {
-  return <div className={cn('selectable rounded-lg px-3 py-2 text-[12.5px] whitespace-pre-wrap', message.level === 'error' ? 'bg-danger/10 text-danger' : message.level === 'warn' ? 'bg-warn/10 text-warn' : 'text-fg-3')}>{message.text}</div>
+const ERROR_TEXT: Record<ErrorKind, { title: MessageKey; hint: MessageKey }> = {
+  tooManyTools: { title: 'chat.error.tooManyTools', hint: 'chat.error.tooManyTools.hint' },
+  auth: { title: 'chat.error.auth', hint: 'chat.error.auth.hint' },
+  credit: { title: 'chat.error.credit', hint: 'chat.error.credit.hint' },
+  quota: { title: 'chat.error.quota', hint: 'chat.error.quota.hint' },
+  unreachable: { title: 'chat.error.unreachable', hint: 'chat.error.unreachable.hint' },
+  timeout: { title: 'chat.error.timeout', hint: 'chat.error.timeout.hint' },
+  server: { title: 'chat.error.server', hint: 'chat.error.server.hint' },
+  badRequest: { title: 'chat.error.badRequest', hint: 'chat.error.badRequest.hint' }
+}
+
+/** Sends the prompt of a turn again (its answer failed): the history already holds everything the model needs. */
+const retryOf = (user: UserMessage) => () => void sendPrompt(user.text)
+
+function SystemRow({ message, onRetry }: { message: SystemMessage; onRetry?: () => void }) {
+  const { t } = useT()
+  const [open, setOpen] = useState(false)
+  const explained = message.level === 'error' ? explainError(message.text) : null
+
+  if (!explained) {
+    return <div className={cn('selectable rounded-lg px-3 py-2 text-[12.5px] whitespace-pre-wrap', message.level === 'error' ? 'bg-danger/10 text-danger' : message.level === 'warn' ? 'bg-warn/10 text-warn' : 'text-fg-3')}>{message.text}</div>
+  }
+
+  const words = ERROR_TEXT[explained.kind]
+  const vars = { value: explained.value ?? 0 }
+
+  return (
+    <div className="selectable rounded-lg bg-danger/10 px-3 py-2 text-[12.5px] text-danger">
+      <div className="font-medium">{t(words.title, vars)}</div>
+      <div className="mt-0.5 opacity-80">{t(words.hint, vars)}</div>
+      <div className="mt-2 flex items-center gap-3 text-[11.5px]">
+        {onRetry && (
+          <button type="button" onClick={onRetry} className="rounded-md bg-danger/15 px-2 py-0.5 font-medium hover:bg-danger/25">
+            {t('chat.error.retry')}
+          </button>
+        )}
+        <button type="button" onClick={() => setOpen(v => !v)} aria-expanded={open} className="underline-offset-2 opacity-80 hover:underline">
+          {t('chat.error.details')}
+        </button>
+      </div>
+      {open && <pre className="mt-2 font-mono text-[11px] break-words whitespace-pre-wrap opacity-80">{message.text}</pre>}
+    </div>
+  )
 }
