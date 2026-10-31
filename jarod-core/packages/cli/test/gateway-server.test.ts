@@ -23,6 +23,8 @@ function fakeCore(script: (sessionId: string, text: string, hooks: AgentHooks) =
       get: (id) => sessions.get(id),
       list: () => [...sessions.values()],
       delete: (id) => void sessions.delete(id),
+      rename: (id, title) => void (sessions.has(id) && sessions.set(id, { ...sessions.get(id)!, title })),
+      setPinned: (id, pinned) => void (sessions.has(id) && sessions.set(id, { ...sessions.get(id)!, pinned })),
     },
     messages: { list: (id) => messages.get(id) ?? [] },
     start: (id, text, hooks) => {
@@ -171,11 +173,25 @@ describe("passerelle compatible Hermes", () => {
     expect(created.result.info).toMatchObject({ title: "Essai", model: "stub-model", running: false });
     expect(f.contexts).toEqual([{ id: "s1", patch: { workspace: "D:\\travail" } }]);
     const listed = await c.call("session.list", {});
-    expect(listed.result.sessions).toEqual([{ id: "s1", title: "Essai", preview: "", started_at: 1_700_000_000, message_count: 0, source: "desktop" }]);
+    expect(listed.result.sessions).toEqual([{ id: "s1", title: "Essai", preview: "", started_at: 1_700_000_000, message_count: 0, pinned: false, source: "desktop" }]);
     expect((await c.call("session.resume", { session_id: "s1" })).result).toMatchObject({ session_id: "s1", running: false, inflight: null });
     expect((await c.call("session.resume", { session_id: "inconnue" })).error).toMatchObject({ code: -32602 });
     expect((await c.call("session.delete", { session_id: "s1" })).result).toEqual({ deleted: "s1" });
     expect((await c.call("session.list", {})).result.sessions).toEqual([]);
+    c.close();
+  });
+
+  it("renomme et épingle une session : le noyau garde le titre et l'épingle, la liste les rend", async () => {
+    const { gw, port } = await start(fakeCore(async () => {}).core);
+    const c = await connect(gw, port);
+    await c.call("session.create", { title: "Essai" });
+    expect((await c.call("session.rename", { session_id: "s1", title: "  Les comptes de mars  " })).result).toEqual({ session_id: "s1", title: "Les comptes de mars" });
+    expect((await c.call("session.pin", { session_id: "s1", pinned: true })).result).toEqual({ session_id: "s1", pinned: true });
+    expect((await c.call("session.list", {})).result.sessions[0]).toMatchObject({ id: "s1", title: "Les comptes de mars", pinned: true });
+    expect((await c.call("session.pin", { session_id: "s1", pinned: false })).result).toEqual({ session_id: "s1", pinned: false });
+    expect((await c.call("session.rename", { session_id: "s1", title: "   " })).error).toMatchObject({ code: -32602 });
+    expect((await c.call("session.rename", { session_id: "inconnue", title: "x" })).error).toMatchObject({ code: -32602 });
+    expect((await c.call("session.pin", { session_id: "inconnue", pinned: true })).error).toMatchObject({ code: -32602 });
     c.close();
   });
 

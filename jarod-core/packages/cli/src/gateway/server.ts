@@ -40,6 +40,9 @@ export interface GatewayCore {
     get(id: string): Session | undefined;
     list(limit?: number): Session[];
     delete(id: string): void;
+    /** Absents d'un faux noyau de test : la passerelle répond alors « non disponible ». */
+    rename?(id: string, title: string): void;
+    setPinned?(id: string, pinned: boolean): void;
   };
   messages: { list(sessionId: string): Message[] };
   start(sessionId: string, text: string | null, hooks: AgentHooks): { kind: string };
@@ -513,6 +516,26 @@ export function createGateway(opts: GatewayOptions): Gateway {
       core.stop(id);
       core.sessions.delete(id);
       return { deleted: id };
+    },
+
+    // Le titre choisi par la personne : écrit dans le noyau (il survit au redémarrage et suit sur les autres écrans), pas seulement affiché.
+    "session.rename": (p) => {
+      const id = str(p.session_id);
+      const title = str(p.title).trim();
+      if (!core.sessions.rename) throw new RpcError(RPC.notFound, "renommer une conversation n'est pas branché");
+      if (!core.sessions.get(id)) throw new RpcError(RPC.params, `unknown session ${id}`);
+      if (!title) throw new RpcError(RPC.params, "title is required");
+      core.sessions.rename(id, title.slice(0, 200));
+      return { session_id: id, title: core.sessions.get(id)?.title ?? title };
+    },
+
+    "session.pin": (p) => {
+      const id = str(p.session_id);
+      if (!core.sessions.setPinned) throw new RpcError(RPC.notFound, "épingler une conversation n'est pas branché");
+      if (!core.sessions.get(id)) throw new RpcError(RPC.params, `unknown session ${id}`);
+      const pinned = p.pinned === true;
+      core.sessions.setPinned(id, pinned);
+      return { session_id: id, pinned };
     },
 
     "session.interrupt": (p) => {

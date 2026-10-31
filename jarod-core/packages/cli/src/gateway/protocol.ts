@@ -254,6 +254,7 @@ export function sessionRow(s: Session, preview = ""): Record<string, unknown> {
     preview,
     started_at: Math.floor(s.createdAt / 1000),
     message_count: s.messageCount,
+    pinned: s.pinned,
     source: "desktop", // le shell de Herald ne liste que ses propres surfaces (herald_os, desktop, cli, tui) : une valeur inconnue rendait l'historique vide
   };
 }
