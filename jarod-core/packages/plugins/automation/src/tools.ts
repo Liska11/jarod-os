@@ -4,6 +4,42 @@
 import { isAbsolute } from "node:path";
 import type { ToolDef } from "@jarod/plugin-tools";
 import type { AutomationService, AutomationTrigger, AutomationAction } from "./automation.js";
+import { parseWebhookUrl } from "./webhook.js";
+
+/** Ce que doit porter chaque action pour pouvoir tourner ; un texte d'erreur pour le modèle, ou null. */
+export function actionProblem(a: AutomationAction): string | null {
+  if (a.type === "agent" && !a.prompt) return "Erreur : action agent requiert un prompt.";
+  if (a.type === "notify" && !a.title) return "Erreur : action notify requiert un title.";
+  if (a.type === "webhook") {
+    try {
+      parseWebhookUrl(a.url ?? "");
+    } catch (e) {
+      return `Erreur : action webhook : ${(e as Error).message}`;
+    }
+  }
+  return null;
+}
+
+/** Les destinations d'envoi d'une liste d'actions, sans la partie après « ? » (elle peut porter un secret) : ce que la demande d'accord montre. */
+export function webhookTargets(actions: unknown): string[] {
+  if (!Array.isArray(actions)) return [];
+  const out: string[] = [];
+  for (const a of actions as AutomationAction[]) {
+    if (a?.type !== "webhook") continue;
+    try {
+      const u = parseWebhookUrl(a.url ?? "");
+      out.push(`${u.origin}${u.pathname}`);
+    } catch {
+      out.push(String(a.url ?? "(adresse manquante)"));
+    }
+  }
+  return out;
+}
+
+const sendsTo = (verb: string, name: unknown, actions: unknown): string | void => {
+  const targets = webhookTargets(actions);
+  if (targets.length) return `${verb}${typeof name === "string" && name ? ` « ${name} »` : ""} : envoie des données à ${targets.join(", ")}`;
+};
 
 export function automationTools(automation: AutomationService): ToolDef[] {
   return [
@@ -48,7 +84,7 @@ export function automationTools(automation: AutomationService): ToolDef[] {
     },
     {
       name: "automation_create",
-      description: "Crée une règle d'automatisation. Exige un accord. Déclencheurs : schedule (cron), manual, folder (un nouveau fichier dans un dossier surveillé).",
+      description: "Crée une règle d'automatisation. Exige un accord. Déclencheurs : schedule (cron), manual, folder (un nouveau fichier dans un dossier surveillé). Actions : agent (un prompt), notify (une notification), webhook (un POST JSON vers une adresse http(s) publique ; jamais la machine locale).",
       parameters: {
         type: "object",
         properties: {
@@ -68,12 +104,14 @@ export function automationTools(automation: AutomationService): ToolDef[] {
             items: {
               type: "object",
               properties: {
-                type: { type: "string", enum: ["agent", "notify"] },
+                type: { type: "string", enum: ["agent", "notify", "webhook"] },
                 prompt: { type: "string" },
                 sessionId: { type: "string" },
                 mode: { type: "string", enum: ["plan", "build"] },
                 title: { type: "string" },
                 body: { type: "string" },
+                url: { type: "string", description: "webhook seulement : adresse http(s) publique qui reçoit le POST." },
+                payload: { description: "webhook seulement : le corps JSON envoyé ; absent = le nom de la règle et l'heure." },
               },
               required: ["type"],
             },
@@ -84,6 +122,7 @@ export function automationTools(automation: AutomationService): ToolDef[] {
       },
       source: "builtin",
       dangerous: true, // sensible → accord demandé
+      precheck: (args) => sendsTo("Créer la règle", args.name, args.actions),
       async run(args, _ctx) {
         // Validation basique
         const trigger = args.trigger as AutomationTrigger;
@@ -102,8 +141,8 @@ export function automationTools(automation: AutomationService): ToolDef[] {
         const actions = args.actions as AutomationAction[];
         if (!actions.length) return "Erreur : au moins une action requise.";
         for (const a of actions) {
-          if (a.type === "agent" && !a.prompt) return "Erreur : action agent requiert un prompt.";
-          if (a.type === "notify" && !a.title) return "Erreur : action notify requiert un title.";
+          const problem = actionProblem(a);
+          if (problem) return problem;
         }
 
         const rule = automation.create({
@@ -138,12 +177,14 @@ export function automationTools(automation: AutomationService): ToolDef[] {
             items: {
               type: "object",
               properties: {
-                type: { type: "string", enum: ["agent", "notify"] },
+                type: { type: "string", enum: ["agent", "notify", "webhook"] },
                 prompt: { type: "string" },
                 sessionId: { type: "string" },
                 mode: { type: "string", enum: ["plan", "build"] },
                 title: { type: "string" },
                 body: { type: "string" },
+                url: { type: "string", description: "webhook seulement : adresse http(s) publique qui reçoit le POST." },
+                payload: { description: "webhook seulement : le corps JSON envoyé." },
               },
               required: ["type"],
             },
@@ -153,11 +194,12 @@ export function automationTools(automation: AutomationService): ToolDef[] {
       },
       source: "builtin",
       dangerous: true,
+      precheck: (args) => sendsTo("Modifier la règle", args.name ?? args.id, args.actions),
       async run(args, _ctx) {
         const { id, ...patch } = args as { id: string } & Partial<{ name: string; enabled: boolean; trigger: AutomationTrigger; actions: AutomationAction[] }>;
         // Validation si trigger fourni
-        if (patch.trigger && patch.trigger.kind !== "schedule" && patch.trigger.kind !== "manual") {
-          return "Erreur : trigger inconnu (attendu : schedule ou manual).";
+        if (patch.trigger && patch.trigger.kind !== "schedule" && patch.trigger.kind !== "manual" && patch.trigger.kind !== "folder") {
+          return "Erreur : trigger inconnu (attendu : schedule, manual ou folder).";
         }
         if (patch.trigger && patch.trigger.kind === "schedule" && !patch.trigger.cron) {
           return "Erreur : trigger schedule requiert un champ cron.";
@@ -165,8 +207,8 @@ export function automationTools(automation: AutomationService): ToolDef[] {
         // Validation si actions fournies
         if (patch.actions) {
           for (const a of patch.actions) {
-            if (a.type === "agent" && !a.prompt) return "Erreur : action agent requiert un prompt.";
-            if (a.type === "notify" && !a.title) return "Erreur : action notify requiert un title.";
+            const problem = actionProblem(a);
+            if (problem) return problem;
           }
         }
 

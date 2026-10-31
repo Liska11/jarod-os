@@ -9,10 +9,12 @@ import { type Context } from "cordis";
 import { AutomationService } from "./automation.js";
 import { automationTools } from "./tools.js";
 import { normalizeAutomationTickMs } from "./normalize.js";
+import { postWebhook } from "./webhook.js";
 
 export * from "./automation.js";
 export * from "./tools.js";
 export * from "./normalize.js";
+export * from "./webhook.js";
 
 declare module "cordis" {
   interface Context {
@@ -63,6 +65,7 @@ export function apply(ctx: Context, config: AutomationConfig = {}): void {
       const r = (await ctx.serial("schedule/run", schedule)) as ScheduleRunResult | undefined;
       return r ?? { sessionId: sessionId ?? "", ok: false, summary: "Aucun exécutant branché sur schedule/run" };
     },
+    postWebhook: (url, payload) => postWebhook(url, payload),
     notify: (kind, title, body) => {
       ctx.storage.notifications.add(kind, title, body);
     },

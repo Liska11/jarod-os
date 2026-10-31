@@ -4,7 +4,7 @@
  *  (a) le mode de l'action `agent` arrive à l'exécutant (Plan par défaut, « build » seulement s'il est
  *      écrit — SPECS-P5-AUTOMATION § 2.3, Q2) ; avant, le paramètre était ignoré ;
  *  (b) un tour agent qui échoue (`ok: false`) marque le job en échec, il n'est plus « ok » ;
- *  (c) l'action `webhook`, non implémentée, échoue FRANCHEMENT au lieu d'être marquée « ok ».
+ *  (c) l'action `webhook` qui ne peut pas partir (adresse locale, privée…) échoue FRANCHEMENT au lieu d'être marquée « ok ».
  */
 import { describe, expect, it } from "vitest";
 import { makeCore, tempDir, testKeys } from "./helpers.js";
@@ -39,8 +39,8 @@ describe("AV2-007 (b) — l'échec d'un tour agent se voit", () => {
   });
 });
 
-describe("AV2-007 (c) — l'action webhook n'est plus un faux « ok »", () => {
-  it("action webhook ⇒ échec dit, aucun appel agent", async () => {
+describe("AV2-007 (c) — l'action webhook n'est jamais un faux « ok »", () => {
+  it("action webhook vers la machine locale ⇒ refusée et dite, aucun appel agent", async () => {
     const core = await makeCore({ dataDir: tempDir(), keyStores: [testKeys] });
     const r = core.automation.create({
       name: "w",
@@ -50,7 +50,7 @@ describe("AV2-007 (c) — l'action webhook n'est plus un faux « ok »", () => {
     await core.automation.run(r.id);
     const [job] = jobsAuto(core);
     expect(job!.status).not.toBe("done");
-    expect(job!.lastError).toContain("non implémentée");
+    expect(job!.lastError).toContain("locale ou privée");
     expect(core.schedules).toHaveLength(0);
     await core.dispose();
   });

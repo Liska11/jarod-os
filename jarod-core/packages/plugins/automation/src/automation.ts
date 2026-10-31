@@ -110,6 +110,8 @@ export class AutomationService {
       now?: () => number;
       /** Exécute une action agent (délègue à l'agent via schedule/run). */
       runAgent: (prompt: string, sessionId: string | undefined, mode: "plan" | "build") => Promise<{ sessionId: string; ok: boolean; summary: string }>;
+      /** Envoie une action webhook (POST JSON). Absent : l'action échoue franchement, jamais un « ok » trompeur. */
+      postWebhook?: (url: string, payload: unknown) => Promise<void>;
       /** Ajoute une notification. */
       notify: (kind: "success" | "error", title: string, body: string) => void;
       /** Log pour les annonces. */
@@ -245,8 +247,10 @@ export class AutomationService {
         } else if (action.type === "notify") {
           this.d.notify("success", action.title ?? "Automation", file ? `${action.body ?? ""}${action.body ? " — " : ""}${file}` : (action.body ?? ""));
         } else if (action.type === "webhook") {
-          // Pas d'envoi sortant dans ce chantier (décision en attente) : un échec FRANC, jamais un « ok » trompeur.
-          throw new Error("action webhook non implémentée");
+          // Un envoi sortant : l'adresse est vérifiée et publique (voir webhook.ts) ; sans corps écrit dans la règle, on dit qui a déclenché quoi.
+          if (!action.url) throw new Error("L'action webhook n'a pas d'adresse");
+          if (!this.d.postWebhook) throw new Error("action webhook non disponible : aucun envoi sortant n'est branché");
+          await this.d.postWebhook(action.url, action.payload ?? { rule: rule.name, ruleId: rule.id, firedAt: new Date(this.at()).toISOString(), ...(file ? { file } : {}) });
         }
         this.d.jobs.complete(claimed.id, "ok");
       } catch (e) {

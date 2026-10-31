@@ -42,6 +42,7 @@ export * from "./builtin.js";
 export * from "./connected-browser-tool.js";
 export * from "./console-text.js";
 export * from "./lsp.js";
+export { assertPublicUrl, type Lookup } from "./net-guard.js";
 export * from "./present.js";
 export * from "./profile-tools.js";
 export * from "./proofs.js";

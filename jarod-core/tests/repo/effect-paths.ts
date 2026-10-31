@@ -97,6 +97,9 @@ export const TOOLS: Readonly<Record<string, ToolClass>> = {
   skill_hub_install: ask("réseau"),
   skill_hub_search: ro,
   skill_manage: ask("persistant"),
+  // Jarod se règle lui-même : lire est libre ; écrire n'atteint qu'une liste fermée de réglages (jamais les droits, les secrets ni les canaux) et demande l'accord à chaque appel.
+  settings_read: ro,
+  settings_write: ask("réglage"),
   spawn_subagent: free("agent", "sous-agent en lecture seule, non bloquant, borné comme `delegate_task`"),
   state_delete: free("conversation", "état de travail de la conversation (v18), plafonné 64 clés / 8 Ko, supprimé avec elle"),
   state_get: ro,
