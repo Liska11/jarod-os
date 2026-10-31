@@ -343,7 +343,7 @@ function ConversationsSection({ collapsed }: { collapsed: boolean }) {
           <IconPlus size={13} />
         </button>
       </div>
-      <nav className="side-scroll flex max-h-64 flex-col gap-0.5 overflow-y-auto" aria-label={t('sidebar.conversations')}>
+      <nav className="side-scroll flex max-h-64 shrink-0 flex-col gap-0.5 overflow-y-auto" aria-label={t('sidebar.conversations')}>
         {sessions.length === 0 && <div className="px-2.5 py-1.5 text-[11.5px] leading-snug text-fg-4">{t('sessionList.empty')}</div>}
         {sessions.map(row => {
           const runtimeId = runtimeIds[row.id]
