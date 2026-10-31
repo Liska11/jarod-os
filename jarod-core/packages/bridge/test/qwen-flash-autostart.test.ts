@@ -29,6 +29,8 @@ interface Opts {
   storeAfter?: number; // nombre d'interrogations avant que le store soit monté (Infinity : jamais)
   spawnError?: string;
   launchError?: string;
+  /** Ce que rend la demande de rattachement (invite UAC) : null = accepté et fait ; un texte = refusé. */
+  remount?: { error: string | null; mountsStore?: boolean };
   root?: string;
 }
 async function run(env: NodeJS.ProcessEnv, o: Opts = {}) {
@@ -37,15 +39,22 @@ async function run(env: NodeJS.ProcessEnv, o: Opts = {}) {
   const stopped: string[] = [];
   const launched: string[] = [];
   const slept: number[] = [];
+  const remounts: string[] = [];
   let polls = 0;
+  let attached = false;
   const handle = await autoStartQwenFlash(o.root ?? realRoot, env, (l) => lines.push(l), join(tmpdir(), "x"), {
     probe: async (url) => o.up?.has(Number(new URL(url).port)) === true,
     spawnChild: (name, bin) => (o.spawnError ? { error: o.spawnError } : (spawned.push(`${name}:${bin}`), { stop: () => void stopped.push(name) })),
     launchQwen: (l) => (launched.push(l), o.launchError ?? null),
-    storeMounted: async () => ++polls > (o.storeAfter ?? 0),
+    storeMounted: async () => attached || ++polls > (o.storeAfter ?? 0),
+    remountStore: async (l) => {
+      remounts.push(l);
+      attached = o.remount?.error === null && o.remount.mountsStore !== false;
+      return o.remount?.error ?? null;
+    },
     sleep: async (ms) => void slept.push(ms),
   });
-  return { lines, spawned, stopped, launched, slept, handle, polls: () => polls };
+  return { lines, spawned, stopped, launched, slept, remounts, handle, polls: () => polls };
 }
 
 describe("autoStartQwenFlash", () => {
@@ -79,6 +88,32 @@ describe("autoStartQwenFlash", () => {
     expect(r.slept.reduce((a, b) => a + b, 0)).toBe(120_000);
     expect(r.lines.join("\n")).toMatch(/Qwen Flash : abandonné — le store n'est pas monté après 120 s/);
     expect(r.spawned).toHaveLength(2);
+  });
+
+  it("remountPrompt : store détaché → une demande de rattachement (UAC), puis Qwen démarre sans attendre", async () => {
+    const r = await run(config({ ...FULL, remountPrompt: true }), { storeAfter: Infinity, remount: { error: null } });
+    expect(r.remounts).toEqual(["C:\\x\\start.ps1"]);
+    expect(r.launched).toHaveLength(1);
+    expect(r.slept).toEqual([]);
+    expect(r.lines.join("\n")).toMatch(/invite UAC à accepter[\s\S]*store rattaché[\s\S]*Qwen Flash : démarrage lancé/);
+  });
+
+  it("remountPrompt : invite refusée → on le dit, on attend le délai habituel puis on abandonne (une seule invite)", async () => {
+    const r = await run(config({ ...FULL, remountPrompt: true }), { storeAfter: Infinity, remount: { error: "invite refusée" } });
+    expect(r.remounts).toHaveLength(1);
+    expect(r.launched).toEqual([]);
+    expect(r.slept.reduce((a, b) => a + b, 0)).toBe(120_000);
+    expect(r.lines.join("\n")).toMatch(/rattachement non fait — invite refusée[\s\S]*abandonné/);
+  });
+
+  it("remountPrompt : store déjà monté → aucune invite ; réglage absent ou faux → jamais d'invite", async () => {
+    const mounted = await run(config({ ...FULL, remountPrompt: true }));
+    expect(mounted.remounts).toEqual([]);
+    expect(mounted.launched).toHaveLength(1);
+    for (const json of [FULL, { ...FULL, remountPrompt: false }]) {
+      const r = await run(config(json), { storeAfter: Infinity });
+      expect(r.remounts).toEqual([]);
+    }
   });
 
   it("stop() arrête whisper et LFM3 (fils), pas Qwen", async () => {

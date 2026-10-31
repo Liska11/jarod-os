@@ -39,6 +39,12 @@ export interface QwenFlashConfig {
   /** Chemins (dans WSL) dont l'un doit exister pour que le store soit monté. */
   storePaths?: string[];
   storeWaitSec?: number;
+  /**
+   * Vrai : si le store n'est pas monté au lancement (après un redémarrage de Windows, le disque virtuel est détaché), le lanceur est rappelé avec
+   * `-Remount`, ce qui affiche UNE invite UAC (WSL exige l'administrateur pour rattacher un disque). Refusée ou sans réponse : on attend puis on abandonne.
+   * Absent ou faux : aucune invite, jamais.
+   */
+  remountPrompt?: boolean;
   whisper?: WhisperCpuConfig;
   lfm?: LfmCpuConfig;
 }
@@ -53,6 +59,8 @@ export interface QwenFlashDeps {
   launchQwen?: (launcher: string) => string | null;
   /** Le store est-il monté (vu depuis WSL) ? */
   storeMounted?: (cfg: QwenFlashConfig) => Promise<boolean>;
+  /** Rattache le store (invite UAC) et rend quand c'est fini ; erreur lisible ou null. */
+  remountStore?: (launcher: string) => Promise<string | null>;
   sleep?: (ms: number) => Promise<void>;
 }
 
@@ -122,7 +130,18 @@ const defaultLaunchQwen = (launcher: string): string | null => {
   }
 };
 
-const defaultStoreMounted = (cfg: QwenFlashConfig): Promise<boolean> =>
+/** `start-qwen-flash.ps1 -Remount` : l'invite UAC s'affiche à l'utilisateur ; 3 minutes pour répondre. */
+const REMOUNT_TIMEOUT_MS = 180_000;
+const defaultRemountStore = (launcher: string): Promise<string | null> =>
+  new Promise((resolve) => {
+    if (process.platform !== "win32") return resolve("WSL n'existe que sous Windows");
+    if (!existsSync(launcher)) return resolve(`lanceur introuvable (${launcher})`);
+    execFile("powershell.exe", ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", launcher, "-Remount"], { timeout: REMOUNT_TIMEOUT_MS, windowsHide: true }, (err) =>
+      resolve(err ? "invite refusée, sans réponse ou échec du rattachement" : null),
+    );
+  });
+
+const defaultStoreMounted =(cfg: QwenFlashConfig): Promise<boolean> =>
   new Promise((resolve) => {
     const paths = cfg.storePaths?.length ? cfg.storePaths : ["/mnt/wsl/lqfstore/qwen.bin", "/mnt/lqfstore/qwen.bin"];
     const test = paths.map((p) => `test -f '${p.replaceAll("'", "")}'`).join(" || ");
@@ -169,6 +188,11 @@ export async function autoStartQwenFlash(
         const mounted = deps.storeMounted ?? defaultStoreMounted;
         const limit = (cfg.storeWaitSec ?? STORE_WAIT_DEFAULT_SEC) * 1000;
         let waited = 0;
+        if (cfg.remountPrompt === true && !(await mounted(cfg))) {
+          log("Qwen Flash : le store n'est pas monté — demande de rattachement (invite UAC à accepter)");
+          const refused = await (deps.remountStore ?? defaultRemountStore)(cfg.launcher);
+          log(refused ? `Qwen Flash : rattachement non fait — ${refused}` : "Qwen Flash : store rattaché");
+        }
         while (!(await mounted(cfg))) {
           if (waited >= limit) return log(`Qwen Flash : abandonné — le store n'est pas monté après ${limit / 1000} s (service de montage du disque virtuel de D: ?)`);
           await sleep(5_000);
