@@ -25,6 +25,7 @@ import { dailyTools } from "./daily.js";
 import { systemReadTools } from "./system/tools.js";
 import { pinokioTools } from "./pinokio/tools.js";
 import { shellUiTools } from "./shell-ui.js";
+import { settingsTools } from "./settings-tools.js";
 import { ToolRegistry } from "./registry.js";
 import { remoteExecTool } from "./remote-exec.js";
 import { searchTools } from "./search.js";
@@ -50,6 +51,7 @@ export * from "./remote-exec.js";
 export * from "./search.js";
 export * from "./skills-hub-tools.js";
 export * from "./skills-tools.js";
+export { AGENT_SETTINGS, planSetting, settingsTools, type SettingsStore } from "./settings-tools.js";
 export * from "./ssh.js";
 export * from "./ssh-hosts.js";
 export { systemReadTools, type SystemToolDeps } from "./system/tools.js";
@@ -105,6 +107,13 @@ export class ToolsService extends Service {
     // `skillTools(skills, curator)` (core.ts:573) : enregistré par plugin-agent, qui porte le curator.
     for (const t of skillHubTools(ctx.skillsHub)) r.register(t);
     for (const t of profileTools(ctx.memory.userProfile)) r.register(t);
+    // Jarod se règle lui-même : sa configuration vit dans la base chiffrée du cœur ; liste blanche, écriture sur accord (settings-tools.ts).
+    const settings = ctx.storage.settings;
+    for (const t of settingsTools({
+      get: (k) => settings.get(k as never),
+      set: (k, v) => settings.set(k as never, v as never),
+      secretKeys: () => settings.secretKeys(),
+    })) r.register(t);
     // SPECS-P5-LSP.md : outils LSP enregistrés, serveurs ne démarrent que sur accord (G1)
     for (const t of lspTools(this.lsp)) r.register(t);
     // Outils système, phase 1 (lecture seule, Windows) : sans accord par appel, mais chaque appel est audité (`audited`).
