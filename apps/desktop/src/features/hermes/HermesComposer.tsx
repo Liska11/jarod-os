@@ -1,6 +1,8 @@
 import { IconPaperclip, IconPlayerStop, IconRoute, IconSend2 } from '@tabler/icons-react'
+import { useStore } from '@nanostores/react'
 import { useEffect, useRef, useState } from 'react'
 import { cn } from '../../lib/cn.ts'
+import { $composerDictation } from '../../store/dictation.ts'
 import { MicButton } from '../voice/MicButton.tsx'
 import { t, useT } from '../../lib/i18n.ts'
 
@@ -16,6 +18,18 @@ export function HermesComposer({ disabled, streaming, placeholder, autoFocus, on
   useT()
   const [value, setValue] = useState('')
   const textarea = useRef<HTMLTextAreaElement>(null)
+  const dictated = useStore($composerDictation)
+
+  // Words dictated with a double press on the microphone: put in the box after what is already there, never sent.
+  useEffect(() => {
+    if (!dictated) {
+      return
+    }
+
+    $composerDictation.set(null)
+    setValue(current => (current && !/\s$/.test(current) ? `${current} ${dictated.text}` : `${current}${dictated.text}`))
+    textarea.current?.focus()
+  }, [dictated])
 
   useEffect(() => {
     const el = textarea.current

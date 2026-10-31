@@ -19,6 +19,12 @@ export type DictationPhase = 'idle' | 'listening' | 'transcribing'
 
 export const $dictation = atom<{ phase: DictationPhase }>({ phase: 'idle' })
 
+/** Dictation aimed at the chat box (double press on the microphone): the words land in the box and are never sent; the person presses Send. */
+export const $composerDictation = atom<{ id: number; text: string } | null>(null)
+
+let target: 'app' | 'composer' = 'app'
+let counter = 0
+
 /** Longer pauses than a conversation: people think between sentences when they dictate. */
 const DICTATION_ENDPOINTER = { ...DEFAULT_ENDPOINTER, silenceMs: 1500, maxWaitMs: 8000, maxSpeechMs: 120_000 }
 /** Less than this much audio is a key press, not speech. */
@@ -40,10 +46,12 @@ async function transcribe(pcm: Int16Array): Promise<string> {
   return (result?.transcript ?? '').trim()
 }
 
-export async function startDictation(): Promise<void> {
+export async function startDictation(options: { into?: 'composer' } = {}): Promise<void> {
   if ($dictation.get().phase !== 'idle') {
     return
   }
+
+  target = options.into ?? 'app'
 
   if ($voiceActive.get()) {
     notify({ title: 'Dictation', body: 'End the voice conversation first; Hermes would hear the dictation too.', level: 'warn' })
@@ -96,6 +104,15 @@ export async function finishDictation(): Promise<void> {
 
     if (!text && !submit) {
       notify({ title: 'Dictation', body: 'No words came through. Try again a little closer to the microphone.', level: 'info' })
+
+      return
+    }
+
+    // Into the chat box: the words are put there, "send" spoken aloud is not obeyed; the person presses Send.
+    if (target === 'composer') {
+      if (text) {
+        $composerDictation.set({ id: ++counter, text })
+      }
 
       return
     }
