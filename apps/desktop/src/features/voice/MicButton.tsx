@@ -8,29 +8,29 @@ import { $voiceActive, toggleVoice } from '../../store/voice.ts'
 import { createDoublePress } from './double-press.ts'
 
 /**
- * The composers' microphone. One press starts (or ends) a spoken conversation with Hermes. Two quick presses dictate into the chat box: what
- * you say is transcribed and put there, and you press Send yourself (as in the Claude app). While dictating, a press ends it.
+ * The composers' microphone. One press dictates into the chat box: what you say is transcribed and put there, and you press Send yourself (as in
+ * the Claude app); a press while dictating ends it. Two quick presses start (or end) a spoken conversation with Hermes.
  */
 export function MicButton({ size = 17, className, disabled }: { size?: number; className?: string; disabled?: boolean }) {
   const active = useStore($voiceActive)
   const dictating = useStore($dictation).phase !== 'idle'
-  const label = dictating ? 'Finish dictation' : active ? 'End voice conversation' : 'Talk to Hermes (double-press to dictate)'
+  const label = dictating ? 'Finish dictation' : active ? 'End voice conversation' : 'Dictate (double-press to talk to Hermes)'
   const presses = useMemo(
     () =>
       createDoublePress(
+        () => {
+          if (isMainSurface) {
+            void startDictation({ into: 'composer' })
+          } else {
+            relayToMain({ type: 'dictate' })
+          }
+        },
         () => {
           if (isMainSurface) {
             void toggleVoice('button')
           } else {
             // Overlay windows (panels mode) hand the conversation to the Hermes window.
             relayToMain({ type: 'voice', args: ['toggle'] })
-          }
-        },
-        () => {
-          if (isMainSurface) {
-            void startDictation({ into: 'composer' })
-          } else {
-            relayToMain({ type: 'dictate' })
           }
         }
       ),
@@ -40,10 +40,17 @@ export function MicButton({ size = 17, className, disabled }: { size?: number; c
   useEffect(() => () => presses.cancel(), [presses])
 
   const onClick = () => {
-    // Dictating: one press finishes it at once (no waiting to tell a double press).
+    // Dictating: one press finishes it at once; in a voice conversation one press ends it at once (no waiting to tell a double press).
     if ($dictation.get().phase === 'listening') {
       presses.cancel()
       void finishDictation()
+
+      return
+    }
+
+    if ($voiceActive.get()) {
+      presses.cancel()
+      void toggleVoice('button')
 
       return
     }
