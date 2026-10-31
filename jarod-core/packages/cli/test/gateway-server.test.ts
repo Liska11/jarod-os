@@ -235,6 +235,29 @@ describe("passerelle compatible Hermes", () => {
     c.close();
   });
 
+  it("pose la question de l'agent au shell (clarify) et rend sa réponse ; sans réponse à l'échéance : null et la fenêtre est prévenue", async () => {
+    const answers: Array<string | null> = [];
+    const f = fakeCore(async (id, _text, hooks) => {
+      answers.push((await hooks.clarify?.(id, { question: "Quel fichier ?", choices: ["a.txt", "b.txt"] })) ?? null);
+      answers.push((await hooks.clarify?.(id, { question: "Encore ?" })) ?? null);
+      hooks.emit({ type: "done", sessionId: id });
+    });
+    const { gw, port } = await start(f.core, { approvalTimeoutMs: 150 });
+    const c = await connect(gw, port);
+    await c.call("session.create", {});
+    await c.call("prompt.submit", { session_id: "s1", text: "demande" });
+    await c.waitFor(() => c.requests.length === 1);
+    expect(c.requests[0]).toMatchObject({ method: "clarify", params: { session_id: "s1", question: "Quel fichier ?", choices: ["a.txt", "b.txt"] } });
+    expect(c.requests[0]!.params).not.toHaveProperty("multi_select");
+    c.reply(c.requests[0]!.id, { answer: "b.txt" });
+    await c.waitFor(() => c.requests.length === 2);
+    // la seconde question reste sans réponse
+    await c.waitFor(() => c.events.some((e) => e.type === "message.complete"));
+    expect(answers).toEqual(["b.txt", null]);
+    expect(c.events.find((e) => e.type === "status.update")).toMatchObject({ payload: { kind: "clarify-timeout" } });
+    c.close();
+  });
+
   it("une fenêtre muette ne gèle pas le tour : l'accord est refusé à l'échéance, la fenêtre est prévenue, le tour finit", async () => {
     let answer: boolean | undefined;
     const f = fakeCore(async (id, _text, hooks) => {
@@ -397,7 +420,7 @@ describe("passerelle compatible Hermes", () => {
   it("client.capabilities dit les requêtes que la passerelle envoie au shell", async () => {
     const { gw, port } = await start(fakeCore(async () => {}).core);
     const c = await connect(gw, port);
-    expect((await c.call("client.capabilities", { server_requests: true })).result).toEqual({ server_requests: ["approval"] });
+    expect((await c.call("client.capabilities", { server_requests: true })).result).toEqual({ server_requests: ["approval", "clarify"] });
     c.close();
   });
 

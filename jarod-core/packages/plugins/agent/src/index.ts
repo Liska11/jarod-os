@@ -32,6 +32,7 @@ import { RefineService, refineTools } from "./refine.js";
 import { rlmTools } from "./rlm.js";
 import { subagentObserver } from "./subagent-events.js";
 import { sessionStateTools } from "./session-state.js";
+import { askUserTool } from "./ask-user-tool.js";
 import { todoTool } from "./todo-tool.js";
 import { sessionTools } from "./sessions-tools.js";
 import { registerSkillCommands } from "./skills-commands.js";
@@ -244,6 +245,8 @@ export function apply(ctx: Context, config: AgentConfig = {}): void {
   for (const t of sessionStateTools(runtime.state)) tools.register(t);
   // H11 : `todo`, le plan de la mission, vu en direct dans la page Missions (`todo.updated`).
   tools.register(todoTool(runtime.state));
+  // H2 : `ask_user`, une question à choix posée dans l'interface (requête serveur `clarify`).
+  tools.register(askUserTool());
   // Q18 : sous-agents non bloquants (SANK-AI `rlm-subagent`, MIT), lecture seule.
   for (const t of rlmTools(runtime.rlm, runtime.subagents)) tools.register(t);
   // Q18 : refine (SANK-AI `refine`, MIT) — mémoire mise à jour sur preuve, journalisée, annulable.

@@ -59,6 +59,8 @@ export interface AgentHooks {
    * le modèle les voit à l'étape suivante. Absent = pas de pilotage (tâches planifiées, bots, sous-agents).
    */
   steering?: { peek(): boolean; take(): string[] };
+  /** Une question à l'utilisateur (`ask_user`) : sa réponse, `""` s'il passe, `null` sans réponse. Absent = personne ne peut répondre. */
+  clarify?(sessionId: string, q: { question: string; choices?: string[]; multiSelect?: boolean }): Promise<string | null>;
 }
 
 /**
@@ -276,6 +278,7 @@ const SUBAGENT_EXCLUDED = new Set([
   "state_set",
   "state_delete",
   "todo",
+  "ask_user",
   "spawn_subagent",
   "subagent_cancel",
 ]);
@@ -1433,7 +1436,7 @@ export async function executeGuardedTool(
   sessionId: string,
   call: ToolCall,
   signal: AbortSignal,
-  hooks: { approve(sessionId: string, call: ToolCall, toolDescription: string): Promise<boolean>; emit?(event: AgentEvent): void },
+  hooks: { approve(sessionId: string, call: ToolCall, toolDescription: string): Promise<boolean>; emit?(event: AgentEvent): void; clarify?: AgentHooks["clarify"] },
   s: Settings,
   extra: GuardedExtra = {},
 ): Promise<{ content: string; isError: boolean }> {
@@ -1455,7 +1458,7 @@ async function runGuardedTool(
   sessionId: string,
   call: ToolCall,
   signal: AbortSignal,
-  hooks: { approve(sessionId: string, call: ToolCall, toolDescription: string): Promise<boolean>; emit?(event: AgentEvent): void },
+  hooks: { approve(sessionId: string, call: ToolCall, toolDescription: string): Promise<boolean>; emit?(event: AgentEvent): void; clarify?: AgentHooks["clarify"] },
   s: Settings,
   extra: GuardedExtra,
   span: SpanHandle | undefined,
@@ -1686,6 +1689,7 @@ async function runGuardedTool(
       workspace: s.workspace,
       signal: runSignal,
       approve: hooks.approve,
+      ...(hooks.clarify ? { ask: (q: { question: string; choices?: string[]; multiSelect?: boolean }) => hooks.clarify!(sessionId, q) } : {}),
       ...(hooks.emit ? { notify: (kind: string, payload: Record<string, unknown>) => hooks.emit?.({ type: "tool-event", sessionId, kind, payload }) } : {}),
       ...(s.shellGuard ? { shellGuard: s.shellGuard } : {}),
       ...(extra.vault ? { vault: extra.vault } : {}),

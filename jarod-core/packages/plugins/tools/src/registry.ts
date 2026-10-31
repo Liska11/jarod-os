@@ -23,6 +23,11 @@ export interface ToolContext {
    * de la passerelle, `payload` son contenu. Sans écouteur (tâche planifiée, sous-agent), l'appel ne fait rien.
    */
   notify?(kind: string, payload: Record<string, unknown>): void;
+  /**
+   * Pose une question à l'utilisateur et rend sa réponse (`""` : il a passé), ou `null` s'il n'a pas répondu (délai, fenêtre fermée).
+   * Absent quand personne ne peut répondre (tâche planifiée, sous-agent, passerelle de messagerie).
+   */
+  ask?(question: { question: string; choices?: string[]; multiSelect?: boolean }): Promise<string | null>;
 }
 
 export interface ToolDef {

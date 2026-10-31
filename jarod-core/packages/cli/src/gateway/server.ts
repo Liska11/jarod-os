@@ -36,7 +36,7 @@ import { acceptUpgrade, type WsConnection, wsProtocolToken, wsSelectedProtocol }
 
 /** Ce que la passerelle demande au noyau : le strict nécessaire, pour qu'un faux noyau suffise aux tests. */
 /** Les requêtes que la passerelle envoie au shell et attend en retour (noms du contrat de Hermes). */
-const SERVER_REQUESTS: readonly string[] = ["approval"];
+const SERVER_REQUESTS: readonly string[] = ["approval", "clarify"];
 
 export interface GatewayCore {
   sessions: {
@@ -191,6 +191,19 @@ export function createGateway(opts: GatewayOptions): Gateway {
     return isApproved(answer);
   };
 
+  /**
+   * Une question de l'agent (`ask_user`), posée dans la carte « clarify » du shell. Réponse : le texte (`""` = passée) ; `null` sans réponse à l'échéance
+   * ou connexion fermée. Même délai que les accords : une fenêtre muette ne bloque pas le tour pour toujours.
+   */
+  const clarifyWith = async (conn: Conn, sessionId: string, q: { question: string; choices?: string[]; multiSelect?: boolean }): Promise<string | null> => {
+    const answer = await askClient(conn, "clarify", { session_id: sessionId, question: q.question, ...(q.choices ? { choices: q.choices } : {}), ...(q.multiSelect ? { multi_select: true } : {}) }, approvalTimeoutMs, () => {
+      if (!conn.ws.closed) send(conn, eventFrame("status.update", sessionId, { kind: "clarify-timeout", text: "Aucune réponse à la question de l'agent : le tour continue sans elle." }));
+    });
+    if (answer === null || typeof answer !== "object") return null;
+    const text = (answer as { answer?: unknown }).answer;
+    return typeof text === "string" ? text : null;
+  };
+
   /** Le dossier de travail : celui que l'utilisateur a choisi dans les réglages (boîte native) s'il existe, sinon celui de la passerelle (`--workspace`, `JAROD_WORKSPACE`). */
   const currentWorkspace = (): string | undefined => {
     const chosen = core.settings.get("workspace");
@@ -332,6 +345,7 @@ export function createGateway(opts: GatewayOptions): Gateway {
         }
       },
       approve: (sessionId, call, description) => approveWith(conn, sessionId, call, description),
+      clarify: (sessionId, q) => clarifyWith(conn, sessionId, q),
       steering: queue.steering(id),
     };
     turns.set(id, translator);
