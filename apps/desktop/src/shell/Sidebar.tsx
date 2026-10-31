@@ -1,5 +1,5 @@
 import { useStore } from '@nanostores/react'
-import { IconHistory, IconLayoutSidebarLeftCollapse, IconLayoutSidebarLeftExpand, IconPin, IconPinFilled, IconPlus, IconTrash } from '@tabler/icons-react'
+import { IconDownload, IconHistory, IconLayoutSidebarLeftCollapse, IconLayoutSidebarLeftExpand, IconPencil, IconPin, IconPinFilled, IconPlus, IconTrash } from '@tabler/icons-react'
 import { $paneTab } from '../features/hermes/artifact-store.ts'
 import { APPS_SECTION, MESSAGING_SECTION, openPaneApp, type PaneApp } from '../features/hermes/pane-apps.ts'
 import { PaneAppIcon, usePaneAppName } from '../features/hermes/PaneApps.tsx'
@@ -9,6 +9,8 @@ import { cn } from '../lib/cn.ts'
 import { appText, useT } from '../lib/i18n.ts'
 import { shortcutLabel } from '../lib/platform-labels.ts'
 import { $activeChatId, $chats, createChat, forgetChat, LISTED_SESSION_SOURCES, openStoredSession } from '../store/chat.ts'
+import { exportConversation, renameChat } from '../store/chat-actions.ts'
+import { notify } from '../store/notifications.ts'
 import { $pinnedSessions, togglePinned } from '../store/pinned-sessions.ts'
 import { filterSessions, groupSessions, listedSessions, type SessionGroupKey } from '../store/session-list.ts'
 import { $runtimeIds, $sessions, $sessionsError, deleteSession, refreshSessions } from '../store/sessions.ts'
@@ -313,6 +315,9 @@ function ConversationsSection({ collapsed }: { collapsed: boolean }) {
   const chats = useStore($chats)
   const [query, setQuery] = useState('')
   const [confirming, setConfirming] = useState<string | null>(null)
+  const [renaming, setRenaming] = useState<string | null>(null)
+  const [draft, setDraft] = useState('')
+  const skipCommit = useRef(false)
   const all = listedSessions(rows, LISTED_SESSION_SOURCES, RAIL_SESSIONS)
   const shown = filterSessions(all, query)
   const groups = groupSessions(shown, pinned)
@@ -325,6 +330,24 @@ function ConversationsSection({ collapsed }: { collapsed: boolean }) {
   const open = (id: string) => {
     showPage('hermes')
     void openStoredSession(id)
+  }
+
+  const startRename = (id: string, current: string) => {
+    skipCommit.current = false
+    setConfirming(null)
+    setDraft(current)
+    setRenaming(id)
+  }
+
+  const commitRename = (id: string, current: string) => {
+    setRenaming(null)
+    const next = draft.trim()
+
+    if (skipCommit.current || !next || next === current) {
+      return
+    }
+
+    renameChat(id, next).catch(error => notify({ title: t('chat.renameFailed'), body: error instanceof Error ? error.message : String(error), level: 'error', surface: 'hermes' }))
   }
 
   const remove = (id: string, runtimeId: string | undefined) => {
@@ -410,11 +433,41 @@ function ConversationsSection({ collapsed }: { collapsed: boolean }) {
 
               return (
                 <div key={row.id} className={cn('group/row relative flex h-7 shrink-0 items-center rounded-lg transition-colors duration-150', on ? 'bg-white/14 text-fg' : 'text-fg-2 hover:bg-white/8 hover:text-fg')} onMouseLeave={() => asking && setConfirming(null)}>
-                  <button type="button" onClick={() => open(row.id)} aria-current={on ? 'true' : undefined} title={title} className="flex h-full min-w-0 flex-1 items-center gap-2 px-2.5 text-left text-[12.5px]">
-                    {live?.streaming && <span className="size-1.5 shrink-0 animate-pulse-soft rounded-full bg-accent" />}
-                    <span className="truncate">{title}</span>
-                  </button>
-                  <span className={cn('mr-1 items-center gap-0.5', asking ? 'flex' : 'hidden group-hover/row:flex')}>
+                  {renaming === row.id ? (
+                    <input
+                      value={draft}
+                      autoFocus
+                      aria-label={t('sidebar.rename')}
+                      onChange={event => setDraft(event.target.value)}
+                      onFocus={event => event.currentTarget.select()}
+                      onBlur={() => commitRename(row.id, title)}
+                      onKeyDown={event => {
+                        if (event.key === 'Enter') {
+                          event.currentTarget.blur()
+                        } else if (event.key === 'Escape') {
+                          skipCommit.current = true
+                          event.currentTarget.blur()
+                        }
+                      }}
+                      className="glass-input mx-1 h-6 min-w-0 flex-1 rounded-md px-2 text-[12.5px] outline-none"
+                    />
+                  ) : (
+                    <button type="button" onClick={() => open(row.id)} onDoubleClick={() => startRename(row.id, title)} aria-current={on ? 'true' : undefined} title={title} className="flex h-full min-w-0 flex-1 items-center gap-2 px-2.5 text-left text-[12.5px]">
+                      {live?.streaming && <span className="size-1.5 shrink-0 animate-pulse-soft rounded-full bg-accent" />}
+                      <span className="truncate">{title}</span>
+                    </button>
+                  )}
+                  <span className={cn('mr-1 items-center gap-0.5', renaming === row.id ? 'hidden' : asking ? 'flex' : 'hidden group-hover/row:flex')}>
+                    {!asking && (
+                      <button type="button" onClick={() => startRename(row.id, title)} aria-label={t('sidebar.rename')} title={t('sidebar.rename')} className="flex size-5 items-center justify-center rounded text-fg-4 hover:text-fg">
+                        <IconPencil size={12} />
+                      </button>
+                    )}
+                    {!asking && (
+                      <button type="button" onClick={() => void exportConversation(row.id)} aria-label={t('sidebar.export')} title={t('sidebar.export')} className="flex size-5 items-center justify-center rounded text-fg-4 hover:text-fg">
+                        <IconDownload size={12} />
+                      </button>
+                    )}
                     {!asking && (
                       <button type="button" onClick={() => togglePinned(row.id)} aria-label={isPinned ? t('sidebar.unpin') : t('sidebar.pin')} aria-pressed={isPinned} title={isPinned ? t('sidebar.unpin') : t('sidebar.pin')} className="flex size-5 items-center justify-center rounded text-fg-4 hover:text-fg">
                         {isPinned ? <IconPinFilled size={12} /> : <IconPin size={12} />}

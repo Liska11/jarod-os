@@ -2,6 +2,7 @@ import { IconPaperclip, IconPlayerStop, IconRoute, IconSend2 } from '@tabler/ico
 import { useStore } from '@nanostores/react'
 import { useEffect, useRef, useState } from 'react'
 import { cn } from '../../lib/cn.ts'
+import { $composerFill } from '../../store/composer-fill.ts'
 import { $composerDictation } from '../../store/dictation.ts'
 import { MicButton } from '../voice/MicButton.tsx'
 import { t, useT } from '../../lib/i18n.ts'
@@ -19,6 +20,18 @@ export function HermesComposer({ disabled, streaming, placeholder, autoFocus, on
   const [value, setValue] = useState('')
   const textarea = useRef<HTMLTextAreaElement>(null)
   const dictated = useStore($composerDictation)
+  const fill = useStore($composerFill)
+
+  // "Edit" on a sent message: its text replaces what is in the box, ready to be changed and sent again.
+  useEffect(() => {
+    if (!fill) {
+      return
+    }
+
+    $composerFill.set(null)
+    setValue(fill.text)
+    textarea.current?.focus()
+  }, [fill])
 
   // Words dictated with a double press on the microphone: put in the box after what is already there, never sent.
   useEffect(() => {

@@ -1,5 +1,5 @@
 import { useStore } from '@nanostores/react'
-import { IconChevronRight, IconUser } from '@tabler/icons-react'
+import { IconChevronRight, IconPencil, IconRefresh, IconUser } from '@tabler/icons-react'
 import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import { HermesAvatar } from '../../components/app-icon.tsx'
 import { cn } from '../../lib/cn.ts'
@@ -7,6 +7,7 @@ import { type ErrorKind, explainError } from '../../lib/error-text.ts'
 import type { AssistantMessage, ChatMessage, ChatState, SystemMessage, ToolMessage, UserMessage } from '../../lib/chat-model.ts'
 import { interruptChat, queuePrompt, runSlash, sendPrompt, steerPrompt } from '../../store/chat.ts'
 import type { Artifact } from '../../store/missions.ts'
+import { fillComposer } from '../../store/composer-fill.ts'
 import { $activeSpace } from '../../store/spaces.ts'
 import { Markdown } from '../chat/Markdown.tsx'
 import { $chatArtifacts, $selectedArtifact, artifactsInWindow, dayLabel, formatTime, selectArtifact } from './artifact-store.ts'
@@ -15,6 +16,7 @@ import { linesForTurn, toolIdsOf } from './audit-timeline.ts'
 import { AuditTimeline, useAuditLines } from './AuditTimeline.tsx'
 import { ComposerBar, ModelPicker } from './ComposerBar.tsx'
 import { HermesComposer } from './HermesComposer.tsx'
+import { CopyAction, MessageAction } from './MessageActions.tsx'
 import { QueueStrip } from './QueueStrip.tsx'
 import { SuggestionChips } from './SuggestionChips.tsx'
 import { ToolSummaryRow } from './ToolSummaryRow.tsx'
@@ -182,13 +184,17 @@ function Transcript({ chat, online }: { chat: ChatState; online: boolean }) {
           const produced = artifactsInWindow(artifacts, turn.start, turn.end)
           const isLast = index === turns.length - 1
           const finished = !isLast || !chat.streaming
+          const blocks = blocksOf(turn.items)
+          // The answer of the newest turn can be asked for again (the prompt is sent once more).
+          const regenerable = isLast && !chat.streaming && online && turn.user ? retryOf(turn.user) : undefined
+          const lastAnswerId = blocks.findLast(block => block.kind === 'message' && block.message.role === 'assistant')?.id
 
           return (
             <div key={turn.id} className="flex flex-col gap-3">
               {divider && <DayDivider label={day} />}
               {turn.user && <UserBubble message={turn.user} />}
-              {blocksOf(turn.items).map(block =>
-                block.kind === 'tools' ? <ToolSummaryRow key={block.id} tools={block.tools} /> : block.message.role === 'assistant' ? <AssistantBubble key={block.id} message={block.message} /> : <SystemRow key={block.id} message={block.message} onRetry={isLast && !chat.streaming && online && turn.user ? retryOf(turn.user) : undefined} />
+              {blocks.map(block =>
+                block.kind === 'tools' ? <ToolSummaryRow key={block.id} tools={block.tools} /> : block.message.role === 'assistant' ? <AssistantBubble key={block.id} message={block.message} onRegenerate={block.id === lastAnswerId ? regenerable : undefined} /> : <SystemRow key={block.id} message={block.message} onRetry={regenerable} />
               )}
               <AuditTimeline lines={linesForTurn(auditLines, turn, shownIds)} />
               {finished && produced.map(artifact => <ArtifactCard key={artifact.path} artifact={artifact} selected={selected?.path === artifact.path} onSelect={() => selectArtifact(artifact.path)} />)}
@@ -217,26 +223,37 @@ function DayDivider({ label }: { label: string }) {
 }
 
 const UserBubble = memo(function UserBubble({ message }: { message: UserMessage }) {
+  const { t } = useT()
+
   return (
-    <div className="flex items-start justify-end gap-3">
+    <div className="group/msg flex items-start justify-end gap-3">
       <span className="mt-1 flex size-8 shrink-0 items-center justify-center rounded-full border border-line bg-white/8 text-fg-2" aria-hidden="true">
         <IconUser size={16} stroke={1.7} />
       </span>
       <div className="selectable min-w-0 max-w-[85%] rounded-xl border border-line-strong/50 bg-accent/35 px-4 py-2.5 shadow-card backdrop-blur-md">
         <div data-testid="user-message" className="text-[13.5px] leading-relaxed whitespace-pre-wrap text-fg">{message.text}</div>
-        <div className="mt-1 text-right text-[10.5px] tabular-nums text-fg-3">{formatTime(message.ts)}</div>
+        <div className="mt-1 flex items-center justify-end gap-1 text-[10.5px] tabular-nums text-fg-3">
+          <span className="flex items-center gap-0.5 opacity-0 transition-opacity duration-100 group-hover/msg:opacity-100 focus-within:opacity-100">
+            <CopyAction text={message.text} />
+            <MessageAction label={t('chat.edit')} onClick={() => fillComposer(message.text)}>
+              <IconPencil size={13} />
+            </MessageAction>
+          </span>
+          <span className="ml-1">{formatTime(message.ts)}</span>
+        </div>
       </div>
     </div>
   )
 })
 
-const AssistantBubble = memo(function AssistantBubble({ message }: { message: AssistantMessage }) {
+const AssistantBubble = memo(function AssistantBubble({ message, onRegenerate }: { message: AssistantMessage; onRegenerate?: () => void }) {
+  const { t } = useT()
   const [showReasoning, setShowReasoning] = useState(false)
   const hasReasoning = message.reasoning.trim().length > 0
   const text = message.text.replace(/^\s+/, '')
 
   return (
-    <div className="flex items-start gap-3">
+    <div className="group/msg flex items-start gap-3">
       <HermesAvatar size={28} rounded={8} className={cn('mt-1', message.streaming && 'animate-pulse-soft')} />
       <div className="glass-card min-w-0 max-w-[85%] rounded-xl px-4 py-2.5">
         {hasReasoning && (
@@ -255,6 +272,16 @@ const AssistantBubble = memo(function AssistantBubble({ message }: { message: As
         ) : null}
         {message.error && <div className="mt-2 rounded-lg bg-danger/10 px-3 py-2 text-[12.5px] text-danger">{message.error}</div>}
         <div className="mt-1 flex items-center justify-end gap-2 text-[10.5px] tabular-nums text-fg-3">
+          {!message.streaming && text && (
+            <span className="mr-auto flex items-center gap-0.5 opacity-0 transition-opacity duration-100 group-hover/msg:opacity-100 focus-within:opacity-100">
+              <CopyAction text={text} />
+              {onRegenerate && (
+                <MessageAction label={t('chat.regenerate')} onClick={onRegenerate}>
+                  <IconRefresh size={13} />
+                </MessageAction>
+              )}
+            </span>
+          )}
           {message.status === 'interrupted' && <span className="text-fg-4">{t('chat.interrupted')}</span>}
           {!message.streaming && <span>{formatTime(message.ts)}</span>}
         </div>

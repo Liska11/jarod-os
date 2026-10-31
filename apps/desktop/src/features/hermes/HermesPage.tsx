@@ -1,9 +1,10 @@
 import { useStore } from '@nanostores/react'
-import { IconArrowUpRight, IconHistory, IconPencil, IconPlus, IconTrash, IconX } from '@tabler/icons-react'
+import { IconArrowUpRight, IconDownload, IconHistory, IconPencil, IconPlus, IconTrash, IconX } from '@tabler/icons-react'
 import { useEffect, useRef, useState } from 'react'
 import { GlassButton, GlassCard, MoreButton } from '../../components/ui/glass.tsx'
 import { SplitRow } from '../../components/ui/split-row.tsx'
-import { $activeChat, $activeChatId, $chats, createChat, forgetChat } from '../../store/chat.ts'
+import { $activeChat, $activeChatId, createChat, forgetChat } from '../../store/chat.ts'
+import { exportConversation, renameChat } from '../../store/chat-actions.ts'
 import { $connection } from '../../store/gateway.ts'
 import { notify } from '../../store/notifications.ts'
 import { deleteSession } from '../../store/sessions.ts'
@@ -69,11 +70,9 @@ export function HermesPage() {
     }
 
     const next = title.trim()
-    const current = $chats.get()[chat.sessionId]
 
-    if (current && next !== current.title) {
-      // Local only: the runtime keeps its own title until it renames the session itself.
-      $chats.setKey(chat.sessionId, { ...current, title: next, info: { ...current.info, title: next || undefined } })
+    if (next && next !== chat.title) {
+      renameChat(chat.storedSessionId, next).catch(error => notify({ title: t('chat.renameFailed'), body: error instanceof Error ? error.message : String(error), level: 'error', surface: 'hermes' }))
     }
   }
 
@@ -140,6 +139,19 @@ export function HermesPage() {
             }}
           >
             {t('chat.popOut')}
+          </MenuItem>
+          <MenuItem
+            icon={<IconDownload />}
+            disabled={!chat}
+            onClick={() => {
+              setMenuOpen(false)
+
+              if (chat) {
+                void exportConversation(chat.storedSessionId)
+              }
+            }}
+          >
+            {t('chat.export')}
           </MenuItem>
           <MenuItem
             icon={<IconHistory />}
