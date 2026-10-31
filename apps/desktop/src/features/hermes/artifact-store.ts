@@ -10,7 +10,7 @@ import type { PaneApp } from './pane-apps.ts'
  * whether the document is being edited. Artifacts themselves live in store/missions.ts.
  */
 
-export type PaneTab = 'preview' | 'sources' | PaneApp
+export type PaneTab = 'preview' | 'activity' | 'sources' | PaneApp
 export type ArtifactKind = 'markdown' | 'text' | 'image' | 'other'
 
 /** Path the user explicitly picked; null means "newest artifact of the active chat". */

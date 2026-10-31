@@ -770,6 +770,10 @@ export const fr: Record<MessageKey, string> = {
   // Panneau d'aperçu
   'pane.preview': 'Aperçu',
   'pane.sources': 'Sources',
+  'pane.activity': 'Activité',
+  'pane.activity.reasoning': 'Raisonnement',
+  'pane.activity.empty': 'Aucune activité pour l’instant',
+  'pane.activity.empty.hint': 'Le raisonnement du modèle et les outils qu’il utilise s’affichent ici, au fil de la conversation.',
   'pane.review': 'À relire avant de partager',
   'pane.review.title': '{assistant} a rédigé ceci : vérifiez les faits et les noms avant de le partager.',
   'pane.cancel': 'Annuler',

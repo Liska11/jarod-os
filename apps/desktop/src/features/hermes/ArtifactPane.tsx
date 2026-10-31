@@ -32,6 +32,7 @@ import type { Artifact } from '../../store/missions.ts'
 import { notify } from '../../store/notifications.ts'
 import { Markdown } from '../chat/Markdown.tsx'
 import { $editing, $paneTab, $selectedArtifact, $zoom, artifactKind, collectSources, extensionOf, isEditable, type SourceRow } from './artifact-store.ts'
+import { ActivityFeed } from './ActivityFeed.tsx'
 import { MenuDivider, MenuItem, PopMenu } from './Menu.tsx'
 import { isPaneApp } from './pane-apps.ts'
 import { PaneAppViews, PaneTabs } from './PaneApps.tsx'
@@ -312,6 +313,8 @@ export function ArtifactPane({ chat }: { chat: ChatState | null }) {
       <div className={cn('min-h-0 flex-1 overflow-y-auto p-4', appTab && 'hidden')}>
         {tab === 'sources' ? (
           <Sources chat={chat} />
+        ) : tab === 'activity' ? (
+          <ActivityFeed chat={chat} />
         ) : !artifact ? (
           <EmptyGlass className="h-full" icon={<IconFileText />} title={t('pane.empty')} description={t('pane.empty.hint')} />
         ) : editing ? (

@@ -772,6 +772,10 @@ export const en = {
   // Preview pane
   'pane.preview': 'Preview',
   'pane.sources': 'Sources',
+  'pane.activity': 'Activity',
+  'pane.activity.reasoning': 'Reasoning',
+  'pane.activity.empty': 'No activity yet',
+  'pane.activity.empty.hint': 'The model’s reasoning and the tools it uses appear here as the conversation goes.',
   'pane.review': 'Review before sharing',
   'pane.review.title': '{assistant} drafted this; check facts and names before you share it.',
   'pane.cancel': 'Cancel',

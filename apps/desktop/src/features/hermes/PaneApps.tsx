@@ -71,9 +71,9 @@ export function PaneTabs({ value }: { value: PaneTab }) {
   return (
     <div className="flex items-center border-b border-line px-3 py-2">
       <div className="flex min-w-0 items-center gap-1 overflow-x-auto rounded-lg bg-black/15 p-1 hairline [scrollbar-width:none]" role="tablist">
-        {(['preview', 'sources'] as const).map(id => (
+        {(['preview', 'activity', 'sources'] as const).map(id => (
           <button key={id} type="button" role="tab" aria-selected={value === id} onClick={() => $paneTab.set(id)} className={cn(TAB, 'px-3', value === id ? ON : OFF)}>
-            {t(id === 'preview' ? 'pane.preview' : 'pane.sources')}
+            {t(id === 'preview' ? 'pane.preview' : id === 'activity' ? 'pane.activity' : 'pane.sources')}
           </button>
         ))}
         {apps.map(app => {
