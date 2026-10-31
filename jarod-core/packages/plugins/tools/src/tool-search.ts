@@ -32,6 +32,10 @@ export const CORE_TOOLS: ReadonlySet<string> = new Set([
   "capabilities",
   // Les « bras » et les « yeux » : un modèle local ne pense pas à les chercher derrière tool_search et répond « je ne peux pas » (31/10).
   // Le registre ne les offre que si le moteur est là (`available`) ; hors de ce cas ils restent absents, ce qui ne coûte rien.
+  "system_open",
+  "system_apps",
+  "system_control",
+  "system_quit_app",
   "desktop_windows",
   "desktop_control",
   "screen_look",
