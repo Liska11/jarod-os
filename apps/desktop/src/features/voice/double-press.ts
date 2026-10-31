@@ -1,6 +1,9 @@
 /**
  * Tells one press from two quick ones. The single action waits `windowMs` for a second press; a second press inside the window runs the double
  * action instead and the single one never happens. Timers are injectable for the tests.
+ *
+ * `windowMs` is the default Windows double-click time (500 ms, `GetDoubleClickTime()`): the browser's `event.detail` counts two clicks for
+ * that long, so a shorter window let the single action fire first and the double one run on top of it.
  */
 export interface DoublePress {
   press(): void
@@ -10,7 +13,7 @@ export interface DoublePress {
   cancel(): void
 }
 
-export function createDoublePress(onSingle: () => void, onDouble: () => void, windowMs = 320, timers: { set: typeof setTimeout; clear: typeof clearTimeout } = { set: setTimeout, clear: clearTimeout }): DoublePress {
+export function createDoublePress(onSingle: () => void, onDouble: () => void, windowMs = 500, timers: { set: typeof setTimeout; clear: typeof clearTimeout } = { set: setTimeout, clear: clearTimeout }): DoublePress {
   let pending: ReturnType<typeof setTimeout> | null = null
 
   return {
@@ -29,11 +32,11 @@ export function createDoublePress(onSingle: () => void, onDouble: () => void, wi
       }, windowMs)
     },
     double() {
-      if (pending !== null) {
-        timers.clear(pending)
-        pending = null
-      }
-
+      // No pending single: it already ran (the browser keeps counting two clicks for its own, longer, double-click time). Running the
+      // double action now would stack a conversation on top of a dictation that just started.
+      if (pending === null) return
+      timers.clear(pending)
+      pending = null
       onDouble()
     },
     cancel() {

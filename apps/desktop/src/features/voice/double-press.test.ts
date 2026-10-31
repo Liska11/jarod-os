@@ -66,4 +66,20 @@ describe('createDoublePress.double', () => {
     expect(single).not.toHaveBeenCalled()
     vi.useRealTimers()
   })
+
+  it('after the single action already ran, a browser-counted second click does nothing', () => {
+    vi.useFakeTimers()
+    const single = vi.fn()
+    const double = vi.fn()
+    const p = createDoublePress(single, double, 500)
+
+    p.press()
+    // The window elapses: dictation starts. The browser still counts the next click as detail=2 for its own (longer) double-click time.
+    vi.advanceTimersByTime(500)
+    expect(single).toHaveBeenCalledOnce()
+    p.double()
+    vi.advanceTimersByTime(1000)
+    expect(double).not.toHaveBeenCalled()
+    vi.useRealTimers()
+  })
 })
