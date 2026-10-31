@@ -4,6 +4,8 @@ import { gatewayRequest, isGatewayOpen } from './gateway.ts'
 
 export const $sessions = atom<SessionListRow[]>([])
 export const $sessionsLoading = atom(false)
+/** The last refresh failed: the list shown may be out of date or empty for that reason, which the rail says. */
+export const $sessionsError = atom(false)
 
 /** stored id -> runtime id, so the sidebar can highlight the live chat. */
 export const $runtimeIds = atom<Record<string, string>>({})
@@ -32,9 +34,11 @@ export function refreshSessions(): Promise<void> {
       const kept = $sessions.get().filter(row => !seen.has(row.id))
       const merged = [...incoming, ...kept].sort((a, b) => (b.started_at ?? 0) - (a.started_at ?? 0))
       $sessions.set(merged)
+      $sessionsError.set(false)
     })
     .catch(() => {
-      // Keep the cached list; the next refresh retries.
+      // Keep the cached list; the next refresh retries (and the rail offers a retry).
+      $sessionsError.set(true)
     })
     .finally(() => {
       $sessionsLoading.set(false)

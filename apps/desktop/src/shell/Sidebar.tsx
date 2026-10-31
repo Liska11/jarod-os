@@ -1,5 +1,5 @@
 import { useStore } from '@nanostores/react'
-import { IconHistory, IconLayoutSidebarLeftCollapse, IconLayoutSidebarLeftExpand, IconPlus } from '@tabler/icons-react'
+import { IconHistory, IconLayoutSidebarLeftCollapse, IconLayoutSidebarLeftExpand, IconPin, IconPinFilled, IconPlus, IconTrash } from '@tabler/icons-react'
 import { $paneTab } from '../features/hermes/artifact-store.ts'
 import { APPS_SECTION, MESSAGING_SECTION, openPaneApp, type PaneApp } from '../features/hermes/pane-apps.ts'
 import { PaneAppIcon, usePaneAppName } from '../features/hermes/PaneApps.tsx'
@@ -8,9 +8,10 @@ import { AppGlyph, HermesAvatar } from '../components/app-icon.tsx'
 import { cn } from '../lib/cn.ts'
 import { appText, useT } from '../lib/i18n.ts'
 import { shortcutLabel } from '../lib/platform-labels.ts'
-import { $activeChatId, $chats, createChat, LISTED_SESSION_SOURCES, openStoredSession } from '../store/chat.ts'
-import { listedSessions } from '../store/session-list.ts'
-import { $runtimeIds, $sessions, refreshSessions } from '../store/sessions.ts'
+import { $activeChatId, $chats, createChat, forgetChat, LISTED_SESSION_SOURCES, openStoredSession } from '../store/chat.ts'
+import { $pinnedSessions, togglePinned } from '../store/pinned-sessions.ts'
+import { filterSessions, groupSessions, listedSessions, type SessionGroupKey } from '../store/session-list.ts'
+import { $runtimeIds, $sessions, $sessionsError, deleteSession, refreshSessions } from '../store/sessions.ts'
 import { $sidebar, SIDEBAR_COLLAPSED, SIDEBAR_MAX, SIDEBAR_MIN, SIDEBAR_SNAP, setSidebarCollapsed, setSidebarWidth, toggleSidebar } from '../store/sidebar.ts'
 import { $activeSpace, $spaces, addSpace, setActiveSpace } from '../store/spaces.ts'
 import { $page, showPage } from '../store/windows.ts'
@@ -286,18 +287,35 @@ function useFloatingTips(scroller: React.RefObject<HTMLDivElement | null>, origi
   }, [scroller, origin])
 }
 
-/** How many past conversations the rail shows; the full list scrolls inside it. */
-const RAIL_SESSIONS = 40
+/** How many past conversations the rail keeps; the search and the scrolling reach all of them. */
+const RAIL_SESSIONS = 200
 
-/** The past conversations, newest first, always in reach: one click reopens it on the Hermes page. */
+/** The search box only appears once there is enough to search through. */
+const SEARCH_FROM = 8
+
+const GROUP_LABEL: Record<SessionGroupKey, 'sessionList.group.pinned' | 'sessionList.group.today' | 'sessionList.group.yesterday' | 'sessionList.group.week' | 'sessionList.group.older'> = {
+  pinned: 'sessionList.group.pinned',
+  today: 'sessionList.group.today',
+  yesterday: 'sessionList.group.yesterday',
+  week: 'sessionList.group.week',
+  older: 'sessionList.group.older'
+}
+
+/** The past conversations: pinned first, then by day, searchable, always in reach. One click reopens one on the Hermes page. */
 function ConversationsSection({ collapsed }: { collapsed: boolean }) {
   const { t } = useT()
   const page = useStore($page)
   const rows = useStore($sessions)
+  const failed = useStore($sessionsError)
+  const pinned = useStore($pinnedSessions)
   const runtimeIds = useStore($runtimeIds)
   const activeId = useStore($activeChatId)
   const chats = useStore($chats)
-  const sessions = listedSessions(rows, LISTED_SESSION_SOURCES, RAIL_SESSIONS)
+  const [query, setQuery] = useState('')
+  const [confirming, setConfirming] = useState<string | null>(null)
+  const all = listedSessions(rows, LISTED_SESSION_SOURCES, RAIL_SESSIONS)
+  const shown = filterSessions(all, query)
+  const groups = groupSessions(shown, pinned)
 
   // The list is asked for at start-up and when the backend restarts; asking again when the rail appears covers a start-up that was too early.
   useEffect(() => {
@@ -307,6 +325,21 @@ function ConversationsSection({ collapsed }: { collapsed: boolean }) {
   const open = (id: string) => {
     showPage('hermes')
     void openStoredSession(id)
+  }
+
+  const remove = (id: string, runtimeId: string | undefined) => {
+    if (confirming !== id) {
+      setConfirming(id)
+
+      return
+    }
+
+    setConfirming(null)
+    void deleteSession(id)
+
+    if (runtimeId) {
+      forgetChat(runtimeId)
+    }
   }
 
   if (collapsed) {
@@ -328,7 +361,7 @@ function ConversationsSection({ collapsed }: { collapsed: boolean }) {
 
   return (
     <>
-      <div className="my-4 h-px mx-1 bg-line" />
+      <div className="mx-1 my-4 h-px bg-line" />
       <div className="mb-1.5 flex items-center justify-between px-2">
         <span className="text-[10px] font-semibold tracking-[0.14em] text-fg-3 uppercase">{t('sidebar.conversations')}</span>
         <button
@@ -343,28 +376,65 @@ function ConversationsSection({ collapsed }: { collapsed: boolean }) {
           <IconPlus size={13} />
         </button>
       </div>
-      <nav className="side-scroll flex max-h-64 shrink-0 flex-col gap-0.5 overflow-y-auto" aria-label={t('sidebar.conversations')}>
-        {sessions.length === 0 && <div className="px-2.5 py-1.5 text-[11.5px] leading-snug text-fg-4">{t('sessionList.empty')}</div>}
-        {sessions.map(row => {
-          const runtimeId = runtimeIds[row.id]
-          const live = runtimeId ? chats[runtimeId] : undefined
-          const on = page === 'hermes' && Boolean(runtimeId) && runtimeId === activeId
-          const title = live?.title || row.title || row.preview || t('sidebar.untitled')
+      {all.length >= SEARCH_FROM && (
+        <input
+          value={query}
+          onChange={event => setQuery(event.target.value)}
+          onKeyDown={event => event.key === 'Escape' && setQuery('')}
+          placeholder={t('sidebar.search')}
+          aria-label={t('sidebar.search')}
+          className="glass-input mb-1.5 h-7 shrink-0 rounded-lg px-2.5 text-[12px] outline-none"
+        />
+      )}
+      {failed && (
+        <div className="mb-1.5 shrink-0 rounded-lg bg-danger/10 px-2.5 py-1.5 text-[11.5px] leading-snug text-danger">
+          {t('sidebar.loadFailed')}{' '}
+          <button type="button" onClick={() => void refreshSessions()} className="font-medium underline underline-offset-2">
+            {t('chat.error.retry')}
+          </button>
+        </div>
+      )}
+      <nav className="side-scroll flex max-h-72 shrink-0 flex-col gap-0.5 overflow-y-auto" aria-label={t('sidebar.conversations')}>
+        {all.length === 0 && !failed && <div className="px-2.5 py-1.5 text-[11.5px] leading-snug text-fg-4">{t('sessionList.empty')}</div>}
+        {all.length > 0 && shown.length === 0 && <div className="px-2.5 py-1.5 text-[11.5px] leading-snug text-fg-4">{t('sidebar.noMatch')}</div>}
+        {groups.map(group => (
+          <div key={group.key} className="flex shrink-0 flex-col gap-0.5">
+            <span className="px-2.5 pt-1.5 pb-0.5 text-[10px] font-medium tracking-wide text-fg-4">{t(GROUP_LABEL[group.key])}</span>
+            {group.rows.map(row => {
+              const runtimeId = runtimeIds[row.id]
+              const live = runtimeId ? chats[runtimeId] : undefined
+              const on = page === 'hermes' && Boolean(runtimeId) && runtimeId === activeId
+              const title = live?.title || row.title || row.preview || t('sidebar.untitled')
+              const isPinned = pinned.has(row.id)
+              const asking = confirming === row.id
 
-          return (
-            <button
-              key={row.id}
-              type="button"
-              onClick={() => open(row.id)}
-              aria-current={on ? 'true' : undefined}
-              title={title}
-              className={cn('flex h-7 shrink-0 items-center gap-2 rounded-lg px-2.5 text-left text-[12.5px] transition-colors duration-150', on ? 'bg-white/14 text-fg' : 'text-fg-2 hover:bg-white/8 hover:text-fg')}
-            >
-              {live?.streaming && <span className="size-1.5 shrink-0 animate-pulse-soft rounded-full bg-accent" />}
-              <span className="truncate">{title}</span>
-            </button>
-          )
-        })}
+              return (
+                <div key={row.id} className={cn('group/row relative flex h-7 shrink-0 items-center rounded-lg transition-colors duration-150', on ? 'bg-white/14 text-fg' : 'text-fg-2 hover:bg-white/8 hover:text-fg')} onMouseLeave={() => asking && setConfirming(null)}>
+                  <button type="button" onClick={() => open(row.id)} aria-current={on ? 'true' : undefined} title={title} className="flex h-full min-w-0 flex-1 items-center gap-2 px-2.5 text-left text-[12.5px]">
+                    {live?.streaming && <span className="size-1.5 shrink-0 animate-pulse-soft rounded-full bg-accent" />}
+                    <span className="truncate">{title}</span>
+                  </button>
+                  <span className={cn('mr-1 items-center gap-0.5', asking ? 'flex' : 'hidden group-hover/row:flex')}>
+                    {!asking && (
+                      <button type="button" onClick={() => togglePinned(row.id)} aria-label={isPinned ? t('sidebar.unpin') : t('sidebar.pin')} aria-pressed={isPinned} title={isPinned ? t('sidebar.unpin') : t('sidebar.pin')} className="flex size-5 items-center justify-center rounded text-fg-4 hover:text-fg">
+                        {isPinned ? <IconPinFilled size={12} /> : <IconPin size={12} />}
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => remove(row.id, runtimeId)}
+                      aria-label={asking ? t('sidebar.deleteConfirm') : t('sessionList.deleteAria')}
+                      title={asking ? t('sidebar.deleteConfirm') : t('sessionList.deleteAria')}
+                      className={cn('flex h-5 items-center justify-center rounded text-[11px]', asking ? 'bg-danger/20 px-1.5 font-medium text-danger' : 'size-5 text-fg-4 hover:text-danger')}
+                    >
+                      {asking ? t('sidebar.deleteConfirm') : <IconTrash size={12} />}
+                    </button>
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+        ))}
       </nav>
     </>
   )
