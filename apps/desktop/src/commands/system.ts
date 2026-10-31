@@ -161,7 +161,7 @@ export const systemCommands: readonly OsCommand[] = [
   {
     id: 'web.open',
     title: 'Open a web page',
-    description: 'Open a URL in a window inside Jarod-OS.',
+    description: 'Open a URL in a separate floating window inside Jarod-OS. For the integrated browser, TikTok, Instagram, Telegram, WhatsApp or Signal in the right-hand pane, use pane.open instead.',
     tier: 'act',
     args: [
       { name: 'url', type: 'string', description: 'URL or domain (https is assumed)', required: true },
