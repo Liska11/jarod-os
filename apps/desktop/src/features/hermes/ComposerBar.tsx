@@ -1,6 +1,6 @@
 import { useStore } from '@nanostores/react'
 import { IconChevronUp, IconCpu, IconFoldDown, IconSearch } from '@tabler/icons-react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Pill } from '../../components/ui/glass.tsx'
 import { Spinner } from '../../components/ui/primitives.tsx'
 import { cn } from '../../lib/cn.ts'
@@ -15,6 +15,7 @@ import { notify } from '../../store/notifications.ts'
 import { modelButtonLabel } from '../settings/sections/model-choice.ts'
 import { errorText, useDismiss } from '../settings/sections/shared.tsx'
 import { t, useT } from '../../lib/i18n.ts'
+import { COLLAPSED_MODELS, firstMatch, searchModels } from './model-search.ts'
 
 const BAR_TONE: Record<ContextTone, string> = { unknown: 'bg-fg-4', ok: 'bg-accent', warn: 'bg-warn', danger: 'bg-danger' }
 
@@ -71,15 +72,28 @@ export function ModelPicker({ chat, online }: { chat: ChatState | null; online: 
   const current = options.data?.model ?? chat?.info.model
   // Jarod's Internet off: a cloud model cannot answer. It stays listed, marked, never switched away from silently; local ones come first.
   const offline = useStore($network)?.internet === false
-  const providers = useMemo(() => {
-    const q = filter.trim().toLowerCase()
+  const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set())
+  const found = useMemo(() => {
     const rows = (options.data?.providers ?? [])
       .filter(p => (p.models?.length ?? 0) > 0)
-      .map(p => ({ ...p, local: isLocalProvider(p), models: (p.models ?? []).filter(model => !q || model.toLowerCase().includes(q) || p.name.toLowerCase().includes(q)) }))
-      .filter(p => p.models.length > 0)
+      .map(p => ({ ...p, local: isLocalProvider(p), models: p.models ?? [] }))
+    const result = searchModels(rows, filter)
 
-    return offline ? [...rows].sort((a, b) => Number(b.local) - Number(a.local)) : rows
+    return { count: result.count, providers: offline ? [...result.providers].sort((a, b) => Number(b.local) - Number(a.local)) : result.providers }
   }, [options.data, filter, offline])
+  const providers = found.providers
+  const searching = filter.trim() !== ''
+
+  // The list is read again each time the menu opens (a model loaded since, a cloud provider's list), and the search starts empty.
+  useEffect(() => {
+    if (open) {
+      options.reload()
+    } else {
+      setFilter('')
+      setExpanded(new Set())
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `options.reload` changes at every render; only the opening matters
+  }, [open])
   const currentRow = (options.data?.providers ?? []).find(p => p.is_current)
   const cloudOffline = offline && Boolean(currentRow) && !isLocalProvider(currentRow as ProviderRow)
 
@@ -124,7 +138,25 @@ export function ModelPicker({ chat, online }: { chat: ChatState | null; online: 
         <div className="float animate-pop absolute top-[calc(100%+6px)] right-3 z-30 flex w-[min(360px,calc(100%-24px))] flex-col rounded-lg" role="dialog" aria-label={t('chat.model.choose')}>
           <label className="glass-input m-2 flex h-8 items-center gap-2 rounded-lg px-2.5">
             <IconSearch size={14} className="text-fg-3" />
-            <input autoFocus value={filter} onChange={event => setFilter(event.target.value)} placeholder={t('chat.model.filter')} className="min-w-0 flex-1 bg-transparent text-[12.5px] outline-none placeholder:text-fg-4" />
+            <input
+              autoFocus
+              type="search"
+              value={filter}
+              onChange={event => setFilter(event.target.value)}
+              onKeyDown={event => {
+                // Enter picks the first match, so typing a few letters then Enter is enough.
+                const first = firstMatch(providers)
+
+                if (event.key === 'Enter' && first && !pending && !(offline && !providers[0]?.local)) {
+                  event.preventDefault()
+                  void choose(first.slug, first.model)
+                }
+              }}
+              placeholder={t('chat.model.filter')}
+              aria-label={t('chat.model.filter')}
+              className="min-w-0 flex-1 bg-transparent text-[12.5px] outline-none placeholder:text-fg-4"
+            />
+            {searching && <span className="shrink-0 text-[11px] text-fg-4">{t('chat.model.count', { count: found.count })}</span>}
           </label>
           {cloudOffline && <div className="mx-2 mb-2 rounded-md bg-warn/10 px-2.5 py-2 text-[11.5px] leading-snug text-warn">{t('chat.model.cloudOffline')}</div>}
           <div className="flex max-h-[320px] flex-col gap-3 overflow-y-auto px-2 pb-2">
@@ -139,7 +171,7 @@ export function ModelPicker({ chat, online }: { chat: ChatState | null; online: 
                   {offline && !p.local && <Pill tone="warn">{t('chat.model.offline')}</Pill>}
                 </div>
                 <div className="flex flex-col">
-                  {p.models.slice(0, 40).map(model => {
+                  {p.models.slice(0, searching || expanded.has(p.slug) ? p.models.length : COLLAPSED_MODELS).map(model => {
                     const active = Boolean(p.is_current) && model === current
                     const busy = pending === `${p.slug}:${model}`
 
@@ -150,7 +182,11 @@ export function ModelPicker({ chat, online }: { chat: ChatState | null; online: 
                       </button>
                     )
                   })}
-                  {(p.total_models ?? 0) > 40 && <span className="px-2 py-1 text-[11px] text-fg-4">{t('chat.model.more', { count: (p.total_models ?? 0) - 40 })}</span>}
+                  {!searching && !expanded.has(p.slug) && p.models.length > COLLAPSED_MODELS && (
+                    <button type="button" onClick={() => setExpanded(prev => new Set(prev).add(p.slug))} className="rounded-md px-2 py-1 text-left text-[11.5px] text-accent-strong hover:bg-white/8">
+                      {t('chat.model.showAll', { count: p.models.length - COLLAPSED_MODELS })}
+                    </button>
+                  )}
                 </div>
               </section>
             ))}

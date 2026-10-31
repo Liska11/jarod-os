@@ -55,6 +55,7 @@ import { registerWindowEmbeds } from './platform/window-embed.ts'
 import { AuditService } from './setup/service.ts'
 import { log, logTail } from './log.ts'
 import { installProblemLogging } from './problem-log.ts'
+import { installContextMenu } from './context-menu.ts'
 import { migrateLegacyData, migrateShellConfig } from './migrate.ts'
 import { registerNotificationHistoryIpc } from './notifications-history.ts'
 import { osEnv } from './env.ts'
@@ -227,6 +228,7 @@ protocol.registerSchemesAsPrivileged([...privilegedPluginSchemes(), MEDIA_SCHEME
 process.on('uncaughtException', error => log('main', `uncaught exception: ${error.stack ?? error.message}`))
 // The rest of what can go wrong reaches the same log: rejected promises here, every window's errors, failing IPC calls.
 installProblemLogging(app, ipcMain, log)
+installContextMenu()
 
 if (ADOPTED_LEGACY_ENV.length) {
   log('env', `read under their old names (still accepted, the new name wins when both are set): ${ADOPTED_LEGACY_ENV.join(', ')}`)
