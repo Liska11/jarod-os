@@ -1,7 +1,9 @@
 // Passerelle compatible Hermes (essai) : les modèles que les serveurs LOCAUX (LM Studio, Ollama, llama.cpp, vLLM…) proposent à cet instant.
 // Le catalogue de Jarod livre ces fournisseurs avec `models: []` : sans découverte, le sélecteur de Herald (qui ne montre que les fournisseurs ayant au
 // moins un modèle) restait vide. La découverte est `GET <base>/models` du fournisseur (même client que l'application Jarod, clé du coffre comprise).
-// Jamais de requête vers un fournisseur distant : seuls les fournisseurs `local` sont interrogés, donc aucune clé ne part vers un tiers.
+// Par défaut, jamais de requête vers un fournisseur distant : seuls les fournisseurs `local` sont interrogés, donc aucune clé ne part vers un tiers.
+// Avec `remote`, un fournisseur distant est lu AUSSI, mais seulement s'il est configuré (l'utilisateur a mis sa clé) et n'a aucun modèle déclaré :
+// sans cela le sélecteur le cachait. La clé ne va qu'à ce fournisseur, comme au bouton « Tester » de l'écran des fournisseurs.
 import type { ProviderLike } from "./config.js";
 
 export interface DiscoveryOptions {
@@ -14,6 +16,13 @@ export interface DiscoveryOptions {
   failureTtlMs?: number;
   /** Au-delà, le serveur est tenu pour injoignable (la liste reste celle du catalogue). */
   timeoutMs?: number;
+  /** Lire aussi les fournisseurs distants configurés qui n'ont aucun modèle déclaré (voir l'en-tête). Défaut : non. */
+  remote?: boolean;
+  /** Validité d'une liste distante (longue : un appel réseau et une clé, pas un serveur local) et d'un échec distant. */
+  remoteTtlMs?: number;
+  remoteFailureTtlMs?: number;
+  /** Délai d'une lecture distante (plus long qu'en local). */
+  remoteTimeoutMs?: number;
   now?: () => number;
 }
 
@@ -53,12 +62,19 @@ export class ModelDiscovery {
   /** Les fournisseurs du noyau, chaque fournisseur local joignable avec ses modèles du moment ajoutés à ceux que le catalogue ou l'utilisateur déclare. */
   async providers(): Promise<ProviderLike[]> {
     const all = this.o.list();
-    const found = await Promise.all(all.map((p) => (this.o.fetchModels && p.local && !NON_CHAT_PROVIDERS.has(p.id) ? this.read(p) : null)));
+    const found = await Promise.all(all.map((p) => (this.o.fetchModels && this.readable(p) ? this.read(p) : null)));
     return all.map((p, i) => {
       const live = found[i];
       if (!live) return p;
       return { ...p, models: [...new Set([...live, ...p.models])] };
     });
+  }
+
+  /** Un fournisseur local qui converse ; avec `remote`, aussi un fournisseur distant configuré dont aucun modèle n'est déclaré. */
+  private readable(p: ProviderLike): boolean {
+    if (NON_CHAT_PROVIDERS.has(p.id)) return false;
+    if (p.local) return true;
+    return this.o.remote === true && p.configured && p.models.length === 0;
   }
 
   // Clé = fournisseur + adresse : changer l'adresse d'un fournisseur (réglage) invalide sa lecture sans autre geste.
@@ -68,8 +84,10 @@ export class ModelDiscovery {
     if (hit && this.now() - hit.at < hit.ttl) return Promise.resolve(hit.models);
     const pending = this.inFlight.get(key);
     if (pending) return pending;
-    const run = this.fetch(p.id).then((models) => {
-      this.cache.set(key, { at: this.now(), ttl: models ? this.ttlMs : this.failureTtlMs, models });
+    const remote = !p.local;
+    const run = this.fetch(p.id, remote ? (this.o.remoteTimeoutMs ?? 6_000) : this.timeoutMs).then((models) => {
+      const ttl = remote ? (models ? (this.o.remoteTtlMs ?? 600_000) : (this.o.remoteFailureTtlMs ?? 30_000)) : models ? this.ttlMs : this.failureTtlMs;
+      this.cache.set(key, { at: this.now(), ttl, models });
       this.inFlight.delete(key);
       return models;
     });
@@ -77,11 +95,11 @@ export class ModelDiscovery {
     return run;
   }
 
-  private async fetch(providerId: string): Promise<string[] | null> {
+  private async fetch(providerId: string, timeoutMs: number): Promise<string[] | null> {
     let timer: ReturnType<typeof setTimeout> | undefined;
     try {
       const timeout = new Promise<never>((_, reject) => {
-        timer = setTimeout(() => reject(new Error("délai dépassé")), this.timeoutMs);
+        timer = setTimeout(() => reject(new Error("délai dépassé")), timeoutMs);
       });
       const ids = await Promise.race([this.o.fetchModels!(providerId), timeout]);
       return ids.filter((id) => typeof id === "string" && id && !isEmbeddingModel(id));

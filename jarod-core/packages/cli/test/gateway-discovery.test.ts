@@ -41,6 +41,60 @@ function rigUnit(models: Record<string, string[] | Error | "hang">) {
   return { calls, discovery, providers, models, advance: (ms: number) => void (clock += ms) };
 }
 
+describe("découverte des modèles distants (remote)", () => {
+  const cloud = (): ProviderLike[] => [
+    { id: "anthropic", name: "Anthropic", models: ["claude-a"], baseUrl: "https://api.anthropic.com", configured: true },
+    { id: "google", name: "Google Gemini", models: [], baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai", configured: true },
+    { id: "openrouter", name: "OpenRouter", models: [], baseUrl: "https://openrouter.ai/api/v1", configured: false },
+    { id: "groq", name: "Groq", models: [], baseUrl: "https://api.groq.com/openai/v1", configured: true },
+  ];
+  const rig = (remote: boolean, models: Record<string, string[] | Error>) => {
+    const calls: string[] = [];
+    let clock = 1_000;
+    const discovery = new ModelDiscovery({
+      list: cloud,
+      fetchModels: async (id) => {
+        calls.push(id);
+        const r = models[id];
+        if (r instanceof Error) throw r;
+        return r ?? [];
+      },
+      remote,
+      remoteTtlMs: 10_000,
+      remoteFailureTtlMs: 1_000,
+      now: () => clock,
+    });
+    return { calls, discovery, advance: (ms: number) => void (clock += ms) };
+  };
+
+  it("par défaut, aucun fournisseur distant n'est interrogé", async () => {
+    const r = rig(false, { google: ["gemini-x"] });
+    const out = await r.discovery.providers();
+    expect(r.calls).toEqual([]);
+    expect(out.find((p) => p.id === "google")!.models).toEqual([]);
+  });
+
+  it("avec remote : seuls les distants CONFIGURÉS et SANS modèle déclaré sont lus (pas Anthropic qui déclare, pas OpenRouter sans clé)", async () => {
+    const r = rig(true, { google: ["gemini-3.5-flash-lite", "text-embedding-004"], groq: ["llama-3.3-70b"], anthropic: ["ne-doit-pas-venir"], openrouter: ["ne-doit-pas-venir"] });
+    const out = await r.discovery.providers();
+    expect([...r.calls].sort()).toEqual(["google", "groq"]);
+    expect(out.find((p) => p.id === "google")!.models).toEqual(["gemini-3.5-flash-lite"]); // l'embedding est écarté
+    expect(out.find((p) => p.id === "groq")!.models).toEqual(["llama-3.3-70b"]);
+    expect(out.find((p) => p.id === "anthropic")!.models).toEqual(["claude-a"]);
+    expect(out.find((p) => p.id === "openrouter")!.models).toEqual([]);
+  });
+
+  it("une liste distante est gardée longtemps (un appel réseau avec une clé), un échec peu de temps ; l'échec laisse la liste vide sans erreur", async () => {
+    const r = rig(true, { google: ["a"], groq: new Error("HTTP 401") });
+    await r.discovery.providers();
+    r.advance(5_000);
+    const out = await r.discovery.providers();
+    expect(r.calls.filter((c) => c === "google")).toHaveLength(1); // 5 s < 10 s : pas relu
+    expect(r.calls.filter((c) => c === "groq")).toHaveLength(2); // l'échec (1 s) est relu
+    expect(out.find((p) => p.id === "groq")!.models).toEqual([]);
+  });
+});
+
 describe("découverte des modèles locaux", () => {
   it("ajoute les modèles lus aux fournisseurs LOCAUX seulement ; un fournisseur distant et le Whisper local ne sont jamais interrogés", async () => {
     const r = rigUnit({ lmstudio: ["qwen3-8b", "gemma-3-4b"], ollama: ["llama3"], anthropic: ["ne-doit-pas-venir"], "local-whisper-cpp": ["ne-doit-pas-venir"] });

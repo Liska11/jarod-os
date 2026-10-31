@@ -251,6 +251,8 @@ export function createGateway(opts: GatewayOptions): Gateway {
   const providers = core.providers;
   const discovery = new ModelDiscovery({
     list: providerList,
+    // Les fournisseurs distants configurés sans modèle déclaré sont lus aussi (clé vers LEUR fournisseur seulement) : sinon le sélecteur les cachait.
+    remote: true,
     ...(providers?.client ? { fetchModels: (id: string) => providers.client!(id).listModels() } : {}),
   });
   /** Une erreur de configuration devient une erreur de paramètres (le shell l'affiche telle quelle). */
