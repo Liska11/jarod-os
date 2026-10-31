@@ -274,6 +274,10 @@ describe("réglages Modèles : chaîne de repli et description d'images", () => 
     await call("set-jarod-settings", { imageDescription: { provider: "openai", model: "gpt-4o" } });
     expect(app.agent.settings.get("imageDescription")).toEqual({ mode: "always", provider: "openai", model: "gpt-4o" });
 
+    // Changer de fournisseur sans nommer de modèle vide l'ancien : « gpt-4o » n'existe pas chez Ollama.
+    await call("set-jarod-settings", { imageDescription: { provider: "ollama" } });
+    expect(app.agent.settings.get("imageDescription")).toEqual({ mode: "always", provider: "ollama", model: "" });
+
     // Désactivé : rien ne part, pas de boîte. Fournisseur vidé : le modèle est vidé avec lui.
     await call("set-jarod-settings", { imageDescription: { mode: "off", provider: "" } });
     expect(app.agent.settings.get("imageDescription")).toEqual({ mode: "off", provider: "", model: "" });

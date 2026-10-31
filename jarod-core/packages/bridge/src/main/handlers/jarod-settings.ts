@@ -726,18 +726,21 @@ const ENTRIES: Record<string, Entry> = {
         next.mode = o.mode as typeof next.mode;
       }
       if (o.provider !== undefined) {
-        next.provider = text("imageDescription.provider", o.provider, 80);
-        if (next.provider) env.provider(next.provider);
-        else next.model = ""; // sans fournisseur, rien n'est décrit : pas de modèle orphelin
+        const provider = text("imageDescription.provider", o.provider, 80);
+        // Un modèle appartient à son fournisseur : garder « gemini-2.5-flash » après être passé à Ollama ferait envoyer l'image à un
+        // modèle que ce serveur ne connaît pas (et canLook() croirait la vision disponible). On vide, l'écran redemande un modèle.
+        if (provider !== next.provider) next.model = "";
+        next.provider = provider;
+        if (provider) env.provider(provider);
       }
       if (o.model !== undefined) next.model = text("imageDescription.model", o.model, 200);
       if (next.model && !next.provider) bad("imageDescription.model", "un modèle exige un fournisseur");
       // Le modèle de secours (ex. Gemini en nuage) : tenté quand le premier échoue ou n'est pas disponible.
       if (o.fallbackProvider !== undefined) {
         const fp = text("imageDescription.fallbackProvider", o.fallbackProvider, 80);
+        if (fp !== (next.fallbackProvider ?? "")) next.fallbackModel = "";
         if (fp) env.provider(fp);
         next.fallbackProvider = fp;
-        if (!fp) next.fallbackModel = "";
       }
       if (o.fallbackModel !== undefined) next.fallbackModel = text("imageDescription.fallbackModel", o.fallbackModel, 200);
       if (next.fallbackModel && !next.fallbackProvider) bad("imageDescription.fallbackModel", "un modèle de secours exige un fournisseur");
