@@ -833,3 +833,38 @@
 .explain .empty-mark {
   align-self: flex-start;
 }
+
+/* ---------- Assistant window (AssistActivity): a sheet over the app below ---------- */
+.assist-host,
+.assist-host body,
+.assist-host #root {
+  background: transparent;
+}
+.assist-solid {
+  position: fixed;
+  inset: 0;
+  overflow-y: auto;
+  background: var(--c-surface);
+}
+.assist-scrim {
+  position: fixed;
+  inset: 0;
+  background: var(--c-scrim);
+  animation: fade-in var(--dur-2) var(--ease);
+}
+.assist-sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: min(var(--app-h, 100%), 640px);
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--r-xl) var(--r-xl) 0 0;
+  background: var(--c-surface);
+  overflow: hidden;
+}
+.assist-sheet > .view {
+  position: relative;
+  flex: 1;
+}

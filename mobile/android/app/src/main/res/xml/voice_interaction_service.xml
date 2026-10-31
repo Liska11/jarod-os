@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Jarod as a digital assistant. Not offered from the lock screen: calling it there would open a
+  chat that needs the fingerprint anyway.
+-->
+<voice-interaction-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:sessionService="os.jarod.mobile.JarodVoiceInteractionSessionService"
+    android:recognitionService="os.jarod.mobile.JarodRecognitionService"
+    android:supportsAssist="true"
+    android:supportsLaunchVoiceAssistFromKeyguard="false" />

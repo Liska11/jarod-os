@@ -40,6 +40,95 @@
 
         </activity>
 
+        <!--
+          The assistant over other apps (AssistActivity.java). Exported for the system's assistant
+          gesture; it reads nothing from the intent but the action (AssistRequest.java).
+        -->
+        <activity
+            android:name=".AssistActivity"
+            android:label="@string/title_activity_assist"
+            android:theme="@style/AppTheme.Assist"
+            android:launchMode="singleTask"
+            android:taskAffinity=""
+            android:excludeFromRecents="true"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode|navigation|density"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.ASSIST" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VOICE_ASSIST" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
+        <!--
+          Jarod as the phone's digital assistant (Settings → Default apps). The system alone may bind
+          these (BIND_VOICE_INTERACTION). The recognition service has no intent filter on purpose.
+        -->
+        <service
+            android:name=".JarodVoiceInteractionService"
+            android:permission="android.permission.BIND_VOICE_INTERACTION"
+            android:exported="true">
+            <meta-data
+                android:name="android.voice_interaction"
+                android:resource="@xml/voice_interaction_service" />
+            <intent-filter>
+                <action android:name="android.service.voice.VoiceInteractionService" />
+            </intent-filter>
+        </service>
+        <service
+            android:name=".JarodVoiceInteractionSessionService"
+            android:permission="android.permission.BIND_VOICE_INTERACTION"
+            android:exported="true" />
+        <service
+            android:name=".JarodRecognitionService"
+            android:exported="true" />
+
+        <!-- The floating bubble (FloatingOrbService.java): shown only after the owner allows "display over other apps". -->
+        <service
+            android:name=".FloatingOrbService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Floating bubble that opens the owner's assistant over other apps; no content is read or sent" />
+        </service>
+
+        <!--
+          Reads the showing notifications of the apps the owner ticked, on request only
+          (JarodNotificationListenerService.java). Off until the owner allows it in the system's
+          "Notification access"; only the system may bind it.
+        -->
+        <service
+            android:name=".JarodNotificationListenerService"
+            android:label="@string/app_name"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
+
+        <!--
+          Screen reading on request (JarodAccessibilityService.java, res/xml/accessibility_service_config.xml).
+          Off until the owner switches it on in the system's Accessibility settings, after the in-app
+          explanation; only the system may bind it.
+        -->
+        <service
+            android:name=".JarodAccessibilityService"
+            android:label="@string/accessibility_label"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/accessibility_service_config" />
+        </service>
+
         <service
             android:name=".WakeService"
             android:exported="false"
@@ -83,6 +172,8 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- The floating bubble, off until the owner switches it on in Settings → Assistant. -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!--
       Android 16 can restrict an app's access to the local network (the home Wi-Fi, where the PC is)

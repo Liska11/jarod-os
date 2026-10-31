@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Screen reading on request, nothing else. No event type: the service is never woken by what happens
+  on screen. No canPerformGestures: it cannot tap, type or swipe. canRetrieveWindowContent and
+  flagRetrieveInteractiveWindows let it read the app behind the assistant; canTakeScreenshot
+  captures that window (Android 14+). See JarodAccessibilityService.java.
+-->
+<accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:description="@string/accessibility_description"
+    android:accessibilityFeedbackType="feedbackGeneric"
+    android:accessibilityFlags="flagRetrieveInteractiveWindows"
+    android:canRetrieveWindowContent="true"
+    android:canTakeScreenshot="true"
+    android:isAccessibilityTool="false"
+    android:notificationTimeout="100" />

@@ -213,6 +213,18 @@ public class JarodSystemPlugin extends Plugin {
             case "notifications":
                 i = new Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, c.getPackageName());
                 break;
+            case "overlay":
+                i = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, android.net.Uri.parse("package:" + c.getPackageName()));
+                break;
+            case "listener":
+                i = new Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS);
+                break;
+            case "accessibility":
+                i = new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS);
+                break;
+            case "assistant":
+                i = new Intent(Settings.ACTION_VOICE_INPUT_SETTINGS);
+                break;
             case "autostart":
                 // Tried one by one: Android 11+ hides other apps' components from resolveActivity.
                 for (String[] k : AUTOSTART) {

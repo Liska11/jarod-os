@@ -2,6 +2,9 @@
 <resources>
     <string name="app_name">Jarod</string>
     <string name="title_activity_main">Jarod</string>
+    <string name="title_activity_assist">Assistant Jarod</string>
+    <string name="accessibility_label">Jarod, lecture de l’écran</string>
+    <string name="accessibility_description">Jarod lit le texte de l’appli affichée, ou en prend une capture, uniquement quand vous le demandez dans le chat et après votre empreinte, votre visage ou votre code. Rien n’est enregistré. Jarod ne touche, ne tape et ne glisse jamais à votre place.</string>
     <string name="package_name">os.jarod.mobile</string>
     <string name="custom_url_scheme">os.jarod.mobile</string>
 </resources>

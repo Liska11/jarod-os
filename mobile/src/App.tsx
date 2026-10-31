@@ -1,11 +1,12 @@
 import type { CryptoKeyPair } from '@jarod-protocol'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { type ReactElement, useCallback, useEffect, useRef, useState } from 'react'
 import { DEMO, demoChannel, demoKeys, demoPc } from './dev/demo.ts'
 import { DeniedError, type JarodChannel, type PushedEvent } from './lib/channel.ts'
-import { isNative } from './lib/native.ts'
+import { type AssistContext, isNative } from './lib/native.ts'
 import { loadPc, type PairedPc } from './lib/pairing-store.ts'
 import { connect, forget, learnAddresses } from './lib/session.ts'
 import { type LockDelay, loadLockDelay, lockNotice, saveLockDelay, shouldLock } from './lib/settings.ts'
+import { AssistScreen } from './screens/AssistScreen.tsx'
 import { LockScreen } from './screens/LockScreen.tsx'
 import { PairScreen } from './screens/PairScreen.tsx'
 import { Shell } from './screens/Shell.tsx'
@@ -17,7 +18,8 @@ type State =
   | { screen: 'locked'; pc: PairedPc; notice?: string }
   | { screen: 'ready'; pc: PairedPc; keys: CryptoKeyPair }
 
-export function App() {
+/** `assist`: the page runs in the assistant window (AssistActivity), not in the app. */
+export function App({ assist }: { assist: AssistContext }) {
   const [state, setState] = useState<State>(() => {
     if (DEMO) return { screen: 'ready', pc: demoPc, keys: demoKeys }
     const pc = loadPc()
@@ -128,8 +130,10 @@ export function App() {
     setLink('online')
   }, [onEvent])
 
+  // In the assistant window the page is see-through: the pairing and lock screens need a background of their own.
+  const solid = (screen: ReactElement) => (assist.hosted ? <div className="assist-solid">{screen}</div> : screen)
   if (state.screen === 'pair') {
-    return (
+    return solid(
       <PairScreen
         notice={state.notice}
         onPaired={(pc, keys, ch) => {
@@ -142,7 +146,7 @@ export function App() {
     )
   }
   if (state.screen === 'locked') {
-    return (
+    return solid(
       <LockScreen
         pc={state.pc}
         notice={state.notice ?? (isNative ? undefined : 'Mode développement : la clé n’est pas protégée par le Keystore.')}
@@ -154,6 +158,7 @@ export function App() {
       />
     )
   }
+  if (assist.hosted) return <AssistScreen pc={state.pc} channel={channel} link={link} subscribe={subscribe} />
   return (
     <Shell
       pc={state.pc}

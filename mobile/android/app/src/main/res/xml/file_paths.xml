@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  Only the folder Capacitor puts a camera shot in (BridgeWebChromeClient: getExternalFilesDir(Pictures)),
+  to hand it to the camera app. Never the whole shared storage ("."): another app given a link
+  could then be pointed at any file there. CaptureCleanup.java deletes those shots after a few hours.
+-->
 <paths xmlns:android="http://schemas.android.com/apk/res/android">
-    <external-path name="my_images" path="." />
-    <cache-path name="my_cache_images" path="." />
+    <external-files-path name="my_images" path="Pictures/" />
 </paths>

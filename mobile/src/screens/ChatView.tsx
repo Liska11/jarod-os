@@ -7,8 +7,10 @@ import { Button, IconButton, Sheet, StatusChip, TopBar } from '../components/ui.
 import type { JarodChannel } from '../lib/channel.ts'
 import { groupLines } from '../lib/chat-model.ts'
 import { MODE_LABEL, type LinkMode } from '../lib/diagnostics.ts'
-import { ACCEPT, formatSize, prepare } from '../lib/files.ts'
+import { ACCEPT, formatSize, fromBase64, prepare } from '../lib/files.ts'
 import { haptic } from '../lib/haptics.ts'
+import { accessibility, assist, notifications, vault } from '../lib/native.ts'
+import { digestText } from '../lib/notif-digest.ts'
 import type { PairedPc } from '../lib/pairing-store.ts'
 import { stopReading } from '../lib/speech.ts'
 import { type Recording, startRecording } from '../lib/voice.ts'
@@ -34,6 +36,10 @@ export function ChatView({ ws, pc, channel, link, mode, onDiagnostic }: Props) {
   const [sending, setSending] = useState('')
   const [attach, setAttach] = useState(false)
   const [live, setLive] = useState(false)
+  // The notification reader is offered only once the owner allowed it in the system and ticked an app.
+  const [readable, setReadable] = useState(false)
+  // Same for the screen reader (Settings → Assistant → Lecture de l'écran).
+  const [screen, setScreen] = useState<{ on: boolean; shot: boolean }>({ on: false, shot: false })
   const bottom = useRef<HTMLDivElement>(null)
   const field = useRef<HTMLTextAreaElement>(null)
   const photoInput = useRef<HTMLInputElement>(null)
@@ -55,6 +61,46 @@ export function ChatView({ ws, pc, channel, link, mode, onDiagnostic }: Props) {
     f.style.height = ''
     if (text) f.style.height = `${Math.min(f.scrollHeight, 140)}px`
   }, [text])
+
+  useEffect(() => {
+    if (!attach) return
+    void notifications
+      .status()
+      .then(s => setReadable(s.enabled && s.connected && s.allowed.length > 0))
+      .catch(() => setReadable(false))
+    // Only in the assistant window: in the app itself no other app is behind to read.
+    void Promise.all([accessibility.status(), assist.context()])
+      .then(([s, host]) => setScreen({ on: host.hosted && s.enabled && s.connected, shot: s.screenshot }))
+      .catch(() => setScreen({ on: false, shot: false }))
+  }, [attach])
+
+  /** The app behind the assistant, read after the owner's fingerprint, each time. */
+  const attachScreen = async (kind: 'text' | 'shot') => {
+    const asked = await vault.confirm({ title: kind === 'text' ? 'Lire le texte de l’écran' : 'Capturer l’écran', subtitle: 'Jarod verra l’appli ouverte derrière', purpose: 'screen' }).catch(() => ({ ok: false }))
+    if (!asked.ok) return
+    try {
+      if (kind === 'text') {
+        const { text: screenText } = await accessibility.screenText()
+        if (!screenText) return setError('Aucun texte lisible sur cet écran.')
+        setText(t => `${t.trim() ? `${t.trim()}\n\n` : ''}Voici le texte affiché sur mon écran :\n${screenText}`)
+        field.current?.focus()
+      } else {
+        const shot = await accessibility.screenshot()
+        await sendFile(new File([fromBase64(shot.data)], 'ecran.jpg', { type: shot.mime }))
+      }
+    } catch (e) {
+      setError((e as Error).message || 'Lecture de l’écran impossible.')
+    }
+  }
+
+  /** The ticked apps' showing notifications become a draft: the owner reads and sends it, or not. */
+  const attachNotifications = async () => {
+    const { items } = await notifications.snapshot({ limit: 20 }).catch(() => ({ items: [] }))
+    const draft = digestText(items, Date.now())
+    if (!draft) return setError('Aucune notification à joindre pour les applis choisies.')
+    setText(t => (t.trim() ? `${t.trim()}\n\n${draft}` : draft))
+    field.current?.focus()
+  }
 
   const send = async () => {
     const t = text.trim()
@@ -239,6 +285,45 @@ export function ChatView({ ws, pc, channel, link, mode, onDiagnostic }: Props) {
             <Icon name="attach" size={28} />
             Choisir un fichier
           </button>
+          {readable && (
+            <button
+              type="button"
+              className="attach-choice"
+              onClick={() => {
+                setAttach(false)
+                void attachNotifications()
+              }}
+            >
+              <Icon name="bell" size={28} />
+              Mes notifications
+            </button>
+          )}
+          {screen.on && (
+            <button
+              type="button"
+              className="attach-choice"
+              onClick={() => {
+                setAttach(false)
+                void attachScreen('text')
+              }}
+            >
+              <Icon name="info" size={28} />
+              Texte de l’écran
+            </button>
+          )}
+          {screen.on && screen.shot && (
+            <button
+              type="button"
+              className="attach-choice"
+              onClick={() => {
+                setAttach(false)
+                void attachScreen('shot')
+              }}
+            >
+              <Icon name="camera" size={28} />
+              Capture de l’écran
+            </button>
+          )}
         </div>
       </Sheet>
 

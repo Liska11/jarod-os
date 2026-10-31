@@ -1,5 +1,6 @@
 import { Capacitor, registerPlugin } from '@capacitor/core'
 import type { PowerState } from './diagnostics.ts'
+import type { NotifItem } from './notif-digest.ts'
 import type { LocalNetState } from './localnet.ts'
 import type { SystemColors } from './theme.ts'
 
@@ -12,7 +13,7 @@ interface DeviceVaultPlugin {
   seal(o: { plaintext: string; title: string; subtitle?: string }): Promise<{ blob: string }>
   open(o: { blob: string; title: string; subtitle?: string }): Promise<{ plaintext: string }>
   /** A fresh check that the owner is holding the phone (approving an action). */
-  confirm(o: { title: string; subtitle?: string }): Promise<{ ok: boolean }>
+  confirm(o: { title: string; subtitle?: string; purpose?: 'screen' }): Promise<{ ok: boolean }>
   wipe(): Promise<void>
 }
 
@@ -110,7 +111,7 @@ export interface SystemPlugin {
   requestLocalNetwork(): Promise<{ state: LocalNetState }>
   power(): Promise<PowerState>
   /** Opens a system settings screen; `via` says which one it was (a fallback is possible). */
-  openSettings(o: { target: 'battery-optimization' | 'battery' | 'battery-saver' | 'autostart' | 'app' | 'notifications' }): Promise<{ opened: boolean; via: string }>
+  openSettings(o: { target: 'battery-optimization' | 'battery' | 'battery-saver' | 'autostart' | 'app' | 'notifications' | 'assistant' | 'overlay' | 'listener' | 'accessibility' }): Promise<{ opened: boolean; via: string }>
 }
 
 const NativeSystem = registerPlugin<SystemPlugin>('JarodSystem')
@@ -131,3 +132,71 @@ const NativeLaunch = registerPlugin<LaunchPlugin>('JarodLaunch')
 export const launch: LaunchPlugin = isNative
   ? NativeLaunch
   : { take: async () => ({ link: location.hash.startsWith('#v=2') ? location.hash : '' }), addListener: async () => ({ remove: async () => {} }) }
+
+/**
+ * Whether this page runs in the assistant window rather than the app (native,
+ * `JarodAssistPlugin.java`), and the way to close that window.
+ */
+export interface AssistContext {
+  hosted: boolean
+  /** Which door opened it: "assist" (system gesture), "voice" (voice-assist key), "orb" (the bubble) or "app". */
+  source: 'assist' | 'voice' | 'orb' | 'app'
+}
+
+/** The floating bubble: allowed = the system lets Jarod draw over other apps; running = it is showing. */
+export interface OrbState {
+  allowed: boolean
+  running: boolean
+}
+
+interface AssistPlugin {
+  context(): Promise<AssistContext>
+  close(): Promise<void>
+  orb(): Promise<OrbState>
+  /** Shows the bubble; with `allowed: false` nothing started and the owner must grant the permission first. */
+  orbStart(): Promise<OrbState>
+  orbStop(): Promise<OrbState>
+}
+
+const NativeAssist = registerPlugin<AssistPlugin>('JarodAssist')
+
+export const assist: AssistPlugin = isNative ? NativeAssist : { context: async () => ({ hosted: false, source: 'app' as const }), close: async () => {}, orb: async () => ({ allowed: false, running: false }), orbStart: async () => ({ allowed: false, running: false }), orbStop: async () => ({ allowed: false, running: false }) }
+
+/**
+ * The showing notifications of the apps the owner ticked, read on request only (native,
+ * `JarodNotificationsPlugin.java`). `enabled` is the system's "Notification access" for Jarod.
+ */
+export interface NotificationsPlugin {
+  status(): Promise<{ enabled: boolean; connected: boolean; allowed: string[] }>
+  /** Apps with a notification showing now (plus the ticked ones), to tick or untick. */
+  apps(): Promise<{ apps: { pkg: string; label: string }[] }>
+  setAllowed(o: { packages: string[] }): Promise<void>
+  snapshot(o?: { limit?: number }): Promise<{ items: NotifItem[] }>
+}
+
+const NativeNotifications = registerPlugin<NotificationsPlugin>('JarodNotifications')
+
+export const notifications: NotificationsPlugin = isNative
+  ? NativeNotifications
+  : { status: async () => ({ enabled: false, connected: false, allowed: [] }), apps: async () => ({ apps: [] }), setAllowed: async () => {}, snapshot: async () => ({ items: [] }) }
+
+/**
+ * Reads the screen of the app behind the assistant, on request (native, `JarodAccessibilityPlugin.java`).
+ * Every call is preceded by `vault.confirm`: the owner's fingerprint, face or code, each time.
+ */
+export interface AccessibilityPlugin {
+  /** `enabled`: switched on in the system's Accessibility settings; `screenshot`: Android 14 or later. */
+  status(): Promise<{ enabled: boolean; connected: boolean; screenshot: boolean }>
+  screenText(): Promise<{ text: string }>
+  screenshot(): Promise<{ mime: string; data: string }>
+}
+
+const NativeAccessibility = registerPlugin<AccessibilityPlugin>('JarodAccessibility')
+
+export const accessibility: AccessibilityPlugin = isNative
+  ? NativeAccessibility
+  : {
+      status: async () => ({ enabled: false, connected: false, screenshot: false }),
+      screenText: async () => ({ text: '' }),
+      screenshot: async () => ({ mime: 'image/jpeg', data: '' })
+    }

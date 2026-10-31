@@ -16,6 +16,15 @@
     </style>
 
 
+    <!-- The assistant window (AssistActivity): see-through, the app below shows behind the sheet. -->
+    <style name="AppTheme.Assist" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <item name="windowActionBar">false</item>
+        <item name="windowNoTitle">true</item>
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:backgroundDimEnabled">true</item>
+    </style>
+
     <!--
       Launch: the Jarod core on night blue (scripts/brand.mjs). Before Android 12 the window shows
       @drawable/splash; from 12 the system draws its own splash from the colour and icon below.

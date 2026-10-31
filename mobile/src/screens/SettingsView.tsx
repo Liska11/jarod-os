@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Button, Dialog, Group, ListItem, Segmented, Switch, TopBar, useBackLayer } from '../components/ui.tsx'
 import type { Link } from '../App.tsx'
 import type { JarodChannel } from '../lib/channel.ts'
 import { type LinkMode, MODE_LABEL, shortAddress } from '../lib/diagnostics.ts'
-import { system } from '../lib/native.ts'
+import { accessibility, assist, isNative, notifications, type OrbState, system } from '../lib/native.ts'
 import { TOPICS } from '../lib/news.ts'
+import { toggled } from '../lib/notif-digest.ts'
 import { allowNotifications } from '../lib/notify.ts'
 import type { PairedPc } from '../lib/pairing-store.ts'
 import { forget, setWatch } from '../lib/session.ts'
@@ -15,7 +16,7 @@ import { useAppearance } from '../state/appearance.tsx'
 import type { Workspace } from '../state/useWorkspace.ts'
 import { DiagnosticView } from './DiagnosticView.tsx'
 
-export type SettingsPage = 'connection' | 'security' | 'voice' | 'notifications' | 'appearance' | 'diagnostic' | 'about'
+export type SettingsPage = 'connection' | 'security' | 'voice' | 'assistant' | 'notifications' | 'appearance' | 'diagnostic' | 'about'
 
 interface Props {
   page: SettingsPage | null
@@ -36,6 +37,7 @@ const TITLE: Record<SettingsPage, string> = {
   connection: 'Connexion',
   security: 'Sécurité',
   voice: 'Voix',
+  assistant: 'Assistant',
   notifications: 'Notifications',
   appearance: 'Apparence',
   diagnostic: 'Diagnostic',
@@ -54,6 +56,7 @@ export function SettingsView(p: Props) {
         {p.page === 'connection' && <Connection {...p} />}
         {p.page === 'security' && <Security {...p} />}
         {p.page === 'voice' && <Voice {...p} />}
+        {p.page === 'assistant' && <Assistant />}
         {p.page === 'notifications' && <Notifications {...p} />}
         {p.page === 'appearance' && <Appearance />}
         {p.page === 'about' && <About {...p} />}
@@ -72,6 +75,7 @@ function SettingsHome({ pc, mode, link, onPage }: Props) {
           <ListItem icon="link" title="Connexion" hint="PC associé, adresses, veille" onClick={() => onPage('connection')} end={<Chevron />} />
           <ListItem icon="shield" title="Sécurité" hint="Verrouillage automatique" onClick={() => onPage('security')} end={<Chevron />} />
           <ListItem icon="volume" title="Voix" hint="Lecture des réponses" onClick={() => onPage('voice')} end={<Chevron />} />
+          <ListItem icon="mic" title="Assistant" hint="Appeler Jarod depuis n’importe quelle appli" onClick={() => onPage('assistant')} end={<Chevron />} />
           <ListItem icon="bell" title="Notifications" hint="Par type de nouvelle" onClick={() => onPage('notifications')} end={<Chevron />} />
           <ListItem icon="contrast" title="Apparence" hint="Thème, couleurs, animations" onClick={() => onPage('appearance')} end={<Chevron />} />
         </Group>
@@ -187,6 +191,151 @@ function Voice({ ws }: Props) {
         }}
       />
     </Group>
+  )
+}
+
+/** Runs `refresh` now and each time the app comes back (from a system settings screen, say). */
+function useRefreshOnFocus(refresh: () => void) {
+  useEffect(() => {
+    refresh()
+    document.addEventListener('visibilitychange', refresh)
+    return () => document.removeEventListener('visibilitychange', refresh)
+  }, [refresh])
+}
+
+function Assistant() {
+  const [orb, setOrb] = useState<OrbState | null>(null)
+  const [busy, setBusy] = useState(false)
+  const refresh = useCallback(() => void assist.orb().then(setOrb).catch(() => {}), [])
+  useRefreshOnFocus(refresh)
+
+  const toggle = async (on: boolean) => {
+    setBusy(true)
+    try {
+      if (!on) return setOrb(await assist.orbStop())
+      const next = await assist.orbStart()
+      setOrb(next)
+      // Not allowed yet: the system's own screen asks, then the owner switches the bubble on again.
+      if (!next.allowed) void system.openSettings({ target: 'overlay' })
+    } catch {
+      refresh()
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <>
+      <Group
+        title="Assistant du téléphone"
+        note="Une fois Jarod choisi comme « appli d’assistance numérique », le geste d’assistance du système (maintenir le bouton d’accueil, balayer depuis un coin) ouvre le chat par-dessus l’appli en cours. Rien de ce qui est à l’écran n’est lu ni envoyé au PC. Il faut l’empreinte, le visage ou le code à chaque ouverture."
+      >
+        <ListItem icon="mic" title="Choisir l’assistant du système" hint="Applis par défaut, Appli d’assistance numérique" onClick={() => void system.openSettings({ target: 'assistant' })} />
+      </Group>
+      {isNative && (
+        <Group
+          title="Bulle flottante"
+          note={
+            orb && !orb.allowed
+              ? 'Android demande d’abord d’autoriser « Afficher par-dessus les autres applis ». Autorisez-le, revenez ici, puis rallumez la bulle.'
+              : 'Une bulle que l’on déplace sur les bords de l’écran ; la toucher ouvre l’assistant. Elle ne lit rien et n’envoie rien. Elle s’éteint au redémarrage du téléphone.'
+          }
+        >
+          <Switch checked={Boolean(orb?.running)} title="Afficher la bulle" hint="Par-dessus toutes les applis" onChange={on => !busy && void toggle(on)} />
+        </Group>
+      )}
+      {isNative && <NotificationReader />}
+      {isNative && <ScreenReader />}
+    </>
+  )
+}
+
+/** "Mes notifications": the apps whose showing notifications the owner may attach to a message. */
+function NotificationReader() {
+  const [state, setState] = useState<{ enabled: boolean; connected: boolean; allowed: string[] } | null>(null)
+  const [apps, setApps] = useState<{ pkg: string; label: string }[]>([])
+  const refresh = useCallback(() => {
+    void notifications.status().then(setState).catch(() => {})
+    void notifications.apps().then(r => setApps(r.apps)).catch(() => {})
+  }, [])
+  useRefreshOnFocus(refresh)
+
+  const tick = (pkg: string, on: boolean) => {
+    if (!state) return
+    const allowed = toggled(state.allowed, pkg, on)
+    setState({ ...state, allowed })
+    void notifications.setAllowed({ packages: allowed }).catch(refresh)
+  }
+
+  return (
+    <>
+      <Group
+        title="Lecture des notifications"
+        note="Jarod ne lit une notification que si vous l’avez autorisé ici ET dans le système, appli par appli. Rien n’est enregistré ni envoyé tout seul : dans le chat, « Mes notifications » ajoute un brouillon que vous relisez, modifiez et envoyez vous-même. Si Android refuse l’accès, ouvrez Infos de l’appli puis « Autoriser les paramètres restreints »."
+      >
+        <ListItem icon="bell" title={state?.enabled ? 'Accès autorisé dans le système' : 'Autoriser l’accès aux notifications'} hint="Réglages Android, Accès aux notifications" onClick={() => void system.openSettings({ target: 'listener' })} />
+      </Group>
+      {state?.enabled && (
+        <Group title="Applis lues" note={apps.length ? 'Les applis qui ont une notification affichée en ce moment apparaissent ici.' : 'Aucune notification affichée pour l’instant : revenez quand l’appli voulue en a une.'}>
+          {apps.map(a => (
+            <Switch key={a.pkg} checked={state.allowed.includes(a.pkg)} title={a.label} hint={a.pkg} onChange={on => tick(a.pkg, on)} />
+          ))}
+        </Group>
+      )}
+    </>
+  )
+}
+
+/**
+ * "Lire l'écran": off until the owner has read what it does, here, and switched it on in Android's
+ * Accessibility settings. The explanation comes first, in the app, because the system's own screen
+ * lists only the permission, not what Jarod does with it.
+ */
+function ScreenReader() {
+  const [state, setState] = useState<{ enabled: boolean; connected: boolean; screenshot: boolean } | null>(null)
+  const [asking, setAsking] = useState(false)
+  const refresh = useCallback(() => void accessibility.status().then(setState).catch(() => {}), [])
+  useRefreshOnFocus(refresh)
+
+  return (
+    <>
+      <Group
+        title="Lecture de l’écran"
+        note="Dans l’assistant, « Texte de l’écran » et « Capture de l’écran » montrent à Jarod l’appli ouverte derrière. Chaque fois : votre empreinte, votre visage ou votre code. Jarod ne touche, ne tape et ne glisse jamais à votre place, ne lit pas les champs de mot de passe, ne garde rien, et ne reçoit que ce que vous envoyez."
+      >
+        <ListItem
+          icon="shield"
+          title={state?.enabled ? 'Accès à l’écran activé' : 'Activer l’accès à l’écran'}
+          hint={state?.enabled ? 'Réglages Android, Accessibilité (pour le retirer)' : 'Réglages Android, Accessibilité'}
+          onClick={() => (state?.enabled ? void system.openSettings({ target: 'accessibility' }) : setAsking(true))}
+        />
+      </Group>
+      <Dialog
+        open={asking}
+        onClose={() => setAsking(false)}
+        title="Lire l’écran à votre demande ?"
+        actions={
+          <>
+            <Button tone="text" onClick={() => setAsking(false)}>
+              Annuler
+            </Button>
+            <Button
+              tone="text"
+              onClick={() => {
+                setAsking(false)
+                void system.openSettings({ target: 'accessibility' })
+              }}
+            >
+              Continuer
+            </Button>
+          </>
+        }
+      >
+        <p>
+          Android va ouvrir ses réglages d’accessibilité : choisissez « Jarod, lecture de l’écran » et activez-le. Il pourra alors lire le texte de l’appli affichée, ou la capturer, seulement quand vous le demandez dans l’assistant et après votre empreinte. Il ne peut ni toucher ni taper à votre place. Vous pouvez le retirer à tout moment au même endroit.
+        </p>
+      </Dialog>
+    </>
   )
 }
 

@@ -51,6 +51,14 @@ export function toBase64(bytes: Uint8Array): string {
   return btoa(binary)
 }
 
+/** The other way: base64 text back into bytes. */
+export function fromBase64(data: string): Uint8Array<ArrayBuffer> {
+  const binary = atob(data)
+  const bytes = new Uint8Array(binary.length)
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+  return bytes
+}
+
 /** A large photo (JPEG, PNG, WebP) re-encoded as a JPEG of at most PHOTO_EDGE pixels. */
 async function shrink(file: File): Promise<Blob> {
   const bitmap = await createImageBitmap(file)

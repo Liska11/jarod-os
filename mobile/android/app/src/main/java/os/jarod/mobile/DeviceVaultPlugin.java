@@ -118,6 +118,8 @@ public class DeviceVaultPlugin extends Plugin {
             BiometricPrompt bp = new BiometricPrompt(activity, ContextCompat.getMainExecutor(activity), new BiometricPrompt.AuthenticationCallback() {
                 @Override
                 public void onAuthenticationSucceeded(@NonNull BiometricPrompt.AuthenticationResult result) {
+                    // Reading the screen needs this proof natively too (JarodAccessibilityPlugin), not only in the page.
+                    if ("screen".equals(call.getString("purpose"))) ConfirmGate.grant(android.os.SystemClock.elapsedRealtime());
                     JSObject out = new JSObject();
                     out.put("ok", true);
                     call.resolve(out);
