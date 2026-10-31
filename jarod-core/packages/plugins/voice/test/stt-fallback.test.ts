@@ -198,3 +198,23 @@ describe("transcribeWithGemini", () => {
   });
   it("le message d'échec ne contient jamais la clé", () => expect(geminiFailure(403, '{"error":{"message":"x"}}')).not.toContain("clé-gemini"));
 });
+
+describe("dictée directe par Groq (réglage « Groq » par défaut)", () => {
+  it("sans clé dans le coffre, GROQ_API_KEY de l'environnement suffit ; la clé part vers Groq seulement", async () => {
+    const f = vi.spyOn(globalThis, "fetch").mockResolvedValue(reply(200, { text: "Bonjour Groq" }));
+    const groqRouter = { def: () => ({ ...localDef, id: "groq", name: "Groq", baseUrl: "https://api.groq.com/openai/v1", local: false }) } as never;
+    const out = await transcribe(groqRouter, settings("groq"), audio, "audio/wav", { env, localOnly: off, log: () => {} });
+    expect(out).toBe("Bonjour Groq");
+    expect(String(f.mock.calls[0]![0])).toBe("https://api.groq.com/openai/v1/audio/transcriptions");
+    expect((f.mock.calls[0]![1]!.headers as Record<string, string>).authorization).toBe("Bearer gsk_clé-groq-0000");
+    f.mockRestore();
+  });
+
+  it("sans clé nulle part : message clair, aucune requête", async () => {
+    const f = vi.spyOn(globalThis, "fetch");
+    const groqRouter = { def: () => ({ ...localDef, id: "groq", name: "Groq", baseUrl: "https://api.groq.com/openai/v1", local: false }) } as never;
+    await expect(transcribe(groqRouter, settings("groq"), audio, "audio/wav", { env: {}, localOnly: off, log: () => {} })).rejects.toThrow(/Aucune clé API pour Groq/);
+    expect(f).not.toHaveBeenCalled();
+    f.mockRestore();
+  });
+});

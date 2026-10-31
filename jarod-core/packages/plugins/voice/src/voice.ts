@@ -5,7 +5,8 @@ import type { SettingsService } from "@jarod/plugin-storage";
 import { transcribeWithGemini } from "./stt-gemini.js";
 import { transcribeWithGroq } from "./stt-groq.js";
 import { readLocalOnly, scrubSecrets } from "./voice-mode.js";
-
+// Clé d'environnement utilisateur (setx) quand le coffre n'en a pas : la dictée par Groq marche avec GROQ_API_KEY seule.
+const STT_ENV_KEYS: Record<string, string> = { groq: "GROQ_API_KEY", openai: "OPENAI_API_KEY" };
 /** Providers exposing an OpenAI-compatible `/audio/transcriptions` endpoint, with a sensible default model. */
 export const STT_DEFAULTS: Record<string, string> = {
   openai: "whisper-1",
@@ -62,7 +63,7 @@ export async function transcribe(router: ProviderRouter, settings: SettingsServi
     if (localOnly && !router.def(provider).local)
       throw new Error(`Mode 100 % local actif : la dictée par ${router.def(provider).name} enverrait la voix hors de ce PC. Choisissez le whisper local (Réglages › Voix) ou désactivez le mode 100 % local.`);
     log(`[voix] dictée : mode ${localOnly ? "100 % local" : "normal"}, fournisseur=${provider}`);
-    return transcribeDirect(router, settings, audio, mime, 120_000);
+    return transcribeDirect(router, settings, audio, mime, 120_000, env);
   }
   if (localOnly) {
     log("[voix] dictée : mode 100 % local actif — whisper local seulement, aucun appel réseau");
@@ -102,6 +103,7 @@ async function transcribeDirect(
   audio: Buffer,
   mime: string,
   timeoutMs: number,
+  env: NodeJS.ProcessEnv = process.env,
 ): Promise<string> {
   const { sttProvider, sttModel } = settings.get("voice");
   if (sttProvider === "local-omni-stt") return transcribeWithOmni(settings, audio, mime, sttModel);
@@ -110,7 +112,7 @@ async function transcribeDirect(
     throw new Error(
       `${def.name} ne propose pas de transcription audio. Choisissez OpenAI, Groq ou un serveur compatible.`,
     );
-  const key = settings.getSecret(secretKeyFor(sttProvider));
+  const key = settings.getSecret(secretKeyFor(sttProvider)) || env[STT_ENV_KEYS[sttProvider] ?? ""]?.trim();
   if (!key && !def.local) throw new Error(`Aucune clé API pour ${def.name} (nécessaire pour la dictée).`);
   const base = mime.split(";")[0]!.trim();
   const form = new FormData();
