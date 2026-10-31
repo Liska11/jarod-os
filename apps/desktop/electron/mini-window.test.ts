@@ -91,7 +91,7 @@ describe('mini-fenêtre : la fenêtre', () => {
 
         return f.win as never
       },
-      workArea: () => ({ x: 0, y: 0, width: 1000 }),
+      workArea: () => ({ x: 0, y: 0, width: 1000, height: 800 }),
       preloadPath: 'mini-preload.cjs',
       page: { file: 'mini.html' },
       openMain
