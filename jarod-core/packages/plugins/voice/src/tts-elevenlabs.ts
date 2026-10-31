@@ -1,12 +1,12 @@
 // Voix de synthèse n°1 : ElevenLabs (palier gratuit : 10 000 caractères par mois). Clé : ELEVENLABS_API_KEY (variable d'environnement utilisateur).
-// Voix : JAROD_ELEVENLABS_VOICE_ID (défaut : une voix de base, utilisable avec le palier gratuit) ; modèle : JAROD_ELEVENLABS_MODEL
+// Voix : JAROD_ELEVENLABS_VOICE_ID (défaut : « Sarah », voix de base utilisable avec le palier gratuit (les voix de bibliothèque donnent HTTP 402)) ; modèle : JAROD_ELEVENLABS_MODEL
 // (défaut « eleven_multilingual_v2 », français naturel). L'audio demandé est du PCM 24 kHz, enveloppé ici en WAV (la fenêtre joue du WAV).
 // Compteur : `GET /v1/user/subscription` (caractères utilisés / limite) est lu avant et après chaque synthèse et journalisé ; indisponible si la clé n'a pas le droit « user_read ».
 import { apiKey, bodyDetail, fetchCloud, pcmToWav } from "./cloud.js";
 
 const BASE = "https://api.elevenlabs.io/v1";
 export const ELEVENLABS_TIMEOUT_MS = 20_000;
-export const ELEVENLABS_DEFAULT_VOICE = "21m00Tcm4TlvDq8ikWAM";
+export const ELEVENLABS_DEFAULT_VOICE = "EXAVITQu4vr4xnSDxMaL";
 
 export interface ElevenQuota {
   used: number;

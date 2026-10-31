@@ -1,7 +1,7 @@
 // Repli cloud de la dictée : l'API Gemini transcrit l'audio quand le whisper local ne répond pas (arrêté, trop lent, en erreur).
 // La clé vient UNIQUEMENT de la variable d'environnement GEMINI_API_KEY (setx, jamais dans le code, les réglages ni le dépôt) ; elle part dans l'en-tête
 // `x-goog-api-key`, jamais dans l'adresse. L'appel passe par la garde réseau du noyau (network-policy.json) comme tout fetch.
-// Modèle : JAROD_GEMINI_STT_MODEL (défaut « gemini-flash-latest »).
+// Modèle : JAROD_GEMINI_STT_MODEL (défaut « gemini-3.5-flash-lite » : l alias « gemini-flash-latest » ne répondait pas lors des essais).
 
 const ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models";
 export const GEMINI_TIMEOUT_MS = 30_000;
@@ -41,7 +41,7 @@ export async function transcribeWithGemini(
 ): Promise<string> {
   const key = env.GEMINI_API_KEY?.trim();
   if (!key) throw new Error("GEMINI_API_KEY absente (variable d'environnement utilisateur, à définir avec setx puis relancer Jarod)");
-  const model = env.JAROD_GEMINI_STT_MODEL?.trim() || "gemini-flash-latest";
+  const model = env.JAROD_GEMINI_STT_MODEL?.trim() || "gemini-3.5-flash-lite";
   const type = MIME[mime.split(";")[0]!.trim()];
   if (!type) throw new Error(`format audio ${mime} non lu par Gemini`);
   const body = {

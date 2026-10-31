@@ -162,7 +162,7 @@ describe("transcribeWithGemini", () => {
     const fetchMock = vi.fn().mockResolvedValue(reply(200, gemini("  Bonjour  ")));
     expect(await transcribeWithGemini(audio, "audio/wav", "fr", env, { fetch: fetchMock })).toBe("Bonjour");
     const [url, init] = fetchMock.mock.calls[0]!;
-    expect(String(url)).toContain("/models/gemini-flash-latest:generateContent");
+    expect(String(url)).toContain("/models/gemini-3.5-flash-lite:generateContent");
     expect(String(url)).not.toContain("clé-gemini");
     expect((init.headers as Record<string, string>)["x-goog-api-key"]).toBe("clé-gemini-0000");
     expect(JSON.parse(init.body).contents[0].parts[1].inline_data.mime_type).toBe("audio/wav");
