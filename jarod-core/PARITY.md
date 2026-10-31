@@ -32,6 +32,62 @@ Légende : ✅ fait et vérifié en fenêtre · 🟡 partiel · ⬜ à faire · 
 | 22 | Embeddings, reranker, OpenVINO / NPU, onnxruntime, node-pty | ⛔ | non embarqués (décision d'indépendance) ; reprise possible plus tard |
 | 23 | Authentification Nous native (device-code) | ⛔ | reportée, avec audit de sécurité ; clé API en attendant |
 
+## Décisions d'architecture (plan Hermes / Brahma Evo)
+
+Le détail, les exigences de test et le dossier H9 sont dans `docs/DECISIONS-HERMES-BRAHMA.md` ; le plan dans `docs/PLAN-INTEGRATION-HERMES-BRAHMA.md`.
+Enregistrées le 2026-10-31, commit « record: décisions D1-D8 tranchées, H9 documentée » (`git log --grep "record: décisions D1-D8"`).
+
+| ID | Décision | État |
+|---|---|---|
+| D1 | Idées seulement : aucun code de Brahma Evo ni de Hermes, contrôlé à chaque lot | tranchée |
+| D2 | Voix en direct : Gemini Live activé par défaut, indicateur permanent (orbe de couleur dédiée), repli automatique et en un clic sur la chaîne locale | tranchée |
+| D3 | `self_describe` en lecture seule ; modification de compétences et plugins utilisateur uniquement sur demande explicite, en worktree, activation après « oui », retour arrière en un clic, audit | tranchée |
+| D4 | Images : ComfyUI local d'abord, cloud en option coupée, sortie confinée au dossier de travail, accord avant écriture | tranchée |
+| D5 | Domotique non requise (B5 écarté) | tranchée |
+| D6 | Mises à jour : dossier local signé, signature vérifiée avant installation, aucun canal en ligne | tranchée |
+| D7 | Pont Android : l'appli `mobile/` existe, on la fait évoluer ; « go » avant toute installation sur le téléphone | tranchée |
+| D8 | Instagram intégré à Jarod (portée à préciser avant le lot B7) ; achats : comparaison de prix en lecture seule seulement | tranchée, portée de B7 à préciser |
+| H9 | OAuth : possible, désactivé par défaut, activation par service, coupure en un clic qui efface le jeton. Options A/B/C documentées | **ouverte** (en attente de ton arbitrage, rien d'implémenté) |
+
+## Écarts restants avec Hermes et Brahma Evo
+
+⬜ à faire · 🟡 en cours · ✅ fait et vérifié en fenêtre · ⛔ écarté. Détail et tailles : `docs/PLAN-INTEGRATION-HERMES-BRAHMA.md`.
+
+| ID | Écart | État |
+|---|---|---|
+| H1 | Progression des sous-agents | ⬜ |
+| H2 | `clarify` (question à choix) | ⬜ |
+| H3 | Voix phrase par phrase | ⬜ |
+| H4 | Mot d'éveil | ⬜ |
+| H5 | Studio | ⬜ (essai de la phase 0) |
+| H6 | Barres d'usage | ⬜ |
+| H7 | `client.capabilities` | ⬜ |
+| H8 | Voix en direct (fusionné avec B1) | ⬜ |
+| H9 | OAuth | ⬜ décision ouverte |
+| H10 | Mises à jour (dossier local signé, D6) | ⬜ |
+| H11 | `todo` / `todo.updated` | ⬜ |
+| H12 | Embeddings locaux, reranker, NPU | ⛔ |
+| B1 | Voix native bidirectionnelle (Gemini Live) | ⬜ |
+| B2 | Création Word / Excel / PowerPoint / PDF | ⬜ |
+| B3 | Fabrique de compétences (D3) | ⬜ |
+| B4 | Auto-réparation (D3) | ⬜ |
+| B5 | Domotique | ⛔ (D5) |
+| B6 | Spotify | ⬜ (dépend de H9) |
+| B7 | Instagram | ⬜ (D8, portée à préciser) |
+| B8 | Génération d'images (D4) | ⬜ |
+| B9 | Envoi YouTube | ⬜ (dépend de H9) |
+| B10 | Pont téléphone complet (appli `mobile/` existante, D7) | ⬜ |
+| B11 | Surveillants / déclencheurs système | ⬜ |
+| B12 | Assistant de réunion | ⬜ |
+| B13 | Surveillance proactive | ⬜ |
+| B14 | Carte, vols, itinéraires | ⬜ |
+| B15 | Assistant de circuits | ⬜ |
+| B16 | Calories, pompes | ⬜ |
+| B17 | Achats : comparaison de prix en lecture seule seulement (D8) | ⬜ |
+| B18 | Spectre audio et états de l'orbe | ⬜ |
+| B19 | Latence par outil, tiroir « Inspecter » | ⬜ |
+| B20 | Google Workspace | ⬜ (dépend de H9) |
+
 ## Architecture du pont
 
 `packages/bridge` (`@jarod/bridge`) reprend les handlers de l'application jarod-cordis (mêmes validations, mêmes refus) ; la passerelle les sert par `jarod.invoke` (WebSocket, sans le délai de 60 s de l'HTTP) et `POST /api/jarod/invoke`. Les événements des handlers arrivent à la fenêtre en `jarod.event`, les gestes natifs (boîte « Ouvrir », confirmation) sont des requêtes `jarod.shell` que la fenêtre fait exécuter par le processus principal (`electron/ipc/jarod-shell*.ts`). Chaque fonction restante du tableau est donc surtout un écran du shell sur des canaux qui existent déjà.
