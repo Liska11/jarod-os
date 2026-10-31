@@ -80,6 +80,19 @@ export function ArtifactPane({ chat }: { chat: ChatState | null }) {
   // An app opened from the sidebar (browser, a messaging app, the player) has the pane to itself.
   const appTab = isPaneApp(tab)
 
+  // When a turn starts and the pane has nothing to show (no file selected, no app open), it shows what the model is doing instead of an empty preview.
+  // Anything the person chose themselves (a file, an app, Sources) is left alone.
+  const streaming = Boolean(chat?.streaming)
+  const wasStreaming = useRef(false)
+
+  useEffect(() => {
+    if (streaming && !wasStreaming.current && $paneTab.get() === 'preview' && !$selectedArtifact.get()) {
+      $paneTab.set('activity')
+    }
+
+    wasStreaming.current = streaming
+  }, [streaming])
+
   // Leaving an artifact or reloading it discards an unsaved draft.
   useEffect(() => {
     $editing.set(false)
