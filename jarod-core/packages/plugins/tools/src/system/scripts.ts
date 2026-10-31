@@ -103,14 +103,81 @@ $out = @(Get-StartApps | ForEach-Object { [pscustomobject]@{ name = [string]$_.N
 ConvertTo-Json -InputObject $out -Compress
 `;
 
+/**
+ * Les applications du Store (Calculatrice, Bloc-notes de Windows 11, Photos…) : leur fenêtre appartient à ApplicationFrameHost, et leur propre
+ * processus n'a AUCUNE fenêtre principale — `Get-Process` ne les voyait donc pas, et « ouvrir la Calculatrice » finissait en « échec de vérification »
+ * alors qu'elle était ouverte (essai réel du 31/10). On les trouve par leur cadre (classe ApplicationFrameWindow, visible, non masqué) et on lit le
+ * processus réel dans sa fenêtre enfant Windows.UI.Core.CoreWindow. C# 5 seulement : le script tourne sous PowerShell 5.1.
+ */
+export const UWP_TYPE = String.raw`
+Add-Type -TypeDefinition @'
+using System; using System.Collections.Generic; using System.Runtime.InteropServices; using System.Text;
+namespace JarodOs {
+  public static class Uwp {
+    delegate bool EnumProc(IntPtr h, IntPtr l);
+    [DllImport("user32.dll")] static extern bool EnumWindows(EnumProc p, IntPtr l);
+    [DllImport("user32.dll")] static extern bool EnumChildWindows(IntPtr h, EnumProc p, IntPtr l);
+    [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr h);
+    [DllImport("user32.dll", CharSet=CharSet.Unicode)] static extern int GetClassName(IntPtr h, StringBuilder s, int n);
+    [DllImport("user32.dll", CharSet=CharSet.Unicode)] static extern int GetWindowText(IntPtr h, StringBuilder s, int n);
+    [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
+    [DllImport("user32.dll")] static extern bool PostMessage(IntPtr h, uint m, IntPtr w, IntPtr l);
+    [DllImport("dwmapi.dll")] static extern int DwmGetWindowAttribute(IntPtr h, int a, out int v, int s);
+    static string Cls(IntPtr h) { StringBuilder b = new StringBuilder(256); GetClassName(h, b, 256); return b.ToString(); }
+    static string Txt(IntPtr h) { StringBuilder b = new StringBuilder(512); GetWindowText(h, b, 512); return b.ToString(); }
+    /// <summary>Un cadre visible et non masqué par application du Store : [poignée, titre, pid de l'application].</summary>
+    public static List<object[]> Frames() {
+      List<object[]> res = new List<object[]>();
+      EnumWindows(delegate(IntPtr h, IntPtr l) {
+        if (!IsWindowVisible(h) || Cls(h) != "ApplicationFrameWindow") return true;
+        int cloaked = 0; DwmGetWindowAttribute(h, 14, out cloaked, 4);
+        if (cloaked != 0) return true;
+        string title = Txt(h); if (title == "") return true;
+        uint real = 0;
+        EnumChildWindows(h, delegate(IntPtr c, IntPtr l2) {
+          if (Cls(c) == "Windows.UI.Core.CoreWindow") { uint p; GetWindowThreadProcessId(c, out p); real = p; return false; }
+          return true;
+        }, IntPtr.Zero);
+        if (real != 0) res.Add(new object[] { h.ToInt64(), title, (int)real });
+        return true;
+      }, IntPtr.Zero);
+      return res;
+    }
+    /// <summary>Demande la fermeture (WM_CLOSE) de chaque cadre de cette application ; faux s'il n'y en a aucun.</summary>
+    public static bool Close(int pid) {
+      bool any = false;
+      foreach (object[] f in Frames()) { if ((int)f[2] == pid) { PostMessage(new IntPtr((long)f[0]), 0x10, IntPtr.Zero, IntPtr.Zero); any = true; } }
+      return any;
+    }
+  }
+}
+'@
+`;
+
 export const RUNNING_APPS = String.raw`
-$out = @(Get-Process | Where-Object { $_.MainWindowHandle -ne 0 } | ForEach-Object {
+$list = New-Object System.Collections.ArrayList
+$seen = @{}
+Get-Process | Where-Object { $_.MainWindowHandle -ne 0 } | ForEach-Object {
   $desc = ''
   $path = ''
   try { $path = [string]$_.MainModule.FileName; $desc = [string]$_.MainModule.FileVersionInfo.FileDescription } catch { }
-  [pscustomobject]@{ pid = [int]$_.Id; process = [string]$_.ProcessName; description = $desc; path = $path; title = [string]$_.MainWindowTitle }
-})
-ConvertTo-Json -InputObject $out -Compress
+  $seen[[int]$_.Id] = $true
+  [void]$list.Add([pscustomobject]@{ pid = [int]$_.Id; process = [string]$_.ProcessName; description = $desc; path = $path; title = [string]$_.MainWindowTitle })
+}
+${UWP_TYPE}
+try {
+  foreach ($f in [JarodOs.Uwp]::Frames()) {
+    $id = [int]$f[2]
+    if ($seen.ContainsKey($id)) { continue }
+    $p = Get-Process -Id $id -ErrorAction SilentlyContinue
+    if (-not $p) { continue }
+    $path = ''
+    try { $path = [string]$p.Path } catch { }
+    $seen[$id] = $true
+    [void]$list.Add([pscustomobject]@{ pid = $id; process = [string]$p.ProcessName; description = [string]$f[1]; path = $path; title = [string]$f[1] })
+  }
+} catch { }
+ConvertTo-Json -InputObject @($list) -Compress
 `;
 
 /**

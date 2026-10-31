@@ -1,6 +1,7 @@
 // Outils système, phase 2 (actions réversibles) : les scripts PowerShell qui LISENT ou CHANGENT l'état de la machine. Repris de `winps.py`
 // de Herald OS (MIT, voir licenses/HERALD-OS.md) : AUDIO, APPEARANCE, SET_DARK_MODE, TOAST, STOP_PROCESS. APP_PATH est nouveau.
 // Les arguments arrivent dans `$A` (JSON de l'environnement), jamais dans le texte du script.
+import { UWP_TYPE } from "./scripts.js";
 
 /** Volume du périphérique par défaut, lu et (si percent / muted sont donnés) écrit : COM `IAudioEndpointVolume`. Windows n'a pas de cmdlet. */
 export const AUDIO = String.raw`
@@ -123,7 +124,11 @@ export const CLOSE_WINDOW = String.raw`
 $p = Get-Process -Id ([int]$A.pid) -ErrorAction SilentlyContinue
 if (-not $p) { throw 'NOTFOUND' }
 if ($A.name -and $p.ProcessName -ne [string]$A.name) { throw 'CHANGED' }
-if (-not $p.CloseMainWindow()) { throw 'NOWINDOW' }
+if (-not $p.CloseMainWindow()) {
+  # Application du Store : pas de fenêtre principale, la demande de fermeture va au cadre ApplicationFrameWindow.
+${UWP_TYPE}
+  if (-not [JarodOs.Uwp]::Close([int]$p.Id)) { throw 'NOWINDOW' }
+}
 '{}'
 `;
 
