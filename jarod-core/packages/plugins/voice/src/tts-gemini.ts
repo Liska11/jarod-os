@@ -17,7 +17,7 @@ export async function synthesizeWithGemini(text: string, env: NodeJS.ProcessEnv 
     contents: [{ parts: [{ text: `Lis ce texte en français, d'une voix d'homme naturelle : ${text}` }] }],
     generationConfig: {
       responseModalities: ["AUDIO"],
-      speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: env.JAROD_GEMINI_TTS_VOICE?.trim() || "Charon" } } },
+      speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: env.JAROD_GEMINI_TTS_VOICE?.trim() || "Orus" } } },
     },
   };
   const res = await fetchCloud(
