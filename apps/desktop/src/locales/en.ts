@@ -802,6 +802,8 @@ export const en = {
 
   // Browser, Social and Messaging pages
   'sidebar.apps': 'Apps',
+  'sidebar.conversations': 'Conversations',
+  'sidebar.untitled': 'Untitled',
   'pane.app.browser': 'Browser',
   'pane.app.player': 'Player',
   'pane.app.close': 'Close {name}',

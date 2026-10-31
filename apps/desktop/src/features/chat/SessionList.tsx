@@ -5,6 +5,7 @@ import { Button } from '../../components/ui/button.tsx'
 import { cn } from '../../lib/cn.ts'
 import { formatRelative } from '../../lib/format.ts'
 import { $activeChatId, $chats, createChat, forgetChat, LISTED_SESSION_SOURCES, openStoredSession } from '../../store/chat.ts'
+import { listedSessions } from '../../store/session-list.ts'
 import { $runtimeIds, $sessions, deleteSession } from '../../store/sessions.ts'
 
 export function SessionList() {
@@ -13,7 +14,7 @@ export function SessionList() {
   const runtimeIds = useStore($runtimeIds)
   const activeId = useStore($activeChatId)
   const chats = useStore($chats)
-  const visible = sessions.filter(row => !row.source || LISTED_SESSION_SOURCES.has(row.source))
+  const visible = listedSessions(sessions, LISTED_SESSION_SOURCES)
 
   return (
     <aside className="flex w-64 shrink-0 flex-col border-r border-hairline">

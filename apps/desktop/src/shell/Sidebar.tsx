@@ -1,5 +1,5 @@
 import { useStore } from '@nanostores/react'
-import { IconLayoutSidebarLeftCollapse, IconLayoutSidebarLeftExpand, IconPlus } from '@tabler/icons-react'
+import { IconHistory, IconLayoutSidebarLeftCollapse, IconLayoutSidebarLeftExpand, IconPlus } from '@tabler/icons-react'
 import { $paneTab } from '../features/hermes/artifact-store.ts'
 import { APPS_SECTION, MESSAGING_SECTION, openPaneApp, type PaneApp } from '../features/hermes/pane-apps.ts'
 import { PaneAppIcon, usePaneAppName } from '../features/hermes/PaneApps.tsx'
@@ -8,6 +8,9 @@ import { AppGlyph, HermesAvatar } from '../components/app-icon.tsx'
 import { cn } from '../lib/cn.ts'
 import { appText, useT } from '../lib/i18n.ts'
 import { shortcutLabel } from '../lib/platform-labels.ts'
+import { $activeChatId, $chats, createChat, LISTED_SESSION_SOURCES, openStoredSession } from '../store/chat.ts'
+import { listedSessions } from '../store/session-list.ts'
+import { $runtimeIds, $sessions, refreshSessions } from '../store/sessions.ts'
 import { $sidebar, SIDEBAR_COLLAPSED, SIDEBAR_MAX, SIDEBAR_MIN, SIDEBAR_SNAP, setSidebarCollapsed, setSidebarWidth, toggleSidebar } from '../store/sidebar.ts'
 import { $activeSpace, $spaces, addSpace, setActiveSpace } from '../store/spaces.ts'
 import { $page, showPage } from '../store/windows.ts'
@@ -133,6 +136,7 @@ export function Sidebar() {
         })}
       </nav>
 
+      <ConversationsSection collapsed={collapsed} />
       <AppSection collapsed={collapsed} label={t('sidebar.apps')} apps={APPS_SECTION} />
       <AppSection collapsed={collapsed} label={t('sidebar.messaging')} apps={MESSAGING_SECTION} />
 
@@ -280,6 +284,90 @@ function useFloatingTips(scroller: React.RefObject<HTMLDivElement | null>, origi
       root.removeEventListener('focusin', place)
     }
   }, [scroller, origin])
+}
+
+/** How many past conversations the rail shows; the full list scrolls inside it. */
+const RAIL_SESSIONS = 40
+
+/** The past conversations, newest first, always in reach: one click reopens it on the Hermes page. */
+function ConversationsSection({ collapsed }: { collapsed: boolean }) {
+  const { t } = useT()
+  const page = useStore($page)
+  const rows = useStore($sessions)
+  const runtimeIds = useStore($runtimeIds)
+  const activeId = useStore($activeChatId)
+  const chats = useStore($chats)
+  const sessions = listedSessions(rows, LISTED_SESSION_SOURCES, RAIL_SESSIONS)
+
+  // The list is asked for at start-up and when the backend restarts; asking again when the rail appears covers a start-up that was too early.
+  useEffect(() => {
+    void refreshSessions()
+  }, [])
+
+  const open = (id: string) => {
+    showPage('hermes')
+    void openStoredSession(id)
+  }
+
+  if (collapsed) {
+    return (
+      <>
+        <div className="my-4 h-px w-6 bg-line" />
+        <button
+          type="button"
+          onClick={() => setSidebarCollapsed(false)}
+          aria-label={t('sidebar.conversations')}
+          className="side-item group relative flex h-8 w-9 items-center justify-center rounded-lg text-fg-2 hover:bg-white/8 hover:text-fg"
+        >
+          <IconHistory size={16} stroke={1.9} />
+          <span className="side-tip">{t('sidebar.conversations')}</span>
+        </button>
+      </>
+    )
+  }
+
+  return (
+    <>
+      <div className="my-4 h-px mx-1 bg-line" />
+      <div className="mb-1.5 flex items-center justify-between px-2">
+        <span className="text-[10px] font-semibold tracking-[0.14em] text-fg-3 uppercase">{t('sidebar.conversations')}</span>
+        <button
+          type="button"
+          aria-label={t('chat.new')}
+          onClick={() => {
+            showPage('hermes')
+            void createChat()
+          }}
+          className="flex size-5 items-center justify-center rounded text-fg-3 hover:bg-white/10 hover:text-fg"
+        >
+          <IconPlus size={13} />
+        </button>
+      </div>
+      <nav className="side-scroll flex max-h-64 flex-col gap-0.5 overflow-y-auto" aria-label={t('sidebar.conversations')}>
+        {sessions.length === 0 && <div className="px-2.5 py-1.5 text-[11.5px] leading-snug text-fg-4">{t('sessionList.empty')}</div>}
+        {sessions.map(row => {
+          const runtimeId = runtimeIds[row.id]
+          const live = runtimeId ? chats[runtimeId] : undefined
+          const on = page === 'hermes' && Boolean(runtimeId) && runtimeId === activeId
+          const title = live?.title || row.title || row.preview || t('sidebar.untitled')
+
+          return (
+            <button
+              key={row.id}
+              type="button"
+              onClick={() => open(row.id)}
+              aria-current={on ? 'true' : undefined}
+              title={title}
+              className={cn('flex h-7 shrink-0 items-center gap-2 rounded-lg px-2.5 text-left text-[12.5px] transition-colors duration-150', on ? 'bg-white/14 text-fg' : 'text-fg-2 hover:bg-white/8 hover:text-fg')}
+            >
+              {live?.streaming && <span className="size-1.5 shrink-0 animate-pulse-soft rounded-full bg-accent" />}
+              <span className="truncate">{title}</span>
+            </button>
+          )
+        })}
+      </nav>
+    </>
+  )
 }
 
 /** A sidebar section of apps that open in the right pane, beside the chat (the Hermes page). */

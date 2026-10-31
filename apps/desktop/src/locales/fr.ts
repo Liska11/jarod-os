@@ -800,6 +800,8 @@ export const fr: Record<MessageKey, string> = {
 
   // Pages Navigateur, Social et Messagerie
   'sidebar.apps': 'Applis',
+  'sidebar.conversations': 'Conversations',
+  'sidebar.untitled': 'Sans titre',
   'pane.app.browser': 'Navigateur',
   'pane.app.player': 'Lecteur',
   'pane.app.close': 'Fermer {name}',
