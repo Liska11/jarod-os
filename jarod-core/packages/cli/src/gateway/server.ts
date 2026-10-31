@@ -16,7 +16,7 @@ import { join, resolve } from "node:path";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
 import type { Message, Session, SessionContext } from "@jarod/contracts";
-import { type AgentHooks, contextWindowFor } from "@jarod/plugin-agent";
+import { type AgentHooks, contextWindowFor, limitsFor, usageOf } from "@jarod/plugin-agent";
 import { approvalParams, chooseWorkspace, eventFrame, isApproved, promptText, RPC, readyFrame, sessionInfo, sessionRow, sessionUsage, storedMessages, toTranscript, TurnTranslator } from "./protocol.js";
 import { applyConfigPatch, CONFIG_RAW_READ_ONLY, modelChosen, configRaw, GUARDED_COMMANDS, type CommandResultLike, checkTerminalBackend, type CommandRegistryLike, commandCatalog, ConfigError, configGet, configSet, hermesConfig, modelOptions, normalizeModelCommand, type ProviderLike, setToolsetEnabled, slashResult, terminalBackends, type ToolLike, toolsets } from "./config.js";
 import { findMcp, type GatewayStatusLike, type McpConfigLike, type McpPort, mcpServers, messagingPlatforms, type PlatformId, probeResult, refusePlatformToggle, removeMcp, setMcpEnabled } from "./connections.js";
@@ -26,6 +26,7 @@ import type { ShellLink } from "./bridge-shell.js";
 import { ModelDiscovery } from "./discovery.js";
 import { clearProviderKey, type KeySources, providerRows, setExtraProviderKeys, setProviderKey, setProviderOverride, testProvider } from "./providers.js";
 import { isUnavailableRest, NOT_AVAILABLE, UNAVAILABLE_RPC } from "./unavailable.js";
+import { usageBars } from "./usage-bars.js";
 import { analytics, parseDays, periodStart, type UsageRow, USAGE_SQL } from "./usage.js";
 import { checkTexts, MEMORY_FILE_NAMES, type MemoryFileName, type MemoryServiceLike, memoryFiles, type ProfileLike, writeMemoryFile } from "./memory.js";
 import { cronJobs, memoryStatus, type SchedulerLike } from "./rest.js";
@@ -34,6 +35,9 @@ import { PromptQueue, PromptQueueError } from "./prompt-queue.js";
 import { acceptUpgrade, type WsConnection, wsProtocolToken, wsSelectedProtocol } from "./ws.js";
 
 /** Ce que la passerelle demande au noyau : le strict nécessaire, pour qu'un faux noyau suffise aux tests. */
+/** Les requêtes que la passerelle envoie au shell et attend en retour (noms du contrat de Hermes). */
+const SERVER_REQUESTS: readonly string[] = ["approval"];
+
 export interface GatewayCore {
   sessions: {
     create(title?: string): Session;
@@ -537,6 +541,17 @@ export function createGateway(opts: GatewayOptions): Gateway {
       core.sessions.setPinned(id, pinned);
       return { session_id: id, pinned };
     },
+
+    // H6 : pas de forfait de fournisseur à montrer ; la barre du plafond de la conversation (la demandée, sinon la plus récente).
+    "usage.bars": (p) => {
+      const id = typeof p.session_id === "string" && p.session_id ? p.session_id : core.sessions.list(1)[0]?.id;
+      const session = id ? core.sessions.get(id) : undefined;
+      if (!session) return { ok: true, available: false, status: "no_session" };
+      return usageBars(session.title, limitsFor(core.settings.get("sessionBudget") as Parameters<typeof limitsFor>[0], session.id), usageOf(core.messages.list(session.id)));
+    },
+
+    // H7 : ce que la passerelle demande elle-même au shell (le shell s'en sert pour savoir quoi afficher).
+    "client.capabilities": () => ({ server_requests: [...SERVER_REQUESTS] }),
 
     "session.interrupt": (p) => {
       const id = str(p.session_id);

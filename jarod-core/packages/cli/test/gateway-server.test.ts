@@ -394,20 +394,52 @@ describe("passerelle compatible Hermes", () => {
     c.close();
   });
 
+  it("client.capabilities dit les requêtes que la passerelle envoie au shell", async () => {
+    const { gw, port } = await start(fakeCore(async () => {}).core);
+    const c = await connect(gw, port);
+    expect((await c.call("client.capabilities", { server_requests: true })).result).toEqual({ server_requests: ["approval"] });
+    c.close();
+  });
+
+  it("usage.bars montre le plafond de la conversation demandée, sinon de la plus récente, et dit quand il n'y en a pas", async () => {
+    const f = fakeCore(async () => {});
+    const budget: Record<string, unknown> = {};
+    const { gw, port } = await start({ ...f.core, settings: { get: (key: string) => (key === "sessionBudget" ? budget : key === "activeModel" ? "stub-model" : "custom") } });
+    const c = await connect(gw, port);
+    // aucune conversation
+    expect((await c.call("usage.bars", {})).result).toMatchObject({ available: false, status: "no_session" });
+    const s = f.core.sessions.create("Les comptes");
+    const row = (inputTokens: number, outputTokens: number): Message => ({ id: `m${inputTokens}`, sessionId: s.id, role: "assistant", content: "r", createdAt: 1, inputTokens, outputTokens }) as Message;
+    f.messages.set(s.id, [row(3_000, 1_000), row(2_000, 500)]);
+    // pas de plafond : un état, pas une panne
+    expect((await c.call("usage.bars", {})).result).toMatchObject({ available: false, status: "no_cap" });
+    // plafond de 10 000 jetons, 6 500 consommés
+    budget.maxTokens = 10_000;
+    const bars = (await c.call("usage.bars", {})).result;
+    expect(bars).toMatchObject({ available: true, plan_name: expect.stringContaining("Les comptes"), has_topup: false });
+    expect(bars.plan_bar).toMatchObject({ kind: "plan", pct_used: 65, fill_fraction: 0.65 });
+    expect(bars.plan_bar.spent_display.replace(/\s/g, "")).toBe("6500");
+    expect(bars.plan_bar.total_display.replace(/\s/g, "")).toBe("10000");
+    // dépassé : la barre plafonne à 100 %, elle ne déborde pas
+    budget.maxTokens = 5_000;
+    expect((await c.call("usage.bars", { session_id: s.id })).result.plan_bar).toMatchObject({ pct_used: 100, fill_fraction: 1 });
+    c.close();
+  });
+
   it("répond -32601 à une méthode non servie et la consigne", async () => {
     const { gw, port } = await start(fakeCore(async () => {}).core);
     const c = await connect(gw, port);
-    expect((await c.call("usage.bars", { key: "model" })).error).toMatchObject({ code: -32601, message: "Not available in this version" });
-    expect((await c.call("usage.bars", {})).error).toMatchObject({ code: -32601 });
+    expect((await c.call("billing.state", { key: "model" })).error).toMatchObject({ code: -32601, message: "Not available in this version" });
+    expect((await c.call("billing.state", {})).error).toMatchObject({ code: -32601 });
     expect((await c.call("inconnue.totalement", {})).error).toMatchObject({ code: -32601, message: "method not found: inconnue.totalement" });
-    expect(gw.unhandled()).toEqual({ "rpc usage.bars": 2, "rpc inconnue.totalement": 1 });
+    expect(gw.unhandled()).toEqual({ "rpc billing.state": 2, "rpc inconnue.totalement": 1 });
     c.close();
   });
 
   it("les fonctions connues et non portées répondent toutes la même phrase, en RPC comme en REST (et restent consignées)", async () => {
     const { gw, port } = await start(fakeCore(async () => {}).core);
     const c = await connect(gw, port);
-    for (const method of ["usage.bars", "billing.state", "wake.start", "wake.stop", "wake.pause", "wake.resume", "wake.feed", "client.capabilities"]) {
+    for (const method of ["billing.state", "wake.start", "wake.stop", "wake.pause", "wake.resume", "wake.feed"]) {
       expect((await c.call(method, {})).error, method).toMatchObject({ code: -32601, message: "Not available in this version" });
     }
     const call = (method: string, path: string) => fetch(`http://127.0.0.1:${port}${path}`, { method, headers: { "x-hermes-session-token": gw.token, "content-type": "application/json" }, ...(method === "GET" ? {} : { body: "{}" }) });

@@ -69,6 +69,39 @@ const run = (events: AgentEvent[]) => {
 };
 const msg = (m: Partial<Message> & Pick<Message, "role" | "content">): Message => ({ id: "m1", sessionId: "s1", createdAt: 1_700_000_000_000, ...m });
 
+describe("TurnTranslator : faits d'outil et durée (H1, H11, B19)", () => {
+  it("relaie les événements de sous-agent et de liste de tâches tels quels, et compte ceux qu'il ne connaît pas", () => {
+    const { frames, t } = run([
+      { type: "tool-event", sessionId: "s1", kind: "subagent.start", payload: { goal: "g", task_count: 1, task_index: 0 } },
+      { type: "tool-event", sessionId: "s1", kind: "todo.updated", payload: { todos: [], revision: 3 } },
+      { type: "tool-event", sessionId: "s1", kind: "config.set", payload: { key: "autoApprove" } },
+    ]);
+    expect(frames.map((f) => [f.params.type, f.params.payload])).toEqual([
+      ["subagent.start", { goal: "g", task_count: 1, task_index: 0 }],
+      ["todo.updated", { todos: [], revision: 3 }],
+    ]);
+    expect(Object.fromEntries(t.ignored)).toEqual({ "tool-event:config.set": 1 });
+  });
+
+  it("donne à tool.complete la durée de l'appel et ses arguments", () => {
+    let clock = 10_000;
+    const frames: GatewayEventFrame[] = [];
+    const t = new TurnTranslator("s1", (f) => frames.push(f), undefined, () => clock);
+    t.handle({ type: "tool-start", sessionId: "s1", call: { id: "c1", name: "read_file", args: { path: "a.txt" } } });
+    clock += 1_250;
+    t.handle({ type: "message", sessionId: "s1", message: msg({ role: "tool", content: "contenu", toolCallId: "c1", toolName: "read_file" }) });
+    const done = frames.find((f) => f.params.type === "tool.complete")!.params.payload as Record<string, unknown>;
+    expect(done).toMatchObject({ tool_id: "c1", name: "read_file", duration_s: 1.25, args: { path: "a.txt" } });
+  });
+
+  it("un résultat sans départ connu (reprise d'une conversation) n'invente ni durée ni arguments", () => {
+    const { frames } = run([{ type: "message", sessionId: "s1", message: msg({ role: "tool", content: "x", toolCallId: "z", toolName: "t" }) }]);
+    const done = frames[0]!.params.payload as Record<string, unknown>;
+    expect(done).not.toHaveProperty("duration_s");
+    expect(done).not.toHaveProperty("args");
+  });
+});
+
 describe("TurnTranslator", () => {
   it("traduit un tour avec flux, outil, réponse et fin", () => {
     const { frames, types } = run([

@@ -18,6 +18,11 @@ export interface ToolContext {
   vault?: VaultService;
   /** Réglage « Accès à tous les lecteurs » : un chemin absolu hors du dossier de travail est accepté (hors emplacements protégés). */
   machineFiles?: boolean;
+  /**
+   * Un fait que l'interface montre pendant le tour (progression d'un sous-agent, liste de tâches) : `kind` est le nom de l'événement
+   * de la passerelle, `payload` son contenu. Sans écouteur (tâche planifiée, sous-agent), l'appel ne fait rien.
+   */
+  notify?(kind: string, payload: Record<string, unknown>): void;
 }
 
 export interface ToolDef {

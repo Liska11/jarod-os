@@ -30,13 +30,16 @@ import { acquireRuntimeLock, type RuntimeMode } from "./runtime-lock.js";
 import { MessageService, SessionService } from "./sessions.js";
 import { RefineService, refineTools } from "./refine.js";
 import { rlmTools } from "./rlm.js";
+import { subagentObserver } from "./subagent-events.js";
 import { sessionStateTools } from "./session-state.js";
+import { todoTool } from "./todo-tool.js";
 import { sessionTools } from "./sessions-tools.js";
 import { registerSkillCommands } from "./skills-commands.js";
 import { permissionsExplainTool } from "./permissions-tool.js";
 
 export * from "./access-profile.js";
 export * from "./agent.js";
+export { limitsFor, usageOf } from "./budget.js";
 export * from "./builtin-commands.js";
 export * from "./commands.js";
 export * from "./cron-tools.js";
@@ -169,6 +172,7 @@ export function apply(ctx: Context, config: AgentConfig = {}): void {
         tctx.sessionId,
         (task, signal) => runtime.agent.runSubAgent(task, signal, tctx.sessionId),
         tctx.signal,
+        subagentObserver(tctx),
       ),
   });
   // Jarod-cordis (Q18) : la compaction à la demande du MODÈLE (SANK-AI `plugin context-compaction`, outil
@@ -238,6 +242,8 @@ export function apply(ctx: Context, config: AgentConfig = {}): void {
   for (const t of staticAnalysisTools({ artifacts: runtime.artifacts })) tools.register(t);
   // Q18 : outils `state_*` (SANK-AI `kernel/session-state.js`, MIT), sur la table `session_state` (v18).
   for (const t of sessionStateTools(runtime.state)) tools.register(t);
+  // H11 : `todo`, le plan de la mission, vu en direct dans la page Missions (`todo.updated`).
+  tools.register(todoTool(runtime.state));
   // Q18 : sous-agents non bloquants (SANK-AI `rlm-subagent`, MIT), lecture seule.
   for (const t of rlmTools(runtime.rlm, runtime.subagents)) tools.register(t);
   // Q18 : refine (SANK-AI `refine`, MIT) — mémoire mise à jour sur preuve, journalisée, annulable.

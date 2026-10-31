@@ -105,6 +105,7 @@ export const TOOLS: Readonly<Record<string, ToolClass>> = {
   state_get: ro,
   state_list: ro,
   state_set: free("conversation", "état de travail de la conversation (v18), plafonné 64 clés / 8 Ko, supprimé avec elle"),
+  todo: free("conversation", "plan de la mission, rangé dans l'état de travail de la conversation (30 tâches au plus), supprimé avec elle"),
   subagent_cancel: free("agent", "n'arrête qu'un sous-agent de SA conversation"),
   subagent_list: ro,
   subagent_result: ro,

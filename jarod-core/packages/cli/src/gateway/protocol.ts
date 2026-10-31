@@ -35,8 +35,21 @@ const clip = (text: string, n: number): string => (text.length > n ? `${text.sli
  *   error → error                     done → message.complete (status complete | interrupted | error)
  * Sans équivalent (ignorés, comptés) : stream-reset, history, session-updated.
  */
+/** Les faits d'outil que la passerelle relaie au shell (`AgentEvent` « tool-event ») : le reste est ignoré et compté. */
+const RELAYED_TOOL_EVENTS: ReadonlySet<string> = new Set([
+  "subagent.spawn_requested",
+  "subagent.start",
+  "subagent.progress",
+  "subagent.thinking",
+  "subagent.tool",
+  "subagent.complete",
+  "todo.updated",
+]);
+
 export class TurnTranslator {
   private streamed = false;
+  /** Départ et arguments de chaque appel d'outil en cours : la fin de l'appel en tire sa durée et ses arguments. */
+  private readonly started = new Map<string, { at: number; args: Record<string, unknown> }>();
   private finalText = "";
   private errorText: string | undefined;
   private aborted = false;
@@ -48,6 +61,7 @@ export class TurnTranslator {
     private readonly out: (frame: GatewayEventFrame) => void,
     /** L'occupation du contexte à la fin du tour (`Usage` du contrat), jointe à `message.complete`. */
     private readonly usage?: () => Record<string, unknown> | undefined,
+    private readonly now: () => number = Date.now,
   ) {}
 
   private emit(type: string, payload?: unknown): void {
@@ -78,14 +92,23 @@ export class TurnTranslator {
         if (e.thinking) this.emit("reasoning.delta", { text: e.thinking });
         return;
       case "tool-start":
+        this.started.set(e.call.id, { at: this.now(), args: e.call.args });
         this.emit("tool.start", { tool_id: e.call.id, name: e.call.name, args: e.call.args });
+        return;
+      case "tool-event":
+        if (RELAYED_TOOL_EVENTS.has(e.kind)) this.emit(e.kind, e.payload);
+        else this.ignored.set(`tool-event:${e.kind}`, (this.ignored.get(`tool-event:${e.kind}`) ?? 0) + 1);
         return;
       case "message": {
         const m = e.message;
         if (m.role === "tool") {
+          const toolId = m.toolCallId ?? m.id;
+          const began = this.started.get(toolId);
+          this.started.delete(toolId);
           this.emit("tool.complete", {
-            tool_id: m.toolCallId ?? m.id,
+            tool_id: toolId,
             name: m.toolName ?? "tool",
+            ...(began ? { args: began.args, duration_s: Math.max(0, (this.now() - began.at) / 1000) } : {}),
             result: m.content,
             result_text: m.content,
             summary: m.isError ? `Erreur : ${clip(m.content, 120)}` : clip(m.content.replace(/\s+/g, " "), 120),

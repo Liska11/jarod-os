@@ -13,6 +13,14 @@ export interface SubAgentRun {
   error: string | null;
 }
 
+/** Ce qu'un observateur apprend d'une exécution : son départ, puis sa fin (avec le compte rendu quand elle a abouti). */
+export interface SubagentObservation {
+  phase: "start" | "complete";
+  run: SubAgentRun;
+  answer?: string;
+}
+export type SubagentObserver = (o: SubagentObservation) => void;
+
 /** Au-delà, on refuse : un sous-agent par tâche, pas une avalanche de tâches. */
 export const DEFAULT_MAX_CONCURRENT = 3;
 
@@ -83,8 +91,9 @@ export class SubagentsService {
     sessionId: string,
     work: (task: string, signal: AbortSignal) => Promise<string>,
     signal?: AbortSignal,
+    observe?: SubagentObserver,
   ): Promise<string> {
-    return this.start(task, sessionId, work, signal).result;
+    return this.start(task, sessionId, work, signal, observe).result;
   }
 
   /**
@@ -96,6 +105,7 @@ export class SubagentsService {
     sessionId: string,
     work: (task: string, signal: AbortSignal) => Promise<string>,
     signal?: AbortSignal,
+    observe?: SubagentObserver,
   ): { id: string; result: Promise<string> } {
     if (this.running() >= this.limit()) {
       throw new Error(
@@ -124,11 +134,22 @@ export class SubagentsService {
     const max = this.d.journalLimit ?? 100;
     if (this.runs.length > max) this.runs.splice(0, this.runs.length - max);
 
+    // Un observateur qui lève ne doit jamais faire échouer l'exécution qu'il regarde.
+    const tell = (o: SubagentObservation): void => {
+      try {
+        observe?.(o);
+      } catch {
+        /* l'interface n'est pas le travail */
+      }
+    };
+    tell({ phase: "start", run });
+    let answered: string | undefined;
     const result = (async () => {
       try {
         const answer = await work(task, controller.signal);
         run.status = "done";
         run.chars = answer.length;
+        answered = answer;
         return answer;
       } catch (error) {
         // Une annulation n'est pas une panne : les confondre ferait passer un arrêt voulu pour un bug.
@@ -140,6 +161,7 @@ export class SubagentsService {
         run.endedAt = this.at();
         this.controllers.delete(id);
         signal?.removeEventListener("abort", onAbort);
+        tell({ phase: "complete", run, ...(answered !== undefined ? { answer: answered } : {}) });
       }
     })();
     return { id, result };

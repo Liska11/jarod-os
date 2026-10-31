@@ -41,6 +41,8 @@ export type AgentEvent =
   | { type: "delta"; sessionId: string; streamId: string; text?: string; thinking?: string }
   | { type: "stream-reset"; sessionId: string; streamId: string }
   | { type: "tool-start"; sessionId: string; call: ToolCall }
+  /** Un fait émis par un outil pendant son exécution (`ToolContext.notify`) : la passerelle le relaie tel quel s'il est connu. */
+  | { type: "tool-event"; sessionId: string; kind: string; payload: Record<string, unknown> }
   | { type: "history"; sessionId: string }
   | { type: "status"; sessionId: string; status: string }
   | { type: "session-updated"; sessionId: string }
@@ -273,6 +275,7 @@ const SUBAGENT_EXCLUDED = new Set([
   "user_profile",
   "state_set",
   "state_delete",
+  "todo",
   "spawn_subagent",
   "subagent_cancel",
 ]);
@@ -1430,7 +1433,7 @@ export async function executeGuardedTool(
   sessionId: string,
   call: ToolCall,
   signal: AbortSignal,
-  hooks: { approve(sessionId: string, call: ToolCall, toolDescription: string): Promise<boolean> },
+  hooks: { approve(sessionId: string, call: ToolCall, toolDescription: string): Promise<boolean>; emit?(event: AgentEvent): void },
   s: Settings,
   extra: GuardedExtra = {},
 ): Promise<{ content: string; isError: boolean }> {
@@ -1452,7 +1455,7 @@ async function runGuardedTool(
   sessionId: string,
   call: ToolCall,
   signal: AbortSignal,
-  hooks: { approve(sessionId: string, call: ToolCall, toolDescription: string): Promise<boolean> },
+  hooks: { approve(sessionId: string, call: ToolCall, toolDescription: string): Promise<boolean>; emit?(event: AgentEvent): void },
   s: Settings,
   extra: GuardedExtra,
   span: SpanHandle | undefined,
@@ -1683,6 +1686,7 @@ async function runGuardedTool(
       workspace: s.workspace,
       signal: runSignal,
       approve: hooks.approve,
+      ...(hooks.emit ? { notify: (kind: string, payload: Record<string, unknown>) => hooks.emit?.({ type: "tool-event", sessionId, kind, payload }) } : {}),
       ...(s.shellGuard ? { shellGuard: s.shellGuard } : {}),
       ...(extra.vault ? { vault: extra.vault } : {}),
       ...(s.machineFiles ? { machineFiles: true } : {}),

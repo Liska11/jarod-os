@@ -4,16 +4,14 @@
 /** La phrase exacte que le shell cherche : ne pas la reformuler sans changer l'autre côté. */
 export const NOT_AVAILABLE = "Not available in this version";
 
-/** Les méthodes JSON-RPC connues et non portées : plan et facturation du fournisseur, mot d'éveil, capacités du client. */
+/** Les méthodes JSON-RPC connues et non portées : facturation du fournisseur, mot d'éveil. */
 export const UNAVAILABLE_RPC: ReadonlySet<string> = new Set([
-  "usage.bars",
   "billing.state",
   "wake.start",
   "wake.stop",
   "wake.pause",
   "wake.resume",
   "wake.feed",
-  "client.capabilities",
 ]);
 
 /** Les routes REST connues et non portées : GPT-Live, OAuth des serveurs MCP, OAuth des fournisseurs (le catalogue MCP est servi, vide, et son installation dit quoi faire à la place). */

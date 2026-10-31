@@ -9,7 +9,8 @@
  * conversation qui l'a lancé (un enfant ne survit pas à un redémarrage, et `subagent_result` le dit).
  */
 import type { ToolDef } from "@jarod/plugin-tools";
-import type { SubagentsService } from "./subagents.js";
+import { subagentObserver } from "./subagent-events.js";
+import type { SubagentObserver, SubagentsService } from "./subagents.js";
 
 type Work = (task: string, signal: AbortSignal, sessionId: string) => Promise<string>;
 
@@ -30,8 +31,8 @@ export class RlmChildren {
   ) {}
 
   /** Lance l'enfant et rend la main. Au-delà de la borne : refus lisible (`SUBAGENT_LIMIT`), comme `delegate_task`. */
-  spawn(sessionId: string, task: string, name?: string): Child {
-    const { id, result } = this.subagents.start(task, sessionId, (t, signal) => this.work(t, signal, sessionId));
+  spawn(sessionId: string, task: string, name?: string, observe?: SubagentObserver): Child {
+    const { id, result } = this.subagents.start(task, sessionId, (t, signal) => this.work(t, signal, sessionId), undefined, observe);
     const child: Child = { id, name: name?.trim() || `enfant-${++this.seq}`, sessionId };
     this.children.set(id, child);
     result.then(
@@ -85,7 +86,7 @@ export function rlmTools(rlm: RlmChildren, subagents: SubagentsService): ToolDef
       },
       source: "builtin",
       async run(args, ctx) {
-        const c = rlm.spawn(ctx.sessionId, String(args.task ?? ""), typeof args.name === "string" ? args.name : undefined);
+        const c = rlm.spawn(ctx.sessionId, String(args.task ?? ""), typeof args.name === "string" ? args.name : undefined, subagentObserver(ctx));
         return JSON.stringify({ id: c.id, name: c.name, status: "lancé" });
       },
     },
