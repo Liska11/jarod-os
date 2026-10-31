@@ -14,6 +14,23 @@ import { ToolRow } from '../chat/ToolRow.tsx'
 /** Only the last stretch is drawn: a long conversation must not make the pane heavy. */
 const MAX_ITEMS = 80
 
+/** How close to the end still counts as following: browsers round scroll positions. */
+const BOTTOM_SLACK = 80
+
+/** True when the box is (or is nearly) scrolled to its end. */
+export function nearBottom(box: { scrollHeight: number; scrollTop: number; clientHeight: number }, slack = BOTTOM_SLACK): boolean {
+  return box.scrollHeight - box.scrollTop - box.clientHeight <= slack
+}
+
+/** The nearest ancestor that actually scrolls, or null (the whole page scrolls). */
+function scrollerOf(node: HTMLElement | null): HTMLElement | null {
+  for (let element = node?.parentElement ?? null; element; element = element.parentElement) {
+    if (element.scrollHeight > element.clientHeight + 1) return element
+  }
+
+  return null
+}
+
 export type ActivityItem = { kind: 'reasoning'; message: AssistantMessage } | { kind: 'tool'; message: ToolMessage }
 
 /** The reasoning and tool calls of a conversation, oldest first, capped to the last `max`. */
@@ -56,12 +73,20 @@ const Reasoning = memo(function Reasoning({ message }: { message: AssistantMessa
 export function ActivityFeed({ chat }: { chat: ChatState | null }) {
   useT()
   const end = useRef<HTMLDivElement>(null)
+  const first = useRef(true)
   const items = activityItems(chat?.messages ?? [])
   const last = items.at(-1)
   const signature = `${items.length}:${last?.kind === 'reasoning' ? last.message.reasoning.length : last?.message.id}`
 
   useEffect(() => {
-    end.current?.scrollIntoView({ block: 'end' })
+    const node = end.current
+    if (!node) return
+    const box = scrollerOf(node)
+    // The first display follows the newest. Afterwards only a person who was already at the bottom is carried along: yanking someone
+    // who scrolled up to read earlier reasoning would make the tab unusable while the model writes.
+    const follow = first.current || (box ? nearBottom(box) : true)
+    first.current = false
+    if (follow) node.scrollIntoView({ block: 'end' })
   }, [signature])
 
   if (items.length === 0) {
