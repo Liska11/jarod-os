@@ -352,6 +352,35 @@ function CapabilityRow({ cap, s, api, providers }: Props & { cap: Capability; pr
   )
 }
 
+/** Le modèle qui décrit les images : sans lui, le fournisseur seul ne suffit pas (`screen_look` reste en lecture du texte). */
+function ImageModelRow({ s, api, models }: { s: Props['s']; api: { save: Props['api']['save']; saving: boolean }; models: readonly string[] }) {
+  useT()
+  const [model, setModel] = useState(s.imageDescription.model)
+  const input = 'glass-input h-8 min-w-0 rounded-lg px-2 text-[12.5px] text-fg outline-none'
+
+  return (
+    <SettingsRow
+      icon={<IconBrain />}
+      label={t('settings.agent.imageModel.name')}
+      description={s.imageDescription.model ? t('settings.agent.imageModel.set') : t('settings.agent.imageModel.missing')}
+      keywords="image description vision model name gemini"
+      below={
+        <div className="flex items-center gap-2" data-testid="image-model">
+          <input value={model} onChange={event => setModel(event.target.value)} list="image-description-models" placeholder={t('settings.agent.capability.model')} aria-label={t('settings.agent.imageModel.name')} spellCheck={false} className={`${input} flex-1 font-mono`} />
+          <datalist id="image-description-models">
+            {models.map(m => (
+              <option key={m} value={m} />
+            ))}
+          </datalist>
+          <GlassButton size="sm" variant="secondary" disabled={api.saving || !model.trim() || model.trim() === s.imageDescription.model} onClick={() => void api.save({ imageDescription: { model: model.trim() } })}>
+            {t('settings.devices.save')}
+          </GlassButton>
+        </div>
+      }
+    />
+  )
+}
+
 function ModelsGroup({ s, api }: Props) {
   useT()
   const { save, saving } = api
@@ -433,6 +462,9 @@ function ModelsGroup({ s, api }: Props) {
           disabled={saving}
           onChange={value => void save({ imageDescription: { provider: value } })}
         />
+      )}
+      {s.imageDescription.mode !== 'off' && s.imageDescription.provider && (
+        <ImageModelRow key={`${s.imageDescription.provider}:${s.imageDescription.model}`} s={s} api={{ save, saving }} models={providers.find(p => p.id === s.imageDescription.provider)?.models ?? []} />
       )}
     </SettingsGroup>
   )

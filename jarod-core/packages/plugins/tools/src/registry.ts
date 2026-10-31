@@ -33,6 +33,11 @@ export interface ToolDef {
    */
   available?(): boolean;
   /**
+   * Ce qui empêche l'outil ou le réduit EN CE MOMENT, dit à l'utilisateur par l'écran des outils (« moteur FlaUI introuvable », « vision désactivée —
+   * lecture du texte seulement »). Null : rien ne le limite. Relu à chaque `info()`. Une lecture qui lève vaut « rien à dire ».
+   */
+  limit?(): string | null;
+  /**
    * Un outil qui ne demande aucun accord (pas `dangerous`) mais dont chaque appel laisse une ligne d'audit : qui l'a demandé, avec quels
    * arguments, et si cela a réussi. Pour les lectures qui voient la machine entière (outils système).
    */
@@ -94,6 +99,9 @@ export interface ToolInfo {
   dangerous: boolean;
   source: ToolDef["source"];
   enabled: boolean;
+  /** Faux : l'outil n'est pas offert à l'agent en ce moment (voir `limit` pour la raison). */
+  available: boolean;
+  limit: string | null;
 }
 
 const NAME_RE = /^[a-zA-Z0-9_-]{1,64}$/;
@@ -175,13 +183,24 @@ export class ToolRegistry {
 
   info(disabled: string[]): ToolInfo[] {
     const off = new Set(disabled);
-    return this.all().map((t) => ({
-      name: t.name,
-      description: t.description,
-      dangerous: Boolean(t.dangerous),
-      source: t.source,
-      enabled: !off.has(t.name),
-    }));
+    return this.all().map((t) => {
+      const available = isAvailable(t);
+      let said: string | null = null;
+      try {
+        said = t.limit?.() ?? null;
+      } catch {
+        said = null;
+      }
+      return {
+        name: t.name,
+        description: t.description,
+        dangerous: Boolean(t.dangerous),
+        source: t.source,
+        enabled: !off.has(t.name),
+        available,
+        limit: said ?? (available ? null : "Indisponible pour le moment : l'agent ne le voit pas"),
+      };
+    });
   }
 }
 

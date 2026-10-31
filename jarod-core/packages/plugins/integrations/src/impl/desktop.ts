@@ -87,6 +87,12 @@ export class DesktopController {
     return process.platform === "win32" && (this.deps.backend !== undefined || this.deps.worker() !== null);
   }
 
+  /** Pourquoi les outils de bureau ne sont pas offerts, ou null s'ils le sont. */
+  limit(): string | null {
+    if (process.platform !== "win32") return "Indisponible — Windows seulement";
+    return this.available() ? null : "Indisponible — moteur FlaUI introuvable (JAROD_FLAUI_WORKER, ou JAROD_ENGINES_DIR\\flaui\\uia-flaui-worker.exe)";
+  }
+
   private engine(): UiaAutomation {
     if (this.uia) return this.uia;
     const b =
@@ -199,6 +205,7 @@ export interface DesktopToolDef {
   audited: true;
   source: "builtin";
   available(): boolean;
+  limit?(): string | null;
   targetOf?(args: Record<string, unknown>): string | undefined;
   operationOf?(args: Record<string, unknown>): string | undefined;
   restrictedOperations?: Readonly<Record<string, string>>;
@@ -225,6 +232,7 @@ export function desktopTools(c: DesktopController): DesktopToolDef[] {
     audited: true,
     source: "builtin",
     available: () => c.available(),
+    limit: () => c.limit(),
     async run() {
       if (c.stopped !== null) return "Arrêt d'urgence en cours (Ctrl+Alt+Fin) : le prochain appel de desktop_control demandera à l'utilisateur de reprendre.";
       const list = await c.listWindows();
@@ -287,6 +295,7 @@ export function desktopTools(c: DesktopController): DesktopToolDef[] {
     audited: true,
     source: "builtin",
     available: () => c.available(),
+    limit: () => c.limit(),
     targetOf: (args) => c.knownTarget(args.window),
     operationOf: (args) => DESKTOP_OPERATIONS[str(args.action)],
     restrictedOperations: DESKTOP_RESERVED,

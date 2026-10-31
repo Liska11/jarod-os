@@ -25,6 +25,7 @@ export function screenLookTool(deps: ScreenLookDeps = {}): ToolDef[] {
       source: "builtin",
       dangerous: false,
       audited: true,
+      limit: () => (deps.vision?.canLook() ? null : "Vision désactivée — lecture du texte seulement (OCR). Choisir un modèle dans Réglages › Modèles › Description d'images"),
       description:
         "REGARDE l'écran de l'utilisateur et répond à une question (« qu'est-ce qui est affiché ? », « que dit cette erreur ? », « sur quel site suis-je ? »). target=screen : tous les écrans ; target=window : la fenêtre au premier plan. Utilise-le dès que l'utilisateur dit « regarde mon écran », « tu vois ? » ou parle de ce qu'il a sous les yeux. La capture est envoyée au modèle de vision réglé par l'utilisateur ; sans réglage, seul le texte lisible est rendu.",
       parameters: {

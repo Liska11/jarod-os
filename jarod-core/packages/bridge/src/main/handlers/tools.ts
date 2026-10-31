@@ -61,7 +61,7 @@ export function createToolsHandlers(ctx: HandlerContext) {
       assertProfile(ctx, profile);
       return agent()
         .tools.info(settings().get("disabledTools"))
-        .map((t) => ({ key: t.name, label: t.name, description: t.description, enabled: t.enabled }));
+        .map((t) => ({ key: t.name, label: t.name, description: t.limit ? `⚠ ${t.limit}. ${t.description}` : t.description, enabled: t.enabled }));
     },
     /** Outil inconnu du registre → false (forme SANK-UI d'une clé invalide), rien d'écrit. */
     "set-toolset-enabled": (key: unknown, enabled: unknown, profile?: unknown): boolean => {

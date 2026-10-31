@@ -109,6 +109,17 @@ describe('jarodSpawnPlan', () => {
     expect(plan.env.ELECTRON_RUN_AS_NODE).toBe('1')
   })
 
+  it('tells the core where the engines are (data folder, then beside the working folder) unless the user already chose', () => {
+    const base = { token: 'tok', dataDir: path.join('/d', 'Jarod-OS'), workspace: path.join('/e', 'Jarod-OS', 'workspace') }
+    const beside = path.join('/e', 'Jarod-OS', 'engines')
+    const inData = path.join('/d', 'Jarod-OS', 'engines')
+
+    expect(jarodSpawnPlan(core, { ...base, env: {}, exists: dir => dir === beside }).env.JAROD_ENGINES_DIR).toBe(beside)
+    expect(jarodSpawnPlan(core, { ...base, env: {}, exists: () => true }).env.JAROD_ENGINES_DIR).toBe(inData)
+    expect(jarodSpawnPlan(core, { ...base, env: { JAROD_ENGINES_DIR: 'X:\moteurs' }, exists: () => true }).env.JAROD_ENGINES_DIR).toBe('X:\moteurs')
+    expect(jarodSpawnPlan(core, { ...base, env: {}, exists: () => false }).env.JAROD_ENGINES_DIR).toBeUndefined()
+  })
+
   it('does not hand the core anything meant for Hermes or for Electron-as-node, nor a fixed port', () => {
     const plan = jarodSpawnPlan(core, {
       token: 'tok',

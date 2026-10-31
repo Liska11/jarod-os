@@ -129,10 +129,26 @@ export interface SpawnPlan {
 }
 
 /**
+ * Where the engines (FlaUI, OCR, restic…) live, for the core to find them: JAROD_ENGINES_DIR if set, else an `engines` folder in the data folder,
+ * else one beside the working folder (`D:\Jarod-OS\workspace` → `D:\Jarod-OS\engines`). Null when none exists: the tools that need an engine then say so.
+ */
+export function jarodEnginesDir(options: { env: NodeJS.ProcessEnv; dataDir: string; workspace: string; exists?: (dir: string) => boolean }): string | null {
+  const configured = options.env.JAROD_ENGINES_DIR?.trim()
+
+  if (configured) {
+    return configured
+  }
+
+  const exists = options.exists ?? ((dir: string) => fs.existsSync(dir))
+
+  return [path.join(options.dataDir, 'engines'), path.join(path.dirname(options.workspace), 'engines')].find(exists) ?? null
+}
+
+/**
  * How to start the core. The profile is a folder of its own under `dataDir`; the token is the one the shell will present; the core exits when its standard
  * input closes (the only clean stop on Windows, and it never outlives the app). Provider keys (OPENAI_API_KEY…) pass through from the environment.
  */
-export function jarodSpawnPlan(core: JarodCore, options: { token: string; dataDir: string; workspace: string; env: NodeJS.ProcessEnv }): SpawnPlan {
+export function jarodSpawnPlan(core: JarodCore, options: { token: string; dataDir: string; workspace: string; env: NodeJS.ProcessEnv; exists?: (dir: string) => boolean }): SpawnPlan {
   // JAROD_SHELL_EXE : le pilote de fenêtres de l'agent refuse les fenêtres de ce processus (réglages, confirmations natives).
   const env: NodeJS.ProcessEnv = { ...options.env, JAROD_HOME: path.join(options.dataDir, 'profile'), JAROD_GATEWAY_TOKEN: options.token, JAROD_SHELL_EXE: path.basename(process.execPath) }
 
@@ -140,6 +156,12 @@ export function jarodSpawnPlan(core: JarodCore, options: { token: string; dataDi
     env.ELECTRON_RUN_AS_NODE = '1'
   } else {
     delete env.ELECTRON_RUN_AS_NODE
+  }
+
+  const engines = jarodEnginesDir({ env: options.env, dataDir: options.dataDir, workspace: options.workspace, exists: options.exists })
+
+  if (engines) {
+    env.JAROD_ENGINES_DIR = engines
   }
 
   delete env.HERMES_DASHBOARD_SESSION_TOKEN

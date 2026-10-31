@@ -34,4 +34,22 @@ describe("ToolRegistry — available", () => {
     r.register(def("b", { available: () => { throw new Error("lecture impossible"); } }));
     expect(r.specs([]).map((t) => t.name)).toEqual(["a"]);
   });
+
+  it("A4 info() dit pourquoi un outil n'est pas offert (limit), ou ce qui le réduit, relu à chaque appel", () => {
+    let engine = false;
+    const r = new ToolRegistry();
+    r.register(def("libre"));
+    r.register(def("bras", { available: () => engine, limit: () => (engine ? null : "Indisponible — moteur FlaUI introuvable") }));
+    r.register(def("muet", { available: () => false }));
+    r.register(def("yeux", { limit: () => "Vision désactivée — lecture du texte seulement" }));
+    r.register(def("casse", { limit: () => { throw new Error("lecture impossible"); } }));
+    const by = () => Object.fromEntries(r.info([]).map((t) => [t.name, t]));
+    expect(by().libre).toMatchObject({ available: true, limit: null });
+    expect(by().bras).toMatchObject({ available: false, limit: "Indisponible — moteur FlaUI introuvable" });
+    expect(by().muet).toMatchObject({ available: false, limit: expect.stringMatching(/Indisponible/) });
+    expect(by().yeux).toMatchObject({ available: true, limit: "Vision désactivée — lecture du texte seulement" });
+    expect(by().casse).toMatchObject({ available: true, limit: null });
+    engine = true;
+    expect(by().bras).toMatchObject({ available: true, limit: null });
+  });
 });
