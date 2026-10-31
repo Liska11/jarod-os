@@ -5,6 +5,7 @@
  * cron, present) sont enregistrées par plugin-agent.
  */
 import type {} from "@jarod/plugin-llm";
+import { officeTools } from "./office/tool.js";
 import type {} from "@jarod/plugin-memory";
 import type {} from "@jarod/plugin-rag";
 import type {} from "@jarod/plugin-skills";
@@ -100,6 +101,8 @@ export class ToolsService extends Service {
     for (const t of vaultTools()) r.register(t);
     for (const t of builtinTools(ctx.memory.memory, ctx.llm.localServer)) r.register(t);
     for (const t of searchTools()) r.register(t);
+    // B2 : documents Word, Excel, PowerPoint et PDF, écrits dans le dossier de travail (un seul outil, regroupé).
+    for (const t of officeTools()) r.register(t);
     // Registered even when the feature is off, but OFFERED to the model only while it is on (`available`, relu à chaque étape : allumer
     // l'interrupteur ne demande aucun redémarrage ; SPECS-P5-UI-PARITE.md § 19). Un appel quand même reçoit le refus du service. (core.ts:525-527)
     for (const t of ragTools(ctx.rag.rag)) r.register(t);

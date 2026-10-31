@@ -55,20 +55,20 @@ Enregistrées le 2026-10-31, commit « record: décisions D1-D8 tranchées, H9 d
 
 | ID | Écart | État |
 |---|---|---|
-| H1 | Progression des sous-agents | ⬜ |
-| H2 | `clarify` (question à choix) | ⬜ |
+| H1 | Progression des sous-agents | 🟡 demande / départ / fin émis et relayés (tests) ; progression, réflexion et outils de l'enfant non faits ; à voir en fenêtre |
+| H2 | `clarify` (question à choix) : outil `ask_user` | 🟡 outil, requête serveur, délai, tests de bout en bout ; la carte du shell existe déjà ; à voir en fenêtre |
 | H3 | Voix phrase par phrase | ⬜ |
 | H4 | Mot d'éveil | ⬜ |
 | H5 | Studio | ⬜ (essai de la phase 0) |
-| H6 | Barres d'usage | ⬜ |
-| H7 | `client.capabilities` | ⬜ |
+| H6 | Barres d'usage : plafond de la conversation à la place du forfait | 🟡 `usage.bars` servi (tests) ; à voir en fenêtre |
+| H7 | `client.capabilities` | 🟡 servi (approval, clarify) ; à voir en fenêtre |
 | H8 | Voix en direct (fusionné avec B1) | ⬜ |
 | H9 | OAuth | ⬜ décision ouverte |
 | H10 | Mises à jour (dossier local signé, D6) | ⬜ |
-| H11 | `todo` / `todo.updated` | ⬜ |
+| H11 | `todo` / `todo.updated` | 🟡 outil créé (il n'existait pas), événement relayé vers la page Missions ; à voir en fenêtre |
 | H12 | Embeddings locaux, reranker, NPU | ⛔ |
 | B1 | Voix native bidirectionnelle (Gemini Live) | ⬜ |
-| B2 | Création Word / Excel / PowerPoint / PDF | ⬜ |
+| B2 | Création Word / Excel / PowerPoint / PDF : outil `document_create` | 🟡 les quatre formats, relus par python-docx, openpyxl, python-pptx et pypdf ; confiné au dossier de travail, jamais d'écrasement, formules qui sortent du classeur refusées ; à voir en fenêtre |
 | B3 | Fabrique de compétences (D3) | ⬜ |
 | B4 | Auto-réparation (D3) | ⬜ |
 | B5 | Domotique | ⛔ (D5) |
@@ -84,8 +84,8 @@ Enregistrées le 2026-10-31, commit « record: décisions D1-D8 tranchées, H9 d
 | B15 | Assistant de circuits | ⬜ |
 | B16 | Calories, pompes | ⬜ |
 | B17 | Achats : comparaison de prix en lecture seule seulement (D8) | ⬜ |
-| B18 | Spectre audio et états de l'orbe | ⬜ |
-| B19 | Latence par outil, tiroir « Inspecter » | ⬜ |
+| B18 | Spectre audio et états de l'orbe | 🟡 déjà fait pour l'essentiel (niveau du micro, 6 états colorés) ; spectre en fréquences et état « outil » non faits (cosmétique) |
+| B19 | Latence par outil, tiroir « Inspecter » | 🟡 l'interface les montrait déjà ; la passerelle envoie maintenant `duration_s` et `args` ; à voir en fenêtre |
 | B20 | Google Workspace | ⬜ (dépend de H9) |
 
 ## Architecture du pont

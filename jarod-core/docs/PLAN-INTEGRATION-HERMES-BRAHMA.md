@@ -96,6 +96,15 @@ H5 (Studio, si l'essai de la phase 0 le justifie) · B10 (appli Android compagno
 ### Phase 6 : distribution
 H10 (mise à jour du noyau) une fois D6 tranchée.
 
+### Résultats de la phase 0 (2026-10-31)
+
+- **H11 `todo`** : l'outil n'existait pas (seulement une trace dans un test). La page Missions du shell écoutait déjà `todo.updated`. Créé.
+- **B4 `refine`** : c'est la mise à jour de la **mémoire** sur preuve, avec instantané et retour arrière, pas de la réparation de code. Utile comme modèle pour le retour arrière de B3/B4, pas comme point de départ.
+- **H5 Studio** : le shell a déjà un modèle d'écran (`studio-model.ts`) et des tests avec des événements simulés (`agent.terminal.output`, `preview.open`, `tool.generating`). Il manque seulement la source d'événements côté Jarod. Piste moins chère qu'un pty : tirer ces événements de `run_shell` (sortie) et de la détection d'une adresse `localhost` ; à décider en phase 5.
+- **H4 mot d'éveil** : le plugin est un portage de openWakeWord (Apache-2.0) sur OpenVINO. Il faut deux modèles communs (`melspectrogram.onnx`, `embedding_model.onnx`, présentés comme Apache-2.0 par des projets tiers ; tailles non confirmées) et un modèle par mot. Les modèles de mots préentraînés d'openWakeWord seraient sous licence CC BY-NC-SA 4.0 (non commerciale) : sans importance pour un usage personnel non distribué, mais un mot « Jarod » demande un entraînement propre. À confirmer dans les fichiers de la version officielle avant de télécharger.
+- **Correction importante pour la phase 2** : la voix du shell est plus avancée que je ne l'avais écrit. Il existe déjà un moteur « live » (`live-engine.ts`, avec compteur de coût par minute), un découpage de la réponse en phrases (`sentence-speaker.ts`), un flux de parole (`speak-stream.ts`), un garde d'écho et un mode duplex. H3 et une partie de B1 sont donc peut-être déjà couverts côté shell ; la phase 2 commence par un inventaire de ces moteurs (quel fournisseur, quel protocole), pas par du code.
+- **B18** : l'orbe a déjà le niveau du micro et six états colorés. **B19** : la ligne d'outil affichait déjà la durée et le détail (arguments, résultat) dès que la passerelle les envoyait ; seule la passerelle manquait.
+
 ## 4. Pour chaque lot, la même liste de contrôle
 
 1. Tests unitaires et un test de bout en bout sur le vrai noyau (profil temporaire).

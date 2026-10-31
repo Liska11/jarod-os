@@ -28,6 +28,8 @@ export const CORE_TOOLS: ReadonlySet<string> = new Set([
   "todo",
   "ask_user",
   "present",
+  // B2 : « fais-moi un tableau Excel / un PDF » — un modèle local ne pense pas à chercher cet outil derrière tool_search.
+  "document_create",
   // Cockpit : ce que Jarod sait faire maintenant (registre vivant, lecture seule).
   "capabilities",
   // Les « bras » et les « yeux » : un modèle local ne pense pas à les chercher derrière tool_search et répond « je ne peux pas » (31/10).
