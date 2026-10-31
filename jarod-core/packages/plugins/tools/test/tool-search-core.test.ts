@@ -6,7 +6,7 @@ const spec = (name: string) => ({ name, description: `outil ${name}`, parameters
 
 describe("tool search — ensemble offert d'emblée", () => {
   it("les bras (desktop_windows, desktop_control) et les yeux (screen_look) en font partie", () => {
-    for (const name of ["system_open", "system_apps", "system_control", "system_quit_app", "desktop_windows", "desktop_control", "screen_look"]) expect(CORE_TOOLS.has(name)).toBe(true);
+    for (const name of ["os_ui_list", "os_ui_run", "system_open", "system_apps", "system_control", "system_quit_app", "desktop_windows", "desktop_control", "screen_look"]) expect(CORE_TOOLS.has(name)).toBe(true);
   });
 
   it("lean() les offre sans activation ; un outil hors ensemble reste caché jusqu'à la recherche", () => {

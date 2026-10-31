@@ -33,6 +33,16 @@ export function pinokioUrl(env: NodeJS.ProcessEnv = process.env): string | null 
 
 /** Une requête `ui` au shell par son socket de contrôle (lignes JSON ; port TCP local sous Windows, socket Unix ailleurs). */
 export function askShell(command: string, env: NodeJS.ProcessEnv = process.env, timeoutMs = 120_000, args: Record<string, unknown> = {}): Promise<Record<string, unknown>> {
+  return askShellRequest({ cmd: "ui", command, args, source: "agent" }, env, timeoutMs);
+}
+
+/** Un shell est-il joignable (son socket et son jeton sont annoncés au cœur) ? */
+export function shellAvailable(env: NodeJS.ProcessEnv = process.env): boolean {
+  return Boolean((env.JAROD_OS_CONTROL_SOCKET ?? env.HERMES_OS_CONTROL_SOCKET)?.trim() && (env.JAROD_OS_CONTROL_TOKEN ?? env.HERMES_OS_CONTROL_TOKEN));
+}
+
+/** Une requête quelconque au socket de contrôle du shell : `ui` (exécuter une commande), `ui-list` (la liste des commandes), `ui-state` (l'état). */
+export function askShellRequest(request: Record<string, unknown>, env: NodeJS.ProcessEnv = process.env, timeoutMs = 120_000): Promise<Record<string, unknown>> {
   const endpoint = (env.JAROD_OS_CONTROL_SOCKET ?? env.HERMES_OS_CONTROL_SOCKET)?.trim();
   const token = env.JAROD_OS_CONTROL_TOKEN ?? env.HERMES_OS_CONTROL_TOKEN;
   if (!endpoint || !token) return Promise.reject(new Error("Jarod-OS n'a pas donné son socket de contrôle : lancez le moteur Pinokio depuis sa fenêtre."));
@@ -45,7 +55,7 @@ export function askShell(command: string, env: NodeJS.ProcessEnv = process.env, 
       reject(new Error("Jarod-OS n'a pas répondu à temps"));
     }, timeoutMs);
     socket.setEncoding("utf8");
-    socket.on("connect", () => socket.write(`${JSON.stringify({ cmd: "ui", token, command, args, source: "agent" })}\n`));
+    socket.on("connect", () => socket.write(`${JSON.stringify({ ...request, token })}\n`));
     socket.on("data", (chunk: string) => {
       buffer += chunk;
       const end = buffer.indexOf("\n");

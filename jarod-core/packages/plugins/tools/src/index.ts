@@ -24,6 +24,7 @@ import { everydayTools } from "./system/everyday.js";
 import { dailyTools } from "./daily.js";
 import { systemReadTools } from "./system/tools.js";
 import { pinokioTools } from "./pinokio/tools.js";
+import { shellUiTools } from "./shell-ui.js";
 import { ToolRegistry } from "./registry.js";
 import { remoteExecTool } from "./remote-exec.js";
 import { searchTools } from "./search.js";
@@ -53,6 +54,7 @@ export * from "./ssh.js";
 export * from "./ssh-hosts.js";
 export { systemReadTools, type SystemToolDeps } from "./system/tools.js";
 export { pinokioTools, type PinokioToolDeps } from "./pinokio/tools.js";
+export { commandLine, filterCommands, shellUiTools, type ShellUiDeps } from "./shell-ui.js";
 export { systemActTools, type Launcher, type SystemActDeps } from "./system/act.js";
 export { systemDestroyTools, type SystemDestroyDeps } from "./system/destroy.js";
 export { UNDO_MAX_DEPTH, type UndoEntry, UndoStack, undoTool } from "./system/undo.js";
@@ -120,6 +122,8 @@ export class ToolsService extends Service {
     for (const t of dailyTools({ db: ctx.storage.db })) r.register(t);
     // Pinokio (ADR-022) : offerts seulement quand Jarod-OS embarque le moteur (JAROD_PINOKIO_URL) ; installer, lancer, arrêter sont `dangerous`.
     for (const t of pinokioTools()) r.register(t);
+    // L'interface de Jarod-OS (registre de commandes du shell) : offerte quand un shell est joignable (socket de contrôle).
+    for (const t of shellUiTools()) r.register(t);
     // Remote commands (docs/REMOTE-SSH.md): offered only while a declared host is enabled for them and the control journal is there;
     // each call asks the person to confirm the exact command (once or deny, never "always").
     r.register(remoteExecTool({ hosts: this.sshHosts, ssh: this.ssh }));
