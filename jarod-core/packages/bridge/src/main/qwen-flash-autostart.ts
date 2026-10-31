@@ -45,6 +45,11 @@ export interface QwenFlashConfig {
    * Absent ou faux : aucune invite, jamais.
    */
   remountPrompt?: boolean;
+  /**
+   * Nom d'une tâche planifiée Windows (créée UNE fois, en administrateur, par `install-store-task.ps1`) qui rattache le store avec les droits élevés :
+   * la lancer ne demande aucune invite. Essayée AVANT l'invite UAC ; absente, désactivée ou sans effet : on retombe sur `remountPrompt`.
+   */
+  mountTask?: string;
   whisper?: WhisperCpuConfig;
   lfm?: LfmCpuConfig;
 }
@@ -61,6 +66,8 @@ export interface QwenFlashDeps {
   storeMounted?: (cfg: QwenFlashConfig) => Promise<boolean>;
   /** Rattache le store (invite UAC) et rend quand c'est fini ; erreur lisible ou null. */
   remountStore?: (launcher: string) => Promise<string | null>;
+  /** Lance la tâche planifiée de rattachement ; vrai si elle a été démarrée. */
+  runMountTask?: (name: string) => Promise<boolean>;
   sleep?: (ms: number) => Promise<void>;
 }
 
@@ -141,7 +148,19 @@ const defaultRemountStore = (launcher: string): Promise<string | null> =>
     );
   });
 
-const defaultStoreMounted =(cfg: QwenFlashConfig): Promise<boolean> =>
+/** `schtasks /run` : démarre la tâche élevée sans invite. Faux si elle n'existe pas ou ne peut pas être lancée. */
+const MOUNT_TASK_NAME = /^[\w .-]{1,80}$/;
+const defaultRunMountTask = (name: string): Promise<boolean> =>
+  new Promise((resolve) => {
+    if (process.platform !== "win32" || !MOUNT_TASK_NAME.test(name)) return resolve(false);
+    execFile("schtasks.exe", ["/run", "/tn", name], { timeout: 15_000, windowsHide: true }, (err) => resolve(!err));
+  });
+
+/** Après le lancement de la tâche, WSL met quelques secondes à rattacher le disque : on le surveille un peu avant de passer à l'invite. */
+const TASK_WAIT_MS = 30_000;
+const TASK_POLL_MS = 3_000;
+
+const defaultStoreMounted = (cfg: QwenFlashConfig): Promise<boolean> =>
   new Promise((resolve) => {
     const paths = cfg.storePaths?.length ? cfg.storePaths : ["/mnt/wsl/lqfstore/qwen.bin", "/mnt/lqfstore/qwen.bin"];
     const test = paths.map((p) => `test -f '${p.replaceAll("'", "")}'`).join(" || ");
@@ -188,6 +207,14 @@ export async function autoStartQwenFlash(
         const mounted = deps.storeMounted ?? defaultStoreMounted;
         const limit = (cfg.storeWaitSec ?? STORE_WAIT_DEFAULT_SEC) * 1000;
         let waited = 0;
+        if (cfg.mountTask && !(await mounted(cfg))) {
+          if (await (deps.runMountTask ?? defaultRunMountTask)(cfg.mountTask)) {
+            log(`Qwen Flash : le store n'est pas monté — tâche « ${cfg.mountTask} » lancée (sans invite)`);
+            for (let t = 0; t < TASK_WAIT_MS && !(await mounted(cfg)); t += TASK_POLL_MS) await sleep(TASK_POLL_MS);
+          } else {
+            log(`Qwen Flash : tâche « ${cfg.mountTask} » introuvable ou non lançable (installer : install-store-task.ps1, en administrateur)`);
+          }
+        }
         if (cfg.remountPrompt === true && !(await mounted(cfg))) {
           log("Qwen Flash : le store n'est pas monté — demande de rattachement (invite UAC à accepter)");
           const refused = await (deps.remountStore ?? defaultRemountStore)(cfg.launcher);

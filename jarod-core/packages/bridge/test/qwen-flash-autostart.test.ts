@@ -31,6 +31,8 @@ interface Opts {
   launchError?: string;
   /** Ce que rend la demande de rattachement (invite UAC) : null = accepté et fait ; un texte = refusé. */
   remount?: { error: string | null; mountsStore?: boolean };
+  /** Ce que rend le lancement de la tâche planifiée : ok = démarrée ; mountsStore (défaut vrai) = le store est monté juste après. */
+  task?: { ok: boolean; mountsStore?: boolean };
   root?: string;
 }
 async function run(env: NodeJS.ProcessEnv, o: Opts = {}) {
@@ -40,6 +42,7 @@ async function run(env: NodeJS.ProcessEnv, o: Opts = {}) {
   const launched: string[] = [];
   const slept: number[] = [];
   const remounts: string[] = [];
+  const tasks: string[] = [];
   let polls = 0;
   let attached = false;
   const handle = await autoStartQwenFlash(o.root ?? realRoot, env, (l) => lines.push(l), join(tmpdir(), "x"), {
@@ -52,9 +55,14 @@ async function run(env: NodeJS.ProcessEnv, o: Opts = {}) {
       attached = o.remount?.error === null && o.remount.mountsStore !== false;
       return o.remount?.error ?? null;
     },
+    runMountTask: async (name) => {
+      tasks.push(name);
+      attached = o.task?.ok === true && o.task.mountsStore !== false;
+      return o.task?.ok === true;
+    },
     sleep: async (ms) => void slept.push(ms),
   });
-  return { lines, spawned, stopped, launched, slept, remounts, handle, polls: () => polls };
+  return { lines, spawned, stopped, launched, slept, remounts, tasks, handle, polls: () => polls };
 }
 
 describe("autoStartQwenFlash", () => {
@@ -114,6 +122,27 @@ describe("autoStartQwenFlash", () => {
       const r = await run(config(json), { storeAfter: Infinity });
       expect(r.remounts).toEqual([]);
     }
+  });
+
+  it("mountTask : store détaché → la tâche planifiée le rattache SANS invite, puis Qwen démarre", async () => {
+    const r = await run(config({ ...FULL, mountTask: "Jarod-Qwen-Store", remountPrompt: true }), { storeAfter: Infinity, task: { ok: true } });
+    expect(r.tasks).toEqual(["Jarod-Qwen-Store"]);
+    expect(r.remounts).toEqual([]);
+    expect(r.launched).toHaveLength(1);
+    expect(r.lines.join("\n")).toMatch(/tâche « Jarod-Qwen-Store » lancée \(sans invite\)[\s\S]*Qwen Flash : démarrage lancé/);
+  });
+
+  it("mountTask : tâche introuvable → on le dit (avec la marche à suivre) et on retombe sur l'invite UAC", async () => {
+    const r = await run(config({ ...FULL, mountTask: "Jarod-Qwen-Store", remountPrompt: true }), { storeAfter: Infinity, task: { ok: false }, remount: { error: null } });
+    expect(r.tasks).toHaveLength(1);
+    expect(r.remounts).toHaveLength(1);
+    expect(r.launched).toHaveLength(1);
+    expect(r.lines.join("\n")).toMatch(/introuvable ou non lançable \(installer : install-store-task\.ps1[\s\S]*invite UAC à accepter/);
+  });
+
+  it("mountTask : store déjà monté ou réglage absent → la tâche n'est jamais lancée", async () => {
+    expect((await run(config({ ...FULL, mountTask: "Jarod-Qwen-Store" }))).tasks).toEqual([]);
+    expect((await run(config(FULL), { storeAfter: Infinity })).tasks).toEqual([]);
   });
 
   it("stop() arrête whisper et LFM3 (fils), pas Qwen", async () => {
