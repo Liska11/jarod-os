@@ -126,3 +126,20 @@ H10 (mise à jour du noyau) une fois D6 tranchée.
 - **Le micro et la caméra** (H4, B1, B12, B16) : un seul interrupteur général et un indicateur toujours visible, sinon la confiance se perd.
 - **Les jetons OAuth** (H9) : c'est la partie qui peut mal tourner ; elle passe par un audit avant tout code.
 - **Dérive des estimations** : les tailles supposent que les briques existantes (traducteur d'événements, chaîne vocale, worktrees, Sandboxie) se réutilisent comme prévu. La phase 0 sert à le confirmer avant de s'engager.
+
+## 7. Ajout du 2026-10-31 : idées tirées de MARI (kaonomi-net/mari)
+
+Source : le README, la liste des dossiers et les exemples du dépôt (lus, pas audités ligne à ligne). MARI est un cadre **.NET sur Microsoft Orleans** pour orchestrer des « grains » virtuels (acteurs) sur un grappe de machines ; ce n'est pas un agent à base de modèle de langage. Licence MIT. Le code n'est pas réutilisable ici (autre langage, autre modèle d'exécution : grappe de serveurs contre une seule machine) ; la décision D1 (idées seulement) reste en vigueur tant que tu ne la lèves pas. Ce qui se reprend, ce sont des principes.
+
+| ID | Idée de MARI | Équivalent dans Jarod | Travail | Taille | Risque |
+|---|---|---|---|---|---|
+| M1 | **Portes logiques** : un signal ne tire que si « A et B » arrivent dans une fenêtre de temps (formule booléenne `(A & B) \| C`) | Les règles d'automatisation n'ont qu'un déclencheur à la fois | Déclencheur composé « tous / l'un de ces événements dans N secondes », à ajouter aux déclencheurs système de B11 | S à M | faible |
+| M2 | **Séquences sérialisables** : une chaîne d'étapes décrite en données (entrée → étape → étape → sortie), appelable depuis une autre séquence | Les automatisations enchaînent des actions ; les compétences sont du texte | Une règle à plusieurs actions dont chacune reçoit la sortie de la précédente, décrite en JSON visible et éditable | M | moyen |
+| M3 | **Tableau noir** : un espace partagé où plusieurs analyses déposent leurs résultats, avec des contrôleurs qui décident de la suite | Sous-agents en lecture seule qui rendent un compte rendu ; `state_*` par conversation | Un espace commun à une mission que plusieurs sous-agents alimentent et que l'agent principal consulte (prolonge H1) | M | moyen |
+| M4 | **Redirections** : changer l'implémentation d'un contrat à l'exécution, pour tester une variante ou mettre deux variantes en concurrence | Repli de modèles ; compétences versionnées | Comparer deux compétences ou deux modèles sur la même tâche et garder le meilleur (utile à B3) | M | faible |
+| M5 | **Définitions dynamiques** : créer à l'exécution un déclencheur ou une séquence temporaire, qui disparaît avec son stockage | Règles d'automatisation permanentes | Règle « jusqu'à telle heure / une seule fois » qui s'efface seule | S | faible |
+| M6 | **Code externe comme étape** (script Python parlant un protocole simple) | `run_shell`, compétences à scripts | Rien de neuf : déjà couvert | — | — |
+
+Hors sujet pour Jarod : grappe de nœuds, Orleans, stockages Mongo/Docker, interface WPF.
+
+À ordonner avec la phase 3 (M1, M5 avec B11 ; M3 avec H1 ; M4 avec B3). Aucune n'est commencée.
