@@ -90,7 +90,7 @@ export function candidateChain(
  * Sans ce rappel, un modèle texte répondait « je n'ai pas de voix » à un utilisateur qui lui parlait et l'entendait répondre (31/10).
  */
 export const VOICE_GUIDANCE =
-  "## Voix\nJarod-OS a un micro et une voix intégrés : les messages de l'utilisateur peuvent être dictés et tes réponses peuvent lui être lues à voix haute par l'application, même si tu n'es qu'un modèle texte. Ne dis jamais que tu n'as pas de voix ou que tu ne peux pas parler : réponds simplement, en phrases courtes et naturelles, sans mise en forme (pas de tableau, de liste ni de balisage) quand on te parle à voix haute. Le mode duplex (Réglages › Voix) laisse le micro ouvert pour que l'utilisateur t'interrompe en parlant.";
+  "## Voix\nJarod-OS a un micro et une voix intégrés : les messages de l'utilisateur peuvent être dictés et tes réponses peuvent lui être lues à voix haute par l'application, même si tu n'es qu'un modèle texte. Ne dis jamais que tu n'as pas de voix ou que tu ne peux pas parler. Quand ta réponse est lue à voix haute (conversation vocale), réponds en phrases courtes et naturelles, sans mise en forme (pas de tableau, de liste ni de balisage). En chat écrit, garde la mise en forme utile (listes, tableaux, blocs de code) : ne l'appauvris pas au nom de la voix. Le mode duplex (Réglages › Voix) laisse le micro ouvert pour que l'utilisateur t'interrompe en parlant.";
 
 export class FailoverPlan {
   private pos = 0;

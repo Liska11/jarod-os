@@ -24,6 +24,14 @@ describe("persona SOUL.md", () => {
     expect(core.agent.buildSystemPrompt("bonjour").startsWith("Persona du réglage.")).toBe(true);
   });
 
+  it("le rappel voix ne sacrifie la mise en forme que pour une réponse lue à voix haute", async () => {
+    const core = await makeCore();
+    const prompt = core.agent.buildSystemPrompt("bonjour");
+    expect(prompt).toContain("Quand ta réponse est lue à voix haute");
+    expect(prompt).toContain("En chat écrit");
+    expect(prompt).toMatch(/En chat écrit, garde la mise en forme utile/);
+  });
+
   it("/persona écrit SOUL.md (le réglage n'est pas touché) et l'affiche", async () => {
     const core = await makeCore();
     const before = core.settings.get("persona");
