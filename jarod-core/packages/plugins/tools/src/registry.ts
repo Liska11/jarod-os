@@ -219,6 +219,31 @@ export class ToolRegistry {
  * primitive types). Tool inputs are untrusted output: a truncated or malformed call must be
  * rejected before anything runs.
  */
+/**
+ * Un modèle local envoie souvent une liste ou un objet SOUS FORME DE TEXTE JSON (`"sheets": "[{...}]"`). Quand le schéma attend exactement un tableau ou un objet
+ * et que le texte en est un, on le remplace sur place ; tout le reste est laissé tel quel pour que la validation le refuse. Rend les clés corrigées.
+ */
+export function coerceArgs(schema: Record<string, unknown>, args: Record<string, unknown>): string[] {
+  const props = (schema.properties ?? {}) as Record<string, { type?: string | string[] }>;
+  const fixed: string[] = [];
+  for (const [key, value] of Object.entries(args)) {
+    const want = props[key]?.type;
+    if ((want !== "array" && want !== "object") || typeof value !== "string") continue;
+    const text = value.trim();
+    if (!text.startsWith(want === "array" ? "[" : "{") || text.length > 2_000_000) continue;
+    try {
+      const parsed: unknown = JSON.parse(text);
+      if (want === "array" ? Array.isArray(parsed) : Boolean(parsed) && typeof parsed === "object" && !Array.isArray(parsed)) {
+        args[key] = parsed;
+        fixed.push(key);
+      }
+    } catch {
+      /* pas du JSON : la validation dira le type reçu */
+    }
+  }
+  return fixed;
+}
+
 export function validateArgs(schema: Record<string, unknown>, args: Record<string, unknown>): string | null {
   if ("__invalid_json__" in args) return "Arguments JSON invalides.";
   const props = (schema.properties ?? {}) as Record<string, { type?: string | string[] }>;

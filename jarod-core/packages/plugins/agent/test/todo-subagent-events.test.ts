@@ -63,6 +63,15 @@ describe("outil todo (H11)", () => {
     expect(core.state.get(s.id, "todos")).toMatchObject({ revision: 2 });
   });
 
+  it("accepte la liste envoyée en texte JSON, comme le font les modèles locaux", async () => {
+    const core = await makeCore();
+    const s = core.sessions.create();
+    fakeProvider(core, [{ toolCalls: [{ id: "1", name: "todo", args: { todos: '[{"id":"a","content":"Lire","status":"in_progress"}]' } }] }, { text: "ok" }]);
+    const events = await run(core, s.id, "planifie");
+    expect(toolEvents(events).map((e) => e.kind)).toEqual(["todo.updated"]);
+    expect(core.state.get(s.id, "todos")).toMatchObject({ revision: 1, todos: [{ id: "a", status: "in_progress" }] });
+  });
+
   it("refuse deux tâches en cours, un état inconnu, un doublon, une liste trop longue — et n'écrit rien", async () => {
     const core = await makeCore();
     const s = core.sessions.create();

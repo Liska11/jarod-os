@@ -23,7 +23,7 @@ import type { RoutingService } from "@jarod/plugin-llm";
 import type { MessageService, SessionService } from "./sessions.js";
 import type { Settings, SettingsService } from "@jarod/plugin-storage";
 import type { SkillRegistry } from "@jarod/plugin-skills";
-import { type Proof, resolveInWorkspace, type ToolContext, type ToolDef, type ToolRegistry, validateArgs } from "@jarod/plugin-tools";
+import { coerceArgs, type Proof, resolveInWorkspace, type ToolContext, type ToolDef, type ToolRegistry, validateArgs } from "@jarod/plugin-tools";
 import type { TaskLedger } from "./tasks.js";
 import type { OutputStore } from "./outputs.js";
 import type { Attachment, Message, ToolCall } from "@jarod/contracts";
@@ -1556,6 +1556,7 @@ async function runGuardedTool(
     const why = explainResolution(call.name, scope, res, facts);
     return { content: `Refusé par la politique de permissions : ${call.name}. ${why.why}${why.howTo ? ` ${why.howTo}` : ""}`, isError: true };
   }
+  coerceArgs(tool.parameters, call.args);
   const invalid = validateArgs(tool.parameters, call.args);
   if (invalid) {
     audit("refusé (invalide)");
