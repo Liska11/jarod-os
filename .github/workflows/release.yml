@@ -33,7 +33,7 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
           version: 12
       - name: Fetch the pinned Hermes Agent snapshot
@@ -100,7 +100,7 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
           version: 12
       - name: Build tools for node-pty
